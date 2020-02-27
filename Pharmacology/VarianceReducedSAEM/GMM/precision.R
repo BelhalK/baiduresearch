@@ -12,7 +12,7 @@ options(digits = 2)
 n <- 1000
 nb.epochs <- 5
 K <- n*nb.epochs
-nsim=2
+nsim=3
 
 weight<-c(0.2, 0.8)
 mean <- 0.5
@@ -89,6 +89,10 @@ df.isaem50 <- vector("list", length=nsim)
 
 kiter = 1:K
 
+disaemvr <- NULL
+df.isaemvr <- vector("list", length=nsim)
+
+rho.vr = 0.01
 
 nb.chains <- 30
 
@@ -151,6 +155,14 @@ for (j in (1:nsim))
   df.isaem50[[j]] <- df
   print('isaem50 done')
 
+
+  df <- mixt.isaemvr(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr, rho.vr)
+  df[,2:7] <- (df[,2:7] - ML[,2:7])^2
+  df$rep <- j
+  disaemvr <- rbind(disaemvr,df)
+  df$rep <- NULL
+  df.isaemvr[[j]] <- df
+  print('isaemvr done')
 
 
 }
@@ -241,6 +253,27 @@ if (nsim>2) {
 isaem50[,2:7] <- 1/nsim*isaem50[,2:7]
 isaem50[,9]<-NULL
 
+
+
+isaemvr <- NULL
+isaemvr <- disaemvr[disaemvr$rep==1,]
+
+
+if (nsim>2) {
+    for (j in (2:nsim))
+  {
+    isaemvr[,2:7] <- isaemvr[,2:7]+disaemvr[disaemvr$rep==j,2:7]
+  }
+}
+
+isaemvr[,2:7] <- 1/nsim*isaemvr[,2:7]
+isaemvr[,9]<-NULL
+
+isaemvr$algo <- 'isaemvr'
+isaemvr$rep <- NULL
+isaemvr$iteration <- isaemvr$iteration*nbr/n
+
+
 em$algo <- 'EM'
 iemseq$algo <- 'IEM seq'
 saem$algo <- 'saem'
@@ -264,6 +297,7 @@ isaem50$iteration <- isaem50$iteration*nbr50/n
 
 
 variance <- rbind(isaem[,c(1,4,8)],
+                  isaemvr[,c(1,4,8)],
                   isaem10[,c(1,4,8)],
                   isaem50[,c(1,4,8)],
                   iemseq[,c(1,4,8)],

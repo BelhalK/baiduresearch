@@ -158,13 +158,13 @@ mixt.isaem <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr)
   s<-list(s1=0,s2=0,s3=0)
   Z<-step.S(x,theta,M)
   n<-length(x)
-  l <- rep(1:n,K/n*nbr)
-  i <- 1:nbr
+  # l <- rep(1:n,K/n*nbr)
+  # i <- 1:nbr
   for (k in 1:K)
   {
-    # li <- sample(1:n,nbr)
+    i <- sample(1:n,nbr)
     # for (m in li){
-    for (m in l[i]){
+    for (m in i){
       Z[m,,]<-step.S_replace(x[m],theta,M)
     }
     s<-step.SA(x,Z,s,gamma[k])
@@ -324,11 +324,11 @@ mixt.isaemvr <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr, rho)
   theta<-theta0
   s<-list(s1=0,s2=0,s3=0)
   Z<-step.S(x,theta,M)
-  s <- compute.stat(x,Z)
+  s <- stats <- s.e.0 <- compute.stat(x,Z)
   n<-length(x)
   l <- rep(1:n,K/n*nbr)
   i <- 1:nbr
-  Z.indiv.new <- Z.indiv.e.0 <- Z
+  Z.e.0 <- Z
   for (k in 1:K)
   {
     # li <- sample(1:n,nbr)
@@ -337,30 +337,39 @@ mixt.isaemvr <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr, rho)
       Z[m,,]<-step.S_replace(x[m],theta,M)
     }
 
+    s.indiv.new <- 0
+    s.indiv.e.0 <- 0
+    Z.indiv.new <- 0
+    Z.indiv.e.0 <- 0
+
     if (k%%(n/nbr) == 0)
     { 
-      # print('OEMVR')
-      # print(k)
       theta.e.0 <- theta
       Z.e.0<-step.S(x,theta.e.0,M)
-      s.e.0 <- x%*%Z.e.0
+      s.e.0 <- compute.stat(x,Z.e.0)
     }
-
+    
     i <- sample(1:n, 1)
-    for (m in i){
-      Z.indiv.new[m,,]<-step.S_replace(x[m],theta,M)
+
+    for (m in 1:M)
+    {
+      Z.m <- Z[i,,m]
+      Z.m.e.0 <- Z.e.0[i,,m]
+      Z.indiv.new <- Z.indiv.new + Z.m
+      Z.indiv.e.0 <- Z.indiv.e.0 + Z.m.e.0
+      s.indiv.new <- s.indiv.new + x[i] %*% Z.m 
+      s.indiv.e.0 <- s.indiv.e.0 + x[i] %*% Z.m.e.0 
     }
-  
-    Z.indiv <- Z.indiv.new[i,,]
-    Z.indiv.e.0 <- Z.e.0[i,,]
 
-
+    # browser()
     # s<-step.SA(x,Z,s,gamma[k])
 
     #Update statistics
-    s$s1 <- (1-rho)*s$s1 + rho*((Z.indiv - Z.indiv.e.0)*n + colSums(Z.indiv.new))
-    s$s2 <- (1-rho)*s$s2 + rho*((x[i]*Z.indiv - x[i]*Z.indiv.e.0)*n + s.e.0)
+    stats$s1 <- (1-rho)*stats$s1 + rho*((Z.indiv.new - Z.indiv.e.0)*n/M + s.e.0$s1)
+    stats$s2 <- (1-rho)*stats$s2 + rho*((s.indiv.new - s.indiv.e.0)*n/M + s.e.0$s2)
 
+    s$s1<-s$s1+gamma[k]*(stats$s1-s$s1)
+    s$s2<-s$s2+gamma[k]*(stats$s2-s$s2)
     #M-step
     theta$mu<-step.M(s,n)
     theta.est[k+1,] <- c(k, theta0$p, theta$mu, theta0$sigma)

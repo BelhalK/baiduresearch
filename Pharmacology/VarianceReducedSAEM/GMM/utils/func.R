@@ -71,6 +71,31 @@ compute.stat<-function(x,Z)
   return(s)
 }
 
+
+compute.stat.indiv<-function(x,Z)
+{
+  G<-dim(Z)[2]
+  M<-dim(Z)[3]
+  if (is.na(M))  
+  {
+    M <- 1
+    dim(Z) <- c(dim(Z),1)
+  }
+  s1 <- 0
+  s2 <- 0
+  s3 <- 0
+  for (m in 1:M)
+  {
+    Z.m <- Z[,,m]
+    s1 <- s1 + colSums(Z.m) 
+    s2 <- s2 + x %*% Z.m 
+    # s3 <- s3 + (x^2) %*% Z.m 
+  }
+  s <-list(s1=s1/M,s2=as.vector(s2/M))
+  return(s)
+}
+
+
 step.E<-function(x,theta)
 {
   tau <- compute.tau(x,theta)
