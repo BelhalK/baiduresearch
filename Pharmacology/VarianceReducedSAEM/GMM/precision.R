@@ -12,7 +12,7 @@ options(digits = 2)
 n <- 1000
 nb.epochs <- 5
 K <- n*nb.epochs
-nsim=3
+nsim=20
 
 weight<-c(0.2, 0.8)
 mean <- 0.5
