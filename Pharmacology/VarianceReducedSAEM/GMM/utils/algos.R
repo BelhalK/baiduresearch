@@ -348,17 +348,17 @@ mixt.isaemvr <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr, rho)
       Z.e.0<-step.S(x,theta.e.0,M)
       s.e.0 <- compute.stat(x,Z.e.0)
     }
-    
-    i <- sample(1:n, 1)
+
+    # i <- sample(1:n, 1)
 
     for (m in 1:M)
     {
-      Z.m <- Z[i,,m]
-      Z.m.e.0 <- Z.e.0[i,,m]
+      Z.m <- Z[l[i],,m]
+      Z.m.e.0 <- Z.e.0[l[i],,m]
       Z.indiv.new <- Z.indiv.new + Z.m
       Z.indiv.e.0 <- Z.indiv.e.0 + Z.m.e.0
-      s.indiv.new <- s.indiv.new + x[i] %*% Z.m 
-      s.indiv.e.0 <- s.indiv.e.0 + x[i] %*% Z.m.e.0 
+      s.indiv.new <- s.indiv.new + x[l[i]] %*% Z.m 
+      s.indiv.e.0 <- s.indiv.e.0 + x[l[i]] %*% Z.m.e.0 
     }
 
     # browser()
