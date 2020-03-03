@@ -1,0 +1,224 @@
+\documentclass[11pt]{article}
+%\usepackage{fullpage,graphicx,algorithm,algorithmic,bm,amsmath,amsthm,amssymb,color,hyperref,cite,natbib}
+
+% if you need to pass options to natbib, use, e.g.:
+%\PassOptionsToPackage{numbers}{natbib}
+\usepackage{natbib,fullpage}
+\usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem}
+\usepackage{color,wrapfig}
+\usepackage[textwidth=1cm,textsize=footnotesize]{todonotes}
+% ready for submission
+\usepackage{neurips_2020}
+
+\usepackage{lipsum}
+\usepackage[colorlinks=true,
+linkcolor=red,
+urlcolor=blue,
+citecolor=blue]{hyperref}
+
+\usepackage{xargs}
+\usepackage{stmaryrd}
+
+\setlength{\parskip}{.2cm}
+
+\newtheorem{Fact}{Fact}
+\newtheorem{Lemma}{Lemma}
+\newtheorem{Prop}{Proposition}
+\newtheorem{Theorem}{Theorem}
+\newtheorem{Def}{Definition}
+\newtheorem{Corollary}{Corollary}
+\newtheorem{Conjecture}{Conjecture}
+\newtheorem{Property}{Property}
+\newtheorem{Observation}{Observation}
+%\theorembodyfont{\rmfamily}
+\newtheorem{Exa}{Example}
+\newtheorem{assumption}{H\!\!}
+\newtheorem{assumptionA}{G\!\!}
+\newtheorem{Remark}{Remark}
+\newtheorem*{Lemma*}{Lemma}
+\newtheorem*{Theorem*}{Theorem}
+ \makeatletter
+\renewenvironment{proof}[1][\proofname]{%
+   \par\pushQED{\qed}\normalfont%
+   \topsep6\p@\@plus6\p@\relax
+   \trivlist\item[\hskip\labelsep\bfseries#1]%
+   \ignorespaces
+}{%
+   \popQED\endtrivlist\@endpefalse
+}
+\makeatother
+\usepackage{shortcuts_OPT}
+
+%\renewcommand{\textwidth}{5.5in}
+
+% Here's the definition of Sb, stolen from amstex
+    \makeatletter
+    \def\multilimits@{\bgroup
+  \Let@
+  \restore@math@cr
+  \default@tag
+ \baselineskip\fontdimen10 \scriptfont\tw@
+ \advance\baselineskip\fontdimen12 \scriptfont\tw@
+ \lineskip\thr@@\fontdimen8 \scriptfont\thr@@
+ \lineskiplimit\lineskip
+ \vbox\bgroup\ialign\bgroup\hfil$\m@th\scriptstyle{##}$\hfil\crcr}
+    \def\Sb{_\multilimits@}
+    \def\endSb{\crcr\egroup\egroup\egroup}
+\makeatother
+
+\newtheoremstyle{t}         %name
+    {\baselineskip}{2\topsep}      %space above and below
+    {\rm}                   %Body font
+    {0pt}{\bfseries}  %Heading indent and font
+    {}                      %after heading
+    { }                      %head after space
+    {\thmname{#1}\thmnumber{#2}.}
+
+\theoremstyle{t}
+\newtheorem{q}{Q}
+\parindent=0pt
+
+\makeatletter
+\DeclareRobustCommand*\cal{\@fontswitch\relax\mathcal}
+\makeatother
+
+\newcommand{\tcr}[1]{\textcolor{red}{#1}}
+\newcommand{\mathbbm}[1]{\text{\usefont{U}{bbm}{m}{n}#1}}
+
+\begin{document}
+\title{Fast Bi-Level and Incremental Stochastic Approximation of the EM Algorithm}
+\author{
+  Belhal Karimi \\
+  Cognitive And Computing Lab\\
+  Baidu Research\\
+  Beijing, China \\
+  \texttt{belhal.karimi@baidu.com} 
+   \And
+  Ping Li \\
+  Cognitive And Computing Lab\\
+  Baidu Research\\
+  Beijing, China \\
+  \texttt{liping@baidu.com} }
+\date{\today}
+
+\maketitle
+
+\begin{abstract}
+T.B.C
+\end{abstract}
+
+
+\section{Introduction}
+We formulate the following empirical risk minimization as:
+\beq \label{eq:em_motivate}
+\min_{ \param \in \Param }~ \overline{\calL} ( \param ) \eqdef \Pen (\param) + \calL ( \param )~~\text{with}~~\calL ( \param ) = \frac{1}{n} \sum_{i=1}^n \calL_i( \param) \eqdef  \frac{1}{n} \sum_{i=1}^n \big\{ - \log g( y_i ; \param ) \big\}\eqs,
+\eeq
+where $\{y_i\}_{i=1}^n$ are the observations, $\Param$ is a convex subset of $\rset^d$ for the parameters,  $\Pen : \Param \rightarrow \rset$ is a smooth convex regularization function   and for each $\param \in \Param$, $g(y;\param)$ is the (incomplete) likelihood of each individual  observation.
+The objective function $ \overline{\calL} ( \param )$ is possibly \emph{non-convex} and is assumed to be lower bounded $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
+%We assume that $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
+In the latent variable model,  $g(y_i ; \param)$, is the marginal of the
+complete data likelihood defined as $f(z_i,y_i; \param)$, i.e. $g(y_i; \param) = \int_{\Zset} f (z_i,y_i;\param) \mu(\rmd z_i)$, where $\{ z_i \}_{i=1}^n$ are the (unobserved)
+latent variables.   
+We make the assumption of a complete model belonging to the curved exponential family, \ie
+\beq \label{eq:exp}
+f(z_i,y_i; \param) = h  (z_i,y_i) \exp \big( \pscal{S(z_i,y_i)}{\phi(\param)} - \psi(\param) \big)\eqs,
+\eeq
+where $\psi(\param)$, $h(z_i,y_i)$ are scalar functions, $\phi(\param) \in \rset^k$ is a vector function, and $S(z_i,y_i) \in \rset^k$ is the complete data sufficient statistics.
+
+\paragraph{Prior Work} 
+Cite Kuhn (for ISAEM) and incremental EM like papers .As well as Optim papers (Variance reduction, SAGA etc.)
+
+\section{Expectation Maximization Methods}
+The basic "batch" EM (bEM) method iteratively computes a sequence of estimates $\{ \param^k, k \in \nset\}$ with an initial parameter $\param^0$. Each iteration of bEM is composed of two steps. In the {\sf E-step}, a surrogate function is computed as $\param \mapsto Q(\param,\param^{k-1}) = \sum_{i=1}^n Q_i(\param,\param^{k-1})$ where $Q_i(\param,\param') \eqdef - \int_{\Zset} \log f(z_i,y_i;\theta) p(z_i|y_i;\param') \mu(\rmd z_i)$ such that $p(z_i|y_i;\param) \eqdef f(z_i,y_i;\param)/ g(y_i,\param)$ is the conditional probability density of the latent variables $z_i$ given the observations $y_i$. When $f(z_i,y_i;\param)$ is a curved exponential family model, the {\sf E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, 
+\begin{equation}
+\label{eq:definition-overline-bss}
+\overline{\bss}(\param)= \frac{1}{n} \sum_{i=1}^n \overline{\bss}_i(\param) \quad  \text{where}  \quad \overline{\bss}_i(\param)= \int_{\Zset} S(z_i,y_i) p(z_i|y_i;\param) \mu(\rmd z_i) \,.
+\end{equation}
+In the {\sf M-step}, the surrogate function is minimized producing a new fit of the parameter $\param^{k} = \argmax_{\param \in \Param} Q(\param,\param^{k-1})$.
+
+\section{Monte Carlo Integration and Stochastic Approximation} \label{sec:sEM}
+
+
+\section{Incremental and Bi-Level Inexact EM MEthods} \label{sec:sEM}
+We first describe the stochastic EM methods to be analyzed under a unified framework. The $k$th iteration of a generic stochastic EM method is composed of two sub-steps ---
+\beq \label{eq:sestep}
+\textsf{sE-step}:~\hat{\bss}^{(k+1)} = \hat{\bss}^{(k)} - \gamma_{k+1} \big( \hat{\bss}^{(k)} - \StocEstep^{(k+1)}  \big),
+\eeq
+which is a stochastic version of the {\sf E-step} in \eqref{eq:definition-overline-bss}. Note $\{ \gamma_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of step sizes, $\StocEstep^{(k+1)}$ is a proxy for $\overline{\bss}( \hat{\param}^{(k)} )$, and $\overline{\bss}$ is defined in \eqref{eq:definition-overline-bss}. The {\sf M-step} is given by
+\beq \label{eq:mstep}
+\textsf{M-step:}~~\hat{\param}^{(k+1)} = \overline{\param}( \hat{\bm s}^{(k+1)} ) \eqdef \argmin_{ \param \in \Param } ~\big\{ \Pen( \param ) + \psi( \param) - \pscal{ \hat{\bm s}^{(k+1)} }{ \phi ( \param) } \big\},
+\eeq
+which is controlled by the sufficient statistics determined by the {\sf sE-step}. 
+The stochastic EM methods differ in the way that $\StocEstep^{(k+1)}$ is computed. Existing methods employ stochastic approximation or variance reduction without the need to fully compute $\overline{\bss}( \hat{\param}^{(k)} )$.
+To simplify notations, we define
+\beq \label{eq:estep_upd}
+\overline{\bss}_i^{(k)} \eqdef \overline{\bss}_i ( \hat{\param}^{(k)} )  = \int_{\Zset} S(z_{i},y_i) p(z_i|y_i;\hat{\param}^{(k)}) \mu(\rmd z_i)  \quad \text{and} \quad
+\overline{\bss}^{(\ell)} \eqdef \overline{\bss}( \hat{\param}^{(\ell)} ) = \frac{1}{n} \sum_{i=1}^n \overline{\bss}_i^{(\ell)}.
+\eeq
+Note that if $\StocEstep^{(k+1)} = \overline{\bss}^{(k)}$ and $\gamma_{k+1} = 1$,  eq.~\eqref{eq:sestep} reduces to the  {\sf E-step} in the classical bEM method.
+To describe the stochastic EM methods, let $i_k \in \inter$ be a random index drawn at iteration $k$ and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ be the iteration index where $i \in \inter$ is last drawn prior to iteration $k$, we have:\vspace{-.2cm}
+\begin{align}
+&\emph{(\IEM\ \citep{neal1998view})} & \StocEstep^{(k+1)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \overline{\bss}_{i_k}^{(k)}  - \overline{\bss}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:iem} \\
+&\emph{(\SEM\ \citep{cappe2009line})} & \StocEstep^{(k+1)} &= \overline{\bss}_{i_k}^{(k)}  \label{eq:oem} \\
+&\emph{(\SEMVR\ \citep{chen2018stochastic})} &\StocEstep^{(k+1)} &= \overline{\bss}^{(\ell(k))} +  \big( \overline{\bss}_{i_k}^{(k)}  - \overline{\bss}_{i_k}^{(\ell(k))}   \big) \label{eq:svrgem}
+%\emph{(SAGA-EM)} & ~~~~\StocEstep^{(k+1)} = s & \gamma_{k+1} =
+\end{align}
+The stepsize is set to $\gamma_{k+1} = 1$ for the \IEM\ method; $\gamma_{k+1} = \gamma$ is  constant for the \SEMVR\ method.
+In the original version of the \SEM\ method, the sequence of step
+ $\gamma_{k+1}$ is a diminishing step size. Moreover, for \IEM\ we initialize with $\StocEstep^{(0)} = \overline{\bss}^{(0)}$; for \SEMVR, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in. \vspace{-.2cm}
+
+\paragraph{\FIEM} Our analysis framework can handle a new, yet natural application of a popular variance reduction technique to the EM method. The new method, called \FIEM, is developed from the SAGA method \citep{defazio2014saga} in a similar vein as in  \SEMVR.
+
+For iteration $k \geq 0$, the \FIEM\ method draws \emph{two} indices \emph{independently} and uniformly as $i_k, j_k \in \inter$. In addition to $\tau_i^k$ which was defined \wrt $i_k$, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$. With the initialization $\overline{\StocEstep}^{(0)} = \overline{\bss}^{(0)}$, we use a slightly different update rule from SAGA inspired by \citep{reddi2016fast}, as described by the following recursive updates
+\beq \label{eq:sagaem}
+\StocEstep^{(k+1)} = \overline{\StocEstep}^{(k)} + \big( \overline{\bss}_{i_k}^{(k)}  - \overline{\bss}_{i_k}^{(t_{i_k}^k)} \big),~~
+\overline{\StocEstep}^{(k+1)} = \overline{\StocEstep}^{(k)} + n^{-1}
+\big( \overline{\bss}_{j_k}^{(k)}  - \overline{\bss}_{j_k}^{(t_{j_k}^k)} \big).
+\eeq
+
+
+\begin{algorithm}[H]
+\caption{Stochastic EM methods.}\label{alg:sem}
+  \begin{algorithmic}[1]
+  \STATE \textbf{Input:} initializations $\hat{\param}^{(0)} \leftarrow 0$, $\hat{\bss}^{(0)} \leftarrow \overline{\bss}^{(0)}$, $K_{\sf max}$ $\leftarrow$ max.~iteration number. \STATE Set the terminating iteration number, $K \in \{0,\dots,K_{\sf max}-1\}$, as a discrete r.v.~with:\vspace{-.1cm}
+  \beq \label{eq:random}
+   P( K = k ) = \frac{ \gamma_{k} }{\sum_{\ell=0}^{K_{\sf max}-1} \gamma_\ell}.\vspace{-.2cm}
+  \eeq
+  \FOR {$k=0,1,2,\dots, K$}
+  \STATE Draw index $i_k \in \inter$ uniformly (and $j_k \in \inter$ for \FIEM).
+   \STATE Compute the surrogate sufficient statistics $\StocEstep^{(k+1)}$ using \eqref{eq:oem} or \eqref{eq:iem} or \eqref{eq:svrgem} or \eqref{eq:sagaem}.
+   \STATE Compute $\hat{\bss}^{(k+1)}$ via the {\sf sE-step} \eqref{eq:sestep}.
+   \STATE Compute $\hat{\param}^{(k+1)}$ via the {\sf M-step} \eqref{eq:mstep}.
+\ENDFOR
+\STATE \textbf{Return}: $\hat{\param}^{(K)}$.
+%\STATE \textbf{Return:} $\prm_t$.
+  \end{algorithmic}
+\end{algorithm}
+
+where we set a constant step size as $\gamma_{k+1} = \gamma$.
+
+In the above, the update of $\StocEstep^{(k+1)}$ corresponds to an \emph{unbiased estimate} of $\overline{\bss}^{(k)}$, while the update for $\overline{\StocEstep}^{(k+1)}$ maintains the structure that $\overline{\StocEstep}^{(k)} = n^{-1} \sum_{i=1}^n \overline{\bss}_i^{(t_i^k)}$ for any $k \geq 0$.
+The two updates of \eqref{eq:sagaem} are based on two different and independent indices $i_k,j_k$ that are randomly drawn from $\inter[n]$. This is used for our fast convergence analysis in Section~\ref{sec:main}.
+
+
+\section{Finite Time Analysis} \label{sec:main}
+
+
+
+\section{Numerical Examples}
+
+\section{Conclusion}
+
+
+\newpage
+\linespread{1.1}
+\normalsize
+
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+\linespread{1}
+\newpage
+\appendix
+\section{Proof of Lemma}
+\end{document}
