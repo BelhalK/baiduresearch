@@ -86,7 +86,7 @@ citecolor=blue]{hyperref}
 \newcommand{\mathbbm}[1]{\text{\usefont{U}{bbm}{m}{n}#1}}
 
 \begin{document}
-\title{Fast Bi-Level and Incremental Stochastic Approximation of the EM Algorithm}
+\title{Fast Bi-Level and Incremental Noisy EM Algorithms}
 \author{
   Belhal Karimi \\
   Cognitive And Computing Lab\\
@@ -126,68 +126,85 @@ f(z_i,y_i; \param) = h  (z_i,y_i) \exp \big( \pscal{S(z_i,y_i)}{\phi(\param)} - 
 where $\psi(\param)$, $h(z_i,y_i)$ are scalar functions, $\phi(\param) \in \rset^k$ is a vector function, and $S(z_i,y_i) \in \rset^k$ is the complete data sufficient statistics.
 
 \paragraph{Prior Work} 
-Cite Kuhn (for ISAEM) and incremental EM like papers .As well as Optim papers (Variance reduction, SAGA etc.)
+Cite Kuhn \citep{kuhn2019properties} (for ISAEM) and incremental EM like papers.
+As well as Optim papers (Variance reduction, SAGA etc.)
 
-\section{Expectation Maximization Methods}
-The basic "batch" EM (bEM) method iteratively computes a sequence of estimates $\{ \param^k, k \in \nset\}$ with an initial parameter $\param^0$. Each iteration of bEM is composed of two steps. In the {\sf E-step}, a surrogate function is computed as $\param \mapsto Q(\param,\param^{k-1}) = \sum_{i=1}^n Q_i(\param,\param^{k-1})$ where $Q_i(\param,\param') \eqdef - \int_{\Zset} \log f(z_i,y_i;\theta) p(z_i|y_i;\param') \mu(\rmd z_i)$ such that $p(z_i|y_i;\param) \eqdef f(z_i,y_i;\param)/ g(y_i,\param)$ is the conditional probability density of the latent variables $z_i$ given the observations $y_i$. When $f(z_i,y_i;\param)$ is a curved exponential family model, the {\sf E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, 
+\section{Expectation Maximization Algorithm}
+Full batch EM is a two steps procedure. The {\sf E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, 
 \begin{equation}
 \label{eq:definition-overline-bss}
 \overline{\bss}(\param)= \frac{1}{n} \sum_{i=1}^n \overline{\bss}_i(\param) \quad  \text{where}  \quad \overline{\bss}_i(\param)= \int_{\Zset} S(z_i,y_i) p(z_i|y_i;\param) \mu(\rmd z_i) \,.
 \end{equation}
-In the {\sf M-step}, the surrogate function is minimized producing a new fit of the parameter $\param^{k} = \argmax_{\param \in \Param} Q(\param,\param^{k-1})$.
+The {\sf M-step} is given by
+\beq \label{eq:mstep}
+\textsf{M-step:}~~\hat{\param} = \overline{\param}( \overline{\bss}(\param) ) \eqdef \argmin_{ \vartheta \in \Param } ~\big\{ \Pen( \vartheta ) + \psi( \vartheta) - \pscal{ \overline{\bss}(\param)}{ \phi ( \vartheta) } \big\},
+\eeq
 
 \section{Monte Carlo Integration and Stochastic Approximation} \label{sec:sEM}
+For complex and possibly nonlinear models, the expectation under the posterior distribution defined in \eqref{eq:definition-overline-bss} is not tractable. In that case, the first solution involves computing a Monte Carlo integration of that latter term. 
+For all $ i \in \inter$, draw for $m \in \llbracket 1, M \rrbracket$, samples $z_{i,m} \sim p(z_i|y_i;\theta)$ and compute the MC integration $\hat{\bss}$ of the deterministic quantity $\overline{\bss}(\param)$:
+$$
+\textsf{MC-step}:~ \hat{\bss} = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}, y_i)
+$$
+and compute $\hat{\param} = \overline{\param}( \hat{\bss} ) $.
 
+This algorithm bypasses the intractable expectation issue but is rather computationally expensive in order to reach point wise convergence ($M$ needs to be large).
 
-\section{Incremental and Bi-Level Inexact EM MEthods} \label{sec:sEM}
-We first describe the stochastic EM methods to be analyzed under a unified framework. The $k$th iteration of a generic stochastic EM method is composed of two sub-steps ---
+As a result, an alternative to that stochastic algorithm is to use a Robbins-Monro (RM) type of update.
+We denote
+\beq\label{eq:stats}
+\hat{S}^{(k)} = \frac{1}{n} \sum_{i=1}^n \hat{S}^{(k)}_i = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}^{(k)}, y_i)
+\eeq
+where $z_{i,m}^{(k)} \sim p(z_i|y_i;\theta^{(k-1)})$.
+At iteration $k$, the sufficient statistics $\hat{\bss}^{(k)}$ is approximated as follows:
+
+\beq\label{eq:rmstep}
+\textsf{SA-step}:~ \hat{\bss}^{(k)} =  \hat{\bss}^{(k-1)}  + \gamma_k(\hat{S}^{(k)} - \hat{\bss}^{(k-1)} )
+\eeq
+where $\{ \gamma_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of decreasing step sizes to ensure asymptotic convergence.
+This is called the Stochastic Approximation of the EM (SAEM), see \citep{delyon1999} and allows a smooth convergence to the target parameter.
+It represents the \textit{first level} of our algorithm (needed to temper the variance and noise implied by MC integration).
+
+In the next section, we derive variants of this algorithm to adapt of the sheer size of data of today's applications.
+
+\section{Incremental and Bi-Level Inexact EM Methods} \label{sec:sEM}
+Strategies to scale to large datasets include classical incremental and variance reduced variants.
+We will explicit a general update that will cover those variants and that represents the \textit{second level} of our algorithm, namely the incremental update of the noisy statistics $\hat{S}^{(k)}$ inside the RM type of update.
+
 \beq \label{eq:sestep}
-\textsf{sE-step}:~\hat{\bss}^{(k+1)} = \hat{\bss}^{(k)} - \gamma_{k+1} \big( \hat{\bss}^{(k)} - \StocEstep^{(k+1)}  \big),
+\textsf{Inexact-step}:~\hat{S}^{(k)} = \hat{S}^{(k-1)} + \rho_{k+1} \big( \StocEstep^{(k)}- \hat{S}^{(k-1)}  \big),
 \eeq
-which is a stochastic version of the {\sf E-step} in \eqref{eq:definition-overline-bss}. Note $\{ \gamma_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of step sizes, $\StocEstep^{(k+1)}$ is a proxy for $\overline{\bss}( \hat{\param}^{(k)} )$, and $\overline{\bss}$ is defined in \eqref{eq:definition-overline-bss}. The {\sf M-step} is given by
-\beq \label{eq:mstep}
-\textsf{M-step:}~~\hat{\param}^{(k+1)} = \overline{\param}( \hat{\bm s}^{(k+1)} ) \eqdef \argmin_{ \param \in \Param } ~\big\{ \Pen( \param ) + \psi( \param) - \pscal{ \hat{\bm s}^{(k+1)} }{ \phi ( \param) } \big\},
-\eeq
-which is controlled by the sufficient statistics determined by the {\sf sE-step}. 
-The stochastic EM methods differ in the way that $\StocEstep^{(k+1)}$ is computed. Existing methods employ stochastic approximation or variance reduction without the need to fully compute $\overline{\bss}( \hat{\param}^{(k)} )$.
-To simplify notations, we define
-\beq \label{eq:estep_upd}
-\overline{\bss}_i^{(k)} \eqdef \overline{\bss}_i ( \hat{\param}^{(k)} )  = \int_{\Zset} S(z_{i},y_i) p(z_i|y_i;\hat{\param}^{(k)}) \mu(\rmd z_i)  \quad \text{and} \quad
-\overline{\bss}^{(\ell)} \eqdef \overline{\bss}( \hat{\param}^{(\ell)} ) = \frac{1}{n} \sum_{i=1}^n \overline{\bss}_i^{(\ell)}.
-\eeq
-Note that if $\StocEstep^{(k+1)} = \overline{\bss}^{(k)}$ and $\gamma_{k+1} = 1$,  eq.~\eqref{eq:sestep} reduces to the  {\sf E-step} in the classical bEM method.
-To describe the stochastic EM methods, let $i_k \in \inter$ be a random index drawn at iteration $k$ and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ be the iteration index where $i \in \inter$ is last drawn prior to iteration $k$, we have:\vspace{-.2cm}
+Note $\{ \rho_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of step sizes, $\StocEstep^{(k+1)}$ is a proxy for $\hat{S}^{(k)}$,
+If the stepsize is equal to one and the proxy $\StocEstep^{(k+1)} = \hat{S}^{(k)}$, i.e., computed in a full batch manner as in \eqref{eq:stats}, then we recover the SAEM algorithm.
+Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k+1) = \hat{S}^{(k)}}$, then we recover the Monte Carlo EM algorithm.
+
+We now introduce three variants of the SAEM update depending on different definitions of the proxy $\StocEstep^{(k)}$ and the choice of the stepsize $\rho_k$.
+Let $i_k \in \inter$ be a random index drawn at iteration $k$ and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ be the iteration index where $i \in \inter$ is last drawn prior to iteration $k$.
+For iteration $k \geq 0$, the \FISAEM\ method draws \emph{two} indices \emph{independently} and uniformly as $i_k, j_k \in \inter$. In addition to $\tau_i^k$ which was defined \wrt $i_k$, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$. With the initialization $\overline{\StocEstep}^{(0)} = \overline{\bss}^{(0)}$, we use a slightly different update rule from SAGA inspired by \citep{reddi2016fast}. Then, we obtain:
 \begin{align}
-&\emph{(\IEM\ \citep{neal1998view})} & \StocEstep^{(k+1)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \overline{\bss}_{i_k}^{(k)}  - \overline{\bss}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:iem} \\
-&\emph{(\SEM\ \citep{cappe2009line})} & \StocEstep^{(k+1)} &= \overline{\bss}_{i_k}^{(k)}  \label{eq:oem} \\
-&\emph{(\SEMVR\ \citep{chen2018stochastic})} &\StocEstep^{(k+1)} &= \overline{\bss}^{(\ell(k))} +  \big( \overline{\bss}_{i_k}^{(k)}  - \overline{\bss}_{i_k}^{(\ell(k))}   \big) \label{eq:svrgem}
+&\emph{(\ISAEM\ \citep{kuhn2019properties})} & \StocEstep^{(k+1)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \hat{S}_{i_k}^{(k)}  - \hat{S}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:isaem} \\
+&\emph{(\SAEMVR\ This paper )} &\StocEstep^{(k+1)} &= \hat{S}^{(\ell(k))} +  \big( \hat{S}_{i_k}^{(k)}  -\hat{S}_{i_k}^{(\ell(k))}   \big) \label{eq:vrsaem}\\
+&\emph{(\FISAEM\ This paper )} &\StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \hat{S}_{i_k}^{(k)}  - \hat{S}_{i_k}^{(t_{i_k}^k)} \big) \label{eq:fisaem}\\
+&    &\overline{\StocEstep}^{(k+1)} &= \overline{\StocEstep}^{(k)} + n^{-1} \big( \hat{S}_{j_k}^{(k)}  - \hat{S}_{j_k}^{(t_{j_k}^k)} \big).
 %\emph{(SAGA-EM)} & ~~~~\StocEstep^{(k+1)} = s & \gamma_{k+1} =
 \end{align}
-The stepsize is set to $\gamma_{k+1} = 1$ for the \IEM\ method; $\gamma_{k+1} = \gamma$ is  constant for the \SEMVR\ method.
-In the original version of the \SEM\ method, the sequence of step
- $\gamma_{k+1}$ is a diminishing step size. Moreover, for \IEM\ we initialize with $\StocEstep^{(0)} = \overline{\bss}^{(0)}$; for \SEMVR, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in. \vspace{-.2cm}
+The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method; $\rho_{k+1} = \gamma$ is  constant for the \SAEMVR\ and \FISAEM\ methods.
+Moreover, for \ISAEM\ we initialize with $\StocEstep^{(0)} = \hat{S}^{(0)}$; for \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in. \vspace{-.2cm}
 
-\paragraph{\FIEM} Our analysis framework can handle a new, yet natural application of a popular variance reduction technique to the EM method. The new method, called \FIEM, is developed from the SAGA method \citep{defazio2014saga} in a similar vein as in  \SEMVR.
-
-For iteration $k \geq 0$, the \FIEM\ method draws \emph{two} indices \emph{independently} and uniformly as $i_k, j_k \in \inter$. In addition to $\tau_i^k$ which was defined \wrt $i_k$, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$. With the initialization $\overline{\StocEstep}^{(0)} = \overline{\bss}^{(0)}$, we use a slightly different update rule from SAGA inspired by \citep{reddi2016fast}, as described by the following recursive updates
-\beq \label{eq:sagaem}
-\StocEstep^{(k+1)} = \overline{\StocEstep}^{(k)} + \big( \overline{\bss}_{i_k}^{(k)}  - \overline{\bss}_{i_k}^{(t_{i_k}^k)} \big),~~
-\overline{\StocEstep}^{(k+1)} = \overline{\StocEstep}^{(k)} + n^{-1}
-\big( \overline{\bss}_{j_k}^{(k)}  - \overline{\bss}_{j_k}^{(t_{j_k}^k)} \big).
-\eeq
 
 
 \begin{algorithm}[H]
-\caption{Stochastic EM methods.}\label{alg:sem}
+\caption{Bi-Level Stochastic Approximation EM methods.}\label{alg:sem}
   \begin{algorithmic}[1]
-  \STATE \textbf{Input:} initializations $\hat{\param}^{(0)} \leftarrow 0$, $\hat{\bss}^{(0)} \leftarrow \overline{\bss}^{(0)}$, $K_{\sf max}$ $\leftarrow$ max.~iteration number. \STATE Set the terminating iteration number, $K \in \{0,\dots,K_{\sf max}-1\}$, as a discrete r.v.~with:\vspace{-.1cm}
+  \STATE \textbf{Input:} initializations $\hat{\param}^{(0)} \leftarrow 0$, $\hat{\bss}^{(0)} \leftarrow \hat{S}^{(0)}$, $K_{\sf max}$ $\leftarrow$ max.~iteration number. \STATE Set the terminating iteration number, $K \in \{0,\dots,K_{\sf max}-1\}$, as a discrete r.v.~with:\vspace{-.1cm}
   \beq \label{eq:random}
    P( K = k ) = \frac{ \gamma_{k} }{\sum_{\ell=0}^{K_{\sf max}-1} \gamma_\ell}.\vspace{-.2cm}
   \eeq
   \FOR {$k=0,1,2,\dots, K$}
-  \STATE Draw index $i_k \in \inter$ uniformly (and $j_k \in \inter$ for \FIEM).
-   \STATE Compute the surrogate sufficient statistics $\StocEstep^{(k+1)}$ using \eqref{eq:oem} or \eqref{eq:iem} or \eqref{eq:svrgem} or \eqref{eq:sagaem}.
-   \STATE Compute $\hat{\bss}^{(k+1)}$ via the {\sf sE-step} \eqref{eq:sestep}.
+  \STATE Draw index $i_k \in \inter$ uniformly (and $j_k \in \inter$ for \FISAEM).
+   \STATE Compute the surrogate sufficient statistics $\StocEstep^{(k+1)}$ using \eqref{eq:isaem} or \eqref{eq:vrsaem} or \eqref{eq:fisaem}.
+   \STATE Compute $\hat{S}^{(k+1)}$ via the {\sf Inexact-step} \eqref{eq:sestep}.
+      \STATE Compute $\hat{\bss}^{(k+1)}$ via the {\sf SA-step} \eqref{eq:rmstep}.
    \STATE Compute $\hat{\param}^{(k+1)}$ via the {\sf M-step} \eqref{eq:mstep}.
 \ENDFOR
 \STATE \textbf{Return}: $\hat{\param}^{(K)}$.
@@ -195,17 +212,28 @@ For iteration $k \geq 0$, the \FIEM\ method draws \emph{two} indices \emph{indep
   \end{algorithmic}
 \end{algorithm}
 
-where we set a constant step size as $\gamma_{k+1} = \gamma$.
-
-In the above, the update of $\StocEstep^{(k+1)}$ corresponds to an \emph{unbiased estimate} of $\overline{\bss}^{(k)}$, while the update for $\overline{\StocEstep}^{(k+1)}$ maintains the structure that $\overline{\StocEstep}^{(k)} = n^{-1} \sum_{i=1}^n \overline{\bss}_i^{(t_i^k)}$ for any $k \geq 0$.
-The two updates of \eqref{eq:sagaem} are based on two different and independent indices $i_k,j_k$ that are randomly drawn from $\inter[n]$. This is used for our fast convergence analysis in Section~\ref{sec:main}.
 
 
 \section{Finite Time Analysis} \label{sec:main}
+Finite analysis of \ISAEM\, \SAEMVR\ and \FISAEM\ .
 
+Analysis in the curved exponential family assumption.
+
+Suboptimality condition would be: $\EE[ \| \grd V( \hs{K} ) \|^2 ]$ where 
+\beq\label{eq:em_sspace}
+\min_{ {\bss} \in \Sset }~  V ( {\bss} ) \eqdef \overline\calL( \op(\bss) ) = 
+\Pen (  \op(\bss) ) + \frac{1}{n} \sum_{i=1}^n {\cal L}_i (  \op(\bss) )
+,
+\eeq
+is the Lyapunov function minimized here.
 
 
 \section{Numerical Examples}
+\subsection{Gaussian Mixture Models}
+Graphs obtained and relevant
+
+\subsection{Logistic Regression with Missing values OR random effects}
+To Be Done
 
 \section{Conclusion}
 
@@ -220,5 +248,5 @@ The two updates of \eqref{eq:sagaem} are based on two different and independent 
 \linespread{1}
 \newpage
 \appendix
-\section{Proof of Lemma}
+\section{Proof of Theorem}
 \end{document}
