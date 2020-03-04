@@ -10,9 +10,9 @@ theme_set(theme_bw())
 options(digits = 2)
 
 n <- 1000
-nb.epochs <- 10
+nb.epochs <- 3
 K <- n*nb.epochs
-nsim=5
+nsim=10
 
 weight<-c(0.2, 0.8)
 mean <- 0.5
@@ -71,8 +71,8 @@ dem <- NULL
 df.em <- vector("list", length=nsim)
 dsaem <- NULL
 df.saem <- vector("list", length=nsim)
-# diemseq <- NULL
-# df.iemseq <- vector("list", length=nsim)
+diemseq <- NULL
+df.iemseq <- vector("list", length=nsim)
 disaem <- NULL
 df.isaem <- vector("list", length=nsim)
 disaemvr <- NULL
@@ -86,6 +86,7 @@ rho.vr = 0.01
 rho.saga = 0.01
 
 nb.chains <- 30
+
 
 for (j in (1:nsim))
 {
@@ -104,6 +105,14 @@ for (j in (1:nsim))
   df$rep <- NULL
   df.em[[j]] <- df
   print('em done')
+
+  df <- mixt.iem.seq(x[,j], theta0, nb.epochs*n/nbr,nbr)
+  df[,2:7] <- (df[,2:7] - ML[,2:7])^2
+  df$rep <- j
+  diemseq <- rbind(diemseq,df)
+  df$rep <- NULL
+  df.iemseq[[j]] <- df
+  print('iemseq done')
 
   df <- mixt.saem(x[,j],theta0, nb.epochs, K1=Kem/2, alpha=0.6, M=1)
   df[,2:7] <- (df[,2:7] - ML[,2:7])^2
@@ -130,13 +139,13 @@ for (j in (1:nsim))
   print('isaemvr done')
 
 
-  df <- mixt.isaemsaga(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr, rho.saga)
-  df[,2:7] <- (df[,2:7] - ML[,2:7])^2
-  df$rep <- j
-  disaemsaga <- rbind(disaemsaga,df)
-  df$rep <- NULL
-  df.isaemsaga[[j]] <- df
-  print('isaemsaga done')
+  # df <- mixt.isaemsaga(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr, rho.saga)
+  # df[,2:7] <- (df[,2:7] - ML[,2:7])^2
+  # df$rep <- j
+  # disaemsaga <- rbind(disaemsaga,df)
+  # df$rep <- NULL
+  # df.isaemsaga[[j]] <- df
+  # print('isaemsaga done')
 
 
 }
@@ -184,6 +193,21 @@ isaem[,2:7] <- 1/nsim*isaem[,2:7]
 isaem[,9]<-NULL
 
 
+
+iemseq <- NULL
+iemseq <- diemseq[diemseq$rep==1,]
+
+if (nsim>2) {
+    for (j in (2:nsim))
+  {
+    iemseq[,2:7] <- iemseq[,2:7]+diemseq[diemseq$rep==j,2:7]
+  }
+}
+
+iemseq[,2:7] <- 1/nsim*iemseq[,2:7]
+iemseq[,9]<-NULL
+
+
 isaemvr <- NULL
 isaemvr <- disaemvr[disaemvr$rep==1,]
 
@@ -225,22 +249,32 @@ isaemsaga$iteration <- isaemsaga$iteration*nbr/n
 
 
 em$algo <- 'EM'
+iemseq$algo <- 'IEM'
 saem$algo <- 'saem'
 isaem$algo <- 'isaem'
 
 em$rep <- NULL
+iemseq$rep <- NULL
 saem$rep <- NULL
 isaem$rep <- NULL
 
-
+iemseq$iteration <- isaem$iteration*nbr/n
 isaem$iteration <- isaem$iteration*nbr/n
 
 
+# variance <- rbind(isaem[,c(1,4,8)],
+#                   isaemsaga[,c(1,4,8)],
+#                   isaemvr[,c(1,4,8)],
+#                   iemseq[,c(1,4,8)],
+#                   em[,c(1,4,8)],
+#                   saem[,c(1,4,8)])
+
 variance <- rbind(isaem[,c(1,4,8)],
-                  isaemsaga[,c(1,4,8)],
                   isaemvr[,c(1,4,8)],
+                  iemseq[,c(1,4,8)],
                   em[,c(1,4,8)],
                   saem[,c(1,4,8)])
+
 
 graphConvMC2_new(variance, title="",legend=TRUE)
 

@@ -137,6 +137,49 @@ mixt.isaem <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr)
 }
 
 
+mixt.iem.seq <- function(x, theta0, K,nbr)
+{
+  G<-length(mu)
+  col.names <- c("iteration", paste0("p",1:G), paste0("mu",1:G), paste0("sigma",1:G))
+  
+  theta.est <- matrix(NA,K+1,3*G+1)
+  theta.est[1,] <- c(0, theta0$p, theta0$mu, theta0$sigma)
+  tau <- compute.tau(x,theta0)
+  theta<-theta0
+  # tau.old <- compute.tau(x[1],theta0)
+  s <- compute.stat(x,tau)
+  l <- rep(1:n,K/n)
+  i <- 1
+  for (k in 1:K)
+  {
+
+    # if (k %% n==0)
+    # {
+    #   print('IEM')
+    #   print(k)
+    # }
+    # i <- sample(1:n, 1)
+    #Update the conditional expectation for the chosen datum
+    oldtau <- tau[l[i],]
+    tau[l[i],] <- compute.tau(x[l[i]],theta)
+    
+    #Update the statistics 
+    s$s1 <- s$s1 + tau[l[i],] - oldtau
+    s$s2 <- s$s2 + x[l[i]]*(tau[l[i],] - oldtau)
+    # s <- compute.stat(x,tau)
+    
+    #M-step
+    theta$mu<-step.M(s,n)
+    theta.est[k+1,] <- c(k, theta0$p, theta$mu, theta0$sigma)
+
+    i <- i +nbr
+  }
+  
+  df <- as.data.frame(theta.est)
+  names(df) <- col.names
+  return(df)
+}
+
 mixt.isaemvr <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr, rho)
 {
   G<-length(mu)
@@ -146,6 +189,7 @@ mixt.isaemvr <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr, rho)
   K2 <- K - K1 #second phase iterations
   if (length(alpha)==1)
   gamma<-c(rep(1,K1),1/(1:K2)^alpha)
+  # gamma<-c(1/(1:K1)^alpha,1/(K1:K2)^alpha)
   else{
     L <- 10
     KL <- round(K2/L)
@@ -203,12 +247,14 @@ mixt.isaemvr <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr, rho)
       s.indiv.e.0 <- s.indiv.e.0 + x[l[i]] %*% Z.m.e.0 
     }
 
-    # browser()
-    # s<-step.SA(x,Z,s,gamma[k])
+
 
     #Update statistics
     stats$s1 <- (1-rho)*stats$s1 + rho*((Z.indiv.new - Z.indiv.e.0)*n/M + s.e.0$s1)
     stats$s2 <- (1-rho)*stats$s2 + rho*((s.indiv.new - s.indiv.e.0)*n/M + s.e.0$s2)
+
+    # stats$s1 <- (Z.indiv.new - Z.indiv.e.0)*n/M + s.e.0$s1
+    # stats$s2 <- (s.indiv.new - s.indiv.e.0)*n/M + s.e.0$s2
 
     s$s1<-s$s1+gamma[k]*(stats$s1-s$s1)
     s$s2<-s$s2+gamma[k]*(stats$s2-s$s2)
@@ -271,8 +317,7 @@ mixt.isaemsaga <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr, rho)
   oldZ <- h.Z <- h.oldZ <- Z
   for (k in 1:K)
   {
-    # li <- sample(1:n,nbr)
-    # for (m in li){
+
     for (m in li[i]){
       Z[m,,]<-step.S_replace(x[m],theta,M)
       oldZ[m,,]<-step.S_replace(x[m],alphas[[li[m]]],M)
