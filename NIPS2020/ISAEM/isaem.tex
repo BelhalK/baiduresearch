@@ -86,7 +86,7 @@ citecolor=blue]{hyperref}
 \newcommand{\mathbbm}[1]{\text{\usefont{U}{bbm}{m}{n}#1}}
 
 \begin{document}
-\title{Fast Bi-Level and Incremental Noisy EM Algorithms}
+\title{Fast Two-Time-Scale Noisy EM Algorithms}
 \author{
   Belhal Karimi \\
   Cognitive And Computing Lab\\
@@ -153,13 +153,13 @@ This algorithm bypasses the intractable expectation issue but is rather computat
 As a result, an alternative to that stochastic algorithm is to use a Robbins-Monro (RM) type of update.
 We denote
 \beq\label{eq:stats}
-\hat{S}^{(k)} = \frac{1}{n} \sum_{i=1}^n \hat{S}^{(k)}_i = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}^{(k)}, y_i)
+\hat{S}^{(k+1)} = \frac{1}{n} \sum_{i=1}^n \hat{S}^{(k+1)}_i = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}^{(k)}, y_i)
 \eeq
-where $z_{i,m}^{(k)} \sim p(z_i|y_i;\theta^{(k-1)})$.
-At iteration $k$, the sufficient statistics $\hat{\bss}^{(k)}$ is approximated as follows:
+where $z_{i,m}^{(k)} \sim p(z_i|y_i;\theta^{(k)})$.
+At iteration $k$, the sufficient statistics $\hat{\bss}^{(k+1)}$ is approximated as follows:
 
 \beq\label{eq:rmstep}
-\textsf{SA-step}:~ \hat{\bss}^{(k)} =  \hat{\bss}^{(k-1)}  + \gamma_k(\hat{S}^{(k)} - \hat{\bss}^{(k-1)} )
+\textsf{SA-step}:~ \hat{\bss}^{(k+1)} =  \hat{\bss}^{(k)}  + \gamma_{k+1}(\hat{S}^{(k+1)} - \hat{\bss}^{(k)} )
 \eeq
 where $\{ \gamma_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of decreasing step sizes to ensure asymptotic convergence.
 This is called the Stochastic Approximation of the EM (SAEM), see \citep{delyon1999} and allows a smooth convergence to the target parameter.
@@ -172,18 +172,18 @@ Strategies to scale to large datasets include classical incremental and variance
 We will explicit a general update that will cover those variants and that represents the \textit{second level} of our algorithm, namely the incremental update of the noisy statistics $\hat{S}^{(k)}$ inside the RM type of update.
 
 \beq \label{eq:sestep}
-\textsf{Inexact-step}:~\hat{S}^{(k)} = \hat{S}^{(k-1)} + \rho_{k+1} \big( \StocEstep^{(k)}- \hat{S}^{(k-1)}  \big),
+\textsf{Inexact-step}:~\hat{S}^{(k+1)} = \hat{S}^{(k)} + \rho_{k+1} \big( \StocEstep^{(k+1)}- \hat{S}^{(k)}  \big),
 \eeq
-Note $\{ \rho_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of step sizes, $\StocEstep^{(k+1)}$ is a proxy for $\hat{S}^{(k)}$,
-If the stepsize is equal to one and the proxy $\StocEstep^{(k+1)} = \hat{S}^{(k)}$, i.e., computed in a full batch manner as in \eqref{eq:stats}, then we recover the SAEM algorithm.
-Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k+1) = \hat{S}^{(k)}}$, then we recover the Monte Carlo EM algorithm.
+Note $\{ \rho_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of step sizes, $\StocEstep^{(k)}$ is a proxy for $\hat{S}^{(k)}$,
+If the stepsize is equal to one and the proxy $\StocEstep^{(k)} = \hat{S}^{(k)}$, i.e., computed in a full batch manner as in \eqref{eq:stats}, then we recover the SAEM algorithm.
+Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \hat{S}^{(k)}$, then we recover the Monte Carlo EM algorithm.
 
 We now introduce three variants of the SAEM update depending on different definitions of the proxy $\StocEstep^{(k)}$ and the choice of the stepsize $\rho_k$.
 Let $i_k \in \inter$ be a random index drawn at iteration $k$ and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ be the iteration index where $i \in \inter$ is last drawn prior to iteration $k$.
 For iteration $k \geq 0$, the \FISAEM\ method draws \emph{two} indices \emph{independently} and uniformly as $i_k, j_k \in \inter$. In addition to $\tau_i^k$ which was defined \wrt $i_k$, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$. With the initialization $\overline{\StocEstep}^{(0)} = \overline{\bss}^{(0)}$, we use a slightly different update rule from SAGA inspired by \citep{reddi2016fast}. Then, we obtain:
 \begin{align}
-&\emph{(\ISAEM\ \citep{kuhn2019properties, karimi2019non})} & \StocEstep^{(k+1)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \hat{S}_{i_k}^{(k)}  - \hat{S}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:isaem} \\
-&\emph{(\SAEMVR\ This paper )} &\StocEstep^{(k+1)} &= \hat{S}^{(\ell(k))} +  \big( \hat{S}_{i_k}^{(k)}  -\hat{S}_{i_k}^{(\ell(k))}   \big) \label{eq:vrsaem}\\
+&\emph{(\ISAEM\ \citep{kuhn2019properties, karimi2019non})} & \StocEstep^{(k)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \hat{S}_{i_k}^{(k)}  - \hat{S}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:isaem} \\
+&\emph{(\SAEMVR\ This paper )} &\StocEstep^{(k+1)} &= \hat{S}^{(\ell(k))} +  \big( \hat{S}_{i_k}^{(k-1)}  -\hat{S}_{i_k}^{(\ell(k))}   \big) \label{eq:vrsaem}\\
 &\emph{(\FISAEM\ This paper )} &\StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \hat{S}_{i_k}^{(k)}  - \hat{S}_{i_k}^{(t_{i_k}^k)} \big) \label{eq:fisaem}\\
 &    &\overline{\StocEstep}^{(k+1)} &= \overline{\StocEstep}^{(k)} + n^{-1} \big( \hat{S}_{j_k}^{(k)}  - \hat{S}_{j_k}^{(t_{j_k}^k)} \big).
 %\emph{(SAGA-EM)} & ~~~~\StocEstep^{(k+1)} = s & \gamma_{k+1} =
@@ -214,24 +214,116 @@ Moreover, for \ISAEM\ we initialize with $\StocEstep^{(0)} = \hat{S}^{(0)}$; for
 
 
 \section{Finite Time Analysis} \label{sec:main}
-Finite analysis of \ISAEM\, \SAEMVR\ and \FISAEM\ .
-
-Analysis in the curved exponential family assumption.
-
-Suboptimality condition would be: $\EE[ \| \grd V( \hs{K} ) \|^2 ]$ where 
+First, we consider the following minimization problem on the statistics space:
 \beq\label{eq:em_sspace}
 \min_{ {\bss} \in \Sset }~  V ( {\bss} ) \eqdef \overline\calL( \op(\bss) ) = \Pen (  \op(\bss) ) + \frac{1}{n} \sum_{i=1}^n {\cal L}_i (  \op(\bss) )
 \eeq
-is the Lyapunov function minimized here.
+It has been shown that this minimization problem is equivalent to the optimization problem \eqref{eq:em_motivate}, see \citep[Lemma2]{karimi2019global}
 
+\begin{assumption}\label{ass:convset}
+$\Theta$ is an open set of $\rset^d$ and the sets $\Zset, \Sset$ are measurable open sets such that:
+\beq
+\Sset \supset \left\{  n^{-1} \sum_{i=1}^n u_i, u_i \in {\rm conv}(\overline{\bss}_i(\param))  \right\}
+\eeq
+where $\overline{\bss}_i(\param)$ is defined in \eqref{eq:definition-overline-bss}.
+\end{assumption}
+
+\begin{assumption}\label{ass:expected}
+The conditional distribution is smooth on ${\rm int}(\Param)$. For any $i \in \inter$, $z \in \Zset$, $\param, \param' \in {\rm int} (\Param)^2$, we have
+$\big| p( z | y_i; \param ) - p( z | y_i; \param' ) \big| \leq  \Lip{p} \| \param - \param' \|$.
+%For any $i \in \inter$, the map $\param \to \overline{\bss}_i(\param)$ is continuously differentiable in $\param$.
+\end{assumption}
+
+We also recall from the introduction that we consider curved exponential family models. besides:
+\begin{assumption} \label{ass:reg}
+For any $\bm{s} \in \Sset$, the function $\param \mapsto L(s,\param) \eqdef \Pen( \param ) + \psi( \param) - \pscal{ \bss}{ \phi ( \param) }$ admits a unique global minimum $\mstep{\bss} \in {\rm int}(\Param)$.
+In addition, $\jacob{\phi}{\param}{\overline{\param}(\bss )}$ is full rank and $\overline{\param}( \bss )$ is $\Lip{\theta}$-Lipschitz.
+\end{assumption}
+Similar to \citep{karimi2019global}, we denote by $\hess{L}{\param}(\bss,\param)$ the Hessian (w.r.t to $\param$ for a given value of $\bss$) of the function $\param \mapsto L(\bss,\param)= \Pen(\param) + \psi(\param) -\pscal{\bss}{\phi(\param)}$, and define
+\beq\label{eq:Bss}
+\operatorname{B}( \bss ) \eqdef\jacob{ \phi }{ \param }{ \mstep{\bss} } \Big( \hess{L}{\param}( {\bss},  \mstep{\bss} )  \Big)^{-1} \jacob{ \phi }{ \param }{ \mstep{\bss} }^\top.
+\eeq
+\begin{assumption}\label{ass:eigen}
+It holds that $ \upsilon_{\max} \eqdef \sup_{\bss \in \Sset} \| \operatorname{B}( \bss ) \| < \infty$ and $0 < \upsilon_{\min}  \eqdef \inf_{\bss \in \Sset} \lambda_{\rm min} ( \operatorname{B}( \bss ) )$.
+There exists a constant $\Lip{B}$ such that for all $\bss, \bss' \in \Sset^2$, we have $ \| \operatorname{B}( \bss ) - \operatorname{B}( \bss' )  \| \leq \Lip{B} \| {\bss} - {\bss}' \|$.
+\end{assumption}
+
+We now formulate the main difference with the work done in \citep{karimi2019global}. 
+The class of algorithms we develop in this paper are two time-scale where the first stage corresponds to the variance reduction trick used in \citep{karimi2019global} in order to accelerate incremental methods and kill the variance induced by the index sampling. 
+The second stage is the Robbins-Monro type of update that aims to kill the variance induced by the MC approximations
+
+Indeed the expectations \eqref{eq:definition-overline-bss} are never available and requires Monte Carlo approximation.
+Thus, at iteration $k+1$, we introduce the errors when approximating the quantity $ \overline{\bss}_i(\hat{\param}(\hat{\bss}^{(k-1)}))$.
+For all $i \in \inter$, $r > 0$ and $\vartheta \in \Theta$, define:
+\beq\label{eq:mcerror}
+\eta_{i, \vartheta}^{(r)} \eqdef \hat{S}_{i}^{(r)} -  \overline{\bss}_i(\vartheta)
+\eeq
+
+For instance, we consider that the MC approximation is unbiased if for all $ i \in \inter$ and $m \in \llbracket 1, M \rrbracket$, the samples $z_{i,m} \sim p(z_i|y_i;\theta)$ are i.i.d. under the posterior distribution, \ie $\EE[\eta_{i, \vartheta}^{(r)}|{\cal F}_r] = 0$ where  ${\cal F}_r$ is the filtration up to iteration $r$.
+
+The following results are derived under the assumption of control of the fluctuations implied by the approximation stated as follows:
+\begin{assumption}\label{ass:mcerror}
+There exist a positive sequence of MC batch size $\{M_k\}_{k > 0}$ and constants $(C, C_{\eta})$ such that for all $k >0$, $i \in \inter$ and $\vartheta \in \Theta$:
+\beq\label{eq:boundederror}
+\EE\left[\norm{\eta_{i, \vartheta}^{(r)}}^2 \right] \leq \frac{C_{\eta}}{M_r} \quad \textrm{and} \quad \EE\left[\EE[\eta_{i, \vartheta}^{(r)}|{\cal F}_r]\right] \leq \frac{C}{M_r}
+\eeq
+\end{assumption}
+
+
+
+\begin{Lemma} \label{lem:smooth}
+\citep{karimi2019global} Assume H\ref{ass:expected}, H\ref{ass:reg}, H\ref{ass:eigen}.  
+For all $\bss,\bss' \in \Sset$ and $i \in \inter$, we have
+\beq \label{eq:smooth}
+\| \overline{\bss}_i ( \overline{\param} ({\bss})) - \overline{\bss}_i ( \overline{\param} ({\bss}' )) \| \leq \Lip{{\bss}} \| {\bss} - {\bss}' \|,~~\| \grd  V ( {\bss} ) - \grd  V ( {\bss}' ) \| \leq \Lip{V} \| {\bss} - {\bss}' \|,
+\eeq
+where $\Lip{\bss} \eqdef C_{\Zset} \Lip{p} \Lip{\theta}$ and $\Lip{V}  \eqdef \upsilon_{\max} \big( 1 + \Lip{{\bss}} \big) + \Lip{B} C_{\Sset}$.
+\end{Lemma}
+
+\subsection{Global Convergence of Incremental Noisy EM Algorithms}
+Following the asymptotic analysis of update \eqref{eq:isaem}, we present a finite-time analysis of the incremental variant of the Stochastic Approximation of the EM algorithm.
+
+The first intermediate result is the computation of the quantity $\hat{S}^{(k+1)} - \hat{\bss}^{(k)}$, which corresponds to the dirft term of \eqref{eq:rmstep} and reads as follows:
+\begin{Lemma} \label{lem:meanfield_isaem}
+ Assume H\ref{ass:convset}. The update \eqref{eq:isaem} is equivalent to the following update on the resulting statistics 
+\beq
+\hat{\bss}^{(k+1)} =  \hat{\bss}^{(k)}  + \gamma_{k+1}(n^{-1}\sum_{i=1}^n \hat{S}_i^{(\tau_i^k)} - \hat{\bss}^{(k)} )
+\eeq
+where $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$. Also:
+\beq
+\EE\left[\hat{S}^{(k+1)} - \hat{\bss}^{(k)}|{\cal F}_k \right] = (\overline{\bss}^{(k)} - \hat{\bss}^{(k)}) +  \left(1 - \frac{1}{n} \right)  \left(n^{-1}\sum_{i=1}^n \hat{S}_i^{(\tau_i^k)} -  \overline{\bss}^{(k)} \right) + \frac{C}{M_k}
+\eeq
+where $\overline{\bss}^{(k)}$ is defined by \eqref{eq:definition-overline-bss}.
+\end{Lemma}
+
+
+\begin{Theorem}
+Let $K_{\max }$ be a positive integer. 
+Let $\left\{\gamma_{k}, k \in \mathbb{N}\right\}$ be a sequence of positive step sizes and consider the \ISAEM\ sequence $\left\{\widehat{S}^{k}, k \in \mathbb{N}\right\}$ obtained with $\rho_{k+1}=1$ for any $k$.
+\end{Theorem} 
+Assume that $\widehat{S}^{k} \in \mathcal{S}$ for any $k \leq K_{\max }$ Let $\nu, \bar{\nu} \in\{0,1\}$ with the convention $\nu=0$ iff the approximations are unbiased, and $\bar{\nu}=0$ iff for any $k \geq 0,\left\|\eta_{k+1}^{(1)}\right\|=\left\|\eta_{k+1}^{(2)}\right\|=\varepsilon^{(0)}=0$
+For any positive numbers $\beta_{1}, \cdots, \beta_{K_{\max }-1}$ and $\beta_{0} \in\left(0, v_{\min } / v_{\max }^{2}\right),$ it holds
+$\sum_{k=0}^{K_{\max }-1} \alpha_{k} \mathbb{E}\left[\left\|\bar{s} \circ \operatorname{T}\left(\widehat{S}^{k}\right)-\widehat{S}^{k}\right\|^{2}\right]+\sum_{k=0}^{K_{\max }-1} \delta_{k} \mathbb{E}\left[\left\|\frac{1}{n} \sum_{i=1}^{n} \widetilde{S}_{k+1, i}-\bar{s} \circ \top\left(\widehat{S}^{k}\right)\right\|^{2}\right]$
+$\leq \mathbb{E}\left[V\left(\widehat{S}^{0}\right)\right]-\mathbb{E}\left[V\left(\widehat{S}^{K_{\max }}\right)\right]$
+$+\xi_{0}\left(K_{\max }, n\right) \mathbb{E}\left[\varepsilon^{(0)}\right]+\bar{\nu} \Xi_{1}\left(\eta^{(1)}, K_{\max }, n\right)+\bar{\nu} \Xi_{2}\left(\eta^{(2)}, K_{\max }, n\right)$
+for any $k=0, \ldots, K_{\max }-1$
+$\alpha_{k} \stackrel{\text { def }}{=} \gamma_{k+1}\left(v_{\min }-\nu v_{\max }^{2} \beta_{0}-(1+\nu) \frac{L_{\dot{V}}}{2} \gamma_{k+1}\left\{1+(1+\bar{\nu})(1+\nu) L^{2} \Lambda_{k}\right\}\right)$
+$\delta_{k} \stackrel{\text { def }}{=}(1+\nu) \frac{L_{\dot{V}}}{2} \gamma_{k+1}^{2}\left(1+(1+\bar{\nu})(1+\nu) \frac{\Lambda_{k}}{\left(1+\beta_{k+1}^{-1}\right)}\right)$
+with $\Lambda_{K_{\max }-1}=0$ and for $k=0, \ldots, K_{\max }-2$
+$\Lambda_{k} \stackrel{\text { def }}{=}\left(1+\frac{1}{\beta_{k+1}}\right) \sum_{j=k+1}^{K_{\max }-1} \gamma_{j+1}^{2} \prod_{\ell=k+2}^{j}\left(1-\frac{1}{n}+\beta_{\ell}+(1+\bar{\nu})(1+\nu) L^{2} \gamma_{\ell}^{2}\right)$
+$\xi_{0}, \Xi_{1}$ and $\Xi_{2}$ are non negative real numbers; their explicit expressions can be found in Section $4.6,$ Eqs $(54),(55)$ and $(56) .$ By convention, $\prod_{\ell \in \emptyset} a_{\ell}=1$
+
+\subsection{Global Convergence of Two-Time-Scale Noisy EM Algorithms}
 
 \section{Numerical Examples}
 \subsection{Gaussian Mixture Models}
 Graphs obtained and relevant
 
-\subsection{Logistic Regression with Missing values OR random effects}
-To Be Done
+\subsection{Deep Latent Variable Models using noisy EM}
+See if makes sense to use EM instead of Variational Inference
 
+\subsection{Deformable Template Model for Image Analysis}
+See Kuhn et.al. paper.
 \section{Conclusion}
 
 
