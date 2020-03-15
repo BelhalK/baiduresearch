@@ -115,6 +115,7 @@ We formulate the following empirical risk minimization as:
 \eeq
 where $\{y_i\}_{i=1}^n$ are the observations, $\Param$ is a convex subset of $\rset^d$ for the parameters,  $\Pen : \Param \rightarrow \rset$ is a smooth convex regularization function   and for each $\param \in \Param$, $g(y;\param)$ is the (incomplete) likelihood of each individual  observation.
 The objective function $ \overline{\calL} ( \param )$ is possibly \emph{non-convex} and is assumed to be lower bounded $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
+
 %We assume that $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
 In the latent variable model,  $g(y_i ; \param)$, is the marginal of the
 complete data likelihood defined as $f(z_i,y_i; \param)$, i.e. $g(y_i; \param) = \int_{\Zset} f (z_i,y_i;\param) \mu(\rmd z_i)$, where $\{ z_i \}_{i=1}^n$ are the (unobserved)
@@ -202,7 +203,8 @@ Moreover, for \ISAEM\ we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; f
   \eeq
   \FOR {$k=0,1,2,\dots, K$}
   \STATE Draw index $i_k \in \inter$ uniformly (and $j_k \in \inter$ for \FISAEM).
-   \STATE Compute the surrogate sufficient statistics $\StocEstep^{(k+1)}$ using \eqref{eq:isaem} or \eqref{eq:vrsaem} or \eqref{eq:fisaem} and using the {\sf MC-step} \eqref{eq:mcstep} to compute the Monte Carlo approximations.
+     \STATE Compute $\hat{S}_i^{(k)}$ using the {\sf MC-step} \eqref{eq:mcstep},  for the drawn indices.
+   \STATE Compute the surrogate sufficient statistics $\StocEstep^{(k+1)}$ using \eqref{eq:isaem} or \eqref{eq:vrsaem} or \eqref{eq:fisaem}.
    \STATE Compute $\hat{S}^{(k+1)}$ via the {\sf Inexact-step} \eqref{eq:sestep}.
       \STATE Compute $\hat{\bss}^{(k+1)}$ via the {\sf SA-step} \eqref{eq:rmstep}.
    \STATE Compute $\hat{\param}^{(k+1)}$ via the {\sf M-step} \eqref{eq:mstep}.
@@ -287,11 +289,11 @@ The first intermediate result is the computation of the quantity $\hat{S}^{(k+1)
 \begin{Lemma} \label{lem:meanfield_isaem}
  Assume H\ref{ass:convset}. The update \eqref{eq:isaem} is equivalent to the following update on the resulting statistics 
 \beq
-\hat{\bss}^{(k+1)} =  \hat{\bss}^{(k)}  + \gamma_{k+1}(n^{-1}\sum_{i=1}^n \hat{S}_i^{(\tau_i^k)} - \hat{\bss}^{(k)} )
+\hat{\bss}^{(k+1)} =  \hat{\bss}^{(k)}  + \gamma_{k+1}(n^{-1}\sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)} - \hat{\bss}^{(k)} )
 \eeq
 where $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$. Also:
 \beq
-\EE\left[\norm{\tilde{S}^{(k+1)} - \hat{\bss}^{(k)}}^2 \right] \leq \EE\left[\norm{\overline{\bss}^{(k)} - \hat{\bss}^{(k)}}^2\right] +  2\Lip{\bss}^2\left(1 - \frac{1}{n} \right)^2  \EE\left[\norm{n^{-1}\sum_{i=1}^n \tilde{S}_i^{(\tau_i^{k+1})} -  \overline{\bss}^{(k)} }^2\right] + \frac{2C}{M_k}
+\EE\left[\norm{\tilde{S}^{(k+1)} - \hat{\bss}^{(k)}}^2 \right] \leq \EE\left[\norm{\overline{\bss}^{(k)} - \hat{\bss}^{(k)}}^2\right] +  2\Lip{\bss}^2\left(1 - \frac{1}{n} \right)^2  n^{-1}\sum_{i=1}^n\EE\left[\norm{  \hat{\bss}^{(k)} - \hat{\bss}^{(\tau_i^{k})} }^2\right] + \frac{2C}{M_k}
 \eeq
 where $\overline{\bss}^{(k)}$ is defined by \eqref{eq:definition-overline-bss}.
 \end{Lemma}
@@ -315,15 +317,15 @@ Under some regularity conditions of the Lyapunov function $V$, cf. Lemma \ref{eq
 proven in \citep[Lemma 3]{karimi2019global}, we can write:
 \beq
 \begin{split}
-V( \hs{k+1} ) & \leq V( \hs{k} ) - \gamma_{k+1} \pscal{ \hs{k} - \tilde{S}^{(k+1)} }{ \grd V( \hs{k} ) } + \frac{\gamma_{k+1}^2 \Lip{V}}{2} \| \hs{k} - \hat{S}^{(k+1)} \|^2 \\
+V( \hs{k+1} ) & \leq V( \hs{k} ) - \gamma_{k+1} \pscal{ \hs{k} - \tilde{S}^{(k+1)} }{ \grd V( \hs{k} ) } + \frac{\gamma_{k+1}^2 \Lip{V}}{2} \| \hs{k} - \tilde{S}^{(k+1)} \|^2 \\
 \end{split}
 \eeq
 
 Taking the expectation on both sides and using the growth condition \eqref{eq:semigrad}, we obtain:
 \beq
 \begin{split}
-\EE[V( \hs{k+1} )] & \leq \EE[V( \hs{k} )]  - \gamma_{k+1}\upsilon_{\min} \EE\left[\norm{\overline{\bss}^{(k)} - \hat{\bss}^{(k)}}^2\right] + \EE\left[\frac{\gamma_{k+1}^2 \Lip{V}}{2} \| \hs{k} - \hat{S}^{(k+1)} \|^2\right] \\
-& - \gamma_{k+1}\EE\left[ \pscal{\overline{\bss}^{(k)}- \tilde{S}^{(k+1)} }{ \grd V( \hs{k} ) }   \right]
+\EE[V( \hs{k+1} )] & \leq \EE[V( \hs{k} )]  - \gamma_{k+1}\upsilon_{\min} \EE\left[\norm{\overline{\bss}^{(k)} - \hat{\bss}^{(k)}}^2\right] + \EE\left[\frac{\gamma_{k+1}^2 \Lip{V}}{2} \| \hs{k} - \tilde{S}^{(k+1)} \|^2\right] \\
+& - \gamma_{k+1} \textcolor{red}{\EE\left[ \pscal{\overline{\bss}^{(k)}- \tilde{S}^{(k+1)} }{ \grd V( \hs{k} ) }   \right]}
 \end{split}
 \eeq
 
@@ -332,12 +334,42 @@ We then establish an auxiliary Lemma yielding an upper-bound on the quantity $ \
 \overline{\bss}^{(k)}- \tilde{S}^{(k+1)}  = \overline{\bss}^{(k)}- \left (\tilde{S}^{(k)}  + \frac{1}{n}\big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(\tau_{i_k}^k)} \big) \right)
 \eeq
 
+\textcolor{red}{
 \begin{Lemma} \label{lem:s}
-
 \beq
 \EE\left[ \pscal{\overline{\bss}^{(k)}- \tilde{S}^{(k+1)} }{ \grd V( \hs{k} ) }   \right] \leq 
 \eeq
 \end{Lemma}
+}
+
+Using Lemma~\ref{lem:meanfield_isaem}:
+\beq
+\begin{split}
+\EE[V( \hs{k+1} )] & \leq \EE[V( \hs{k} )]  - \gamma_{k+1} \left( \upsilon_{\min} - \frac{\gamma_{k+1} \Lip{V}}{2} \right)  \EE\left[\norm{\overline{\bss}^{(k)} - \hat{\bss}^{(k)}}^2\right] \\
+&+ \gamma^2_{k+1} \Lip{V}\Lip{\bss}^2\left(1 - \frac{1}{n} \right)^2  n^{-1}\sum_{i=1}^n\EE\left[\norm{  \hat{\bss}^{(k)} - \hat{\bss}^{(\tau_i^{k})} }^2\right] + \frac{\gamma^2_{k+1} \Lip{V}C}{M_k}\\
+& - \gamma_{k+1} \textcolor{red}{\EE\left[ \pscal{\overline{\bss}^{(k)}- \tilde{S}^{(k+1)} }{ \grd V( \hs{k} ) }   \right]}
+\end{split}
+\eeq
+
+Besides, 
+\beq
+\begin{split}
+  n^{-1}\sum_{i=1}^n\EE\left[\norm{ \hat{\bss}^{(k+1)} -\hat{\bss}^{(\tau_i^{k+1})} }^2\right] &=   n^{-1} \sum_{i=1}^n
+\Big( \frac{1}{n} \EE[ \| \hat{\bss}^{(k+1)}  - \hat{\bss}^{(k)} \|^2 ] + \frac{n-1}{n} \EE[ \| \hat{\bss}^{(k+1)}  -\hat{\bss}^{(\tau_i^{k})} \|^2 ]  \Big)\\
+\end{split}
+\eeq
+yielding for any numbers $\beta_k > 0$,
+\beq
+\begin{split}
+& \EE[ \| \hat{\bss}^{(k+1)} - \hs{t_i^k} \|^2 ] \\
+& = \EE \Big[ \| \hat{\bss}^{(k+1)} - \hat{\bss}^{(k)} \|^2 + \| \hat{\bss}^{(k)} - \hs{t_i^k} \|^2 + 2 \pscal{\hat{\bss}^{(k+1)} - \hat{\bss}^{(k)}}{\hat{\bss}^{(k)}- \hs{t_i^k}} \Big] \\
+& = \EE \Big[ \| \hat{\bss}^{(k+1)} - \hat{\bss}^{(k)} \|^2 + \| \hat{\bss}^{(k)} - \hs{t_i^k} \|^2 - 2 \gamma_{k+1} \pscal{
+\hat{\bss}^{(k)} - \os^{(k)} }{\hat{\bss}^{(k)}- \hs{t_i^k}} \Big] \\
+& \leq  \EE \Big[ \| \hat{\bss}^{(k+1)} - \hat{\bss}^{(k)} \|^2 + \| \hat{\bss}^{(k)} - \hs{t_i^k} \|^2 +  \frac{\gamma_{k+1}}{\beta_{k+1}} \| \hat{\bss}^{(k)} - \os^{(k)} \|^2 + \gamma_{k+1} \beta_{k+1} \| \hat{\bss}^{(k)}- \hs{t_i^k} \|^2 \Big]
+\end{split}
+\eeq
+
+
 
 \end{proof}
 %Assume that $\widehat{S}^{k} \in \mathcal{S}$ for any $k \leq K_{\max }$ Let $\nu, \bar{\nu} \in\{0,1\}$ with the convention $\nu=0$ iff the approximations are unbiased, and $\bar{\nu}=0$ iff for any $k \geq 0,\left\|\eta_{k+1}^{(1)}\right\|=\left\|\eta_{k+1}^{(2)}\right\|=\varepsilon^{(0)}=0$
