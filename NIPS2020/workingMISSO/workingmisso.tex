@@ -55,6 +55,7 @@ citecolor=blue]{hyperref}
 \usetikzlibrary{arrows,shapes,calc,tikzmark,backgrounds,matrix,decorations.markings}
 \usepgfplotslibrary{fillbetween}
 \pgfplotsset{compat=1.3}
+\usepackage{subfig}
 
 \usepackage{relsize}
 \tikzset{fontscale/.style = {font=\relsize{#1}}
@@ -300,13 +301,320 @@ Under S\ref{ass:sur}, S\ref{ass:diff}, H\ref{ass:sur}, H\ref{controlapprox}. For
 \Delta_{( K_{\sf max} )} \eqdef 2 n L \EE[  \sumSur{0}{\hp{0}} - \sumSur{K_{\sf max}}{\hp{K_{\sf max}}} ] +  \sum_{k=0}^{K_{\sf max}-1} \frac{4 L C_{\sf r} }{\sqrt{\Bsize{k}}} \eqsp,
 \eeq
 Then we have following non-asymptotic bounds:
-\beq \label{eq:misso_rate}
-\EE \big[ \| \grd \eSur{K}{\hp{K}} \|^2 \big] \leq \frac{\Delta_{( K_{\sf max} )}}{K_{\sf max}},~~
-\EE[ g_-( \hp{K} ) ] \leq \sqrt{\frac{ \Delta_{( K_{\sf max} )} }{ K_{\sf max} }} + \frac{C_{\sf gr}}{K_{\sf max}} \sum_{k=0}^{K_{\sf max}-1} \Bsize{k}^{-1/2}.
-\eeq
+\begin{align} \label{eq:misso_rate}
+ \EE \big[ \| \grd \eSur{K}{\hp{K}} \|^2 \big]  &\leq \frac{\Delta_{( K_{\sf max} )}}{K_{\sf max}} \\
+ \EE[ g_-( \hp{K} ) ]  &\leq \sqrt{\frac{ \Delta_{( K_{\sf max} )} }{ K_{\sf max} }} + \frac{C_{\sf gr}}{K_{\sf max}} \sum_{k=0}^{K_{\sf max}-1} \Bsize{k}^{-1/2}.
+\end{align}
+
 \end{Theorem}
 Note that $\Delta_{( K_{\sf max} )}$ is finite for any $K_{\sf max} \in \NN$. As expected, the MISSO method converges to a stationary point of \eqref{eq:opt} asymptotically and at a sublinear rate $\EE[ g_-^{(K)} ] \leq {\cal O}( \sqrt{1 / K_{\sf max}} )$.
 
+Furthermore,we remark that the MISO method can be analyzed in \Cref{thm:main} as a special case of the MISSO method satisfying $C_{\sf r} = C_{\sf gr} = 0$. In this case, while the asymptotic convergence is well known from \citep{mairal2015miso} [cf.~H\ref{controlapprox}], Eq.~\eqref{eq:misso_rate} gives a non-asymptotic rate of $\EE[ g_-^{(K)} ] \leq  {\cal O}( \sqrt{n L / K_{\sf max}} )$ which is new to our best knowledge.
+
+Next, we show that under an additional assumption on the sequence of batch size $\Bsize{k}$, the MISSO method converges almost surely to a stationary point:
+%We have to assume in addition that:
+%\begin{assumption}\label{assumptiondecreasing}
+%$\{\Bsize{k}\}_{k \geq 0}$ is a non-decreasing sequence of integers which satisfies $\sum_{k=0}^{\infty}{\Bsize{k}^{-1/2}} < \infty$.
+%\end{assumption}
+\begin{Theorem} \label{thm:mainasymp}
+Under S\ref{ass:sur}, S\ref{ass:diff}, H\ref{ass:sur}, H\ref{controlapprox}. In addition, assume that $\{\Bsize{k}\}_{k \geq 0}$ is a non-decreasing sequence of integers which satisfies $\sum_{k=0}^{\infty}{\Bsize{k}^{-1/2}} < \infty$. Then:
+\begin{enumerate}[leftmargin=.75cm]
+\item the negative part of the stationarity measure converges almost surely to zero, \ie $\textstyle \lim_{ k \rightarrow \infty} g_-( \hp{k}) = 0$ a.s.. 
+\item the objective value ${\cal L} ( \hp{k} )$ converges almost surely to a finite number $\underline{\cal L}$, \ie $\lim_{k \rightarrow \infty} {\cal L} ( \hp{k} ) = \underline{\cal L}$ a.s..
+\end{enumerate}
+\end{Theorem}
+In particular, the first result above shows that the sequence $\{ \hp{k} \}_{k \geq 0}$ produced by the MISSO method satisfies an \emph{asymptotic stationary point condition}.
+
+
+
+\clearpage
+\section{Numerical Experiments} \label{sec:numerical}
+\subsection{Binary logistic regression with missing values}\label{logisticreg}
+% \subsubsection{The model}
+This application follows \textbf{Example 1} described in Section~\ref{sec:framework}.
+We consider a binary regression setup, $((y_i,z_i), i \in \inter[n])$ where $y_i \in \{0,1\}$ is a binary response and $z_i = (z_{i,j} \in \rset, j \in \inter[p])$ is a covariate vector.
+The vector of covariates $z_i = [z_{i,\mis} , z_{i,\obs}]$ is not fully observed where we denote by $z_{i,\mis}$ the missing values and $z_{i,\obs}$ the observed covariate.
+It is assumed that $(z_i, i\in \inter[n])$ are i.i.d. and marginally distributed according to $\mathcal{N}({\bm \beta}, {\bm \Omega})$ where $\beta \in \rset^p$ and $\Omega$ is a positive definite $p\times p$ matrix.
+
+ We define the conditional distribution of the observations $y_i$ given $z_i = (z_{i,\mis},z_{i,\obs} )$ as:
+\beq\label{eq:logistic}
+p_i(y_i|z_i) =  S({\bm \delta}^\top \bar{z}_i)^{y_i} \left(1 - S({\bm \delta}^\top \bar{z}_i)\right)^{1-y_i}
+\eeq
+where for $u \in \mathbb{R}$, $S(u) = 1/(1+\mathrm{e}^{-u})$, ${\bm \delta} = (\delta_0, \cdots, \delta_p)$ are the logistic parameters and $\bar{z}_i = (1,z_i)$.
+We are interested in estimating ${\bm \delta}$ and finding the latent structure of the covariates $z_i$. Here, $\param = ({\bm \delta}, {\bm \beta}, {\bm \Omega})$ is the parameter to estimate.
+For $i \in \inter[n]$, the complete data log-likelihood is expressed as:
+\beq \notag
+\log f_i(z_{i,\mis},\param) \propto y_i {\bm \delta}^\top \bar{z_i} - \log \big( 1 +  \exp( {\bm \delta}^\top \bar{z_i}) \big) - \frac{1}{2}\log(|{\bm \Omega}|) + \frac{1}{2}{\rm Tr} \left({\bm \Omega}^{-1}(z_i - {\bm \beta})(z_i - {\bm \beta})^\top \right)  .
+\eeq
+
+
+\paragraph{MISSO update:}
+At the $k$-th iteration, and after the initialization, for all $i \in \inter[n]$, of the latent variables $(z_i^{(0)})$, the MISSO algorithm consists in picking an index $i_k$ uniformly on $\inter[n]$, completing the observations by sampling a Monte Carlo batch $  \{ z_{i_k,\mis,m}^{(k)} \}_{m=1}^{\Bsize{k}}$ of missing values from the conditional distribution $p(z_{i_k,\mis}|z_{i_k,\obs}, y_{i_k}; \hp{k-1})$ using an MCMC sampler and computing the estimated parameters as follows:
+\beq \label{eq:msteplog}
+\begin{split}
+& {\bm \beta}^{(k)} = \arg \min \limits_{\beta \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega^{(k)},\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  =  \frac{1}{n}\sum_{i=1}^{n} \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}} z_{i,m}^{(k)} \\
+& {\bm \Omega}^{(k)} = \arg \min \limits_{\Omega \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta^{(k)}, \Omega,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  =   \frac{1}{n}\sum_{i=1}^{n} \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}}z_{i,m}^{(k)}(z_{i,m}^{(k)})^\top  -  {\bm \beta}^{(k)} ({\bm \beta}^{(k)})^\top \\
+& {\bm \delta}^{(k)} = \frac{1}{n}\sum_{i=1}^{n} {\bm \delta}^{(\tau_i^k)} - (\tilde{H}^{(k)})^{-1} \tilde{D}^{(k)} \eqsp.
+\end{split}
+\eeq
+where $z_{i,m}^{(k)} = (z_{i,\mis,m}^{(k)},z_{i,\obs})$ is composed of a simulated and an observed part and  $\tilde{D}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{D}_i^{(\tau_i^k)}$ and $\tilde{H}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{H}_i^{(\tau_i^k)}$.
+Besides, $\tilde{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ and $\tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ are defined as MC approximation of $\hat{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op)$ and $\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)$, for all $i \in \inter[n]$.
+%The logistic parameters are estimated as follows:
+%\beq
+%{\bm \delta}^{(k)} = \arg \min \limits_{\delta \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(1)}_i(\delta,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}}) 
+%\eeq
+%where $\tilde{\mathcal{L}}^{(1)}_i(\delta,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}}) $ is the MC approximation of the MISO surrogate defined in \eqref{eq:surrogatelogit}and which leads to the following quasi-Newton step:
+%\beq
+%{\bm \delta}^{(k)} = \frac{1}{n}\sum_{i=1}^{n} {\bm \delta}^{(\tau_i^k)} - (\tilde{H}^{(k)})^{-1} \tilde{D}^{(k)}
+%\eeq
+
+
+See Appendix \ref{app:update_logistic} for more explanation.
+
+\paragraph{Fitting a logistic regression model on the TraumaBase dataset}
+We apply the MISSO method to fit a logistic regression model on the TraumaBase (\url{http://traumabase.eu}) dataset, which consists of data collected from 15 trauma centers in France, covering measurements on patients from the initial to last stage of trauma.
+
+Similar to \citep{jiang2018logistic}, we select $p = 16$ influential quantitative measurements, described in Appendix~\ref{appendix:variables}, on $n = 6384$ patients, and we adopt
+%This dataset includes information from the first stage of the trauma, namely initial observations on the patient's accident site to the last stage being intense care at the hospital and counts more than $200$ variables measured for more than $7\,000$ patients.
+%Since the very first stage of the trauma, it is of utmost importance to rapidly predict the risk of a severe hemorrhage, as one of the main cause of death after a major trauma.
+the logistic regression model with missing covariates in \eqref{eq:logistic} to predict the risk of a severe hemorrhage which is one of the main cause of death after a major trauma.
+Note as the dataset considered is heterogeneous -- coming from multiple sources with frequently missed entries -- we apply the latent data model described in the above.
+%For the sake of experimental efficacy, we use $16$ influential quantitative measurements, including descriptive variables as the body mass index or the age and auscultatory measurements like the blood pressure or the heart rate at different stages after the accident (full list in Appendix~\ref{appendix:variables}), and selected $6384$ patients, dismissing patients with pre-hospital cardiac arrest and missing pre-hospital data.
+For the Monte-Carlo sampling of $z_{i,\mis}$, we run a Metropolis Hastings algorithm with the target distribution $p( \cdot |z_{i,\obs}, y_i; \hp{k})$ whose procedure is detailed in Appendix~\ref{app:trauma_mh}.
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{pic_paper/traumabasenoexp.png}\vspace{-.2cm}
+\caption{Convergence of first component of the vector of parameters ${\bm \delta}$ and ${\bm \beta}$ for the SAEM, the MCEM and the MISSO methods. The convergence is plotted against the number of passes over the data.}\vspace{-.2cm}
+\label{fig:misso_trauma}
+\end{figure}
+
+We compare in Figure~\ref{fig:misso_trauma} the convergence behavior of the estimated parameters $\bm{\beta}$ using SAEM \citep{delyon1999} (with stepsize $\gamma_k = 1/k$), MCEM \citep{wei1990mcem}  and the proposed MISSO method.
+For the MISSO method, we set the batch size to $\Bsize{k} = 10 + k^2$ and we examine with selecting different number of functions in Line~\ref{line:unif} in the method -- the default settings with 1 function (MISSO), $10\%$ (MISSO10) and $50\%$ (MISSO50) of the functions per iteration.
+From Figure~\ref{fig:misso_trauma}, the MISSO method converges to a static value with less number of epochs than the MCEM, SAEM methods.
+It is worth noting that the difference among the MISSO runs for different number of selected functions demonstrates a variance-cost tradeoff.
+
+\clearpage
+\subsection{Training Bayesian CNN using MISSO}
+
+At iteration $k$, minimizing the sum of stochastic surrogates defined as in \eqref{eq:ssur} and \eqref{pairvi} yields the following MISSO update --- {\sf step (i)} pick a function index $i_k$ uniformly on $\inter[n]$; {\sf step (ii)} sample a Monte Carlo batch $ \{ z_{m}^{(k)} \}_{m=1}^{\Bsize{k}}$ from ${\cal N}(0,\Id)$; and {\sf step (iii)}  update the parameters as
+%\beq\label{eq:missoupdate}
+%\hp{k} = \frac{1}{n}\sum_{i=1}^{n}{\hp{\tau_{i}^{k}}} - \frac{1}{2 \gamma} \sum_{i=1}^{n}{\hat{{\bm{m}}}^k_i}
+%\eeq
+\beq\label{eq:missoupdate}
+\begin{split}
+\mu_\ell^{(k)} = \frac{1}{n}\sum_{i=1}^{n}{\mu_\ell^{(\tau_{i}^{k})}} -  \frac{\gamma}{n}\sum_{i=1}^{n}{\hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} } \quad \textrm{and} \quad \sigma^{(k)} = \frac{1}{n}\sum_{i=1}^{n}{\sigma^{(\tau_{i}^{k})}} - \frac{\gamma}{n} \sum_{i=1}^{n}{\hat{{\bm{\delta}}}^{(k)}_{\sigma,i} } \eqsp,
+\end{split}
+\eeq
+where $\hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} = \hat{{\bm{\delta}}}^{(k-1)}_{\mu_\ell,i}$ and $\hat{{\bm{\delta}}}^{(k)}_{\sigma,i} = \hat{{\bm{\delta}}}^{(k-1)}_{\sigma,i}$ for $i \neq i_k$ and:
+\begin{align*}
+& \hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i_k} =
+  - \frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}} \nabla_{w} \log p(y_{i_k} | x_{i_k}, w) \Big|_{w = t(\hp{k-1},z_m^{(k)})}  + \nabla_{\mu_\ell}  d(\hp{k-1}) \eqsp,\\
+  & \hat{{\bm{\delta}}}^{(k)}_{\sigma,i_k} =
+ - \frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}} z_m^{(k)} \nabla_{w} \log p(y_{i_k} | x_{i_k}, w) \Big|_{w = t(\hp{k-1},z_m^{(k)})}  + \nabla_{\sigma}  d(\hp{k-1})
+\end{align*}
+with $d(\param) = n^{-1} \sum_{\ell=1}^{d} \left(- \log(\sigma) + (\sigma^2 + \mu_\ell^2)/2 -1/2 \right)$.
+
+\paragraph{Bayesian LeNet-5 on MNIST \citep{lecun1998gradient}:}
+This application follows \textbf{Example 2} described in Section~\ref{sec:framework}.
+We apply the MISSO method to fit a Bayesian variant of LeNet-5 \citep{lecun1998gradient} (see Appendix~\ref{appendix:bnn}).
+We train this network on the MNIST dataset \citep{lecun1998mnist}. The training set is composed of $n=55\,000$ handwritten digits, $28 \times 28$ images. Each image is labelled with its corresponding number (from zero to nine).
+Under the prior distribution $\prior$, see \eqref{eq:vi}, the weights are assumed  independent and identically distributed according to ${\cal N}(0,1)$.
+We also assume that $q(\cdot; \param) \equiv  \mathcal{N}(\mu,\sigma^2 \Id )$.
+The variational posterior parameters are thus $\param = (\mu, \sigma) $ where $\mu = (\mu_\ell, \ell \in \inter[d])$ where $d$ is the number of weights in the neural network. We use the re-parametrization as $w = t(\param, z)= \mu+ \sigma  z$ with $z \sim \mathcal{N}(0, \Id)$.
+
+We describe in Table~\ref{table:lenet} the architecture of the Convolutional Neural Network introduced in \citep{lecun1998gradient} and trained on MNIST:
+\begin{table}[H]
+\begin{center}
+    \label{table:lenet}
+\begin{tabular}{ l c c c c r}
+  \hline
+  layer type & width & stride& padding & input shape& nonlinearity \\
+  \hline
+convolution ($5 \times 5$) & 6 & 1 & 0 & $1 \times 32 \times 32$ & ReLU \\
+max-pooling ($2 \times 2$) &  & 2 & 0 & $6 \times 28 \times 28$ & \\
+convolution ($5 \times 5$) & 6 & 1 & 0 & $1 \times 14 \times 14$ & ReLU \\
+max-pooling ($2 \times 2$) &  & 2 & 0 & $16 \times 10 \times 10$ & \\
+fully-connected & 120 &  &  & $400$ & ReLU \\
+fully-connected & 84 &  &  & $ 120$ & ReLU \\
+fully-connected & 10 &  &  & $ 84$ &  \\
+  \hline
+\end{tabular}
+    \caption{LeNet-5 architecture}
+\end{center}
+\end{table}
+
+\paragraph{Bayesian ResNet-18 \citep{he2016deep} on CIFAR-10 \citep{krizhevsky2012imagenet}:}
+
+We train here the Bayesian variant of the ResNet-18 neural network introduced in \citep{he2016deep} on CIFAR-10. 
+The latter dataset is composed of $n=60\,000$ handwritten digits, $32 \times 32$ colour images in $10$ classes, with $6\,000$ images per class.
+As in the previous example, the weights are assumed  independent and identically distributed according to ${\cal N}(0,1)$.
+The source code used as a backbone here can be found in the TensorFlow Probability Github repo (\url{https://github.com/tensorflow/probability/blob/master/tensorflow_probability/examples/cifar10_bnn.py}) where the default hyperparameters, as the L annealing constant or the number of MC samples, were used for the benchmark methods. For better efficiency and lower variance, the Flipout estimator \citep{wen2018flipout} is preferred than a simple reparametrization trick for ResNet-18.
+
+\begin{table}[H]
+\begin{center}
+    \label{table:resnet}
+\begin{tabular}{ l c c c c r}
+  \hline
+  layer type & Output Size & ResNet-18&  nonlinearity \\
+  \hline
+\textrm{conv1} & $112 \times 112 \times 64$ & $7 \times 7$, $64$, stride 2 & ReLU \\
+\textrm{conv2x} & $ 56 \times 56 \times 64$ &$ \begin{pmatrix}
+   3 \times 3, 64 \\
+   3 \times 3, 64
+\end{pmatrix} \times 2$& ReLU \\
+\textrm{conv3x} & $ 28 \times 28 \times 128 $& $ \begin{pmatrix}
+   3 \times 3, 128 \\
+   3 \times 3, 128
+\end{pmatrix} \times 2$ & ReLU \\
+\textrm{conv4x} & $ 14 \times 14 \times 256$ &$ \begin{pmatrix}
+   3 \times 3, 256 \\
+   3 \times 3, 256
+\end{pmatrix} \times 2$& ReLU \\
+\textrm{conv5x} & $ 7 \times 7 \times 512$ &$ \begin{pmatrix}
+   3 \times 3, 512 \\
+   3 \times 3, 512
+\end{pmatrix} \times 2$& ReLU \\
+\textrm{average pool} & $ 1 \times 1 \times 512$ & $7 \times 7$ average pool & ReLU \\
+\textrm{fully connected} & $1000$ & $512 \times 1000$ fully connections &  \\
+\textrm{softmax} & $1000$ &  & \\
+  \hline
+\end{tabular}
+    \caption{ResNet-18 architecture}
+\end{center}
+\end{table}
+
+
+\paragraph{Experiment Results:}
+We compare the convergence of the \textit{Monte Carlo variants} of the following state of the art optimization algorithms --- the ADAM \citep{kingma:adam}, the Momentum \citep{sutskever2013importance} and the SAG \citep{schmidt2017minimizing} methods versus the \textit{Bayes by Backprop} (BBB) \citep{blundell2015weight} and our proposed MISSO method.
+For all these methods, the loss function \eqref{eq:variationalobjective} and its gradients were computed by Monte Carlo integration using Tensorflow Probability library \citep{dillon2017tfp}, based on the re-parametrization described above.
+Update rules for each algorithm are performed using their vanilla implementations on TensorFlow \citep{tensorflow2015-whitepaper} as detailed in Appendix~\ref{bnn:updates}.
+We use the following hyperparameters for all runs --- the learning rate is $10^{-3}$, we run $100$ epochs with a mini-batch size of $128$ and use the batchsize of $\Bsize{k} = k$.\vspace{-.2cm}
+
+
+\begin{figure}[H]
+    \centering
+    \subfloat[LeNet-5 on MNIST]{{\includegraphics[width=6cm]{pic_paper/small_lenet.png} }}%
+    \qquad
+    \subfloat[ResNet-18 on CIFAR-10]{{\includegraphics[width=6cm]{pic_paper/small_lenet.png} }}%
+  \caption{(a)  Negated ELBO versus epochs elapsed for fitting the Bayesian LeNet-5 on MNIST using different algorithms.
+(b)  ELBO versus epochs elapsed for fitting the Bayesian ResNet-18 on CIFAR-10 using different algorithms.
+The solid curve is obtained from averaging over 5 independent runs of the methods, and the shaded area represents the standard deviation.}\label{fig:lenetopt}
+\end{figure}
+
+
+%\begin{figure}[H]
+%  \centering
+%  \begin{tabular}{@{}c@{}}
+%    \includegraphics[width=.9\linewidth]{pic_paper/bnn_avg_2.png} \\[\abovecaptionskip]
+%  \end{tabular}
+%
+%  \vspace{\floatsep}
+%
+%  \begin{tabular}{@{}c@{}}
+%    \includegraphics[width=.9\linewidth]{pic_paper/bnn_avg_2.png} \\[\abovecaptionskip]
+%  \end{tabular}
+%
+%  \caption{(Top)  Negated ELBO versus epochs elapsed for fitting the Bayesian LeNet-5 on MNIST using different algorithms.
+%(Bottom)  ELBO versus epochs elapsed for fitting the Bayesian ResNet-18 on CIFAR-10 using different algorithms.
+%The solid curve is obtained from averaging over 5 independent runs of the methods, and the shaded area represents the standard deviation.}\label{fig:lenetopt}
+%\end{figure}
+
+
+
+Figure~\ref{fig:lenetopt} shows the convergence of the negated evidence lower bound against the number of passes over data (one pass represents an epoch). As observed, the proposed MISSO method outperforms \textit{Bayes by Backprop} and Momentum, while similar convergence rates are observed with the MISSO, ADAM and SAG methods.
+%Note that the SAG update reads $\hp{k} = \hp{k-1}- \frac{1}{2 \gamma} \sum_{i=1}^{n}{\hat{{\bm{m}}}^k_i} $ and is very close the our MISSO update \eqref{eq:missoupdate} in this example where we have used quadratic surrogate functions.
+
+
+%\section{Some Examples}
+%\paragraph{Example 1: Maximum Likelihood Estimation for Latent Variable Model }
+%%The EM algorithm is the reference method to
+%%We consider the Maximum Likelihood (ML) estimation problem latent variable model.
+%Latent variable models \citep{bishop2006pattern} are constructed by introducing unobserved (latent) variables which help explain the observed data.
+%We consider $n$ independent observations $((y_i, z_i), i \in \inter[n])$ where $y_i$ is observed and $z_i$ is latent.
+%In this incomplete data framework, define $ \{f_i(z_i, \param), \param \in \Param \}$ to be the complete data likelihood models, \ie joint likelihood of the observations and latent variables. Let 
+%\beq 
+%g_i(\param) \eqdef \int_{\Zset}{f_i(z_i,\param) \mu_i(\dz_i)},~i \in \inter
+%\eeq 
+%denote the incomplete data likelihood, \ie the marginal likelihood of the observations.
+%For ease of notations, the dependence on the observations is made implicit.
+%The maximum likelihood (ML) estimation problem takes ${\cal L}_i(\param)$ to be the $i$th negated incomplete data log-likelihood ${\cal L}_i(\param) \eqdef - \log g_i(\param)$. 
+%
+%Assume without loss of generality  that $g_i(\param) \neq 0$ for all $\param \in \Param$, we define by $p_i(z_i, \param) \eqdef f_i(z_i,\param)/g_i(\param)$ the conditional distribution of the latent variable $z_i$ given the observation $y_i$.
+%A surrogate function $\sur{i}{\param}{\op}$ satisfying S\ref{ass:sur} can be obtained through writing
+%$f_i(z_i,\param) = \frac{f_i(z_i,\param)}{p_i(z_i, \op)} p_i(z_i,\op)$ and applying the Jensen inequality:
+%\beq\label{pairmcem}
+%\sur{i}{\param}{\op} = \int_{\Zset} \underbrace{\log \left(p_i(z_{i},\op)/f_i(z_{i},\param)\right)}_{=  \rsur{i}{\param}{\op}{z_i}} \!~ p_i( z_i, \op ) \mu_i ( \dz_i ) \eqsp,
+%\eeq
+%We note that S\ref{ass:diff} can also be verified for common distribution models.
+%We can apply the MISSO method following the above specification of $\rsur{i}{\param}{\op}{z_i}, p_i( z_i, \op )$.
+%
+%%We remark that surrogate optimization has been used in the development of EM methods \citep{mclachlan}.
+%%For example, the incremental EM method \citep{neal} can be derived as a special case of the MISO method. The latter requires the stochastic surrogate function \eqref{eq:integralsurrogate} to be exactly evaluated for each $\op \in \Param$ (corresponding to the `expectation' step), which may be infeasible for general distributions.
+%%In this sense, the MISSO method is similar to an incremental version of the Monte-Carlo EM method \citep{wei}.
+%
+%\paragraph{Example 2: Variational Inference} Let $((x_i,y_i),  i \in \inter)$ be i.i.d.~input-output pairs and $w \in \Wset[] \subseteq \rset^{d}$ be a latent variable. When conditioned on the input $x = (x_i, i \in \inter)$, the joint distribution of $y = (y_i, i \in \inter)$ and $w$ is given by:
+%\begin{equation}\label{eq:vi} \textstyle
+%    p(y,w | x) = \prior(w)\prod_{i=1}^{n}{p(y_i | x_i, w)} \eqsp.
+%\end{equation}
+%Our goal is to compute the posterior distribution $p(w|y,x)$.
+%In most cases, the posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. The variational inference (VI) problem \citep{blei2017vi} boils down to minimizing the KL divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$, as follows:
+%\begin{equation} \label{eq:VI}  
+%\min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp.
+%\end{equation}
+%Using \eqref{eq:vi}, we decompose ${\cal L}(\param) = n^{-1} \sum_{i=1}^{n}{{\cal L}_i(\param)} + {\rm const}.$ where:
+%\begin{equation}\label{eq:variationalobjective}
+%{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big] = r_i(\param) + d(\param) \eqsp.
+%\end{equation}
+%Directly optimizing the finite sum objective function in \eqref{eq:VI} can be difficult.
+%First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
+%Second, for some complex models, the expectations in \eqref{eq:variationalobjective} can be intractable even if we assume a simple parametric model for $q(w; \param)$.
+%Assume that ${\cal L}_i$ is $\rm L$-smooth, \ie ${\cal L}_i$ is differentiable on $\Param$ and its gradient $\nabla {\cal L}_i$ is $\rm L$-Lipschitz. We apply the MISSO method with a quadratic surrogate function defined as:
+%\begin{equation} \label{eq:quad_sur}
+%\sur{i}{\param}{\op} \eqdef {\cal L}_i(\op) + \pscal{ \nabla_{\param} {\cal L}_i(\op)} { \param - \op} +\frac{\rm L}{2}\|\op -\param \|^2 \eqsp.
+%\end{equation}
+%It is easily checked that $\sur{i}{\param}{\op}$ satisfies S\ref{ass:sur}, S\ref{ass:diff}.
+%To compute the gradient $\nabla {\cal L}_i(\op)$, we apply the re-parametrization technique suggested in \citep{paisley2013,kingma, blundell2015weight}.
+%Let $t: \rset^d \times \Param \mapsto \rset^d$ be a differentiable function \wrt $\param \in \Param$ which is designed such that the law of $w = t( z, \op )$, where $z \sim \mathcal{N}_d(0,\Id)$, is $q(\cdot, \op )$.
+%By \citep[Proposition~1]{blundell2015weight}, the gradient of $-r_i(\cdot)$ in \eqref{eq:variationalobjective} is:
+%\beq \label{eq:vi_grad}
+%\nabla_{\param} \EE_{ q( w; \op )} \big[\log p(y_i| x_i, w)\big] =  \EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] \eqsp,
+%\eeq
+%where for each $z \in \mathbb{R}^d$, $\jacob{\param}{t}{ z, \op }$ is the Jacobian of the function $t(z, \cdot)$ with respect to $\param$ evaluated at $\op$.
+%%Consequently, we have the identity:
+%%\beq\label{eq:gradvi}
+%%\nabla {\cal L}_i(\op) = -\EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] + \grd d( \op )
+%%\eeq
+%In addition, for most cases, the term $\grd d( \op )$ can be evaluated in closed form.
+%% --- e.g., if we take $q(w; \param ) \sim {\cal N}_d( \mu, \sigma^2 \Id)$ such that $\param = (\mu , \sigma^2) \in \Param \eqdef \mathbb{R}^d \times \mathbb{R}^{*}_{+}$ and $\prior(w) \sim {\cal N}_d( {\bm 0}, \Id)$, then we have
+%%$\grd d( \op ) = \frac{1}{n} (\bar{\mu},  \frac{d}{2}-\frac{1}{\overline{\sigma^2}} )$.
+%\begin{align}\label{pairvi}
+%\rsur{i}{\param}{\op}{z} \eqdef & \pscal{ \grd_{\param} d(\op) - \jacob{\param}{t}{ z,\op}\nabla_w \log p(y_i | x_i, w)\big|_{w = t( z, \op )} } { \param - \op} +\frac{L}{2}\| \param - \op\|^2 \eqsp.
+%\end{align}
+%Finally, using \eqref{eq:quad_sur} and \eqref{pairvi}, the surrogate function \eqref{eq:ssur} is given by $\ssur{i}{\param}{\op}{ \{ z_m \}_{m=1}^{M}} \eqdef M^{-1} \sum_{m=1}^{M} \rsur{i}{\param}{\op}{z_m}$
+%where $\{z_m\}_{m=1}^M$ is an i.i.d sample from $\mathcal{N}(0,\Id)$.
+%
+
+\newpage
+
+\bibliographystyle{abbrvnat}
+\bibliography{ref}
+
+\newpage
+
+\appendix
+
+\section{Proof of Theorem~\ref{thm:main}}
+\begin{Theorem*}
+Under S\ref{ass:sur}, S\ref{ass:diff}, H\ref{ass:sur}, H\ref{controlapprox}. For any $K_{\sf max} \in \NN$, let $K$ be an independent discrete r.v.~drawn uniformly from $\{0,...,K_{\sf max}-1\}$ and define the following quantity:
+\beq \notag
+\Delta_{( K_{\sf max} )} \eqdef 2 n L \EE[  \sumSur{0}{\hp{0}} - \sumSur{K_{\sf max}}{\hp{K_{\sf max}}} ] +  \sum_{k=0}^{K_{\sf max}-1} \frac{4 L C_{\sf r} }{\sqrt{\Bsize{k}}} \eqsp,
+\eeq
+Then we have following non-asymptotic bounds:
+\beq \notag
+\EE \big[ \| \grd \eSur{K}{\hp{K}} \|^2 \big] \leq \frac{\Delta_{( K_{\sf max} )}}{K_{\sf max}},~~
+\EE[ g_-( \hp{K} ) ] \leq \sqrt{\frac{ \Delta_{( K_{\sf max} )} }{ K_{\sf max} }} + \frac{C_{\sf gr}}{K_{\sf max}} \sum_{k=0}^{K_{\sf max}-1} \Bsize{k}^{-1/2}.
+\eeq
+\end{Theorem*}
 \begin{proof}
 We begin by recalling the  definition
 \beq
@@ -350,7 +658,6 @@ To prove the first bound in \eqref{eq:misso_rate}, using the optimality of $\hp{
 \end{split}
 \eeq
 Let ${\cal F}_k$ be the filtration of random variables up to iteration $k$, \ie $\{i_{\ell-1},\{ z_{i_{\ell-1},m}^{(\ell-1)} \}_{m=1}^{\Bsize{\ell-1}} ,\hp{\ell}\}_{\ell=1}^k$. We observe that the conditional expectation evaluates to
-
 \beq
 \begin{split}
 & \EE_{i_k} \big[ \EE\big[ \ssur{i_k}{\hp{k}}{\hp{k}}{ \{ z_{i_k,m}^{(k)} \}_{m=1}^{\Bsize{k}} } | {\cal F}_k , i_k \big] | {\cal F}_k \big] \\
@@ -493,230 +800,165 @@ This implies
 and concludes the proof of the theorem.
 \end{proof}
 
-
-\section{Numerical Experiments} \label{sec:numerical}
-\subsection{Binary logistic regression with missing values}\label{logisticreg}
-% \subsubsection{The model}
-This application follows \textbf{Example 1} described in Section~\ref{sec:framework}.
-We consider a binary regression setup, $((y_i,z_i), i \in \inter[n])$ where $y_i \in \{0,1\}$ is a binary response and $z_i = (z_{i,j} \in \rset, j \in \inter[p])$ is a covariate vector.
-The vector of covariates $z_i = [z_{i,\mis} , z_{i,\obs}]$ is not fully observed where we denote by $z_{i,\mis}$ the missing values and $z_{i,\obs}$ the observed covariate.
-It is assumed that $(z_i, i\in \inter[n])$ are i.i.d. and marginally distributed according to $\mathcal{N}({\bm \beta}, {\bm \Omega})$ where $\beta \in \rset^p$ and $\Omega$ is a positive definite $p\times p$ matrix.
-
- We define the conditional distribution of the observations $y_i$ given $z_i = (z_{i,\mis},z_{i,\obs} )$ as:
-\beq\label{eq:logistic}
-p_i(y_i|z_i) =  S({\bm \delta}^\top \bar{z}_i)^{y_i} \left(1 - S({\bm \delta}^\top \bar{z}_i)\right)^{1-y_i}
-\eeq
-where for $u \in \mathbb{R}$, $S(u) = 1/(1+\mathrm{e}^{-u})$, ${\bm \delta} = (\delta_0, \cdots, \delta_p)$ are the logistic parameters and $\bar{z}_i = (1,z_i)$.
-We are interested in estimating ${\bm \delta}$ and finding the latent structure of the covariates $z_i$. Here, $\param = ({\bm \delta}, {\bm \beta}, {\bm \Omega})$ is the parameter to estimate.
-For $i \in \inter[n]$, the complete data log-likelihood is expressed as:
-\beq \notag
-\log f_i(z_{i,\mis},\param) \propto y_i {\bm \delta}^\top \bar{z_i} - \log \big( 1 +  \exp( {\bm \delta}^\top \bar{z_i}) \big) - \frac{1}{2}\log(|{\bm \Omega}|) + \frac{1}{2}{\rm Tr} \left({\bm \Omega}^{-1}(z_i - {\bm \beta})(z_i - {\bm \beta})^\top \right)  .
-\eeq
-
-
-\paragraph{MISSO update:}
-At the $k$-th iteration, and after the initialization, for all $i \in \inter[n]$, of the latent variables $(z_i^{(0)})$, the MISSO algorithm consists in picking an index $i_k$ uniformly on $\inter[n]$, completing the observations by sampling a Monte Carlo batch $  \{ z_{i_k,\mis,m}^{(k)} \}_{m=1}^{\Bsize{k}}$ of missing values from the conditional distribution $p(z_{i_k,\mis}|z_{i_k,\obs}, y_{i_k}; \hp{k-1})$ using an MCMC sampler and computing the estimated parameters as follows:
-\beq \label{eq:msteplog}
+\section{Proof of Theorem~\ref{thm:mainasymp}}
+\begin{Theorem*}
+Under S\ref{ass:sur}, S\ref{ass:diff}, H\ref{ass:sur}, H\ref{controlapprox}. In addition, assume that $\{\Bsize{k}\}_{k \geq 0}$ is a non-decreasing sequence of integers which satisfies $\sum_{k=0}^{\infty}{\Bsize{k}^{-1/2}} < \infty$. Then:
+\begin{enumerate}[leftmargin=.75cm]
+\item the negative part of the stationarity measure converges almost surely to zero, \ie $\textstyle \lim_{ k \rightarrow \infty} g_-( \hp{k}) = 0$ a.s.. 
+\item the objective value ${\cal L} ( \hp{k} )$ converges almost surely to a finite number $\underline{\cal L}$, \ie $\lim_{k \rightarrow \infty} {\cal L} ( \hp{k} ) = \underline{\cal L}$ a.s..
+\end{enumerate}
+\end{Theorem*}
+\begin{proof}
+We apply the following auxiliary lemma which proof can be found in Appendix~\ref{appendix:lemma} for the readability of the current proof:
+\begin{Lemma}\label{lemmars}
+Let $\left(V_k \right)_{k\geq0}$ be a non negative sequence of random variables such that $\EE[V_0] < \infty$. Let $\left(X_k \right)_{k\geq0}$ a non negative sequence of random variables and $\left(E_k \right)_{k \geq 0}$ be a sequence of random variables such that $\sum_{k=0}^{\infty}{\EE[|E_k|]} < \infty$. If for any $k \geq 1$:
+\begin{equation}
+V_{k} \leq V_{k-1} - X_{k-1} + E_{k-1}
+\end{equation}
+ then:
+\begin{enumerate}[label=(\roman*)]
+\item for all $k \geq 0$, $\EE[V_k] < \infty$ and the sequence $\left(V_k \right)_{k\geq0}$  converges a.s. to a finite limit $V_{\infty}$.
+\item the sequence $\left(\EE[V_k] \right)_{k\geq0}$ converges and $\lim \limits_{k \to \infty}\EE[V_k] = \EE[V_{\infty}] $.
+\item the series $\sum_{k=0}^{\infty}{X_k}$ converges almost surely and $\sum_{k=0}^{\infty}{\EE[X_k]}< \infty$.
+\end{enumerate}
+\end{Lemma}
+We proceed from \eqref{eq:firsteq} by re-arranging terms and observing that
+\beq
 \begin{split}
-& {\bm \beta}^{(k)} = \arg \min \limits_{\beta \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega^{(k)},\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  =  \frac{1}{n}\sum_{i=1}^{n} \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}} z_{i,m}^{(k)} \\
-& {\bm \Omega}^{(k)} = \arg \min \limits_{\Omega \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta^{(k)}, \Omega,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  =   \frac{1}{n}\sum_{i=1}^{n} \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}}z_{i,m}^{(k)}(z_{i,m}^{(k)})^\top  -  {\bm \beta}^{(k)} ({\bm \beta}^{(k)})^\top \\
-& {\bm \delta}^{(k)} = \frac{1}{n}\sum_{i=1}^{n} {\bm \delta}^{(\tau_i^k)} - (\tilde{H}^{(k)})^{-1} \tilde{D}^{(k)} \eqsp.
+ \Sur{k+1}{\hp{k+1}} & \leq \Sur{k}{\hp{k}} - {\textstyle \frac{1}{n}} \big( \sur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}} - \sur{i_k}{\hp{k}}{\hp{k}} \big)  \\
+& - \big( \sumSur{k+1}{\hp{k+1}} - \Sur{k+1}{\hp{k+1}} \big) + \big( \sumSur{k}{\hp{k}} - \Sur{k}{\hp{k}} \big) \\
+& + {\textstyle \frac{1}{n}} \big(
+\ssur{i_k}{\hp{k}}{\hp{k}}{ \{ z_{i_k,m}^{(k)} \}_{m=1}^{\Bsize{k}} } - \sur{i_k}{\hp{k}}{\hp{k}} \big) \\
+& + {\textstyle \frac{1}{n}} \big( \sur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}}
+- \ssur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}}{ \{ z_{i_k,m}^{(\tau_{i_k}^k)} \}_{m=1}^{\Bsize{\tau_{i_k}^k}} } \big)
 \end{split}
 \eeq
-where $z_{i,m}^{(k)} = (z_{i,\mis,m}^{(k)},z_{i,\obs})$ is composed of a simulated and an observed part and  $\tilde{D}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{D}_i^{(\tau_i^k)}$ and $\tilde{H}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{H}_i^{(\tau_i^k)}$.
-Besides, $\tilde{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ and $\tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ are defined as MC approximation of $\hat{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op)$ and $\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)$, for all $i \in \inter[n]$.
-%The logistic parameters are estimated as follows:
-%\beq
-%{\bm \delta}^{(k)} = \arg \min \limits_{\delta \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(1)}_i(\delta,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}}) 
-%\eeq
-%where $\tilde{\mathcal{L}}^{(1)}_i(\delta,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}}) $ is the MC approximation of the MISO surrogate defined in \eqref{eq:surrogatelogit}and which leads to the following quasi-Newton step:
-%\beq
-%{\bm \delta}^{(k)} = \frac{1}{n}\sum_{i=1}^{n} {\bm \delta}^{(\tau_i^k)} - (\tilde{H}^{(k)})^{-1} \tilde{D}^{(k)}
-%\eeq
+Our idea is to apply Lemma~\ref{lemmars}.
+Under S\ref{ass:sur}, the finite sum of surrogate functions $\Sur{k}{\param}$, defined in \eqref{eq:sumsurrodet}, is lower bounded by a constant $c_k > - \infty$ for any $\param$. To this end, we observe that
+\beq \label{eq:dvk}
+V_k \eqdef \Sur{k}{\hp{k}} - \inf_{k \geq 0} c_k \geq 0
+\eeq
+is a non-negative random variable.
 
+Secondly, under H\ref{ass:sur}, the following random variable is non-negative
+\beq \label{eq:dxk}
+X_{k} \eqdef {\textstyle \frac{1}{n}} \big( \sur{i_k}{\hp{\tau_{i_k}^k}}{\hp{k}} - \sur{i_k}{\hp{k}}{\hp{k}} \big) \geq 0.
+\eeq
 
-See Appendix \ref{app:update_logistic} for more explanation.
-
-\paragraph{Fitting a logistic regression model on the TraumaBase dataset}
-We apply the MISSO method to fit a logistic regression model on the TraumaBase (\url{http://traumabase.eu}) dataset, which consists of data collected from 15 trauma centers in France, covering measurements on patients from the initial to last stage of trauma.
-
-Similar to \citep{jiang2018logistic}, we select $p = 16$ influential quantitative measurements, described in Appendix~\ref{appendix:variables}, on $n = 6384$ patients, and we adopt
-%This dataset includes information from the first stage of the trauma, namely initial observations on the patient's accident site to the last stage being intense care at the hospital and counts more than $200$ variables measured for more than $7\,000$ patients.
-%Since the very first stage of the trauma, it is of utmost importance to rapidly predict the risk of a severe hemorrhage, as one of the main cause of death after a major trauma.
-the logistic regression model with missing covariates in \eqref{eq:logistic} to predict the risk of a severe hemorrhage which is one of the main cause of death after a major trauma.
-Note as the dataset considered is heterogeneous -- coming from multiple sources with frequently missed entries -- we apply the latent data model described in the above.
-%For the sake of experimental efficacy, we use $16$ influential quantitative measurements, including descriptive variables as the body mass index or the age and auscultatory measurements like the blood pressure or the heart rate at different stages after the accident (full list in Appendix~\ref{appendix:variables}), and selected $6384$ patients, dismissing patients with pre-hospital cardiac arrest and missing pre-hospital data.
-For the Monte-Carlo sampling of $z_{i,\mis}$, we run a Metropolis Hastings algorithm with the target distribution $p( \cdot |z_{i,\obs}, y_i; \hp{k})$ whose procedure is detailed in Appendix~\ref{app:trauma_mh}.
-
-\begin{figure}[H]
-\includegraphics[width=\textwidth]{pic_paper/traumabasenoexp.png}\vspace{-.2cm}
-\caption{Convergence of first component of the vector of parameters ${\bm \delta}$ and ${\bm \beta}$ for the SAEM, the MCEM and the MISSO methods. The convergence is plotted against the number of passes over the data.}\vspace{-.2cm}
-\label{fig:misso_trauma}
-\end{figure}
-
-We compare in Figure~\ref{fig:misso_trauma} the convergence behavior of the estimated parameters $\bm{\beta}$ using SAEM \citep{delyon1999} (with stepsize $\gamma_k = 1/k$), MCEM \citep{wei1990mcem}  and the proposed MISSO method.
-For the MISSO method, we set the batch size to $\Bsize{k} = 10 + k^2$ and we examine with selecting different number of functions in Line~\ref{line:unif} in the method -- the default settings with 1 function (MISSO), $10\%$ (MISSO10) and $50\%$ (MISSO50) of the functions per iteration.
-From Figure~\ref{fig:misso_trauma}, the MISSO method converges to a static value with less number of epochs than the MCEM, SAEM methods.
-It is worth noting that the difference among the MISSO runs for different number of selected functions demonstrates a variance-cost tradeoff.
-
-\subsection{Training Bayesian CNN using MISSO}
-
-At iteration $k$, minimizing the sum of stochastic surrogates defined as in \eqref{eq:ssur} and \eqref{pairvi} yields the following MISSO update --- {\sf step (i)} pick a function index $i_k$ uniformly on $\inter[n]$; {\sf step (ii)} sample a Monte Carlo batch $ \{ z_{m}^{(k)} \}_{m=1}^{\Bsize{k}}$ from ${\cal N}(0,\Id)$; and {\sf step (iii)}  update the parameters as
-%\beq\label{eq:missoupdate}
-%\hp{k} = \frac{1}{n}\sum_{i=1}^{n}{\hp{\tau_{i}^{k}}} - \frac{1}{2 \gamma} \sum_{i=1}^{n}{\hat{{\bm{m}}}^k_i}
-%\eeq
-\beq\label{eq:missoupdate}
+Thirdly, we define
+\beq \label{eq:dek}
 \begin{split}
-\mu_\ell^{(k)} = \frac{1}{n}\sum_{i=1}^{n}{\mu_\ell^{(\tau_{i}^{k})}} -  \frac{\gamma}{n}\sum_{i=1}^{n}{\hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} } \quad \textrm{and} \quad \sigma^{(k)} = \frac{1}{n}\sum_{i=1}^{n}{\sigma^{(\tau_{i}^{k})}} - \frac{\gamma}{n} \sum_{i=1}^{n}{\hat{{\bm{\delta}}}^{(k)}_{\sigma,i} } \eqsp,
+E_{k} & = - \big( \sumSur{k+1}{\hp{k+1}} - \Sur{k+1}{\hp{k+1}} \big) + \big( \sumSur{k}{\hp{k}} - \Sur{k}{\hp{k}} \big) \\
+& + {\textstyle \frac{1}{n}} \big(
+\ssur{i_k}{\hp{k}}{\hp{k}}{ \{ z_{i_k,m}^{(k)} \}_{m=1}^{\Bsize{k}} } - \sur{i_k}{\hp{k}}{\hp{k}} \big) \\
+& + {\textstyle \frac{1}{n}} \big( \sur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}}
+- \ssur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}}{ \{ z_{i_k,m}^{(\tau_{i_k}^k)} \}_{m=1}^{\Bsize{\tau_{i_k}^k}} } \big).
 \end{split}
 \eeq
-where $\hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} = \hat{{\bm{\delta}}}^{(k-1)}_{\mu_\ell,i}$ and $\hat{{\bm{\delta}}}^{(k)}_{\sigma,i} = \hat{{\bm{\delta}}}^{(k-1)}_{\sigma,i}$ for $i \neq i_k$ and:
-\begin{align*}
-& \hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i_k} =
-  - \frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}} \nabla_{w} \log p(y_{i_k} | x_{i_k}, w) \Big|_{w = t(\hp{k-1},z_m^{(k)})}  + \nabla_{\mu_\ell}  d(\hp{k-1}) \eqsp,\\
-  & \hat{{\bm{\delta}}}^{(k)}_{\sigma,i_k} =
- - \frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}} z_m^{(k)} \nabla_{w} \log p(y_{i_k} | x_{i_k}, w) \Big|_{w = t(\hp{k-1},z_m^{(k)})}  + \nabla_{\sigma}  d(\hp{k-1})
-\end{align*}
-with $d(\param) = n^{-1} \sum_{\ell=1}^{d} \left(- \log(\sigma) + (\sigma^2 + \mu_\ell^2)/2 -1/2 \right)$.
+Note that from the definitions \eqref{eq:dvk}, \eqref{eq:dxk}, \eqref{eq:dek}, we have
+$V_{k+1} \leq V_k - X_k + E_k$ for any $k \geq 1$.
 
-\paragraph{Bayesian LeNet-5 on MNIST:}
-This application follows \textbf{Example 2} described in Section~\ref{sec:framework}.
-We apply the MISSO method to fit a Bayesian variant of LeNet-5 \citep{lecun1998gradient} (see Appendix~\ref{appendix:bnn}).
-We train this network on the MNIST dataset \citep{lecun1998mnist}. The training set is composed of $N=55\,000$ handwritten digits, $28 \times 28$ images. Each image is labelled with its corresponding number (from zero to nine).
-Under the prior distribution $\prior$, see \eqref{eq:vi}, the weights are assumed  independent and identically distributed according to ${\cal N}(0,1)$.
-We also assume that $q(\cdot; \param) \equiv  \mathcal{N}(\mu,\sigma^2 \Id )$.
-The variational posterior parameters are thus $\param = (\mu, \sigma) $ where $\mu = (\mu_\ell, \ell \in \inter[d])$ where $d$ is the number of weights in the neural network. We use the re-parametrization as $w = t(\param, z)= \mu+ \sigma  z$ with $z \sim \mathcal{N}(0, \Id)$.
+Under H\ref{controlapprox}, we observe that
+\beq
+\EE \big[ | \ssur{i_k}{\hp{k}}{\hp{k}}{ \{ z_{i_k,m}^{(k)} \}_{m=1}^{\Bsize{k}} } - \sur{i_k}{\hp{k}}{\hp{k}} | \big] \leq C_{\sf r} \Bsize{k}^{-1/2}
+\eeq
+\beq
+\EE \Big[ \Big| \sur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}}
+- \ssur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}}{ \{ z_{i_k,m}^{(\tau_{i_k}^k)} \}_{m=1}^{\Bsize{\tau_{i_k}^k}} } \Big| \Big] \leq C_{\sf r} \EE \Big[ \Bsize{\tau_{i_k}^k}^{-1/2}  \Big]
+\eeq
+\beq
+\EE \big[ | \sumSur{k}{\hp{k}} - \Sur{k}{\hp{k}} | \big] \leq {\textstyle \frac{1}{n} \sum_{i=1}^n}
+ C_{\sf r} \EE \Big[ \Bsize{\tau_{i}^k}^{-1/2}  \Big]
+\eeq
+Therefore,
+\beq
+\EE \big[ | E_{k} | \big] \leq {\textstyle \frac{C_{\sf r}}{n}}  \Big( \Bsize{k}^{-1/2} +
+\EE \Big[ \Bsize{\tau_{i_k}^k}^{-1/2} + {\textstyle \sum_{i=1}^n} \big\{ \Bsize{\tau_{i}^k}^{-1/2} + \Bsize{\tau_{i}^{k+1}}^{-1/2} \big\} \Big] \Big)
+\eeq
+Using \eqref{eq:mkcal} and the assumption on the sequence $\{\Bsize{k}\}_{k \geq 0}$, we obtain that
+\beq
+\sum_{k=0}^\infty \EE \big[ | E_{k} | \big] < {\frac{C_{\sf r}}{n}} (2 + 2n ){\sum_{k=0}^\infty} \Bsize{k}^{-1/2}  < \infty.
+\eeq
+Therefore, the conclusions in Lemma~\ref{lemmars} hold. Precisely, we have $\sum_{k=0}^\infty X_k < \infty$ and $\sum_{k=0}^\infty \EE[ X_k ] < \infty$ almost surely.
+Note that this implies
+\beq
+\begin{split}
+\infty & > \sum_{k=0}^\infty \EE[ X_k ] = \frac{1}{n} \sum_{k = 0}^\infty \EE \big[ \sur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}} - \sur{i_k}{\hp{k}}{\hp{k}} \big] \\
+& = \frac{1}{n} \sum_{k = 0}^\infty \EE \big[ \Sur{k}{\hp{k}} - {\cal L}( \hp{k}) \big] = \frac{1}{n} \sum_{k=0}^\infty \EE\big[ \eSur{k}{\hp{k}} \big]
+\end{split}
+\eeq
+Since $\eSur{k}{\hp{k}} \geq 0$, the above implies
+\beq \label{eq:esur}
+\lim_{ k \rightarrow \infty } \eSur{k}{\hp{k}} = 0~~~\text{a.s.}
+\eeq
+and subsequently applying \eqref{eq:surbd}, we have $\lim_{ k \rightarrow \infty } \| \eSur{k}{\hp{k}} \| = 0$ almost surely. Finally, it follows from \eqref{eq:surbd} and \eqref{eq:gmbd} that
+\beq
+\lim_{k \rightarrow \infty} g_-^{(k)} \leq \lim_{k \rightarrow \infty} \sqrt{2L} \sqrt{ \eSur{k}{\hp{k}} } + \lim_{k \rightarrow \infty} \sup_{\param \in \Param} |\epsilon^{(k)}(\param)| = 0,
+\eeq
+where the last equality holds almost surely due to the fact that $\sum_{k=0}^\infty \EE[ \sup_{\param \in \Param} |\epsilon^{(k)}(\param)| ] < \infty$.
+This concludes the asymptotic convergence of the MISSO method.
 
-We describe in Table~\ref{table:lenet} the architecture of the Convolutional Neural Network introduced in \citep{lecun1998gradient} and trained on MNIST:
-\begin{table}[H]
-\begin{center}
-    \label{table:lenet}
-\begin{tabular}{ l c c c c r}
-  \hline
-  layer type & width & stride& padding & input shape& nonlinearity \\
-  \hline
-convolution ($5 \times 5$) & 6 & 1 & 0 & $1 \times 32 \times 32$ & ReLU \\
-max-pooling ($2 \times 2$) &  & 2 & 0 & $6 \times 28 \times 28$ & \\
-convolution ($5 \times 5$) & 6 & 1 & 0 & $1 \times 14 \times 14$ & ReLU \\
-max-pooling ($2 \times 2$) &  & 2 & 0 & $16 \times 10 \times 10$ & \\
-fully-connected & 120 &  &  & $400$ & ReLU \\
-fully-connected & 84 &  &  & $ 120$ & ReLU \\
-fully-connected & 10 &  &  & $ 84$ &  \\
-  \hline
-\end{tabular}
-    \caption{LeNet-5 architecture}
-\end{center}
-\end{table}
+Finally, we prove that ${\cal L}(\hp{k})$ converges almost surely. As a consequence of Lemma~\ref{lemmars}, it is clear that $\{ V_k \}_{k \geq 0}$ converges almost surely and so is $\{ \Sur{k}{\hp{k}} \}_{k \geq 0}$, \ie we have $\lim_{k \rightarrow \infty} \Sur{k}{\hp{k}} = \underline{\cal L}$. Applying \eqref{eq:esur} implies that
+\beq
+\underline{\cal L} = \lim_{ k \rightarrow \infty } \Sur{k}{\hp{k}} = \lim_{k \rightarrow \infty} {\cal L} (\hp{k})~~~~\text{a.s.}
+\eeq
+This shows that ${\cal L}(\hp{k})$ converges almost surely to $\underline{\cal L}$.
+\end{proof}
 
-\paragraph{Bayesian ResNet-18 on CIFAR-10:}
+ \section{Proof of Lemma~\ref{lemmars}}\label{appendix:lemma}
+\begin{Lemma*}
+Let $\left(V_k \right)_{k\geq0}$ be a non negative sequence of random variables such that $\EE[V_0] < \infty$. Let $\left(X_k \right)_{k\geq0}$ a non negative sequence of random variables and $\left(E_k \right)_{k \geq 0}$ be a sequence of random variables such that $\sum_{k=0}^{\infty}{\EE[|E_k|]} < \infty$. If for any $k \geq 1$:
+\begin{equation}\notag
+V_{k} \leq V_{k-1} - X_{k-1} + E_{k-1}
+\end{equation}
+ then:
+\begin{enumerate}[label=(\roman*)]
+\item for all $k \geq 0$, $\EE[V_k] < \infty$ and the sequence $\left(V_k \right)_{k\geq0}$  converges a.s. to a finite limit $V_{\infty}$.
+\item the sequence $\left(\EE[V_k] \right)_{k\geq0}$ converges and $\lim \limits_{k \to \infty}\EE[V_k] = \EE[V_{\infty}] $.
+\item the series $\sum_{k=0}^{\infty}{X_k}$ converges almost surely and $\sum_{k=0}^{\infty}{\EE[X_k]}< \infty$.
+\end{enumerate}
+\end{Lemma*}
+\begin{proof}
+  We first show that for all $k \geq 0$, $\EE[V_k] < \infty$. Note indeed that:
+\begin{equation}
+0 \leq V_k \leq V_0 - \sum_{j=1}^{k}{X_j} + \sum_{j=1}^{k}{E_j}\leq V_0 + \sum_{j=1}^{k}{E_j}
+\end{equation}
+showing that $\EE[V_k] \leq \EE[V_0] + \EE\left[\sum_{j=1}^{k}{E_j}\right] < \infty$.
 
-Put here the architectureof ResNet-18 introduced in \citep{he2016deep}.
+Since $0 \leq X_k \leq V_{k-1} - V_k + E_k$ we also obtain for all $k \geq 0$, $\EE[X_k] < \infty$. Moreover, since $\EE\left[\sum_{j=1}^{\infty}{|E_j|}\right] < \infty$, the series $\sum_{j=1}^{\infty}{E_j}$ converges a.s. We may therefore define:
+\begin{equation}
+W_k = V_k + \sum_{j=k+1}^{\infty}{E_j}
+\end{equation}
+Note that $\EE[|W_k|] \leq \EE[V_k]+\EE\left[\sum_{j=k+1}^{\infty}{|E_j|}\right] < \infty $. For all $k \geq 1$, we get:
+\begin{equation}\label{chik}
+\begin{split}
+& W_{k} \leq V_{k-1} - X_{k} + \sum_{j=k}^{\infty}{E_j} \leq W_{k-1} - X_{k}\leq W_{k-1}\\
+&\EE[W_k] \leq \EE[W_{k-1}] - \EE[X_{k}]
+\end{split}
+\end{equation}
+Hence the sequences $(W_k)_{k\geq0}$ and $\left(\EE[W_k] \right)_{k\geq0}$ are non increasing. Since for all $k \geq 0$, $W_k \geq -  \sum_{j=1}^{\infty}{|E_j|} > -\infty$ and $\EE[W_k] \geq -  \sum_{j=1}^{\infty}{\EE[|E_j|]} > -\infty$, the (random) sequence $(W_k)_{k\geq0}$ converges a.s. to a limit $W_{\infty}$ and the (deterministic) sequence $\left(\EE[W_k] \right)_{k\geq0}$ converges to a limit $w_{\infty}$. Since $|W_k| \leq V_0 +  \sum_{j=1}^{\infty}{|E_j|}$, the Fatou lemma implies that:
+\begin{equation}
+\EE[\liminf \limits_{k \to \infty} |W_k|] = \EE[|W_{\infty}|] \leq \liminf \limits_{k \to \infty} \EE[|W_{k}|] \leq \EE[V_{0}] + \sum_{j=1}^{\infty}{\EE[|E_j|]}< \infty
+\end{equation}
+showing that the random variable $W_{\infty}$  is integrable.
 
-
-\paragraph{Experiment Results:}
-We compare the convergence of the \textit{Monte Carlo variants} of the following state of the art optimization algorithms --- the ADAM \citep{kingma:adam}, the Momentum \citep{sutskever2013importance} and the SAG \citep{schmidt2017minimizing} methods versus the \textit{Bayes by Backprop} (BBB) \citep{blundell2015weight} and our proposed MISSO method.
-For all these methods, the loss function \eqref{eq:variationalobjective} and its gradients were computed by Monte Carlo integration using Tensorflow Probability library \citep{dillon2017tfp}, based on the re-parametrization described above.
-Update rules for each algorithm are performed using their vanilla implementations on TensorFlow \citep{tensorflow2015-whitepaper} as detailed in Appendix~\ref{bnn:updates}.
-We use the following hyperparameters for all runs --- the learning rate is $10^{-3}$, we run $100$ epochs with a mini-batch size of $128$ and use the batchsize of $\Bsize{k} = k$.\vspace{-.2cm}
-
-
-\begin{figure}
-  \centering
-  \begin{tabular}{@{}c@{}}
-    \includegraphics[width=.9\linewidth]{pic_paper/bnn_avg_2.png} \\[\abovecaptionskip]
-  \end{tabular}
-
-  \vspace{\floatsep}
-
-  \begin{tabular}{@{}c@{}}
-    \includegraphics[width=.9\linewidth]{pic_paper/bnn_avg_2.png} \\[\abovecaptionskip]
-  \end{tabular}
-
-  \caption{(Top)  Negated ELBO versus epochs elapsed for fitting the Bayesian LeNet-5 on MNIST using different algorithms.
-(Bottom)  ELBO versus epochs elapsed for fitting the Bayesian ResNet-18 on CIFAR-10 using different algorithms.
-The solid curve is obtained from averaging over 5 independent runs of the methods, and the shaded area represents the standard deviation.}\label{fig:lenetopt}
-\end{figure}
-
-
-
-Figure~\ref{fig:lenetopt} shows the convergence of the negated evidence lower bound against the number of passes over data (one pass represents an epoch). As observed, the proposed MISSO method outperforms \textit{Bayes by Backprop} and Momentum, while similar convergence rates are observed with the MISSO, ADAM and SAG methods.
-%Note that the SAG update reads $\hp{k} = \hp{k-1}- \frac{1}{2 \gamma} \sum_{i=1}^{n}{\hat{{\bm{m}}}^k_i} $ and is very close the our MISSO update \eqref{eq:missoupdate} in this example where we have used quadratic surrogate functions.
-
-
-%\section{Some Examples}
-%\paragraph{Example 1: Maximum Likelihood Estimation for Latent Variable Model }
-%%The EM algorithm is the reference method to
-%%We consider the Maximum Likelihood (ML) estimation problem latent variable model.
-%Latent variable models \citep{bishop2006pattern} are constructed by introducing unobserved (latent) variables which help explain the observed data.
-%We consider $n$ independent observations $((y_i, z_i), i \in \inter[n])$ where $y_i$ is observed and $z_i$ is latent.
-%In this incomplete data framework, define $ \{f_i(z_i, \param), \param \in \Param \}$ to be the complete data likelihood models, \ie joint likelihood of the observations and latent variables. Let 
-%\beq 
-%g_i(\param) \eqdef \int_{\Zset}{f_i(z_i,\param) \mu_i(\dz_i)},~i \in \inter
-%\eeq 
-%denote the incomplete data likelihood, \ie the marginal likelihood of the observations.
-%For ease of notations, the dependence on the observations is made implicit.
-%The maximum likelihood (ML) estimation problem takes ${\cal L}_i(\param)$ to be the $i$th negated incomplete data log-likelihood ${\cal L}_i(\param) \eqdef - \log g_i(\param)$. 
-%
-%Assume without loss of generality  that $g_i(\param) \neq 0$ for all $\param \in \Param$, we define by $p_i(z_i, \param) \eqdef f_i(z_i,\param)/g_i(\param)$ the conditional distribution of the latent variable $z_i$ given the observation $y_i$.
-%A surrogate function $\sur{i}{\param}{\op}$ satisfying S\ref{ass:sur} can be obtained through writing
-%$f_i(z_i,\param) = \frac{f_i(z_i,\param)}{p_i(z_i, \op)} p_i(z_i,\op)$ and applying the Jensen inequality:
-%\beq\label{pairmcem}
-%\sur{i}{\param}{\op} = \int_{\Zset} \underbrace{\log \left(p_i(z_{i},\op)/f_i(z_{i},\param)\right)}_{=  \rsur{i}{\param}{\op}{z_i}} \!~ p_i( z_i, \op ) \mu_i ( \dz_i ) \eqsp,
-%\eeq
-%We note that S\ref{ass:diff} can also be verified for common distribution models.
-%We can apply the MISSO method following the above specification of $\rsur{i}{\param}{\op}{z_i}, p_i( z_i, \op )$.
-%
-%%We remark that surrogate optimization has been used in the development of EM methods \citep{mclachlan}.
-%%For example, the incremental EM method \citep{neal} can be derived as a special case of the MISO method. The latter requires the stochastic surrogate function \eqref{eq:integralsurrogate} to be exactly evaluated for each $\op \in \Param$ (corresponding to the `expectation' step), which may be infeasible for general distributions.
-%%In this sense, the MISSO method is similar to an incremental version of the Monte-Carlo EM method \citep{wei}.
-%
-%\paragraph{Example 2: Variational Inference} Let $((x_i,y_i),  i \in \inter)$ be i.i.d.~input-output pairs and $w \in \Wset[] \subseteq \rset^{d}$ be a latent variable. When conditioned on the input $x = (x_i, i \in \inter)$, the joint distribution of $y = (y_i, i \in \inter)$ and $w$ is given by:
-%\begin{equation}\label{eq:vi} \textstyle
-%    p(y,w | x) = \prior(w)\prod_{i=1}^{n}{p(y_i | x_i, w)} \eqsp.
-%\end{equation}
-%Our goal is to compute the posterior distribution $p(w|y,x)$.
-%In most cases, the posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. The variational inference (VI) problem \citep{blei2017vi} boils down to minimizing the KL divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$, as follows:
-%\begin{equation} \label{eq:VI}  
-%\min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp.
-%\end{equation}
-%Using \eqref{eq:vi}, we decompose ${\cal L}(\param) = n^{-1} \sum_{i=1}^{n}{{\cal L}_i(\param)} + {\rm const}.$ where:
-%\begin{equation}\label{eq:variationalobjective}
-%{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big] = r_i(\param) + d(\param) \eqsp.
-%\end{equation}
-%Directly optimizing the finite sum objective function in \eqref{eq:VI} can be difficult.
-%First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
-%Second, for some complex models, the expectations in \eqref{eq:variationalobjective} can be intractable even if we assume a simple parametric model for $q(w; \param)$.
-%Assume that ${\cal L}_i$ is $\rm L$-smooth, \ie ${\cal L}_i$ is differentiable on $\Param$ and its gradient $\nabla {\cal L}_i$ is $\rm L$-Lipschitz. We apply the MISSO method with a quadratic surrogate function defined as:
-%\begin{equation} \label{eq:quad_sur}
-%\sur{i}{\param}{\op} \eqdef {\cal L}_i(\op) + \pscal{ \nabla_{\param} {\cal L}_i(\op)} { \param - \op} +\frac{\rm L}{2}\|\op -\param \|^2 \eqsp.
-%\end{equation}
-%It is easily checked that $\sur{i}{\param}{\op}$ satisfies S\ref{ass:sur}, S\ref{ass:diff}.
-%To compute the gradient $\nabla {\cal L}_i(\op)$, we apply the re-parametrization technique suggested in \citep{paisley2013,kingma, blundell2015weight}.
-%Let $t: \rset^d \times \Param \mapsto \rset^d$ be a differentiable function \wrt $\param \in \Param$ which is designed such that the law of $w = t( z, \op )$, where $z \sim \mathcal{N}_d(0,\Id)$, is $q(\cdot, \op )$.
-%By \citep[Proposition~1]{blundell2015weight}, the gradient of $-r_i(\cdot)$ in \eqref{eq:variationalobjective} is:
-%\beq \label{eq:vi_grad}
-%\nabla_{\param} \EE_{ q( w; \op )} \big[\log p(y_i| x_i, w)\big] =  \EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] \eqsp,
-%\eeq
-%where for each $z \in \mathbb{R}^d$, $\jacob{\param}{t}{ z, \op }$ is the Jacobian of the function $t(z, \cdot)$ with respect to $\param$ evaluated at $\op$.
-%%Consequently, we have the identity:
-%%\beq\label{eq:gradvi}
-%%\nabla {\cal L}_i(\op) = -\EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] + \grd d( \op )
-%%\eeq
-%In addition, for most cases, the term $\grd d( \op )$ can be evaluated in closed form.
-%% --- e.g., if we take $q(w; \param ) \sim {\cal N}_d( \mu, \sigma^2 \Id)$ such that $\param = (\mu , \sigma^2) \in \Param \eqdef \mathbb{R}^d \times \mathbb{R}^{*}_{+}$ and $\prior(w) \sim {\cal N}_d( {\bm 0}, \Id)$, then we have
-%%$\grd d( \op ) = \frac{1}{n} (\bar{\mu},  \frac{d}{2}-\frac{1}{\overline{\sigma^2}} )$.
-%\begin{align}\label{pairvi}
-%\rsur{i}{\param}{\op}{z} \eqdef & \pscal{ \grd_{\param} d(\op) - \jacob{\param}{t}{ z,\op}\nabla_w \log p(y_i | x_i, w)\big|_{w = t( z, \op )} } { \param - \op} +\frac{L}{2}\| \param - \op\|^2 \eqsp.
-%\end{align}
-%Finally, using \eqref{eq:quad_sur} and \eqref{pairvi}, the surrogate function \eqref{eq:ssur} is given by $\ssur{i}{\param}{\op}{ \{ z_m \}_{m=1}^{M}} \eqdef M^{-1} \sum_{m=1}^{M} \rsur{i}{\param}{\op}{z_m}$
-%where $\{z_m\}_{m=1}^M$ is an i.i.d sample from $\mathcal{N}(0,\Id)$.
-%
-
-\newpage
-
-\bibliographystyle{abbrvnat}
-\bibliography{ref}
-
+In the sequel, set $U_k \triangleq W_0 - W_k$. By construction we have for all $k \geq 0$, $U_k \geq 0$, $U_k \leq U_{k+1}$ and $\EE[U_k] \leq \EE[|W_0|] + \EE[|W_k|] < \infty$ and by the monotone convergence theorem, we get:
+\begin{equation}
+    \lim \limits_{k \to \infty} \EE[U_k] = \EE[\lim \limits_{k \to \infty}U_k]
+\end{equation}
+Finally, we have:
+\begin{equation}
+\lim \limits_{k \to \infty} \EE[U_k] = \EE[W_0] - w_{\infty} \quad \textrm{and} \quad \EE[\lim \limits_{k \to \infty}U_k] = \EE[W_0] - \EE[W_{\infty}]
+\end{equation}
+showing that $\EE[W_{\infty}] = w_{\infty}$ and concluding the proof of (ii). Moreover, using \eqref{chik} we have that $W_k \leq W_{k-1} - X_k$ which yields:
+\begin{equation}
+\begin{split}
+    & \sum_{j=1}^{\infty}{X_j} \leq W_{0} - W_{\infty} < \infty\\
+    & \sum_{j=1}^{\infty}{\EE[X_j]} \leq \EE[W_{0}] - w_{\infty} < \infty
+\end{split}
+\end{equation}
+which concludes the proof of the lemma.
+\end{proof}
 
 
 %-----------------------------------------------------------------------------

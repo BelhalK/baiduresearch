@@ -7,17 +7,17 @@ import pylab
 print(os.getcwd())
 
 
-with open ('lossesavg/adam', 'rb') as fp:
-    adam = pickle.load(fp)
+with open('lossesavg/adam', 'rb') as f:
+    adam = pickle.load(f, encoding='latin1') 
 nb_epochs = len(adam)
-with open ('lossesavg/bbb', 'rb') as fp:
-    bbb = pickle.load(fp)
-with open ('lossesavg/momentum', 'rb') as fp:
-    momentum = pickle.load(fp)
-with open ('lossesavg/sag', 'rb') as fp:
-    sag = pickle.load(fp)
-with open ('lossesavg/misso', 'rb') as fp:
-    misso = pickle.load(fp)
+with open('lossesavg/bbb', 'rb') as f:
+    bbb = pickle.load(f, encoding='latin1') 
+with open('lossesavg/momentum', 'rb') as f:
+    momentum = pickle.load(f, encoding='latin1') 
+with open('lossesavg/sag', 'rb') as f:
+    sag = pickle.load(f, encoding='latin1') 
+with open('lossesavg/misso', 'rb') as f:
+    misso = pickle.load(f, encoding='latin1') 
 
 
 def tsplotseveral(x, y, n=20, percentile_min=1, percentile_max=99, color='r', plot_mean=True, plot_median=False, line_color='k', **kwargs):
@@ -63,8 +63,8 @@ def tsplotseveral(x, y, n=20, percentile_min=1, percentile_max=99, color='r', pl
     plt.grid(linestyle='dotted',linewidth=2)
     pylab.ticklabel_format(axis='y',style='sci',scilimits=(1,4))
     fig.tight_layout()
-    fig.show()
-    # fig.savefig("bnn_avg.png",bbox_inches = 'tight')
+    # fig.show()
+    fig.savefig("sisi.png",bbox_inches = 'tight')
     return i
 
 epochs = 100
