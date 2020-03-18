@@ -139,13 +139,13 @@ for (j in (1:nsim))
   print('isaemvr done')
 
 
-  # df <- mixt.isaemsaga(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr, rho.saga)
-  # df[,2:7] <- (df[,2:7] - ML[,2:7])^2
-  # df$rep <- j
-  # disaemsaga <- rbind(disaemsaga,df)
-  # df$rep <- NULL
-  # df.isaemsaga[[j]] <- df
-  # print('isaemsaga done')
+  df <- mixt.isaemsaga(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr, rho.saga)
+  df[,2:7] <- (df[,2:7] - ML[,2:7])^2
+  df$rep <- j
+  disaemsaga <- rbind(disaemsaga,df)
+  df$rep <- NULL
+  df.isaemsaga[[j]] <- df
+  print('isaemsaga done')
 
 
 }
@@ -262,12 +262,12 @@ iemseq$iteration <- isaem$iteration*nbr/n
 isaem$iteration <- isaem$iteration*nbr/n
 
 
-# variance <- rbind(isaem[,c(1,4,8)],
-#                   isaemsaga[,c(1,4,8)],
-#                   isaemvr[,c(1,4,8)],
-#                   iemseq[,c(1,4,8)],
-#                   em[,c(1,4,8)],
-#                   saem[,c(1,4,8)])
+variance <- rbind(isaem[,c(1,4,8)],
+                  isaemsaga[,c(1,4,8)],
+                  isaemvr[,c(1,4,8)],
+                  iemseq[,c(1,4,8)],
+                  em[,c(1,4,8)],
+                  saem[,c(1,4,8)])
 
 variance <- rbind(isaem[,c(1,4,8)],
                   isaemvr[,c(1,4,8)],
