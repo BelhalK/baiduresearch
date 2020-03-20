@@ -30,12 +30,9 @@ for (i in 1:N){
 # image(t(sample.digit)[,nrow(sample.digit):1])
 
 
-
 #Hyperparam
 p <- ncol(sample.digit)
 Gamma.star <- diag(rep(1,p)) # covariance
-
-
 
 
 # mu.star <- rep(0,p)  # mean of the explanatory variables
