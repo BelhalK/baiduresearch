@@ -15,6 +15,8 @@ import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
 import pickle 
 
+import pickle 
+
 from models.bayesian_resnet import bayesian_resnet
 from models.bayesian_vgg import bayesian_vgg
 
