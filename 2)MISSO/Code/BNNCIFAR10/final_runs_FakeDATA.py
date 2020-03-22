@@ -1,10 +1,11 @@
 #python3 final_runs_FakeDATA.py --batchsize=2 --nbepochs=3 --nbruns=1
 from __future__ import absolute_import
 from __future__ import division
+
 from __future__ import print_function
 
-import os
 import warnings
+import os
 
 # Dependency imports
 import argparse
@@ -15,7 +16,6 @@ import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
 import pickle 
 
-import pickle 
 
 from models.bayesian_resnet import bayesian_resnet
 from models.bayesian_vgg import bayesian_vgg
