@@ -104,42 +104,36 @@ citecolor=blue]{hyperref}
 \maketitle
 
 \begin{abstract}
-T.B.C
+Training latent data models using the EM algorithm is the most common choice for current learning tasks. 
+Variants of the EM to scale to large datasets and bypass the impossible conditional expectation of the latent data for most nonlinear models have been initially introduced respectively by \citep{neal1998view}, using incremental updates, and \citep{wei1990monte, delyon1999}, using Monte-Carlo (MC) approximations.
+In this paper, we propose to combine those both techniques in a single class of methods called Two-Time-Scale EM Methods. 
+We motivate the choice of a double dynamics by invoking the variance reduction virtue of each stage of the method on both noise: the incremental update and the MC approximation.
+We establish finite-time convergence bounds for nonconvex objective function and independent of the initialization.
+Numerical applications are also presented in this article to illustrate our findings.
 \end{abstract}
 
 
 \section{Introduction}
-We formulate the following empirical risk minimization problem as:
+Learning latent data models is critical for modern machine learning problems, see \citep{mclachlan2007algorithm} for references.
+We formulate the training of such model as the following empirical risk minimization problem:
 \beq \label{eq:em_motivate}
 \min_{ \param \in \Param }~ \overline{\calL} ( \param ) \eqdef \Pen (\param) + \calL ( \param )~~\text{with}~~\calL ( \param ) = \frac{1}{n} \sum_{i=1}^n \calL_i( \param) \eqdef  \frac{1}{n} \sum_{i=1}^n \big\{ - \log g( y_i ; \param ) \big\}\eqs,
 \eeq
-where $\{y_i\}_{i=1}^n$ are the observations, $\Param$ is a convex subset of $\rset^d$ for the parameters,  $\Pen : \Param \rightarrow \rset$ is a smooth convex regularization function   and for each $\param \in \Param$, $g(y;\param)$ is the (incomplete) likelihood of each individual  observation.
-The objective function $ \overline{\calL} ( \param )$ is possibly \emph{non-convex} and is assumed to be lower bounded $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
+We denote the observations by $\{y_i\}_{i=1}^n$, $\Param \subset \rset^d$ is the convex parameters space.
+We consider a regularized model where $\Pen : \Param \rightarrow \rset$ is a smooth convex regularization function and for $\param \in \Param$, $g(y;\param)$ is the (incomplete) likelihood of each individual  observation.
+The objective function $ \overline{\calL} ( \param )$ is possibly \emph{nonconvex} and is assumed to be lower bounded $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
 
 %We assume that $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
 In the latent variable model,  $g(y_i ; \param)$, is the marginal of the
 complete data likelihood defined as $f(z_i,y_i; \param)$, i.e. $g(y_i; \param) = \int_{\Zset} f (z_i,y_i;\param) \mu(\rmd z_i)$, where $\{ z_i \}_{i=1}^n$ are the (unobserved)
 latent variables.   
-We make the assumption of a complete model belonging to the curved exponential family, \ie
+In this papaer, we make the assumption of a complete model belonging to the curved exponential family, \ie
 \beq \label{eq:exp}
 f(z_i,y_i; \param) = h  (z_i,y_i) \exp \big( \pscal{S(z_i,y_i)}{\phi(\param)} - \psi(\param) \big)\eqs,
 \eeq
 where $\psi(\param)$, $h(z_i,y_i)$ are scalar functions, $\phi(\param) \in \rset^k$ is a vector function, and $S(z_i,y_i) \in \rset^k$ is the complete data sufficient statistics.
 
-\paragraph{Prior Work} 
-Cite Kuhn \citep{kuhn2019properties} (for ISAEM) and incremental EM like papers.
-As well as Optim papers (Variance reduction, SAGA etc.)
-
-
-Describe the main contributions of the paper as bullet points
-
-Then small paragraph on the structure.
-
-\paragraph{Some Notations} 
-
-
-\section{Two-Time-Scale Stochastic EM Algorithms}
-Full batch EM is a two steps procedure. The {\sf E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, 
+Full batch EM \citep{dempster1977Maximum} is the method of reference for that kind of task and is a two steps procedure. The {\sf E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, 
 \begin{equation}
 \label{eq:definition-overline-bss}
 \overline{\bss}(\param)= \frac{1}{n} \sum_{i=1}^n \overline{\bss}_i(\param) \quad  \text{where}  \quad \overline{\bss}_i(\param)= \int_{\Zset} S(z_i,y_i) p(z_i|y_i;\param) \mu(\rmd z_i) \,.
@@ -149,8 +143,38 @@ The {\sf M-step} is given by
 \textsf{M-step:}~~\hat{\param} = \overline{\param}( \overline{\bss}(\param) ) \eqdef \argmin_{ \vartheta \in \Param } ~\big\{ \Pen( \vartheta ) + \psi( \vartheta) - \pscal{ \overline{\bss}(\param)}{ \phi ( \vartheta) } \big\},
 \eeq
 
+Two caveats of this method are the following: (a) with the explosion of data, the first step of the EM is computationally inefficient as it requires a full pass over the dataset at each iteration and (b) the complexity of modern models makes the expectation intractable. So far, both challenges have been addressed separately, to the best of our knowledge, and we give an overview of current solutions in the sequel.
+
+\paragraph{Prior Work} Inspired by stochastic optimization procedures, \citep{neal1998view} and \citep{cappe2009line} developed respectively an incremental and an online variant of the \textsf{E-step} in models where the expectation is computable then extensively used and studied in \citep{nguyen2020mini, liang2009online,cappe2011online}.
+Some improvements of that methods have been provided and analyzed, globally and in finite-time, in \citep{karimi2019global} where variance reduction techniques taken from the optimization literature have been efficiently applied to scale the EM algorithm to large datasets.
+
+Regarding the computation of the expectation under the posterior distribution, the first method was the Monte-Carlo EM (MCEM) introduced in the seminal paper \citep{wei1990monte} where a MC approximation fo this expectation is computed. A variant of that method is the Stochastic Approximation of the EM (SAEM) in \citep{delyon1999} leveraging the power of Robbins-Monro type of update \citep{robbins1951stochastic} to ensure pointwise convergence of the vector of estimated parameters rather using a decreasing stepsize than increasing the number of MC samples.
+The MCEM and the SAEM have been successfully applied in mixed effects models \citep{mcculloch1997maximum,hughes1999mixed,baey2016nonlinear} or to do inference for joint modelling of time to event data coming from clinical trials in \citep{das2010Inferences}, among other applications.
+
+Recently, an incremental variant of the SAEM was proposed in \citep{kuhn2019properties} showing positive empirical results but its analysis is limited to asymptotic consideration. 
+Gradient-based methods have been developed and analyzed in \citep{zhu2017high} but they remain out of the scope of this paper as they tackle the high-dimensionality issue.
+
+
+This paper \textit{introduces} and \textit{analyzes} a new class of methods which purpose is to combine both solutions proposed in the past years in a two-time-scale manner in order to optimize \eqref{eq:em_motivate} for current modern examples and settings. The main contributions of the paper are:
+\begin{itemize}
+
+\item We propose a two-time-scale method based on Stochastic Approximation (SA), to alleviate the problem of MC computation, and on Incremental updates, to scale to large datasets. We describe in details the edges of each level of our method based on variance reduction arguments. The derivation of such class of algorithms has two advantages. First, it combines two powerful ideas, commonly used separately, to tackle large scale and highly nonlinear learning tasks. Then, it gives a simple formulation as a \textit{scaled-gradient method}, as introduced in \citep{karimi2019global}, which makes the global analysis accessible.
+
+\item We also establish global (independent of the initialization) and finite-time (true at each iteration) upper bounds on a classical suboptimality condition in the nonconvex literature, \ie\ the second order moment of the gradient of the objective function. 
+
+
+\end{itemize}
+
+In Section~\ref{sec:tts} we give rigorous mathematical definitions of the various updates used for both incremental and Monte-Carlo EMs and we introduce the main class of new algorithms, based on two different dynamics, we are proposing to analyze and compare to baselines algorithms. Section~\ref{sec:mainanalysis} presents the main theoretical guarantees of this newly introduced two-time-scale class of algorithms. Results are given both in finite-time and in the nonconvex setting.
+Finally, we illustrate the advantages of our method in Section~\ref{sec:numerical} on two numerical experiments.
+
+
+
+\section{Two-Time-Scale Stochastic EM Algorithms}\label{sec:tts}
+We recall and formalize in this section the different methods found in the literature that aim to solving the large scale problem and the intractable expectation. 
+We then provide the general framework of our method to efficiently tackle the optimization problem \eqref{eq:em_motivate}.
 \subsection{Monte Carlo Integration and Stochastic Approximation} \label{sec:sEM}
-For complex and possibly nonlinear models, the expectation under the posterior distribution defined in \eqref{eq:definition-overline-bss} is not tractable. In that case, the first solution involves computing a Monte Carlo integration of that latter term. 
+As mentioned in the introduction, for complex and possibly nonlinear models, the expectation under the posterior distribution defined in \eqref{eq:definition-overline-bss} is not tractable. In that case, the first solution involves computing a Monte Carlo integration of that latter term. 
 For all $ i \in \inter$, draw for $m \in \llbracket 1, M \rrbracket$, samples $z_{i,m} \sim p(z_i|y_i;\theta)$ and compute the MC integration $\tilde{\bss}$ of the deterministic quantity $\overline{\bss}(\param)$:
 \beq\label{eq:mcstep}
 \textsf{MC-step}:~ \tilde{\bss} = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}, y_i)
@@ -216,7 +240,7 @@ The updates in \eqref{eq:twolevels} is said to have two timescales as the step s
   \eeq
   \FOR {$k=0,1,2,\dots, K$}
   \STATE Draw index $i_k \in \inter$ uniformly (and $j_k \in \inter$ for \FISAEM).
-     \STATE Compute $\hat{S}_i^{(k)}$ using the {\sf MC-step} \eqref{eq:mcstep},  for the drawn indices.
+     \STATE Compute $\hat{S}_{i_k}^{(k)}$ using the {\sf MC-step} \eqref{eq:mcstep},  for the drawn indices.
    \STATE Compute the surrogate sufficient statistics $\StocEstep^{(k+1)}$ using \eqref{eq:isaem} or \eqref{eq:vrsaem} or \eqref{eq:fisaem}.
    \STATE Compute $\hat{S}^{(k+1)}$ and $\hat{\bss}^{(k+1)}$ using respectively \eqref{eq:sestep} and \eqref{eq:rmstep}:
 \beq \label{eq:twolevels}
@@ -234,7 +258,7 @@ The updates in \eqref{eq:twolevels} is said to have two timescales as the step s
 
 
 
-\section{Global and Finite Time Analysis of the Scheme} \label{sec:main}
+\section{Global and Finite Time Analysis of the Scheme} \label{sec:mainanalysis}
 First, we consider the following minimization problem on the statistics space:
 \beq\label{eq:em_sspace}
 \min_{ {\bss} \in \Sset }~  V ( {\bss} ) \eqdef \overline\calL( \op(\bss) ) = \Pen (  \op(\bss) ) + \frac{1}{n} \sum_{i=1}^n {\cal L}_i (  \op(\bss) )
@@ -345,7 +369,7 @@ We now proceed by giving our main result regarding the global convergence of the
 \textcolor{red}{TO COMPLETE}
 
 
-\section{Numerical Examples}
+\section{Numerical Examples}\label{sec:numerical}
 \subsection{Gaussian Mixture Models}
 Given $n$ observations $\{y_i\}_{i=1}^n$, we want to fit a Gaussian Mixture Model (GMM) whose distribution is modeled as a Gaussian mixture of $M$ components, each with a unit variance. 
 Let $z_i \in \inter[M]$ be the latent labels of each component, the complete log-likelihood is defined as:
