@@ -9,10 +9,10 @@ source("utils/plots.R")
 theme_set(theme_bw())
 options(digits = 2)
 
-n <- 1000
+n <- 10000
 nb.epochs <- 3
 K <- n*nb.epochs
-nsim=10
+nsim=20
 
 weight<-c(0.2, 0.8)
 mean <- 0.5
@@ -80,12 +80,14 @@ df.isaemvr <- vector("list", length=nsim)
 disaemsaga <- NULL
 df.isaemsaga <- vector("list", length=nsim)
 
+
 Kem <- nbr*K/n
 kiter = 1:K
-rho.vr = 0.01
-rho.saga = 0.01
 
-nb.chains <- 30
+rho.vr = 1/(n)**(2/3)
+rho.saga = 1/(n)**(2/3)
+
+nb.chains <- 40
 
 
 for (j in (1:nsim))
@@ -114,7 +116,7 @@ for (j in (1:nsim))
   df.iemseq[[j]] <- df
   print('iemseq done')
 
-  df <- mixt.saem(x[,j],theta0, nb.epochs, K1=Kem/2, alpha=0.6, M=1)
+  df <- mixt.saem(x[1:100,j],theta0, nb.epochs, K1=Kem/2, alpha=0.6, M=1)
   df[,2:7] <- (df[,2:7] - ML[,2:7])^2
   df$rep <- j
   dsaem <- rbind(dsaem,df)
@@ -122,7 +124,7 @@ for (j in (1:nsim))
   df.saem[[j]] <- df
   print('saem done')
 
-  df <- mixt.isaem(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr)
+  df <- mixt.isaem(x[1:1000,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr)
   df[,2:7] <- (df[,2:7] - ML[,2:7])^2
   df$rep <- j
   disaem <- rbind(disaem,df)
@@ -130,7 +132,7 @@ for (j in (1:nsim))
   df.isaem[[j]] <- df
   print('isaem done')
 
-  df <- mixt.isaemvr(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr, rho.vr)
+  df <- mixt.isaemvr(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0, M=nb.chains,nbr, rho.vr)
   df[,2:7] <- (df[,2:7] - ML[,2:7])^2
   df$rep <- j
   disaemvr <- rbind(disaemvr,df)
@@ -139,7 +141,7 @@ for (j in (1:nsim))
   print('isaemvr done')
 
 
-  df <- mixt.isaemsaga(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr, rho.saga)
+  df <- mixt.isaemsaga(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0, M=nb.chains,nbr, rho.saga)
   df[,2:7] <- (df[,2:7] - ML[,2:7])^2
   df$rep <- j
   disaemsaga <- rbind(disaemsaga,df)
@@ -269,19 +271,19 @@ variance <- rbind(isaem[,c(1,4,8)],
                   em[,c(1,4,8)],
                   saem[,c(1,4,8)])
 
-variance <- rbind(isaem[,c(1,4,8)],
-                  isaemvr[,c(1,4,8)],
-                  iemseq[,c(1,4,8)],
-                  em[,c(1,4,8)],
-                  saem[,c(1,4,8)])
+# variance <- rbind(isaem[,c(1,4,8)],
+#                   isaemvr[,c(1,4,8)],
+#                   iemseq[,c(1,4,8)],
+#                   em[,c(1,4,8)],
+#                   saem[,c(1,4,8)])
 
 
 graphConvMC2_new(variance, title="",legend=TRUE)
 
 
 
-# save.image("gmm.RData")
-# write.csv(variance, file = "notebooks/singlerun.csv")
+# save.image("gmm_tts.RData")
+# write.csv(variance, file = "notebooks/runtts.csv")
 
 
 
