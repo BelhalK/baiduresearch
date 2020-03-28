@@ -201,7 +201,7 @@ $\widehat{e}(\param ; \{ \op_i \}_{i=1}^n )$ is $L$-smooth for all $\param \in \
 %$\widehat{\cal L}_i' (\op; \op, {\bm d} ) = {\cal L}_i' ( \op, {\bm d} )$ for all ${\bm d}$ such that $\op + t {\bm d} \in \Param$ for some $t > 0$ and therefore $\sur{i}{\param}{\op}$ satisfies the definitions in \citep[Definition 2.2]{mairal2015miso}.
 
 \begin{wrapfigure}[15]{r}{.5\textwidth}
-\begin{minipage}{0.5\textwidth}\vspace{-.35cm}
+\begin{minipage}{0.5\textwidth}\vspace{-.7cm}
 \begin{algorithm}[H]
 \algsetup{indent=0.25em}
 \begin{algorithmic}[1]
@@ -223,8 +223,9 @@ $\tafctdet{i}{0}{ \param } \eqdef \sur{i}{\param}{\hp{0}},~i \in \inter$.
 \caption{MISO method \citep{mairal2015miso}}
 \label{alg:miso}
         \end{algorithm}
-\end{minipage}\vspace{-.3cm}
+\end{minipage}\vspace{.5cm}
 \end{wrapfigure}
+
 The inequality \eqref{eq:lowerbd} implies
 $\sur{i}{\param}{\op} \geq {\cal L}_i ( \param ) > - \infty$ for any $\param \in \Param$.
 The MISO method is an incremental version of the MM method, as summarized by \Cref{alg:miso}. As seen in the pseudo code, the MISO method maintains an iteratively updated set of surrogate upper-bound functions $\{ \tafctdet{i}{k}{\param} \}_{i=1}^n$ and updates the iterate through minimizing the average of the surrogate functions.
@@ -317,35 +318,59 @@ We can apply the MISSO method following the above specification of $\rsur{i}{\pa
 %For example, the incremental EM method \citep{neal} can be derived as a special case of the MISO method. The latter requires the stochastic surrogate function \eqref{eq:integralsurrogate} to be exactly evaluated for each $\op \in \Param$ (corresponding to the `expectation' step), which may be infeasible for general distributions.
 %In this sense, the MISSO method is similar to an incremental version of the Monte-Carlo EM method \citep{wei}.
 
-\paragraph{Example 2: Variational Inference} 
-\textcolor{red}{TO COMPLETE VI EXAMPLE}
+\paragraph{Example 2: Variational Inference} Let $((x_i,y_i),  i \in \inter)$ be i.i.d.~input-output pairs and $w \in \Wset[] \subseteq \rset^{d}$ be a latent variable. When conditioned on the input $x = (x_i, i \in \inter)$, the joint distribution of $y = (y_i, i \in \inter)$ and $w$ is given by:
+\begin{equation}\label{eq:vi} \textstyle
+    p(y,w | x) = \prior(w)\prod_{i=1}^{n}{p(y_i | x_i, w)} \eqsp.
+\end{equation}
+Our goal is to compute the posterior distribution $p(w|y,x)$.
+In most cases, the posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. The variational inference (VI) problem \citep{blei2017vi} boils down to minimizing the KL divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$, as follows:
+\begin{equation} \label{eq:VI}  
+\min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp.
+\end{equation}
+Using \eqref{eq:vi}, we decompose ${\cal L}(\param) = n^{-1} \sum_{i=1}^{n}{{\cal L}_i(\param)} + {\rm const}.$ where:
+\begin{equation}\label{eq:variationalobjective}
+{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big] = r_i(\param) + d(\param) \eqsp.
+\end{equation}
+Directly optimizing the finite sum objective function in \eqref{eq:VI} can be difficult.
+First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
+Second, for some complex models, the expectations in \eqref{eq:variationalobjective} can be intractable even if we assume a simple parametric model for $q(w; \param)$.
+Assume that ${\cal L}_i$ is $\rm L$-smooth, \ie ${\cal L}_i$ is differentiable on $\Param$ and its gradient $\nabla {\cal L}_i$ is $\rm L$-Lipschitz. We apply the MISSO method with a quadratic surrogate function defined as:
+\begin{equation} \label{eq:quad_sur}
+\sur{i}{\param}{\op} \eqdef {\cal L}_i(\op) + \pscal{ \nabla_{\param} {\cal L}_i(\op)} { \param - \op} +\frac{\rm L}{2}\|\op -\param \|^2 \eqsp.
+\end{equation}
+It is easily checked that $\sur{i}{\param}{\op}$ satisfies S\ref{ass:sur}, S\ref{ass:diff}.
+
+\textcolor{red}{TO COMPLETE VI EXAMPLE with gradient computation}
+
+%To compute the gradient $\nabla {\cal L}_i(\op)$, we apply the re-parametrization technique suggested in \citep{paisley2013,kingma, blundell2015weight}.
+%Let $t: \rset^d \times \Param \mapsto \rset^d$ be a differentiable function \wrt $\param \in \Param$ which is designed such that the law of $w = t( z, \op )$, where $z \sim \mathcal{N}_d(0,\Id)$, is $q(\cdot, \op )$.
+%By \citep[Proposition~1]{blundell2015weight}, the gradient of $-r_i(\cdot)$ in \eqref{eq:variationalobjective} is:
+%\beq \label{eq:vi_grad}
+%\nabla_{\param} \EE_{ q( w; \op )} \big[\log p(y_i| x_i, w)\big] =  \EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] \eqsp,
+%\eeq
+%where for each $z \in \mathbb{R}^d$, $\jacob{\param}{t}{ z, \op }$ is the Jacobian of the function $t(z, \cdot)$ with respect to $\param$ evaluated at $\op$.
+%%Consequently, we have the identity:
+%%\beq\label{eq:gradvi}
+%%\nabla {\cal L}_i(\op) = -\EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] + \grd d( \op )
+%%\eeq
+%In addition, for most cases, the term $\grd d( \op )$ can be evaluated in closed form.
+%% --- e.g., if we take $q(w; \param ) \sim {\cal N}_d( \mu, \sigma^2 \Id)$ such that $\param = (\mu , \sigma^2) \in \Param \eqdef \mathbb{R}^d \times \mathbb{R}^{*}_{+}$ and $\prior(w) \sim {\cal N}_d( {\bm 0}, \Id)$, then we have
+%%$\grd d( \op ) = \frac{1}{n} (\bar{\mu},  \frac{d}{2}-\frac{1}{\overline{\sigma^2}} )$.
+%\begin{align}\label{pairvi}
+%\rsur{i}{\param}{\op}{z} \eqdef & \pscal{ \grd_{\param} d(\op) - \jacob{\param}{t}{ z,\op}\nabla_w \log p(y_i | x_i, w)\big|_{w = t( z, \op )} } { \param - \op} +\frac{L}{2}\| \param - \op\|^2 \eqsp.
+%\end{align}
+%Finally, using \eqref{eq:quad_sur} and \eqref{pairvi}, the surrogate function \eqref{eq:ssur} is given by $\ssur{i}{\param}{\op}{ \{ z_m \}_{m=1}^{M}} \eqdef M^{-1} \sum_{m=1}^{M} \rsur{i}{\param}{\op}{z_m}$
+%where $\{z_m\}_{m=1}^M$ is an i.i.d sample from $\mathcal{N}(0,\Id)$.
+%
+
 
 \section{Convergence Analysis}\label{sec:analysis}
 We provide non-asymptotic convergence bound for the MISSO method.
 \begin{assumption} \label{ass:lips}
 For all $i \in \inter$, $\op \in \Param$, $z_i \in \Zset$, the measurable function $\rsur{i}{\param}{\op}{z_i}$ is convex in $\param$ and is lower bounded.
 \end{assumption}
-%We are particularly interested in the \emph{constrained optimization} setting where $\Param$ is a bounded set.
-%To this end, we control the supremum norm of the  of the above approximation as:
-
-%\textcolor{red}{
-%\begin{assumption}\label{controlapprox}
-%%For all $i \in \inter$, $\op \in \Param$, t
-%For the samples $\{z_{i,m}\}_{m=1}^{M}$,
-%there exists finite constants $C_{\sf r}$ and $C_{\sf gr}$ such that
-%\beq
-%C_{\sf r} \eqdef \sup \limits_{\op \in \Param} \sup \limits_{M >0} \frac{1}{\sqrt{M}} \EE_{\op}\left[ \sup \limits_{\param \in \Param} \left| \sum_{m=1}^{M}{ \left\{ r_i (\param ; \op, z_{i,m})  - \sur{i}{\param}{\op} \right\} } \right| \right]
-%\eeq
-%\beq
-%C_{\sf gr} \eqdef \sup \limits_{\op \in \Param} \sup \limits_{M >0} \sqrt{M} \EE_{\op}\left[ \sup \limits_{\param \in \Param} \left| \frac{1}{{M}} \sum_{m=1}^{M}{ \frac{
-% \widehat{\cal L}_i'( \param , \param - \op; \op ) - r_i' (\param, \param - \op ; \op,  z_{i,m} ) }{\| \op - \param\|} }\right|^2 \right]
-%\eeq
-%for all $i \in \inter$,  and
-%%scalars satisfy $C_i( r_i ( \cdot ; \op ) ) \leq C_{\sf r}$ and
-%%$C_i( \grd r_i( \cdot; \op ) ) \leq C_{\sf gr}$.
-%we denoted by $\mathbb{E}_{\op} [\cdot]$ the expectation \wrt a Markov chain $\{z_{i,m}\}_{m=1}^{M}$ with  initial distribution $\xi_{i} (\cdot; \op)$, transition kernel $P_{i,\op}$, and stationary distribution $p_{i}(\cdot; \op)$.
-%\end{assumption}
-%}
+We are particularly interested in the \emph{constrained optimization} setting where $\Param$ is a bounded set.
+To this end, we control the supremum norm of the  of the above approximation as:
 
 \begin{assumption}\label{controlapprox}
 For all $i \in \inter$, $(\theta,\op) \in \Param^2$, $z_i \in \Zset$ we assume the existence of a majorizing function $m_{\sf r}: \Zset \to \rset$ and a constant $C_{\sf r} < \infty$ such that:
