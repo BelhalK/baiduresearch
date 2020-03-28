@@ -14,9 +14,9 @@ source("likelihood_saem.R")
 theme_set(theme_bw())
 options(digits = 2)
 
-data(digits)
+data(digits) #import USPS digits dataabse
 
-#Random matrix plotting
+#Random matrix plotting (16X16) like USPS database
 image(matrix(rexp(256, rate=.1), ncol=16))
 
 N <- 5  # number of images
