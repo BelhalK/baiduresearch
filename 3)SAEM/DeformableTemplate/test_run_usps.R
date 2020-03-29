@@ -30,8 +30,23 @@ for (i in 1:N){
 # image(t(sample.digit)[,nrow(sample.digit):1])
 
 
+template.model<-function(z, xi,id,xidep) { 
+  zi<-psi[id,]
+  xii <- xi[i,]
+  
+  deformation <- kernel.deformation %*% zi
+  template <- kernel.template %*% xii
+
+  ypred<- template
+
+  return(ypred)
+}
+
+
 #Hyperparam
-p <- ncol(sample.digit)
+p <- ncol(sample.digit) #dimension of the input
+k_p <- 5 #dimension of the parameter of the template
+k_g <- 5 #dimension of the random effects
 Gamma.star <- diag(rep(1,p)) # covariance
 
 

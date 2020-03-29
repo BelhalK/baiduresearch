@@ -53,72 +53,41 @@ miss.saem <- function(X.obs,y,pos_var=1:ncol(X.obs),maxruns=500,tol_em=1e-7,nmcm
   set.seed(seed)
 
   #judge
-  if (class(X.obs) == "data.frame") {
-    X.obs <- as.matrix(X.obs)
-  }
-  if (sum(sapply(X.obs, is.numeric)) < ncol(X.obs)) {
-    stop("Error: the variables should be numeric.")
-  }
-  if (sum(y==1) +  sum(y==0) < nrow(X.obs)) {
-    stop("Error: y must be coded by 0 or 1, and there is no missing data in y.")
-  }
-
-  if (sum(pos_var %in% 1:ncol(X.obs)) < length(pos_var))  {
-    stop("Error: index of selected variables must be in the range of covariates.")
-  }
-
-  if (length(unique(pos_var)) != length(pos_var)){
-    stop("Error: index of selected variables must not be repeated.")
-  }
-
+  X.obs <- as.matrix(X.obs)
   p=ncol(X.obs)
-
-  #delete rows completely missing
-  if(any(apply(is.na(X.obs),1,sum)==p)){
-    i_allNA=which(apply(is.na(X.obs),1,sum)==p)
-    X.obs = X.obs[-i_allNA,]
-    y = y[-i_allNA]
-  }
-  if(any((is.na(y))==TRUE)){
-    i_YNA=which(is.na(y)==TRUE)
-    X.obs = X.obs[-i_YNA,]
-    y = y[-i_YNA]
-  }
   n=length(y)
 
 
-  rindic = as.matrix(is.na(X.obs))
-  if(sum(rindic)>0){
-    whichcolmissing = (1:ncol(rindic))[apply(rindic,2,sum)>0]
-    missingcols = length(whichcolmissing)
-  }
-  if(sum(rindic)==0){missingcols=0}
-
-
   ptm <- Sys.time()
-  if(missingcols>0){
-    k=0
-    cstop=0.1
-    seqll = matrix(NA,nrow=(maxruns+1),ncol=1)
-    seqmu = matrix(NA,nrow=ncol(X.obs),ncol=(maxruns+1))
-    individualbeta = matrix(NA,nrow=ncol(X.obs),ncol=nrow(X.obs))
-    individualDi = matrix(NA,nrow=ncol(X.obs),ncol=nrow(X.obs))
-    seqbeta = matrix(NA,nrow=ncol(X.obs)+1,ncol=(maxruns+1))
-    seqbeta_avg = matrix(NA,nrow=ncol(X.obs)+1,ncol=(maxruns+1))
+  template = matrix(NA,nrow=(kp),ncol=1)
+
+  # if(missingcols>0){
+  #   k=0
+  #   cstop=0.1
+  #   seqll = matrix(NA,nrow=(maxruns+1),ncol=1)
+  #   seqmu = matrix(NA,nrow=ncol(X.obs),ncol=(maxruns+1))
+  #   individualbeta = matrix(NA,nrow=ncol(X.obs),ncol=nrow(X.obs))
+  #   individualDi = matrix(NA,nrow=ncol(X.obs),ncol=nrow(X.obs))
+  #   seqbeta = matrix(NA,nrow=ncol(X.obs)+1,ncol=(maxruns+1))
+  #   seqbeta_avg = matrix(NA,nrow=ncol(X.obs)+1,ncol=(maxruns+1))
 
 
-    X.mean = X.obs
-    for(i in 1:ncol(X.mean)){
-      X.mean[is.na(X.mean[,i]), i] <- mean(X.mean[,i], na.rm = TRUE)
-    }
+  #   X.mean = X.obs
+  #   for(i in 1:ncol(X.mean)){
+  #     X.mean[is.na(X.mean[,i]), i] <- mean(X.mean[,i], na.rm = TRUE)
+  #   }
     X.sim <- X.mean
 
 
     mu = apply(X.mean,2,mean)
     Sigma = var(X.mean)*(n-1)/n
     beta= rep(0,p+1)
-    beta[c(1,pos_var+1)]= glm(y~ X.mean[,pos_var],family=binomial(link='logit'))$coef
 
+
+    suffStat<-list(statphi1=0,statphi2=0,statphi3=0,statrese=0)
+    phi<-array(data=0,dim=c(Dargs$N, Uargs$nb.parameters, saemix.options$nb.chains))
+
+    structural.model<-template.model
 
     #INITIALIZE THE INDIVIDUAL LOGIT PARAMS AND INDIVIDUAL GRADIENTS
     H = X.sim[1,]%*%t(X.sim[1,])
