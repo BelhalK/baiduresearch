@@ -49,216 +49,96 @@
 #' print(list.saem$beta)
 #' @export
 
-miss.saem <- function(X.obs,y,pos_var=1:ncol(X.obs),maxruns=500,tol_em=1e-7,nmcmc=2,tau=1,k1=50, seed=200, print_iter=TRUE, var_cal=FALSE, ll_obs_cal=FALSE, algo = "saem", batchsize=1) {
-  set.seed(seed)
+miss.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,nmcmc=2,tau=1,k1=50, seed=200, print_iter=TRUE, var_cal=FALSE, ll_obs_cal=FALSE, algo = "saem", batchsize=1) {
+    set.seed(seed)
 
-  #judge
-  X.obs <- as.matrix(X.obs)
-  p=ncol(X.obs)
-  n=length(y)
+    #judge
+    images <- as.matrix(X.obs)
+    p=sqrt(nrow(images)) #dimension of the input
+    n=ncol(images) #number of images in the dataset (n)
+    ptm <- Sys.time()
+    
+    cov.z.0 <- 1
+    xi.0 <- 1
+    sigma.0 <- 1
 
-
-  ptm <- Sys.time()
-  template = matrix(NA,nrow=(kp),ncol=1)
-
-  # if(missingcols>0){
-  #   k=0
-  #   cstop=0.1
-  #   seqll = matrix(NA,nrow=(maxruns+1),ncol=1)
-  #   seqmu = matrix(NA,nrow=ncol(X.obs),ncol=(maxruns+1))
-  #   individualbeta = matrix(NA,nrow=ncol(X.obs),ncol=nrow(X.obs))
-  #   individualDi = matrix(NA,nrow=ncol(X.obs),ncol=nrow(X.obs))
-  #   seqbeta = matrix(NA,nrow=ncol(X.obs)+1,ncol=(maxruns+1))
-  #   seqbeta_avg = matrix(NA,nrow=ncol(X.obs)+1,ncol=(maxruns+1))
-
-
-  #   X.mean = X.obs
-  #   for(i in 1:ncol(X.mean)){
-  #     X.mean[is.na(X.mean[,i]), i] <- mean(X.mean[,i], na.rm = TRUE)
-  #   }
-    X.sim <- X.mean
-
-
-    mu = apply(X.mean,2,mean)
-    Sigma = var(X.mean)*(n-1)/n
-    beta= rep(0,p+1)
-
-
-    suffStat<-list(statphi1=0,statphi2=0,statphi3=0,statrese=0)
-    phi<-array(data=0,dim=c(Dargs$N, Uargs$nb.parameters, saemix.options$nb.chains))
-
-    structural.model<-template.model
-
-    #INITIALIZE THE INDIVIDUAL LOGIT PARAMS AND INDIVIDUAL GRADIENTS
-    H = X.sim[1,]%*%t(X.sim[1,])
-    epsilon = 1   #to make sure the Hessian is invertible
-    for(i in 1:nrow(X.obs)){
-      S = 1/(1+exp(-beta[pos_var]%*%X.sim[i,]))
-      individualDi[,i] = (y[i] - S)[1]*X.sim[i,]
-      individualbeta[,i] <- beta[pos_var]
+    cov <- diag(rep(cov.z.0,kg)) # covariance of the random effects
+    Gamma <-cov
+    for (k in 2:maxruns){
+      Gamma <-list(Gamma, cov) #list of all estimated cov of z
     }
+    xi = matrix(xi.0,nrow=kp,ncol=(maxruns+1)) #template fixed parameters (1 X kp)
+    sigma = matrix(sigma.0,nrow=1,ncol=(maxruns+1))
+
+    # # Normal proposal covariance
+    # omega.eta <- diag(rep(1,kg))
+    # chol.omega<-try(chol(omega.eta))
+    # somega<-solve(omega.eta)
+
+    #random effects and proposal initialisation 
+    chol.omega.z<-try(chol(Gamma[[1]]))
+    z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega.z
+    z <- z1 #random effects (2 X kg)
+    for (indiv in 2:n){
+      chol.omega.z<-try(chol(Gamma[[i]]))
+      z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega.z
+      z <- list(z, z1)
+    }
+    zproposal <- z #initialise proposal random effects
+
+    # landmarks
+    landmarks.p = matrix(rnorm(2*kp),ncol=kp) #of template
+    landmarks.g = matrix(rnorm(2*kg),ncol=kg) #of deformation
+
+    suffStat<-list(S1=0,S2=0,S3=0)
+    
+    
+    compute.LLy<-function(z,xi, sample.digit,p, sigma) {
+      fpred<-template.model(z, xi, indiv, p)
+      DYF<-0.5*((sample.digit-fpred)/sigma)**2+log(gpred)
+      U<-colSums(DYF)
+      return(U)
+    }
+
+
+    nmcmc = 3
 
     # while ((cstop>tol_em)*(k<maxruns)|(k<20)){
     for (k in 1:maxruns) {
-      old.X.sim = X.sim
-      k = k+1
-      beta.old = beta
 
-      if(k <k1){gamma <- 1}else{gamma <- 1/(k-(k1-1))^tau}
+      #E-step
+      for (indiv in 1:n){
+        sample.digit = matrix(images[,i], ncol=16,byrow=FALSE)  
+        cov <- Gamma[[k]]
+        chol.omega<-try(chol(cov))
+        somega<-solve(cov)
+        U.z<-0.5*rowSums(z[[indiv]]*(z[[indiv]]%*%somega))
+        U.y<-compute.LLy(z[[indiv]], sample.digit,p, sigma)
 
-      S.inv <- solve(Sigma)
-
-      if (algo == 'imcem'){
-        index <- sample(1:n, batchsize)
-      } else {
-        index <- 1:n
-      }
-
-      nb.sim <-k
-
-      for (i in index) {
-        jna <- which(is.na(X.obs[i,]))
-        njna <- length(jna)
-        if (njna>0) {
-          xi <- X.sim[i,]
-          Oi <- solve(S.inv[jna,jna])
-          mi <- mu[jna]
-          lobs <- beta[1]
-          if (njna<p) {
-            jobs <- setdiff(1:p,jna)
-            mi <- mi - (xi[jobs] - mu[jobs])%*%S.inv[jobs,jna]%*%Oi
-            lobs <- lobs + sum(xi[jobs]*beta[jobs+1])
+        for(u in 1:nmcmc) { 
+          zproposal[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
+          Uc.z<-0.5*rowSums(zproposal[[indiv]]*(zproposal[[indiv]]%*%somega))
+          Uc.y<-compute.LLy(zproposal[[indiv]],xi[,k], sample.digit,p, sigma)
+          deltu<-Uc.y-U.y+Uc.z-U.z
+          if (deltu<(-1)*log(runif(1))){
+            z[[indiv]] = zproposal[[indiv]]
           }
-
-          cobs <- exp(lobs)
-          if(cobs==0){cobs=.Machine$double.xmin}
-          if(cobs==Inf){cobs=.Machine$double.xmax}
-
-          # xina <- xi[jna]
-          xina <- rep(xi[jna], nb.sim)
-          betana <- beta[jna+1]
-          for (m in (1:nmcmc)) {
-            # xina.c <- mi + rnorm(njna)%*%chol(Oi)
-            xina.c <- rep(mi, nb.sim) + matrix(rnorm(nb.sim*njna), ncol=njna)%*%chol(Oi)
-            if (y[i]==1)
-              alpha <- (1+exp(-xina*betana)/cobs)/(1+exp(-xina.c*betana)/cobs)
-            else
-              alpha <- (1+exp(xina*betana)/cobs)/(1+exp(xina.c*betana)/cobs)
-
-            ind<-which(runif(nb.sim) < alpha)
-            xina[ind] <- xina.c[ind]
-          }
-          # X.sim[i,jna] <- xina
-          X.sim[i,jna] <- mean(xina)
-        }
-
-        #Compute and Store the individual Gradient vector
-        if (algo == 'imcem'){
-          S = 1/(1+exp(-beta[pos_var]%*%X.sim[i,]))
-          individualDi[,i] = (y[i] - S)[1]*X.sim[i,]
-          H = X.sim[i,]%*%t(X.sim[i,])
-          inv.H = solve(H+epsilon)   #non diagonal matrix, inverse of Hessian
         }
       }
 
-      
-      #Incremental MCEM
-      if (algo == "imcem"){
+      #M-Step
+      ###update sufficient statistics
+      suffStat$S1 = 
+      suffStat$S2 = 
+      suffStat$S3 = 
 
-        beta_new= rep(0,p+1)
-        ### Quasi Newton step with incremental updates of gradient term and Approximated HESSIAN
-        beta_new[c(1)]= glm(y~ X.sim[,pos_var],family=binomial(link='logit'))$coef[1]
-        
-        sum.beta.i = rowMeans(individualbeta)
-        sum.Di = rowMeans(individualDi)
-        
-        #QN step (SAG like)
-        beta_new[c(pos_var+1)] <- sum.beta.i - inv.H%*%sum.Di
-
-        beta <- beta_new
-        cstop = sum((beta-beta.old)^2)
-
-        mu <- colMeans(X.sim)
-        Sigma <- cov(X.sim)
-
-        #Store the individual parameters
-        for (i in index) {
-          individualbeta[,i] <- beta[c(pos_var+1)]
-        }
-      } else if (algo == "mcem"){
-
-        beta_new= rep(0,p+1)
-        #Quasi newton step on with full gradient and Hessian. Done inside GLM
-        beta_new[c(1,pos_var+1)]= glm(y~ X.sim[,pos_var],family=binomial(link='logit'))$coef
-
-        beta <- beta_new
-        cstop = sum((beta-beta.old)^2)
-
-        mu <- colMeans(X.sim)
-        Sigma <- cov(X.sim)  
-
-      } else if (algo == "saem"){
-
-        beta_new= rep(0,p+1)
-        beta_new[c(1,pos_var+1)]= glm(y~ X.sim[,pos_var],family=binomial(link='logit'))$coef
-
-        #Approached SAEM step (moving average on the parameters for simplicity)
-        beta <- (1-gamma)*beta + gamma*beta_new
-        cstop = sum((beta-beta.old)^2)
-
-        mu <- (1-gamma)*mu + gamma*colMeans(X.sim)
-        Sigma <- (1-gamma)*Sigma + gamma*cov(X.sim) 
-      }
-
-      seqbeta[,k]=beta.old
-      seqmu[,k]=mu
-
-      if(k==1){
-        seqbeta_avg[,k]=beta.old
-      }else{
-        seqbeta_avg[,k]= 1/k*rowSums(seqbeta[,1:k])
-      }
-
-      if(print_iter==TRUE & k %% 10 == 0){
-        cat(sprintf('iteration = %i ', k))
-        cat(sprintf('beta ='),beta,'\n')
-        cat(sprintf('Distance from last iteration ='),cstop,'\n')
-      }
-      if(ll_obs_cal==TRUE){
-        ll= likelihood_saem(beta,mu,Sigma,y,X.obs,rindic,whichcolmissing,mc.size=1000)
-        seqll[k] = ll
-      }
+      ###update global parameters
+      Gamma[[k]] = suffStat$S3/n
+      xi[,k] = suffStat$S1/suffStat$S2
+      sigma[1,k] = 
     }
-    var_obs = ll = std_obs =NULL
-    if(var_cal==TRUE){
-      var_obs = louis_lr_saem(beta,mu,Sigma,y,X.obs,pos_var,rindic,whichcolmissing,mc.size=1000)
-      std_obs <- sqrt(diag(var_obs))
-    }
-    # if(ll_obs_cal==TRUE){
-    #   ll= likelihood_saem(beta,mu,Sigma,y,X.obs,rindic,whichcolmissing,mc.size=1000)
-    #   seqll[k] = ll
-    # }
-  }
-  if(missingcols==0){
-    X.obs = matrix(X.obs,nrow=n)
-    data.complete <- data.frame(y=y,X.obs)
-    model.complete <- glm(y ~.,family=binomial(link='logit'),data=data.complete)
-    mu = apply(X.obs,2,mean)
-    Sigma = var(X.obs)*(n-1)/n
-    beta <- model.complete$coefficients
-    var_obs = ll = ll1 =ll2= std_obs =seqbeta_avg= seqbeta=NULL
-    if(var_cal==TRUE){
-      P <- predict(model.complete, type = "response")
-      W <- diag(P*(1-P))
-      X <- model.matrix(model.complete)
 
-      var_obs <- solve(t(X)%*%W%*%X)
-      std_obs <- sqrt(diag(var_obs))
-    }
-    if(ll_obs_cal==TRUE){
-      ll = likelihood_saem(beta,mu,Sigma,y,X.obs,rindic,whichcolmissing,mc.size=1000)
-    }
-  }
-  time_run=Sys.time() - ptm
-  return(list(mu=seqmu, sig2=Sigma, beta=beta,time_run=time_run,seqbeta=seqbeta,seqbeta_avg=seqbeta_avg,ll=seqll,var_obs=var_obs,std_obs=std_obs))
+
+
+  return(list(seqgamma=Gamma, seqxi = xi, seqsigma = sigma))
 }

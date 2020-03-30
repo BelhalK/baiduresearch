@@ -40,44 +40,33 @@ Gamma.star <- diag(rep(1,kg)) # covariance
 
 
 
-
-phi <- as.list(numeric(16^2))
-dim(phi) <- c(16,16)
-
-# Assignment per element:
-phi[[1,1]] <- 1:4
-phi[[1,2]] <- 1:10
-phi[[2,1]] <- "phi"
-phi[[2,2]] <- c(1,2)
+# #Random EFFECTS
+# chol.omega.z<-try(chol(Gamma.star))
+# z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega.z
+# z <- list(z1, z1) #random effects (2 X kg)
 
 
-chol.omega.z<-try(chol(Gamma.star))
-z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega.z
-z <- list(z1, z1) #random effects (2 X kg)
-
-xi = matrix(NA,nrow=kp,ncol=1) #template fixed parameters (1 X kp)
-
-landmarks.p = matrix(rnorm(2*kp),ncol=kp)
-landmarks.g = matrix(rnorm(2*kg),ncol=kg)
+# landmarks.p = matrix(rnorm(2*kp),ncol=kp)
+# landmarks.g = matrix(rnorm(2*kg),ncol=kg)
 
 
 ##TEST OUTSIDE THE FUNCTION 
-m = 2
-j=3
-x.ind = 2*m/p-1
-y.ind = 2*j/p-1
-rep.coord = matrix(c(x.ind,y.ind), nrow=1)
-coord <- t(apply(rep.coord, 2, rep, kg))
-diff = coord - landmarks.g
+# m = 2
+# j=3
+# x.ind = 2*m/p-1
+# y.ind = 2*j/p-1
+# rep.coord = matrix(c(x.ind,y.ind), nrow=1)
+# coord <- t(apply(rep.coord, 2, rep, kg))
+# diff = coord - landmarks.g
 
-kernel.deformation = exp(-(coord - landmarks.g)^2/2)
-colSums(kernel.deformation)%*%t(z[[1]])
-kernel.deformation
+# kernel.deformation = exp(-(coord - landmarks.g)^2/2)
+# colSums(kernel.deformation)%*%t(z[[1]])
+# kernel.deformation
 ##TEST OUTSIDE THE FUNCTION 
 
 
 
-template.model<-function(image, z, xi,id,xidep,p) { 
+template.model<-function(z, xi,id,p) { 
   zi<-z[[id]]
   
   kernel.g = matrix(NA,nrow=1,ncol=p)
@@ -94,10 +83,10 @@ template.model<-function(image, z, xi,id,xidep,p) {
   		x.ind = 2*m/p-1
   		y.ind = 2*j/p-1
   		rep.coord = matrix(c(x.ind,y.ind), nrow=1)
-		coord <- t(apply(rep.coord, 2, rep, kg))
+	   	coord <- t(apply(rep.coord, 2, rep, kg))
   		
   		kernel.deformation = exp(-(coord - landmarks.g)^2/(2*sigma.g))
-		phi[[i,j]]= colSums(kernel.deformation)%*%t(zi)
+	   	phi[[i,j]]= colSums(kernel.deformation)%*%t(zi)
   		
   		coord.template = coord - phi[[i,j]]
   		kernel.template = exp(-(coord.template - landmarks.p)^2/(2*sigma.p))
@@ -118,7 +107,7 @@ nb.epochs <-10
 nb.iter <- N/batchsize*nb.epochs
 
 # SAEM
-fit.params = miss.saem(images,template.model,maxruns=nb.iter,k1=0,ll_obs_cal=FALSE, algo = "saem")
+fit.params = miss.saem(images,kp,kg, template.model,maxruns=nb.iter,k1=0,ll_obs_cal=FALSE, algo = "saem")
 
 
 #MCEM
