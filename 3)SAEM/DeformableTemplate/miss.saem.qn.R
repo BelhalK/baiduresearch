@@ -49,24 +49,24 @@
 #' print(list.saem$beta)
 #' @export
 
-miss.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,nmcmc=2,tau=1,k1=50, seed=200, print_iter=TRUE, var_cal=FALSE, ll_obs_cal=FALSE, algo = "saem", batchsize=1) {
+miss.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE, var_cal=FALSE, ll_obs_cal=FALSE, algo = "saem", batchsize=1) {
     set.seed(seed)
 
-    #judge
     images <- as.matrix(X.obs)
     p=sqrt(nrow(images)) #dimension of the input
     n=ncol(images) #number of images in the dataset (n)
     ptm <- Sys.time()
-    
+
     cov.z.0 <- 1
     xi.0 <- 1
     sigma.0 <- 1
 
     cov <- diag(rep(cov.z.0,kg)) # covariance of the random effects
-    Gamma <-cov
-    for (k in 2:maxruns){
-      Gamma <-list(Gamma, cov) #list of all estimated cov of z
+    Gamma <-list(cov,cov)
+    for (k in 1:maxruns){
+      Gamma[[k]] <-cov #list of all estimated cov of z
     }
+
     xi = matrix(xi.0,nrow=kp,ncol=(maxruns+1)) #template fixed parameters (1 X kp)
     sigma = matrix(sigma.0,nrow=1,ncol=(maxruns+1))
 
@@ -78,12 +78,14 @@ miss.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,nmcmc=2
     #random effects and proposal initialisation 
     chol.omega.z<-try(chol(Gamma[[1]]))
     z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega.z
-    z <- z1 #random effects (2 X kg)
+    z <- list(z1,z1) #random effects (2 X kg)
+
     for (indiv in 2:n){
       chol.omega.z<-try(chol(Gamma[[i]]))
       z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega.z
-      z <- list(z, z1)
+      z[[indiv]] <- z1
     }
+
     zproposal <- z #initialise proposal random effects
 
     # landmarks
@@ -94,14 +96,17 @@ miss.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,nmcmc=2
     
     
     compute.LLy<-function(z,xi, sample.digit,p, sigma) {
-      fpred<-template.model(z, xi, indiv, p)
-      DYF<-0.5*((sample.digit-fpred)/sigma)**2+log(gpred)
-      U<-colSums(DYF)
+      fpred<-template.model(z, xi, p,landmarks.p,landmarks.g) #prediction of image
+
+      sigma.cov <- diag(rep(sigma,p))
+      inv.sigma<-solve(sigma.cov)
+      
+      DYF<-0.5*rowSums((sample.digit - fpred)*(sample.digit - fpred)%*%inv.sigma)
+      U<-sum(DYF)
+
       return(U)
     }
 
-
-    nmcmc = 3
 
     # while ((cstop>tol_em)*(k<maxruns)|(k<20)){
     for (k in 1:maxruns) {
@@ -113,29 +118,37 @@ miss.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,nmcmc=2
         chol.omega<-try(chol(cov))
         somega<-solve(cov)
         U.z<-0.5*rowSums(z[[indiv]]*(z[[indiv]]%*%somega))
-        U.y<-compute.LLy(z[[indiv]], sample.digit,p, sigma)
+        U.y<-compute.LLy(z[[indiv]], xi[,k], sample.digit,p, sigma[,k])
+
 
         for(u in 1:nmcmc) { 
+          browser()
           zproposal[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
+          zproposal[[indiv]]
           Uc.z<-0.5*rowSums(zproposal[[indiv]]*(zproposal[[indiv]]%*%somega))
-          Uc.y<-compute.LLy(zproposal[[indiv]],xi[,k], sample.digit,p, sigma)
+          Uc.y<-compute.LLy(zproposal[[indiv]],xi[,k], sample.digit,p, sigma[,k])
+
+          #MH acceptance ratio
           deltu<-Uc.y-U.y+Uc.z-U.z
-          if (deltu<(-1)*log(runif(1))){
+
+          #accept reject step
+          if (deltu[1]<(-1)*log(runif(1))){
             z[[indiv]] = zproposal[[indiv]]
           }
         }
+
       }
 
       #M-Step
-      ###update sufficient statistics
-      suffStat$S1 = 
-      suffStat$S2 = 
-      suffStat$S3 = 
+      # ###update sufficient statistics
+      # suffStat$S1 = 
+      # suffStat$S2 = 
+      # suffStat$S3 = 
 
-      ###update global parameters
-      Gamma[[k]] = suffStat$S3/n
-      xi[,k] = suffStat$S1/suffStat$S2
-      sigma[1,k] = 
+      # ###update global parameters
+      # Gamma[[k]] = suffStat$S3/n
+      # xi[,k] = suffStat$S1/suffStat$S2
+      # sigma[1,k] = 
     }
 
 
