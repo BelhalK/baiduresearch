@@ -317,7 +317,7 @@ There exist a positive sequence of MC batch size $\{M_r\}_{r > 0}$ and constants
 \end{assumption}
 
 
-
+In that setting, we can prove two important results on the Lyapunov function. The first one suggests smoothness:
 \begin{Lemma} \label{lem:smooth}
 \citep{karimi2019global} Assume H\ref{ass:expected}, H\ref{ass:reg}, H\ref{ass:eigen}.  
 For all $\bss,\bss' \in \Sset$ and $i \in \inter$, we have
@@ -326,6 +326,15 @@ For all $\bss,\bss' \in \Sset$ and $i \in \inter$, we have
 \eeq
 where $\Lip{\bss} \eqdef C_{\Zset} \Lip{p} \Lip{\theta}$ and $\Lip{V}  \eqdef \upsilon_{\max} \big( 1 + \Lip{{\bss}} \big) + \Lip{B} C_{\Sset}$.
 \end{Lemma}
+and the second one suggests a growth condition on the gradient of $V$ depending on the mean field of the algorithm:
+\begin{Lemma}\label{lem:growth}
+Assume H\ref{ass:reg},H\ref{ass:eigen}. For all $\bss \in \Sset$,
+\beq \label{eq:semigrad}
+\upsilon_{\min}^{-1} \pscal{\grd V ( {\bss} ) }{ {\bss} - \os( \op ({\bss})) }
+\geq \big\| {\bss} - \os( \op ({\bss})) \big\|^2 \geq \upsilon_{\max}^{-2} \| \grd V ( {\bss} ) \|^2,
+\eeq
+\end{Lemma}
+See proofs of this Lemma in Appendix~\ref{app:growth}.
 
 \subsection{Global Convergence of Incremental Noisy EM Algorithms}
 Following the asymptotic analysis of update \eqref{eq:isaem}, we present a finite-time analysis of the incremental variant of the Stochastic Approximation of the EM algorithm.
@@ -401,7 +410,10 @@ The constraint set on $\param$ is given by
 \eeq
 In the following experiments of synthetic data, we generate samples from a GMM model with $M=2$ components with two mixtures with means $\mu_1 = - \mu_2 = 0.5$.
 
-\begin{wrapfigure}[12]{r}{.5\textwidth}
+
+We use $n = 10^4$ synthetic samples and run the bEM method until convergence (to double precision) to obtain the ML estimate $\mu^\star$ averaged on $50$ datasets. We compare the bEM, SAEM, \ISAEM, \SAEMVR\ and \FISAEM\ methods in terms of their precision measured by $| \mu - \mu^\star |^2$. 
+We set the stepsize of the \textsf{SA-step} of all method as $\gamma_k = 1/k^{\alpha}$ with $\alpha = 0.5$, and the stepsizes of the \textsf{Incremental-step} for \SAEMVR\ and the \FISAEM\ to a constant stepsize equal to $1/n^{2/3}$. 
+\begin{wrapfigure}[10]{r}{.5\textwidth}
 \begin{minipage}{0.5\textwidth}\vspace{-.9cm}
 
 
@@ -414,8 +426,6 @@ In the following experiments of synthetic data, we generate samples from a GMM m
 \end{minipage}
 \end{wrapfigure}
 
-We use $n = 10^4$ synthetic samples and run the bEM method until convergence (to double precision) to obtain the ML estimate $\mu^\star$ averaged on $nsim=50$ datasets. We compare the bEM, SAEM, \ISAEM, \SAEMVR\ and \FISAEM\ methods in terms of their precision measured by $| \mu - \mu^\star |^2$. 
-We set the stepsize of the \textsf{SA-step} of all method as $\gamma_k = 1/k^{\alpha}$ with $\alpha = 0.5$, and the stepsizes of the \textsf{Incremental-step} for \SAEMVR\ and the \FISAEM\ to a constant stepsize equal to $1/n^{2/3}$. 
 The number of MC samples is fixed to $M=40$ chains.
 Figure \ref{fig:gmm_tts} shows the convergence of the precision $|\mu - \mu^*|^2$ for the different methods against the epoch(s) elapsed (one epoch equals $n$ iterations). We observe that the \SAEMVR\ and \FISAEM\ methods outperform the other methods, supporting our analytical results.
 
@@ -462,6 +472,40 @@ where $z_i \sim \mathcal(0,\Gamma)$ and $z_i \in \left( \rset^{k_g}\right)^2$.
 \appendix
 
 
+\section{Proof of Lemma~\ref{lem:growth}}\label{app:growth}
+\begin{Lemma*} 
+Assume H\ref{ass:reg},H\ref{ass:eigen}. For all $\bss \in \Sset$,
+\beq \label{eq:semigrad}
+\upsilon_{\min}^{-1} \pscal{\grd V ( {\bss} ) }{ {\bss} - \os( \op ({\bss})) }
+\geq \big\| {\bss} - \os( \op ({\bss})) \big\|^2 \geq \upsilon_{\max}^{-2} \| \grd V ( {\bss} ) \|^2,
+\eeq
+\end{Lemma*}
+\begin{proof}
+Using H\ref{ass:reg} and the fact that we can exchange integration with differentiation and the Fisher's identity,   we obtain
+\beq \label{eq:grd_v}
+\begin{split}
+\grd_{ \bss} V( {\bss} ) & = \jacob{ \overline{\param} }{ \bss }{\bss}^\top
+\Big( \grd_\param \Pen( \mstep{\bss} )  + \grd_\param \calL( \overline\param( {\bss} ) )  \Big) \\
+& =  \jacob{ \overline{\param} }{ \bss }{\bss}^\top \Big( \grd_\param \psi( \mstep{\bss}) + \grd_\param \Pen( \mstep{\bss} ) - \jacob{\phi}{\param}{\mstep{\bss} }^\top  \os( \op ({\bss})) \Big)\\
+& =   \jacob{ \overline{\param} }{ \bss }{\bss}^\top \jacob{\phi}{\param}{ \mstep{\bss} }^\top \!~ ({\bss} - \os( \op ({\bss})) ) \eqsp,
+\end{split}
+\eeq
+Consider the following vector map:
+\beq
+{\bss} \to \grd_{\param} L(\bss, \param) \vert_{\param= \mstep{\bss}}= \grd_\param \psi ( \mstep{\bss} ) + \grd_{ \param} \Pen(\mstep{\bss}  ) - \jacob{ \phi }{ \param }{\mstep{\bss}  }^\top \!~{\bss} \eqsp.
+\eeq
+Taking the gradient of the above map \wrt ${\bss}$ and using assumption H\ref{ass:reg}, we show that:
+\beq
+{\bm 0} = - \jacob{\phi}{\param}{\mstep{\bss} } + \Big( \underbrace{ \grd_{\param}^2 \big( \psi( \param ) + \Pen( \param ) - \pscal{ \phi( \param ) }{ {\bss} } \big)}_{= \hess{{L}}{\param} ( {\bss}; \param )} \big|_{\param = \mstep{\bss}  } \Big) \jacob{ \overline{\param} }{\bss}{\bss} \eqsp.
+\eeq
+The above yields
+\beq
+\grd_{ \bss} V( {\bss} )  = \operatorname{B}(\bss) ({\bss} - \os( \op ({\bss})) )
+\eeq
+where we recall $\operatorname{B}(\bss) = \jacob{ \phi }{ \param }{ \mstep{\bss} } \Big( \hess{{L}}{\param}( {\bss}; \mstep{\bss} )  \Big)^{-1} \jacob{ \phi }{ \param }{\mstep{\bss} }^\top$. The proof of \eqref{eq:semigrad} follows directly from the assumption~H\ref{ass:eigen}.
+\end{proof}
+
+
 \section{Proof of Lemma~\ref{lem:meanfield_isaem}}
 \begin{Lemma*}
  Assume H\ref{ass:convset}. The update \eqref{eq:isaem} is equivalent to the following update on the resulting statistics 
@@ -503,39 +547,6 @@ concludes the proof of the Lemma.
 \end{proof}
 
 
-\section{Auxiliary Lemma}
-\begin{Lemma*} 
-Assume H\ref{ass:reg},H\ref{ass:eigen}. For all $\bss \in \Sset$,
-\beq \label{eq:semigrad}
-\upsilon_{\min}^{-1} \pscal{\grd V ( {\bss} ) }{ {\bss} - \os( \op ({\bss})) }
-\geq \big\| {\bss} - \os( \op ({\bss})) \big\|^2 \geq \upsilon_{\max}^{-2} \| \grd V ( {\bss} ) \|^2,
-\eeq
-\end{Lemma*}
-\begin{proof}
-Using H\ref{ass:reg} and the fact that we can exchange integration with differentiation and the Fisher's identity,   we obtain
-\beq \label{eq:grd_v}
-\begin{split}
-\grd_{ \bss} V( {\bss} ) & = \jacob{ \overline{\param} }{ \bss }{\bss}^\top
-\Big( \grd_\param \Pen( \mstep{\bss} )  + \grd_\param \calL( \overline\param( {\bss} ) )  \Big) \\
-& =  \jacob{ \overline{\param} }{ \bss }{\bss}^\top \Big( \grd_\param \psi( \mstep{\bss}) + \grd_\param \Pen( \mstep{\bss} ) - \jacob{\phi}{\param}{\mstep{\bss} }^\top  \os( \op ({\bss})) \Big)\\
-& =   \jacob{ \overline{\param} }{ \bss }{\bss}^\top \jacob{\phi}{\param}{ \mstep{\bss} }^\top \!~ ({\bss} - \os( \op ({\bss})) ) \eqsp,
-\end{split}
-\eeq
-Consider the following vector map:
-\beq
-{\bss} \to \grd_{\param} L(\bss, \param) \vert_{\param= \mstep{\bss}}= \grd_\param \psi ( \mstep{\bss} ) + \grd_{ \param} \Pen(\mstep{\bss}  ) - \jacob{ \phi }{ \param }{\mstep{\bss}  }^\top \!~{\bss} \eqsp.
-\eeq
-Taking the gradient of the above map \wrt ${\bss}$ and using assumption H\ref{ass:reg}, we show that:
-\beq
-{\bm 0} = - \jacob{\phi}{\param}{\mstep{\bss} } + \Big( \underbrace{ \grd_{\param}^2 \big( \psi( \param ) + \Pen( \param ) - \pscal{ \phi( \param ) }{ {\bss} } \big)}_{= \hess{{L}}{\param} ( {\bss}; \param )} \big|_{\param = \mstep{\bss}  } \Big) \jacob{ \overline{\param} }{\bss}{\bss} \eqsp.
-\eeq
-The above yields
-\beq
-\grd_{ \bss} V( {\bss} )  = \operatorname{B}(\bss) ({\bss} - \os( \op ({\bss})) )
-\eeq
-where we recall $\operatorname{B}(\bss) = \jacob{ \phi }{ \param }{ \mstep{\bss} } \Big( \hess{{L}}{\param}( {\bss}; \mstep{\bss} )  \Big)^{-1} \jacob{ \phi }{ \param }{\mstep{\bss} }^\top$. The proof of \eqref{eq:semigrad} follows directly from the assumption~H\ref{ass:eigen}.
-\end{proof}
-
 \section{Proof of Theorem~\ref{thm:isaem}}\label{app:theoremisaem}
 \begin{Theorem*}
 Let $K_{\max }$ be a positive integer. 
@@ -548,12 +559,43 @@ Assume that $ \hat{\bss}^{(k)} \in \mathcal{S}$ for any $k \leq K_{\max }$.
 \end{Theorem*} 
 
 \begin{proof}
-Under the smoothness of the Lyapunov function $V$ (cf. Lemma~\ref{lem:smooth}) and the following growth condition for all $\bss \in \Sset$,
-\beq \label{eq:semigrad}
-\upsilon_{\min}^{-1} \pscal{\grd V ( {\bss} ) }{ {\bss} - \os( \op ({\bss})) }
-\geq \big\| {\bss} - \os( \op ({\bss})) \big\|^2 \geq \upsilon_{\max}^{-2} \| \grd V ( {\bss} ) \|^2,
+
+We begin our proof by giving this auxiliary Lemma setting an upper bound for the quantity $\EE[ \|  \hs{k} - \tilde{S}^{(k+1)}  \|^2 ]$
+\begin{Lemma}\label{lem:aux2}
+For any $k \geq 0$ and consider the \ISAEM\ update in \eqref{eq:isaem}, it holds that
+\beq
+\begin{split}
+\EE \left[ \|  \tilde{S}^{(k+1)} - \hs{k}   \|^2 \right] \leq &4 \EE\left[ \|  \os^{(k)} - \hs{k} \|^2 \right] 
++ \frac{2\Lip{\bss}}{n^3} \sum_{i=1}^n \EE\left[ \| \hs{k} - \hs{t_i^k} \|^2 \right]\\
+&+ 2\frac{C_{\eta}}{M_k} + 4 \EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right] 
+\end{split}
 \eeq
-proven in \citep[Lemma 3]{karimi2019global}, we can write:
+\end{Lemma}
+
+\begin{proof}
+Applying the \ISAEM\ update yields:
+\beq
+\begin{split}
+ \EE[ \|  \tilde{S}^{(k+1)} - \hs{k} \|^2 ] &=  \EE[ \| \tilde{S}^{(k)} - \hs{k}  -\frac{1}{n}\big(\tilde{S}^{(\tau_i^k)}_{i_k} - \tilde{S}^{(k)}_{i_k}  \big)  \|^2 ]\\
+ & \leq  4 \EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right] + 4 \EE\left[\norm{   \overline{\bss}^{(k)} - \hs{k} }^2\right] \\
+ &+  \frac{2}{n^2} \EE\big[ \norm{ \os_{i_k}^{(k)} - \os_{i_k}^{(t_{i_k}^k)} }^2\big] + 2\frac{C_{\eta}}{M_k}
+\end{split}
+\eeq
+
+The last expectation can be further bounded by
+\beq
+\begin{split}
+&
+\frac{2}{n^2}\EE[ \| \os_{i_k}^{(k)} - \os_{i_k}^{(t_{i_k}^k)} \|^2 ] = \frac{2}{n^3} \sum_{i=1}^n \EE[ \| \os_i^{(k)} - \os_i^{(t_i^k)} \|^2 ] \overset{(a)}{\leq} \frac{2\Lip{\bss}}{n^3}
+\sum_{i=1}^n \EE[ \| \hs{k} - \hs{t_i^k} \|^2 ],
+\end{split}
+\eeq
+where (a) is due to Lemma~\ref{lem:smooth} and which concludes the proof of the Lemma.
+
+\end{proof}
+
+
+Under the smoothness of the Lyapunov function $V$ (cf. Lemma~\ref{lem:smooth}), we can write:
 \beq
 \begin{split}
 V( \hs{k+1} ) & \leq V( \hs{k} ) + \gamma_{k+1} \pscal{  \tilde{S}^{(k+1)}  - \hs{k}}{ \grd V( \hs{k} ) } + \frac{\gamma_{k+1}^2 \Lip{V}}{2} \|\tilde{S}^{(k+1)} -  \hs{k}  \|^2 \\
@@ -573,26 +615,43 @@ Using Lemma~\ref{lem:meanfield_isaem}, we obtain:
 & \overset{(a)}{\leq} -\upsilon_{\min}\EE \left[\norm{  \overline{\bss}^{(k)}  - \hs{k}}^2  \right] + \left(1 - \frac{1}{n}\right)\EE\left[\pscal{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}{ \grd V( \hs{k} ) }\right] \\
 & +  \frac{1}{n} \EE \left[\pscal{ \eta_{i_k}^{(k)}}{ \grd V( \hs{k} ) }  \right]\\
 & \overset{(b)}{\leq} -\upsilon_{\min}\EE \left[\norm{  \overline{\bss}^{(k)}  - \hs{k}}^2  \right] + \frac{1 - \frac{1}{n}}{2\beta}\EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right]\\
-& + \frac{\beta(n-1) + \beta'}{2n}\EE\left[ \norm{\grd V( \hs{k} )}^2\right]  +  \frac{1}{2\beta' n} \EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] \\
-& \overset{(a)}{\leq} \left(\upsilon^2_{\max}\frac{\beta(n-1) + \beta'}{2n}-\upsilon_{\min}\right) \EE \left[\norm{  \overline{\bss}^{(k)}  - \hs{k}}^2  \right] \\
-& + \frac{1 - \frac{1}{n}}{2\beta}\EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right]+  \frac{1}{2\beta' n} \EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] 
+& + \frac{\beta(n-1) + 1}{2n}\EE\left[ \norm{\grd V( \hs{k} )}^2\right]  +  \frac{1}{2 n} \EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] \\
+& \overset{(a)}{\leq} \left(\upsilon^2_{\max}\frac{\beta(n-1) + 1}{2n}-\upsilon_{\min}\right) \EE \left[\norm{  \overline{\bss}^{(k)}  - \hs{k}}^2  \right] \\
+& + \frac{1 - \frac{1}{n}}{2\beta}\EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right]+  \frac{1}{2 n} \EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] 
 \end{split}
 \eeq
-where (a) the growth condition \eqref{eq:semigrad} is due to and (b) is due to Young's inequality.
-Note $a_k = \gamma_{k+1}\left(\upsilon_{\min} - \upsilon^2_{\max}\frac{\beta(n-1) + \beta'}{2n}\right) $ and
-\beq
+where (a) is due to the growth condition \eqref{lem:growth} and (b) is due to Young's inequality (with $\beta \to 1$).
+Note $a_k = \gamma_{k+1}\left(\upsilon_{\min} - \upsilon^2_{\max}\frac{\beta(n-1) + 1}{2n}\right) $ and
+\beq\label{eq:final1}
 \begin{split}
 a_k \EE \left[\norm{  \overline{\bss}^{(k)}  - \hs{k}}^2  \right]  \leq & \EE \left[ V( \hs{k} ) - V( \hs{k+1} ) \right] + \frac{\gamma_{k+1}^2 \Lip{V}}{2} \EE \left[\|\tilde{S}^{(k+1)} -  \hs{k}  \|^2  \right]\\
-&+ \frac{\gamma_{k+1}(1 - \frac{1}{n})}{2\beta}\EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right]+  \frac{\gamma_{k+1}}{2\beta' n} \EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] 
+&+ \frac{\gamma_{k+1}(1 - \frac{1}{n})}{2\beta}\EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right]+  \frac{\gamma_{k+1}}{2 n} \EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] 
 \end{split}
 \eeq
 
-We now give an upper bound of $\EE \left[\|\tilde{S}^{(k+1)} -  \hs{k}  \|^2  \right]$.
+We now give an upper bound of $\EE \left[\|\tilde{S}^{(k+1)} -  \hs{k}  \|^2  \right]$ using Lemma~\ref{lem:aux2} and plug it into \eqref{eq:final1}:
+
+\beq\label{eq:final2}
+\begin{split}
+\left( a_k - 2\gamma_{k+1}^2 \Lip{V} \right) \EE \left[\norm{  \overline{\bss}^{(k)}  - \hs{k}}^2  \right]  \leq &  \EE \left[ V( \hs{k} ) - V( \hs{k+1} ) \right] \\
+&  \frac{\gamma_{k+1}^3 \Lip{V}(1 - \frac{1}{n})}{\beta}\EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right]\\
+& +  \frac{\gamma_{k+1}}{2 n} \EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] \\
+& + \frac{\gamma_{k+1}^2 \Lip{V}\Lip{\bss}}{2 n^4} \sum_{i=1}^n \EE[ \| \hs{k} - \hs{t_i^k} \|^2 ]
+\end{split}
+\eeq
 
 
 
+When, for any $k >0$, $\alpha_k > 0$, we have by Lemma~\ref{lem:growth} that:
+\beq
+\sum_{k=0}^{K_{\max}} \alpha_k \EE \left[\norm{\grd V( \hs{k} )}^2 \right] \leq \upsilon_{\max}^2\sum_{k=0}^{K_{\max}} \alpha_k \EE \left[\norm{  \overline{\bss}^{(k)}  - \hs{k}}^2  \right] 
+\eeq
+which yields an upper bound of the gradient of the Lyapunov function $V$ along the path of the \ISAEM\ update and concludes the proof of the Theorem.
 \end{proof}
 
+
+
+\clearpage
 
 \section{Proof of Theorem~\ref{thm:fisaem}}\label{app:theoremfisaem}
 \begin{Theorem*}
@@ -606,6 +665,7 @@ Assume that $ \hat{\bss}^{(k)} \in \mathcal{S}$ for any $k \leq K_{\max }$.
 \end{Theorem*} 
 
 \begin{proof}
+We begin our proof by giving this auxiliary Lemma setting an upper bound for the quantity $\EE[ \|  \hs{k} - \tilde{S}^{(k+1)}  \|^2 ]$
 \begin{Lemma}\label{lem:aux1}
 For any $k \geq 0$ and consider the \FISAEM\ update in \eqref{eq:fisaem} with $\rho_k = \rho$, it holds that
 \beq
@@ -657,25 +717,68 @@ Taking the expectaitons on both sides and noting that $\EE[ \StocEstep^{(k+1)} ]
 \begin{split}
 \EE[V( \hs{k+1} ) - V( \hs{k} )] & \leq  - \gamma_{k+1}\rho \EE[\pscal{  \hs{k} -  \os^{(k)} }{ \grd V( \hs{k} ) } ] \\
 & - \gamma_{k+1}(1-\rho) \EE[ \pscal{  \hs{k} -  \tilde{S}^{(k)} }{ \grd V( \hs{k} ) }]+ \frac{\gamma_{k+1}^2 \Lip{V}}{2} \EE[ \|  \hs{k} -  \tilde{S}^{(k+1)}  \|^2] \\
-& \overset{(a)}{\leq} - (\gamma_{k+1} \upsilon_{\max}^2\frac{\beta(1-\rho)}{2} + \gamma_{k+1}\rho) \EE\left[\norm{ \hs{k} -  \os^{(k)} }^2\right] -  \gamma_{k+1}\frac{1-\rho}{2 \beta}\EE\big[\norm{ \hs{k} -  \tilde{S}^{(k)} }^2\big]\\
+& \overset{(a)}{\leq} - (\gamma_{k+1} \upsilon_{\max}^2\frac{(1-\rho)}{2} + \gamma_{k+1}\rho) \EE\left[\norm{ \hs{k} -  \os^{(k)} }^2\right] -  \gamma_{k+1}\frac{1-\rho}{2 }\EE\big[\norm{ \hs{k} -  \tilde{S}^{(k)} }^2\big]\\
 & + \frac{\gamma_{k+1}^2 \Lip{V}}{2} \EE[ \|  \hs{k} -  \tilde{S}^{(k+1)}  \|^2]  
 \end{split}
 \eeq
-where $(a)$ used the growth condition \eqref{eq:semigrad} twice (on $\pscal{  \hs{k} -  \os^{(k)} }{ \grd V( \hs{k} ) } $ and $\norm{\grd V( \hs{k} }^2$ and Young's inequality.
+where $(a)$ used the growth condition \eqref{eq:semigrad} twice (on $\pscal{  \hs{k} -  \os^{(k)} }{ \grd V( \hs{k} ) } $ and $\norm{\grd V( \hs{k} }^2$ and the triangle inequality.
 
 \paragraph{ Bounding $\EE[ \|  \hs{k} -  \tilde{S}^{(k+1)}  \|^2]  $} Using Lemma~\ref{lem:aux1}, we obtain:
 \beq
 \begin{split}
-\EE[V( \hs{k+1} ) - V( \hs{k} )] \leq  & - \gamma_{k+1} \big(   \upsilon_{\max}^2\frac{\beta(1-\rho)}{2} +  \rho  - 2\rho^2\gamma_{k+1}   \Lip{V}  \big) \EE\left[\norm{ \hs{k} -  \os^{(k)} }^2\right]\\
+\EE[V( \hs{k+1} ) - V( \hs{k} )] \leq  & - \gamma_{k+1} \big(   \upsilon_{\max}^2\frac{(1-\rho)}{2} +  \rho  - 2\rho^2\gamma_{k+1}   \Lip{V}  \big) \EE\left[\norm{ \hs{k} -  \os^{(k)} }^2\right]\\
 & + \frac{2 \gamma_{k+1}^2 \Lip{V} \rho^2 \Lip{\bss}^2}{n} \sum_{i=1}^n  \EE[ \|  \hs{k} -\hs{t_i^k}  \|^2 ]\\
-& + \gamma_{k+1} (1-\rho)\big( 2 \gamma_{k+1}\Lip{V} (1-\rho) - \frac{1}{2\beta}    \big) \EE\big[\norm{ \hs{k} -  \tilde{S}^{(k)} }^2\big]\\
+& + \gamma_{k+1} (1-\rho)\big( 2 \gamma_{k+1}\Lip{V} (1-\rho) - \frac{1}{2}    \big) \EE\big[\norm{ \hs{k} -  \tilde{S}^{(k)} }^2\big]\\
 &  +  \gamma_{k+1}^2 \rho^2 \Lip{V}   \frac{C_{\eta}}{M_k} 
+\end{split}
+\eeq
+
+
+Next, we observe that
+\beq
+\frac{1}{n} \sum_{i=1}^n \EE[ \| \hs{k+1} - \hs{t_i^{k+1}} \|^2 ] = \frac{1}{n} \sum_{i=1}^n
+\Big( \frac{1}{n} \EE[ \| \hs{k+1} - \hs{k} \|^2 ] + \frac{n-1}{n} \EE[ \| \hs{k+1} - \hs{t_i^k} \|^2 ]  \Big)
+\eeq
+where the equality holds as $i_k$ and $j_k$ are drawn independently. For any $\beta > 0$, it holds
+\beq
+\begin{split}
+& \EE[ \| \hs{k+1} - \hs{t_i^k} \|^2 ] \\
+& = \EE \Big[ \| \hs{k+1} - \hs{k} \|^2 + \| \hs{k} - \hs{t_i^k} \|^2 + 2 \pscal{\hs{k+1} - \hs{k}}{\hs{k}- \hs{t_i^k}} \Big] \\
+& = \EE \Big[ \| \hs{k+1} - \hs{k} \|^2 + \| \hs{k} - \hs{t_i^k} \|^2 - 2 \gamma_{k+1} \pscal{\hs{k} - \os^{(k)} }{\hs{k}- \hs{t_i^k}} \Big] \\
+& \leq  \EE \Big[ \| \hs{k+1} - \hs{k} \|^2 + \| \hs{k} - \hs{t_i^k} \|^2 +  \frac{\gamma_{k+1}}{\beta} \| \hs{k} - \os^{(k)} \|^2 + \gamma_{k+1} \beta \| \hs{k}- \hs{t_i^k} \|^2 \Big]
+\end{split}
+\eeq
+where the last inequality is due to the Young's inequality. Subsequently, we have
+\beq
+\begin{split}
+& \frac{1}{n} \sum_{i=1}^n \EE[ \| \hs{k+1} - \hs{t_i^{k+1}} \|^2 ] \\
+& \leq \EE[  \| \hs{k+1} - \hs{k} \|^2 ] + \frac{n-1}{n^2} \sum_{i=1}^n \EE \Big[ (1+\gamma_{k+1} \beta) \|  \hs{k} - \hs{t_i^k} \|^2 + \frac{\gamma_{k+1}}{\beta} \| \hs{k} - \os^{(k)} \|^2 \Big]
+\end{split}
+\eeq
+Observe that $\hs{k+1} - \hs{k} =  \gamma_{k+1} (\tilde{S}^{(k+1)} -  \hs{k} )$. Applying Lemma~\ref{lem:aux1} yields:
+\beq
+\begin{split}
+ \frac{1}{n} \sum_{i=1}^n \EE[ \| \hs{k+1} - \hs{t_i^{k+1}} \|^2 ]  \leq & \left( 4 \rho^2 +  \frac{\gamma_{k+1}}{\beta} \right) \EE[ \| \hs{k} - \os^{(k)} \|^2 ] \\
+& +  \left(\frac{4\rho^2 \Lip{\bss}^2}{n} +  \frac{(n-1)(1+\gamma_{k+1} \beta)}{n^2}   \right) \sum_{i=1}^n  \EE[ \|  \hs{k} -\hs{t_i^k}  \|^2 ]\\
+&  + 2 \rho^2  \frac{C_{\eta}}{M_k} + 4 (1-\rho)^2 \EE[ \|  \hs{k} - \tilde{S}^{(k)}  \|^2 ] 
+\end{split}
+\eeq
+Define
+\beq
+\Delta^{(k)} \eqdef \frac{1}{n} \sum_{i=1}^n \EE[ \| \hs{k} - \hs{t_i^{k}} \|^2 ]
+\eeq
+and note that
+\beq
+\begin{split}
+\Delta^{(k+1)} \leq  & \left(1-\frac{1}{n} + 4\rho^2 \Lip{\bss}^2 + \gamma_{k+1} \beta   \right)  \Delta^{(k)} +  \left( 4 \rho^2 +  \frac{\gamma_{k+1}}{\beta} \right) \EE[  \| \hs{k} - \os^{(k)} \|^2 ]\\
+& + 2 \rho^2  \frac{C_{\eta}}{M_k} + 4 (1-\rho)^2 \EE[ \|  \hs{k} - \tilde{S}^{(k)}  \|^2 ] 
 \end{split}
 \eeq
 
 
 \paragraph{ Bounding $ \EE\big[\norm{ \hs{k} -  \tilde{S}^{(k)} }^2\big] $} Remark that this term is the price we pay for the two time scale dynamics and corresponds to the gap between the two asynchrone updates (one is on  $\hs{k}$ and the other on $ \tilde{S}^{(k)}$).
 
+\textcolor{red}{FIND AN UPPER BOUND TO THAT GAP}
 
 %
 %\beq\label{eq:rmstep}
