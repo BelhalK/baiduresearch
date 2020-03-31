@@ -7,43 +7,42 @@ require(reshape2)
 library(rlist)
 require(RnavGraphImageData)
 
-source("miss.saem.qn.R")
-source("louis_lr_saem.R")
-source("log_reg.R")
-source("likelihood_saem.R")
+source("src/saem.R")
+source("src/vrsaem.R")
+source("src/fisaem.R")
+source("src/utils.R")
+
+
 theme_set(theme_bw())
 options(digits = 2)
 
-data(digits) #import USPS digits dataabse
+#import USPS digits dataabse
+data(digits) 
 
-#Random matrix plotting (16X16) like USPS database
-image(matrix(rexp(256, rate=.1), ncol=16))
+# #Random matrix plotting (16X16) like USPS database
+# image(matrix(rexp(256, rate=.1), ncol=16))
 
 nb <- 5  # number of images
 images = digits[,3000:(3000+nb)]
 
-for (i in 1:nb){
-  sample.digit = matrix(images[,i], ncol=16,byrow=FALSE)  
-  image(t(sample.digit)[,nrow(sample.digit):1])
-}
 
-
-# sample.digit = matrix(digits[,3000], ncol=16,byrow=FALSE)
-# image(t(sample.digit)[,nrow(sample.digit):1])
+# #plots some digits images
+# for (i in 1:nb){
+#   sample.digit = matrix(images[,i], ncol=16,byrow=FALSE)  
+#   image(t(sample.digit)[,nrow(sample.digit):1])
+# }
 
 
 #Hyperparam
 p <- ncol(sample.digit) #dimension of the input
 kp <- 5 #dimension of the parameter of the template
-kg <- 5 #dimension of the random effects
+kg <- 6 #dimension of the random effects
 Gamma.star <- diag(rep(1,kg)) # covariance
 
 
 
 template.model<-function(z, xi,p,landmarks.p,landmarks.g) { 
   zi<-z
-  
-  kernel.g = matrix(NA,nrow=1,ncol=p)
   ypred = matrix(NA,nrow=p,ncol=p)
 
   phi <- as.list(numeric(p^2))
@@ -54,22 +53,23 @@ template.model<-function(z, xi,p,landmarks.p,landmarks.g) {
 
   for (m in 1:p){
   	for (j in 1:p){
+      #Image Coordinate Standard
   		x.ind = 2*m/p-1
   		y.ind = 2*j/p-1
   		rep.coord = matrix(c(x.ind,y.ind), nrow=1)
 	   	coord <- t(apply(rep.coord, 2, rep, kg))
   		
+      #deformation computation
   		kernel.deformation = exp(-(coord - landmarks.g)^2/(2*sigma.g))
-	   	phi[[i,j]]= colSums(kernel.deformation)%*%t(zi)
-  		coord.template = rep.coord - phi[[i,j]]
-
+	   	phi[[m,j]]= colSums(kernel.deformation)%*%t(zi)
+  		
+      #template computation
+      coord.template = rep.coord - phi[[m,j]]
       rep.coord.template <- t(apply(coord.template, 2, rep, kp))
       kernel.template = exp(-(rep.coord.template - landmarks.p)^2/(2*sigma.p))
-
   		template = colSums(kernel.template)%*%xi
-  		ypred[i,j] = template
+  		ypred[m,j] = template
   	}
-
   } 
 
   return(ypred)
@@ -82,40 +82,48 @@ N <- ncol(images)
 nb.iter <- N/batchsize*nb.epochs
 nb.mcmc <- 4
 
+#first stage of SAEM
+K1 = 0
+
 # SAEM
-fit.params = miss.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=0,ll_obs_cal=FALSE, algo = "saem")
+fit.saem = saem(images,kp,kg, template.model,maxruns=nb.iter,
+				nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
+
+# fit.inc.saem = saem(images,kp,kg, template.model,maxruns=nb.iter,
+#               nmcmc = nb.mcmc,k1=K1,algo = "isaem", batchsize=batchsize)
+
+# fit.vr.saem = vrsaem(images,kp,kg, template.model,maxruns=nb.iter,
+#               nmcmc = nb.mcmc,k1=K1,algo = "vrsaem", batchsize=batchsize)
+
+# fit.fi.saem = fisaem(images,kp,kg, template.model,maxruns=nb.iter,
+#               nmcmc = nb.mcmc,k1=K1,algo = "fisaem", batchsize=batchsize)
 
 
-#MCEM
-# list.mcem = miss.saem(X.obs,y,maxruns=nb.iter,ll_obs_cal=FALSE, algo = "mcem")
-# #Incremental MCEM
-# list.imcem = miss.saem(X.obs,y,maxruns=nb.iter,ll_obs_cal=FALSE, algo = "imcem", batchsize= batchsize)
-
-#Images of the deformable model using the fitted parameters.
 
 
 
+# #PLOTS
+# dim = 1
+# saem = fit.saem$seqxi[dim,]
+# x = 1:length(saem)
+# df <- data.frame(x,saem)
+# ggplot(data=df)+
+#   geom_line(mapping=aes(y=saem,x= x,color="saem"),size=0.5 ) +
+#   scale_color_manual(values = c(
+#     'saem' = 'darkblue')) +
+#   labs(color = 'Algo')+ ylab("xi")
 
-# #Random EFFECTS
-# chol.omega.z<-try(chol(Gamma.star))
-# z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega.z
-# z <- list(z1, z1) #random effects (2 X kg)
 
+# #PER EPOCHS
+# epochs = seq(1,nb.iter,N/batchsize)
+# x = 2:(nb.epochs+1)
+# saem.ep <- saem[x]
+# isaem.ep <- isaem[(epochs+1)]
+# df <- data.frame(x,saem.ep,isaem.ep)
 
-# landmarks.p = matrix(rnorm(2*kp),ncol=kp)
-# landmarks.g = matrix(rnorm(2*kg),ncol=kg)
-
-
-##TEST OUTSIDE THE FUNCTION 
-# m = 2
-# j=3
-# x.ind = 2*m/p-1
-# y.ind = 2*j/p-1
-# rep.coord = matrix(c(x.ind,y.ind), nrow=1)
-# coord <- t(apply(rep.coord, 2, rep, kg))
-# diff = coord - landmarks.g
-
-# kernel.deformation = exp(-(coord - landmarks.g)^2/2)
-# colSums(kernel.deformation)%*%t(z[[1]])
-# kernel.deformation
-##TEST OUTSIDE THE FUNCTION 
+# ggplot(data=df)+
+#   geom_line(mapping=aes(y=saem.ep,x= x,color="saem"),size=0.5 ) +
+#   geom_line(mapping=aes(y=isaem.ep,x= x,color="isaem"),size=0.5) +
+#   scale_color_manual(values = c(
+#     'saem' = 'darkblue','isaem' = 'red')) +
+#   labs(color = 'Algo')
