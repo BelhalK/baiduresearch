@@ -155,7 +155,11 @@ citecolor=blue]{hyperref}
 \maketitle
 
 \begin{abstract}
-To be completed
+Many constrained, non-convex optimization problems can be tackled using the Majorization-Minimization (MM) method which alternates between constructing a surrogate function which upper bounds the objective function, and then minimizing this surrogate.
+For problems which minimize a finite sum of functions, a stochastic version of the MM method selects a batch of functions at random at each iteration and optimizes the accumulated surrogate.
+However, in many cases of interest such as  variational inference for latent variable models, the surrogate functions are expressed as an expectation. In this contribution, we propose a doubly stochastic MM method based on Monte Carlo approximation of these stochastic surrogates.
+We establish asymptotic and non-asymptotic convergence of our scheme in a constrained, non-convex, non-smooth optimization setting.
+We apply our new framework for inference of logistic regression model with missing covariates and for variational inference of LeNet and Resnet Bayesian variants on respectively the MNIST and CIFAR-10 datasets.
 \end{abstract}
 
 \section{Introduction}
@@ -170,7 +174,22 @@ When the number of terms $n$ in \eqref{eq:opt} is large, the vanilla MM method m
 
 The success of the MISO method rests upon the efficient minimization of surrogates such as convex functions, see \citep[Section 2.3]{mairal2015miso}. In many applications of interest, the natural surrogate functions are intractable, yet they are  defined as expectation of tractable functions. This for example the case for inference in latent variable models. Another application is variational inference, \citep{ghahramani2015probabilistic}, in which  the goal is to approximate the posterior distribution of parameters given the observations;  see for example \citep{neal2012bayesian,blundell2015weight,polson2017deep,rezende2014stochastic, li2017dropout}.
 
-\textcolor{red}{TO COMPLETE WITH PAPER STRUCTURE AND NOTATIONS}
+
+This paper fills the gap in the literature by proposing a new method called \emph{Minimization by Incremental Stochastic Surrogate Optimization (MISSO)} which is designed for the finite sum optimization with a finite-time convergence guarantee.
+Our contributions can be summarized as follows.
+\begin{itemize}
+\item We propose a unifying framework of analysis for incremental stochastic surrogate optimization when the surrogates are defined by expectations of tractable functions. The proposed  MISSO method is built on the Monte Carlo integration of the intractable surrogate function, \ie a doubly stochastic surrogate optimization scheme.
+\item We present an incremental update of the commonly used variational inference and Monte-Carlo EM methods as special cases of our newly introduced framework. The analysis of those two algorithms is thus done under this unifying framework of analysis.
+\item We establish both asymptotic and non-asymptotic convergence for the  MISSO method. In particular, the MISSO method converges almost surely to a stationary point and in ${\cal O} (n/\epsilon)$ iterations to an $\epsilon$-stationary point.
+\end{itemize}
+
+In Section \ref{sec:framework}, we review the techniques for incremental minimization of finite sum functions based on the MM principle; specifically, we review the MISO method as introduced in \citep{mairal2015miso}, and present a class of  surrogate functions expressed as an expectation over a latent space. 
+The MISSO method is then introduced for the latter class of intractable surrogate functions requiring approximation.
+In Section \ref{sec:analysis}, we provide the asymptotic and non-asymptotic convergence analysis for the MISSO method (and of the MISO \citep{mairal2015miso} one as a special case).
+Finally, Section \ref{sec:numerical} presents numerical applications to illustrate our findings including parameter inference for logistic regression with missing covariates and variational inference for two types of Bayesian neural networks.
+
+\textcolor{red}{TO COMPLETE WITH NOTATIONS}
+
 
 \section{Incremental Minimization of Finite Sum Non-convex Functions}\label{sec:framework}
 The objective function in \eqref{eq:opt} is composed of a finite sum of possibly non-smooth and non-convex functions.
@@ -233,38 +252,23 @@ The MISO method is an incremental version of the MM method, as summarized by \Cr
 Particularly, only one out of the $n$ surrogate functions is updated at each iteration [cf.~Line~\ref{line:upd}] and the sum function $\frac{1}{n} \sum_{i=1}^n \tafctdet{i}{k+1}{\param}$ is designed to be `easy to optimize', for example, it can be a sum of quadratic functions. As such, the MISO method is suitable for large-scale optimization as the computation cost per iteration is independent of $n$.
 Moreover, under S\ref{ass:sur}, S\ref{ass:diff}, it was shown that the MISO method converges almost surely to a stationary point of \eqref{eq:opt} \citep[Proposition 3.1]{mairal2015miso}.
 
-%\subsection{Incremental Stochastic Surrogates with the MISSO Method}
 We now consider the case when the surrogate functions $\sur{i}{\param}{\op}$ are intractable. 
-%In this paper, our focus is to extend the MISO method to handle a more flexible class of \emph{stochastic} surrogate function.
-%This scenario is relevant in settings when ${\cal L}_i$ is stochastic, e.g., there exists uncertainties in the observed data or the aim is to learn a distribution for the variables. In such cases, finding a deterministic surrogate function that satisfies S\ref{ass:sur}, S\ref{ass:diff} is often impossible.
 Let $\Zset$ be a measurable set, $p_i : \Zset \times \Param \rightarrow \rset_+$ be a pdf, $r_i : \Param \times \Param \times \Zset \rightarrow \rset$ be a measurable function and $\mu_i$ be a $\sigma$-finite measure, we consider surrogate functions which satisfy S\ref{ass:sur}, S\ref{ass:diff} that can be expressed as an expectation:
 \begin{equation}\label{eq:integralsurrogate}
 \sur{i}{\param}{\op} \eqdef \int_{\Zset}{\rsur{i}{\param}{\op}{z_i}  p_i(z_i ; \op)\mu_i(dz_i)}\quad \forall~(\param,\op) \in \Param \times \Param \eqsp.
 \end{equation}
-%Note that \eqref{eq:integralsurrogate} incorporates the standard deterministic surrogate functions as studied in \citep{mairal2015miso}.
 Plugging \eqref{eq:integralsurrogate} into the MISO method is not feasible since the update step in Step~\ref{miso:iter} involves a minimization of an expectation.
 Several motivating examples of \eqref{eq:opt} are given in Section~\ref{sec:framework}.
 
 We propose the \emph{Minimization by Incremental Stochastic Surrogate Optimization} (MISSO) method  which replaces the expectation in \eqref{eq:integralsurrogate} by \emph{Monte Carlo} integration and then optimizes \eqref{eq:opt} incrementally.
-%The proposed method is called \emph{Minimization by Incremental Stochastic Surrogate Optimization} (MISSO) method since it extends the MISO method through considering the stochastic surrogate functions.
-%MISSO method
-%Denote $e_i( \param  ; \op ) \eqdef \sur{i}{\param}{\op} - {\cal L}_i( \param )$ as the error function. We have $e_i( \param  ; \op ) \geq 0$ and $e_i( \op ; \op ) = 0$ for any $\param, \op \in \Param^2$.
-%Moreover, both ${\cal L}_i( \param)$ and $\sur{i}{\param}{\op}$ are $L$-smooth in $\param$, and thus the error function $e_i( \param ; \op )$ is $2L$-smooth with respect to $\param$.
-%The \emph{Minimization by Incremental Stochastic Surrogate Optimization} (MISSO) method handles stochasticity in the surrogate function \eqref{eq:integralsurrogate} via approximating $\sur{i}{\param}{\op}$ using Monte-Carlo samples.
 Denote by $M \in \NN$ the Monte Carlo batch size and let $z_m \in \Zset$, $m=1,...,M$ be a set of samples. These samples can be drawn
 {\sf (Case 1)} i.i.d. from the distribution $p_i( \cdot ; \op )$ or {\sf (Case 2)}  from a Markov chain with the stationary distribution $p_{i}(\cdot; \op)$; see Section \ref{sec:analysis} for illustrations.
-%\begin{enumerate}[leftmargin=.5cm]
-%\item from the distribution $p_i( \cdot ; \op )$; or
-%\item from a Markov chain with  initial distribution $\xi_{i} (\cdot; \op)$, transition kernel $P_{i,\op}$, and stationary distribution $p_{i}(\cdot; \op)$.
-%\end{enumerate}
 To this end, we define
 \beq \label{eq:ssur}  
 \ssur{i}{\param}{\op}{ \{ z_m \}_{m=1}^{M}} \eqdef \frac{1}{M} \sum_{m=1}^{M} \rsur{i}{\param}{\op}{z_m}
 \eeq
 and we summarize the proposed MISSO method in \Cref{alg:misso}.
 As seen, the procedure is similar to the MISO method but it involves two types of randomness. The first randomness comes from the selection of $i_k$ in Line \ref{line:unif}. The second randomness is that a set of Monte-Carlo approximated functions $\tafct{i}{k}{\param}$ is used in lieu of $\tafctdet{i}{k}{\param}$ when optimizing for the next iterate $\param^{(k)}$.
-%Indeed, as we show in Section~\ref{sec:analysis}, to ensure convergence, the batch size $\Bsize{k}$ should be increasing such that the error induced by the Monte-Carlo approximation is eliminated as the MISSO method converges.
-%Lastly, we observe that the computation complexity of Line~\ref{line:unif}--\ref{line:ssur} in the MISSO method (see Algorithm~\ref{alg:misso}) is ${\cal O}( \Bsize{k} )$ FLOPS, while Line~\ref{line:iter} depends on the actual surrogate function $\rsur{i}{\cdot}{\cdot}{\cdot}$ used.
 \begin{algorithm}[t]
 \algsetup{indent=1em}
 \begin{algorithmic}[1]
@@ -390,7 +394,7 @@ Besides, there exists a majorizing function $m_{\sf gr}: \Zset \to \rset$ and a 
 \eeq
 \end{assumption}
 
-\paragraph{Some intuitions behind the control terms:} It is actually common in statistical and optimization problems, to deal with the manipulation and the control of random variables indexed by sets with an infinite number of elements. here, the random variable we control is an image of a continuous function noted $\upsilon: \Zset \to \rset$ and defined as $\upsilon(z) \eqdef r_i (\param ; \op, z_{i,m})  - \sur{i}{\param}{\op}$ for all $z \in \Zset$ and for fixed $(\theta, \hat{\theta}) \in \Theta^2$.
+\paragraph{Some intuitions behind the controlling terms:} It is actually common in statistical and optimization problems, to deal with the manipulation and the control of random variables indexed by sets with an infinite number of elements. here, the random variable we control is an image of a continuous function noted $\upsilon: \Zset \to \rset$ and defined as $\upsilon(z) \eqdef r_i (\param ; \op, z_{i,m})  - \sur{i}{\param}{\op}$ for all $z \in \Zset$ and for fixed $(\theta, \hat{\theta}) \in \Theta^2$.
 To characterize such control, we will have recourse to the notion of metric entropy (or covering number of bracketing number) as developed in \citep{van2000asymptotic, vershynin2018high, wainwright2019high}.
 A collection of results from those books gives intuition behind our assumption H~\ref{controlapprox}, classical in empirical process:
 
@@ -459,9 +463,6 @@ Under S\ref{ass:sur}, S\ref{ass:diff}, H\ref{ass:sur}, H\ref{controlapprox}. In 
 \end{Theorem}
 In particular, the first result above shows that the sequence $\{ \hp{k} \}_{k \geq 0}$ produced by the MISSO method satisfies an \emph{asymptotic stationary point condition}.
 
-
-
-\clearpage
 \section{Numerical Experiments} \label{sec:numerical}
 \subsection{Binary logistic regression with missing values}\label{logisticreg}
 % \subsubsection{The model}
@@ -482,20 +483,9 @@ For $i \in \inter[n]$, the complete data log-likelihood is expressed as:
 \eeq
 
 
-\paragraph{MISSO update:}
-At the $k$-th iteration, and after the initialization, for all $i \in \inter[n]$, of the latent variables $(z_i^{(0)})$, the MISSO algorithm consists in picking an index $i_k$ uniformly on $\inter[n]$, completing the observations by sampling a Monte Carlo batch $  \{ z_{i_k,\mis,m}^{(k)} \}_{m=1}^{\Bsize{k}}$ of missing values from the conditional distribution $p(z_{i_k,\mis}|z_{i_k,\obs}, y_{i_k}; \hp{k-1})$ using an MCMC sampler and computing the estimated parameters as follows:
-\beq \label{eq:msteplog}
-\begin{split}
-& {\bm \beta}^{(k)} = \arg \min \limits_{\beta \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega^{(k)},\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  =  \frac{1}{n}\sum_{i=1}^{n} \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}} z_{i,m}^{(k)} \\
-& {\bm \Omega}^{(k)} = \arg \min \limits_{\Omega \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta^{(k)}, \Omega,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  =   \frac{1}{n}\sum_{i=1}^{n} \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}} w_{i,m}^{(k)}\\
-& {\bm \delta}^{(k)} = \frac{1}{n}\sum_{i=1}^{n} {\bm \delta}^{(\tau_i^k)} - (\tilde{H}^{(k)})^{-1} \tilde{D}^{(k)} \eqsp.
-\end{split}
-\eeq
-where $z_{i,m}^{(k)} = (z_{i,\mis,m}^{(k)},z_{i,\obs})$ is composed of a simulated and an observed part,  $\tilde{D}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{D}_i^{(\tau_i^k)}$, $\tilde{H}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{H}_i^{(\tau_i^k)}$ and $w_{i,m}^{(k)} = z_{i,m}^{(k)}(z_{i,m}^{(k)})^\top  -  {\bm \beta}^{(k)} ({\bm \beta}^{(k)})^\top $.
-Besides, $\tilde{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ and $\tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ are defined as MC approximation of $\hat{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op)$ and $\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)$, for all $i \in \inter[n]$ and defined in Appendix~\ref{app:update_logistic} as components of the surrogate function \eqref{pairmcem}.
 
 \paragraph{Fitting a logistic regression model on the TraumaBase dataset}
-We apply the MISSO method to fit a logistic regression model on the TraumaBase (\url{http://traumabase.eu}) dataset, which consists of data collected from 15 trauma centers in France, covering measurements on patients from the initial to last stage of trauma.
+We apply the MISSO method to fit a logistic regression model on the TraumaBase (\url{http://traumabase.eu}) dataset, which consists of data collected from 15 trauma centers in France, covering measurements on patients from the initial to last stage of trauma. Details on the surrogate functions and the parameters updates are given in \eqref{eq:msteplog} and Appendix~\ref{app:update_logistic}.
 
 Similar to \citep{jiang2018logistic}, we select $p = 16$ influential quantitative measurements, described in Appendix~\ref{appendix:variables}, on $n = 6384$ patients, and we adopt
 %This dataset includes information from the first stage of the trauma, namely initial observations on the patient's accident site to the last stage being intense care at the hospital and counts more than $200$ variables measured for more than $7\,000$ patients.
@@ -516,7 +506,6 @@ For the MISSO method, we set the batch size to $\Bsize{k} = 10 + k^2$ and we exa
 From Figure~\ref{fig:misso_trauma}, the MISSO method converges to a static value with less number of epochs than the MCEM, SAEM methods.
 It is worth noting that the difference among the MISSO runs for different number of selected functions demonstrates a variance-cost tradeoff.
 
-\clearpage
 \subsection{Training Bayesian CNN using MISSO}
 
 At iteration $k$, minimizing the sum of stochastic surrogates defined as in \eqref{eq:ssur} and \eqref{pairvi} yields the following MISSO update --- {\sf step (i)} pick a function index $i_k$ uniformly on $\inter[n]$; {\sf step (ii)} sample a Monte Carlo batch $ \{ z_{m}^{(k)} \}_{m=1}^{\Bsize{k}}$ from ${\cal N}(0,\Id)$; and {\sf step (iii)}  update the parameters as
@@ -567,7 +556,7 @@ fully-connected & 10 &  &  & $ 84$ &  \\
 
 \paragraph{Bayesian ResNet-18 \citep{he2016deep} on CIFAR-10 \citep{krizhevsky2012imagenet}:}
 
-We train here the Bayesian variant of the ResNet-18 neural network introduced in \citep{he2016deep} on CIFAR-10. 
+We train here the Bayesian variant of the ResNet-18 neural network (see Appendix~\ref{appendix:resnet}) introduced in \citep{he2016deep} on CIFAR-10. 
 The latter dataset is composed of $n=60\,000$ handwritten digits, $32 \times 32$ colour images in $10$ classes, with $6\,000$ images per class.
 As in the previous example, the weights are assumed  independent and identically distributed according to ${\cal N}(0,1)$.
 The source code used as a backbone here can be found in the TensorFlow Probability Github repo (\url{https://github.com/tensorflow/probability/blob/master/tensorflow_probability/examples/cifar10_bnn.py}) where the default hyperparameters, as the L annealing constant or the number of MC samples, were used for the benchmark methods. For better efficiency and lower variance, the Flipout estimator \citep{wen2018flipout} is preferred than a simple reparametrization trick for ResNet-18.
@@ -624,98 +613,10 @@ The solid curve is obtained from averaging over 5 independent runs of the method
 \end{figure}
 
 
-%\begin{figure}[H]
-%  \centering
-%  \begin{tabular}{@{}c@{}}
-%    \includegraphics[width=.9\linewidth]{pic_paper/bnn_avg_2.png} \\[\abovecaptionskip]
-%  \end{tabular}
-%
-%  \vspace{\floatsep}
-%
-%  \begin{tabular}{@{}c@{}}
-%    \includegraphics[width=.9\linewidth]{pic_paper/bnn_avg_2.png} \\[\abovecaptionskip]
-%  \end{tabular}
-%
-%  \caption{(Top)  Negated ELBO versus epochs elapsed for fitting the Bayesian LeNet-5 on MNIST using different algorithms.
-%(Bottom)  ELBO versus epochs elapsed for fitting the Bayesian ResNet-18 on CIFAR-10 using different algorithms.
-%The solid curve is obtained from averaging over 5 independent runs of the methods, and the shaded area represents the standard deviation.}\label{fig:lenetopt}
-%\end{figure}
-
-
 
 Figure~\ref{fig:lenetopt}(a) shows the convergence of the negated evidence lower bound against the number of passes over data (one pass represents an epoch). As observed, the proposed MISSO method outperforms \textit{Bayes by Backprop} and Momentum, while similar convergence rates are observed with the MISSO, ADAM and SAG methods for our experiment on MNIST dataset using a Bayesian variant of LeNet-5. 
-
 On the other hand, the experiment conducted on CIFAR-10 (Figure~\ref{fig:lenetopt}(b)) using a much larger network, \ie\ a Bayesian variant of ResNet-18 showcases the need of a well-tuned adaptive methods to reach better training loss (and also faster). Our MISSO method is similar to the Monte Carlo variant of ADAM but slower than built-in TF optimizers such as Adadelta and Adagrad. Recall that the purpose of this paper is to provide a common class of optimizers, such as VI, in order to study their convergence behaviors and not to introduce a novel method outperforming the rest.
 
-
-%\section{Some Examples}
-%\paragraph{Example 1: Maximum Likelihood Estimation for Latent Variable Model }
-%%The EM algorithm is the reference method to
-%%We consider the Maximum Likelihood (ML) estimation problem latent variable model.
-%Latent variable models \citep{bishop2006pattern} are constructed by introducing unobserved (latent) variables which help explain the observed data.
-%We consider $n$ independent observations $((y_i, z_i), i \in \inter[n])$ where $y_i$ is observed and $z_i$ is latent.
-%In this incomplete data framework, define $ \{f_i(z_i, \param), \param \in \Param \}$ to be the complete data likelihood models, \ie joint likelihood of the observations and latent variables. Let 
-%\beq 
-%g_i(\param) \eqdef \int_{\Zset}{f_i(z_i,\param) \mu_i(\dz_i)},~i \in \inter
-%\eeq 
-%denote the incomplete data likelihood, \ie the marginal likelihood of the observations.
-%For ease of notations, the dependence on the observations is made implicit.
-%The maximum likelihood (ML) estimation problem takes ${\cal L}_i(\param)$ to be the $i$th negated incomplete data log-likelihood ${\cal L}_i(\param) \eqdef - \log g_i(\param)$. 
-%
-%Assume without loss of generality  that $g_i(\param) \neq 0$ for all $\param \in \Param$, we define by $p_i(z_i, \param) \eqdef f_i(z_i,\param)/g_i(\param)$ the conditional distribution of the latent variable $z_i$ given the observation $y_i$.
-%A surrogate function $\sur{i}{\param}{\op}$ satisfying S\ref{ass:sur} can be obtained through writing
-%$f_i(z_i,\param) = \frac{f_i(z_i,\param)}{p_i(z_i, \op)} p_i(z_i,\op)$ and applying the Jensen inequality:
-%\beq\label{pairmcem}
-%\sur{i}{\param}{\op} = \int_{\Zset} \underbrace{\log \left(p_i(z_{i},\op)/f_i(z_{i},\param)\right)}_{=  \rsur{i}{\param}{\op}{z_i}} \!~ p_i( z_i, \op ) \mu_i ( \dz_i ) \eqsp,
-%\eeq
-%We note that S\ref{ass:diff} can also be verified for common distribution models.
-%We can apply the MISSO method following the above specification of $\rsur{i}{\param}{\op}{z_i}, p_i( z_i, \op )$.
-%
-%%We remark that surrogate optimization has been used in the development of EM methods \citep{mclachlan}.
-%%For example, the incremental EM method \citep{neal} can be derived as a special case of the MISO method. The latter requires the stochastic surrogate function \eqref{eq:integralsurrogate} to be exactly evaluated for each $\op \in \Param$ (corresponding to the `expectation' step), which may be infeasible for general distributions.
-%%In this sense, the MISSO method is similar to an incremental version of the Monte-Carlo EM method \citep{wei}.
-%
-%\paragraph{Example 2: Variational Inference} Let $((x_i,y_i),  i \in \inter)$ be i.i.d.~input-output pairs and $w \in \Wset[] \subseteq \rset^{d}$ be a latent variable. When conditioned on the input $x = (x_i, i \in \inter)$, the joint distribution of $y = (y_i, i \in \inter)$ and $w$ is given by:
-%\begin{equation}\label{eq:vi} \textstyle
-%    p(y,w | x) = \prior(w)\prod_{i=1}^{n}{p(y_i | x_i, w)} \eqsp.
-%\end{equation}
-%Our goal is to compute the posterior distribution $p(w|y,x)$.
-%In most cases, the posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. The variational inference (VI) problem \citep{blei2017vi} boils down to minimizing the KL divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$, as follows:
-%\begin{equation} \label{eq:VI}  
-%\min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp.
-%\end{equation}
-%Using \eqref{eq:vi}, we decompose ${\cal L}(\param) = n^{-1} \sum_{i=1}^{n}{{\cal L}_i(\param)} + {\rm const}.$ where:
-%\begin{equation}\label{eq:variationalobjective}
-%{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big] = r_i(\param) + d(\param) \eqsp.
-%\end{equation}
-%Directly optimizing the finite sum objective function in \eqref{eq:VI} can be difficult.
-%First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
-%Second, for some complex models, the expectations in \eqref{eq:variationalobjective} can be intractable even if we assume a simple parametric model for $q(w; \param)$.
-%Assume that ${\cal L}_i$ is $\rm L$-smooth, \ie ${\cal L}_i$ is differentiable on $\Param$ and its gradient $\nabla {\cal L}_i$ is $\rm L$-Lipschitz. We apply the MISSO method with a quadratic surrogate function defined as:
-%\begin{equation} \label{eq:quad_sur}
-%\sur{i}{\param}{\op} \eqdef {\cal L}_i(\op) + \pscal{ \nabla_{\param} {\cal L}_i(\op)} { \param - \op} +\frac{\rm L}{2}\|\op -\param \|^2 \eqsp.
-%\end{equation}
-%It is easily checked that $\sur{i}{\param}{\op}$ satisfies S\ref{ass:sur}, S\ref{ass:diff}.
-%To compute the gradient $\nabla {\cal L}_i(\op)$, we apply the re-parametrization technique suggested in \citep{paisley2013,kingma, blundell2015weight}.
-%Let $t: \rset^d \times \Param \mapsto \rset^d$ be a differentiable function \wrt $\param \in \Param$ which is designed such that the law of $w = t( z, \op )$, where $z \sim \mathcal{N}_d(0,\Id)$, is $q(\cdot, \op )$.
-%By \citep[Proposition~1]{blundell2015weight}, the gradient of $-r_i(\cdot)$ in \eqref{eq:variationalobjective} is:
-%\beq \label{eq:vi_grad}
-%\nabla_{\param} \EE_{ q( w; \op )} \big[\log p(y_i| x_i, w)\big] =  \EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] \eqsp,
-%\eeq
-%where for each $z \in \mathbb{R}^d$, $\jacob{\param}{t}{ z, \op }$ is the Jacobian of the function $t(z, \cdot)$ with respect to $\param$ evaluated at $\op$.
-%%Consequently, we have the identity:
-%%\beq\label{eq:gradvi}
-%%\nabla {\cal L}_i(\op) = -\EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] + \grd d( \op )
-%%\eeq
-%In addition, for most cases, the term $\grd d( \op )$ can be evaluated in closed form.
-%% --- e.g., if we take $q(w; \param ) \sim {\cal N}_d( \mu, \sigma^2 \Id)$ such that $\param = (\mu , \sigma^2) \in \Param \eqdef \mathbb{R}^d \times \mathbb{R}^{*}_{+}$ and $\prior(w) \sim {\cal N}_d( {\bm 0}, \Id)$, then we have
-%%$\grd d( \op ) = \frac{1}{n} (\bar{\mu},  \frac{d}{2}-\frac{1}{\overline{\sigma^2}} )$.
-%\begin{align}\label{pairvi}
-%\rsur{i}{\param}{\op}{z} \eqdef & \pscal{ \grd_{\param} d(\op) - \jacob{\param}{t}{ z,\op}\nabla_w \log p(y_i | x_i, w)\big|_{w = t( z, \op )} } { \param - \op} +\frac{L}{2}\| \param - \op\|^2 \eqsp.
-%\end{align}
-%Finally, using \eqref{eq:quad_sur} and \eqref{pairvi}, the surrogate function \eqref{eq:ssur} is given by $\ssur{i}{\param}{\op}{ \{ z_m \}_{m=1}^{M}} \eqdef M^{-1} \sum_{m=1}^{M} \rsur{i}{\param}{\op}{z_m}$
-%where $\{z_m\}_{m=1}^M$ is an i.i.d sample from $\mathcal{N}(0,\Id)$.
-%
 
 \section{Conclusion}
 We present a unifying framework for minimizing a non-convex finite-sum objective function using incremental surrogates when the latter functions are expressed as an expectation and are intractable.
@@ -1087,6 +988,283 @@ showing that $\EE[W_{\infty}] = w_{\infty}$ and concluding the proof of (ii). Mo
 \end{equation}
 which concludes the proof of the lemma.
 \end{proof}
+
+\clearpage
+
+ \section{Details about the Numerical Experiments}
+ 
+ 
+ \subsection{Binary Logistic Regression on the Traumabase}
+  \subsubsection{Traumabase quantitative variables}\label{appendix:variables}
+  The list of the 16 quantitative variables we use in our experiments are as follows --- \textit{age, weight, height, BMI (Body Mass Index), the Glasgow Coma Scale, the Glasgow Coma Scale motor component, the minimum systolic blood pressure, the minimum diastolic blood pressure, the maximum number of heart rate (or pulse) per unit time (usually a minute), the systolic blood pressure at arrival of ambulance, the diastolic blood pressure at arrival of ambulance, the heart rate at arrival of ambulance, the capillary Hemoglobin concentration, the oxygen saturation, the fluid expansion colloids, the fluid expansion cristalloids, the pulse pressure for the minimum value of diastolic and systolic blood pressure, the pulse pressure at arrival of ambulance.}
+
+
+% \subsubsection{MISSO, MCEM and SAEM for Curved Exponential Family}\label{curvedexpo}
+%Consider the case where the complete model $\param \to f_i(z_i,\param)$ belongs to the curved exponential family. For all $i \in \inter$ and $\param \in \Param$, one has:
+%\begin{equation} \label{eq:complete_log}
+%\log f_i(z_i,\param) = H_i(z_i) -\psi_i(\param) + \pscal{ \tilde{S}_i(z_i)} { \phi_i(\param)}.
+%\end{equation}
+%where $\psi_i: \param \mapsto \mathbb{R}$ and $\phi_i: \param \mapsto \mathbb{R}$ are twice continuously differentiable functions of $\param$, $H_i: \Zset \mapsto \mathbb{R}$ is a twice continuously differentiable function of $z_i$ and $\tilde{S}_i: \Zset \mapsto \mathsf{S}_i$ is a statistic taking its values in a convex subset $\mathsf{S}_i$ of $\mathbb{R}$ and such that $\int_{\Zset}{|\tilde{S}_i(z_i)|p_i(z_i,\param) \mu_i(\dz_i)} < \infty$.
+%Finally, the $i$th loss function is given by
+%\beq
+%{\cal L}_i( \param ) = - \log \int_{\Zset} f_i(z_i,\param) \mu_i( \dz_i).
+%\eeq
+%
+%To derive the surrogate function for this example, we follow from \textbf{Example 1} in Section~\ref{sec:framework} by taking $p(z_i , \op) = f( z_i , \op ) / g (\op)$ to yield
+%\beq
+%{\cal L}_i( \param ) \leq \sur{i}{\param}{\op} \eqdef \text{constant} + \int_{\Zset} \big\{ -\log f_i( z_i , \param) \} p(z_i,\op) \mu_i( \dz_i)
+%\eeq
+%Using \eqref{eq:complete_log}, the latter integral can be further expressed as
+%\beq \label{eq:surrogate_em}
+%\text{constant}  + \psi_i( \param ) - \int_{\Zset} \pscal{ \tilde{S}_i(z_i)} { \phi_i(\param)} p(z_i,\op) \mu_i( \dz_i).
+%\eeq
+%To summarize, we observe that the surrogate function can be written as
+%$\sur{i}{\param}{\op} = \text{constant}  + \psi_i( \param ) - \pscal{ \int_{\Zset} \tilde{S}_i(z_i) p(z_i,\op) \mu_i( \dz_i) } { \phi_i(\param)}$. As suggested in the MISSO method, we note that the integral can be approximated using sample averages.
+%
+%Now consider the following function $L(s; \param)$:
+%\begin{equation}\label{curvedL}
+%L(s;\param) \eqdef \frac{1}{n} \sum_{i=1}^n \Big\{ {\psi_i(\param)} - \pscal{ s_i}{ \phi_i(\param)} \Big\},
+%\end{equation}
+% for all $\param \in \Param$ and $s = (s_i, 1 \leq i \leq N) \in \mathsf{S} \eqdef \times_{n=1}^N \mathsf{S}_i$.
+%As noted from \eqref{eq:surrogate_em}, when $s_i$ is obtained from an appropriately sampling procedure, \eqref{curvedL} constitutes the summed stochastic surrogate function $\widetilde{\cal L}(\param)$ as suggested in the MISSO method [cf.~\Cref{alg:misso}].
+%For simplicity, we consider a case when the minimization \wrt $\param$ can be uniquely attained and we denote $\hp{ s } \eqdef \argmin_{\param \in \Param} L( s; \param )$.
+%We note that for this special case, the MISSO method can be compactly described in \Cref{alg:mbmcem-expo}.
+%
+%        \begin{algorithm}[t]
+%        \algsetup{indent=1em}
+%        \begin{algorithmic}[1]
+%\STATE \textbf{Initialization}: given an initial parameter estimate $\hp{0}$, for all $i \in \inter$, sample a Monte Carlo batch $\{z_{i,m}^{(0)}\}_{m=1}^{\Bsize{0}}$ from  $p(z_i,\hp{0})$ and compute $s^{(0)}_{i} = \frac{1}{\Bsize{0}}\sum_{m=1}^{\Bsize{0}}{\tilde{S}_i(z^{(0)}_{i,m})}$.
+%\FOR{$k=0,1...,$}
+%\STATE Pick a function index $i_k$ uniformly on $\inter$. \label{line:mcem1}
+%\STATE Draw $\Bsize{k}$ Monte-Carlo samples $\{z^{(k)}_{i,m}\}_{m=1}^{\Bsize{k}}$ from  $p(z_i,\hp{k-1})$.
+%\STATE Update the individual sufficient statistics recursively --- for each $i \in \inter$,
+%\beq \label{eq:missoem}
+%s_i^{(k)} =
+%  \begin{cases}
+%  \frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}}{\tilde{S}_i(z^{(k)}_{i,m})}        & \text{if } i = i_k \\
+%  s_i^{(k-1)}                                        & \text{otherwise}
+%  \end{cases}
+%\eeq \label{line:mcem3}
+%\STATE Set $\hp{k} = \hat{\param} \big( s^{(k)} \big) = \argmin_{ \param \in \Param } L( s^{(k)} ; \param )$ where $ s^{(k)} = (s_i^{(k)}, 1 \leq i \leq n)$.
+%\ENDFOR
+%\end{algorithmic}
+%\caption{MISSO for curved exponential family} \label{alg:mbmcem-expo}
+%        \end{algorithm}
+%
+%Now, in the context of the logistic regression described in section \ref{logisticreg}, for all $i \in \inter$, the complete log likelihood is expressed as:
+%\beq \notag
+%\log f_i(z_i,\param) \propto -y_i \delta^\top \bar{z}_i - \log \big( 1 +  \exp(- \delta^\top \bar{z}_i) \big) - \frac{1}{2}\log(|{\bm \Omega}|) + \frac{1}{2}{\rm Tr} \left({\bm \Omega}^{-1}(z_i - {\bm \beta})(z_i - {\bm \beta})^\top \right)  .
+%\eeq
+%For all $i \in \inter$, the sufficient statistics is $\tilde{S}_i(z_i) \triangleq ( z_i, z_iz_i^\top) $ and the minimizing map $s \to \hat{\param}(s)$ can be derived as:
+%\begin{align}
+%%\hat{\param}:& \mathsf{S} \mapsto \Theta \nonumber \\
+%& \hat{\param} \big( (s_{i,1}, s_{i,2})_{i=1}^{n} \big) = \left(\frac{1}{n}\sum_{i=1}^{n}{s_{i,1}},\frac{1}{n}\sum_{i=1}^{n}{s_{i,2}} - \frac{1}{n^2}\sum_{i=1}^{n}{s_{i,1}} \Big(\sum_{i=1}^{n}{s_{i,1}} \Big)^\top\right)
+%\end{align}
+%
+%Let us compare the MISSO method to the MCEM, SAEM methods as follows.
+%First we note that the MISSO method differs from the MCEM method in that the latter picks \emph{all the data sample} at each iteration, \ie Line~\ref{line:mcem1} to \ref{line:mcem3} is performed for every $i \in \inter$ instead of only one randomly chosen $i_k \in \inter$. Second, the SAEM method consists of a different update of the individual sufficient statistics --- at iteration $k$ and for all $i \in \inter$, the SAEM updates the quantity $s_i^{(k)}$ as follows:
+%\beq
+%s_i^{(k)} = s_i^{(k-1)} + \gamma_k \left (\frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}}{\tilde{S}_i(z^{(k)}_{i,m})}  - s_i^{(k-1)} \right)
+%\eeq
+%where $\{\gamma_k \}_{k > 0}$ is a decreasing sequence of stepsizes. Note that when $\gamma_k = 1$, the above update recovers the MCEM method.
+
+\subsubsection{Metropolis Hastings algorithm}\label{app:trauma_mh}
+During the simulation step of the MISSO method, the sampling from the target distribution $\pi(z_{i,\mis}; \param) \eqdef p(z_{i,\mis}|z_{i,\obs}, y_i;\param)$ is performed using a Metropolis Hastings (MH) algorithm \citep{meyn2012markov} with proposal distribution $q(z_{i,\mis}; {\bm \delta}) \eqdef p(z_{i,\mis}|z_{i,\obs};{\bm \delta})$ where $\param = (\beta, \Omega)$ and ${\bm \delta} = (\xi, \Sigma)$. The parameters of the Gaussian conditional distribution of $z_{i,\mis}|z_{i,\obs}$ read:
+\beq
+\begin{split}
+&\xi = \beta_{miss} + \Omega_{mis, obs}\Omega_{obs, obs}^{-1} (z_{i,\obs} - \beta_{obs}) \eqsp,\\
+&\Sigma = \Omega_{mis, mis}+ \Omega_{mis, obs}\Omega_{obs, obs}^{-1} \Omega_{obs,\mis}
+\end{split}
+\eeq
+where we have used the Schur Complement of $\Omega_{obs, obs}$ in $\Omega$ and noted $\beta_{mis}$ (resp. $\beta_{obs}$) the missing (resp. observed) elements of $\beta$.
+The MH algorithm is summarized in \Cref{alg:mh}.
+\begin{algorithm}[H]
+\algsetup{indent=1em}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} initialization $z_{i,\mis,0} \sim q(z_{i,\mis}; {\bm \delta})$
+\FOR {$m=1, \cdots ,M$}
+\STATE Sample $z_{i,\mis,m} \sim q(z_{i,\mis}; {\bm \delta})$
+\STATE Sample $u \sim \mathcal{U}(\llbracket 0, 1 \rrbracket)$
+\STATE Calculate the ratio $r = \frac{\pi(z_{i,\mis,m}; \param)/q(z_{i,\mis,m}); {\bm \delta})}{\pi(z_{i,\mis,m-1}; \param)/q(z_{i,\mis,m-1}); {\bm \delta})}$
+\IF{$u < r$}
+\STATE Accept $z_{i,\mis,m}$
+\ELSE
+\STATE $z_{i,\mis,m} \leftarrow z_{i,\mis,m-1}$
+\ENDIF
+\ENDFOR
+\STATE \textbf{Output:} $z_{i,\mis,M}$
+\end{algorithmic}
+\caption{MH aglorithm}
+\label{alg:mh}
+        \end{algorithm}
+
+\subsubsection{MISSO Update}\label{app:update_logistic}
+
+\paragraph{Choice of surrogate function for MISO:}
+We recall the MISO deterministic surrogate defined in \eqref{pairmcem}:
+\beq
+\sur{i}{\param}{\op} = \int_{\Zset} \log \left(p_i(z_{i,\mis},\op)/f_i(z_{i,\mis},\param)\right) \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_i ) \eqsp.
+\eeq
+where $\param = (\delta, \beta, \Omega)$ and $\op = (\bar{\delta}, \bar{\beta}, \bar{\Omega})$.
+We adapt it to our missing covariates problem and decompose the the surrogate function defined above into an observed and a missing part.
+
+\paragraph{Surrogate function decomposition}
+We adapt it to our missing covariates problem and decompose the term depending on $\theta$, while $\bar{\theta}$ is fixed, in two following parts leading to
+\beq \label{eq:surrogatedet}
+\begin{split}
+\sur{i}{\param}{\op} &= - \int_{\Zset} \log f_i(z_{i,\mis},z_{i,\obs},\param) \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_{i,\mis} )\\
+&= - \int_{\Zset} \log \left[ p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) p_i(z_{i,\mis},\beta, \Omega)\right] \!~ p_i( z_i, \op ) \mu_i (\dz_{i,\mis})\\
+&= \underbrace{ - \int_{\Zset} \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) \!~ p_i( z_i, \op ) \mu_i ( \dz_{i,\mis} )}_{ =\hat{\mathcal{L}}^{(1)}_i(\delta,\op)}\underbrace{  - \int_{\Zset} \log p_i(z_{i,\mis},\beta, \Omega) \!~ p_i( z_i, \op ) \mu_i ( \dz_{i,\mis} )}_{ =\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)} 
+\end{split}
+\eeq
+
+The mean $\beta$ and the covariance $\Omega$ of the latent structure can be estimated minimizing the sum of MISSO surrogates $\tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$, defined as MC approximation of $\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)$, for all $i \in \inter[n]$, in closed-form expression.
+
+We thus keep the surrogate  $\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)$ as it is, and consider the following quadratic approximation of $\hat{\mathcal{L}}^{(1)}_i(\delta,\op)$ to estimate the vector of logistic parameters $\delta$:
+\beq
+\begin{split}
+ \hat{\mathcal{L}}^{(1)}_i(\bar{\delta},\op) & - \int_{\Zset} \nabla \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta)\big|_{\delta = \bar{\delta}} \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_{i,\mis}) (\delta- \bar{\delta}) \\
+& -  (\delta- \bar{\delta})/2 \int_{\Zset} \nabla^2 \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) \!~ p_i( z_{i,\mis}, \op ) \!~ p_i( z_{i,\mis}, \op ) \mu_i (\dz_{i,\mis}) (\delta- \bar{\delta})^\top
+\end{split}
+\eeq
+Recall that:
+\beq
+\begin{split}
+& \nabla \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) = z_i\left(y_i -S(\delta^\top z_i)\right) \\
+& \nabla^2 \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) = -z_i z_i^\top \dot S(\delta^\top z_i)
+\end{split}
+\eeq
+where $\dot S(u)$ is the derivative of $S(u)$. 
+Note that $\dot S(u) \leq 1/4$ and since, for all $i \in \inter[n]$, the $p \times p$ matrix $z_i z_i^\top$ is semi-definite positive we can assume:
+\begin{assumptionL} \label{ass:log1}
+For all $i \in \inter[n]$ and $\epsilon > 0$, there exist, for all $z_i \in \mathsf{Z}$, a positive definite matrix $H_i(z_i) \eqdef \frac{1}{4} (z_i z_i^\top + \epsilon I_d)$ such that for all $\delta \in \rset^p$, $-z_i z_i^\top\dot S(\delta^\top z_i) \leq H_i(z_{i})$.
+\end{assumptionL}
+
+Then, we use, for all $i \in \inter[n]$, the following surrogate function to estimate $\delta$:
+\beq\label{eq:surrogatelogit}
+\bar{\mathcal{L}}^{(1)}_i(\delta,\op) =   \hat{\mathcal{L}}^{(1)}_i(\bar{\delta},\op) -D_i^\top (\delta - \bar{\delta}) + \frac{1}{2}(\delta - \bar{\delta})H_i(\delta - \bar{\delta})^\top
+\eeq
+where:
+\beq
+\begin{split}
+& D_i =  \int_{\Zset} \nabla \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta)\big|_{\delta = \bar{\delta}} \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_{i,\mis}) \\
+& H_i =  \int_{\Zset} H_i(z_{i,\mis}) \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_{i,\mis}) 
+\end{split}
+\eeq
+Finally, at iteration $k$, the total surrogate is:
+\beq\label{eq:mixedsurrogate}
+\begin{split}
+ \tilde{\mathcal{L}}^{(k)}(\theta)& = \frac{1}{n}\sum_{i=1}^{n} \tilde{\mathcal{L}}_i(\theta,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}}) \\
+ & = \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  -  \frac{1}{n} \sum_{i=1}^{n} \tilde{D}_i^{(\tau_i^k)}(\delta - \delta^{(\tau_i^k)}) \\
+ & +\frac{1}{2n}\sum_{i=1}^{n} (\delta - \delta^{(\tau_i^k)})\left\{ \tilde{H}_i^{(\tau_i^k)} \right\} (\delta - \delta^{(\tau_i^k)})^\top 
+\end{split}
+ \eeq
+ 
+ where for all $i \in \inter[n]$:
+\beq
+\begin{split}
+& \tilde{D}_i^{(\tau_i^k)}=  \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}}    z^{(\tau_i^k)}_{i,m}\left(y_i -S(\left(\delta^{(\tau_i^k)}\right)^\top z_{i,m}{(\tau_i^k)})\right) \\
+& \tilde{H}_i^{(\tau_i^k)} =  \frac{1}{4M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}}   z_{i,m}^{(\tau_i^k)}(z_{i,m}^{(\tau_i^k)})^\top
+\end{split}
+\eeq
+
+Minimizing the total surrogate \eqref{eq:mixedsurrogate} boils down to performing a quasi-Newton step.
+It is perhaps sensible to apply some diagonal loading which is perfectly compatible with the surrogate interpretation we just gave.
+
+The logistic parameters are estimated as follows:
+\beq
+{\bm \delta}^{(k)} = \arg \min \limits_{\delta \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(1)}_i(\delta,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}}) 
+\eeq
+where $\tilde{\mathcal{L}}^{(1)}_i(\delta,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}}) $ is the MC approximation of the MISO surrogate defined in \eqref{eq:surrogatelogit}and which leads to the following quasi-Newton step:
+\beq
+{\bm \delta}^{(k)} = \frac{1}{n}\sum_{i=1}^{n} {\bm \delta}^{(\tau_i^k)} - (\tilde{H}^{(k)})^{-1} \tilde{D}^{(k)}
+\eeq
+with $\tilde{D}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{D}_i^{(\tau_i^k)}$ and $\tilde{H}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{H}_i^{(\tau_i^k)}$.
+
+
+\paragraph{MISSO updates:}
+At the $k$-th iteration, and after the initialization, for all $i \in \inter[n]$, of the latent variables $(z_i^{(0)})$, the MISSO algorithm consists in picking an index $i_k$ uniformly on $\inter[n]$, completing the observations by sampling a Monte Carlo batch $  \{ z_{i_k,\mis,m}^{(k)} \}_{m=1}^{\Bsize{k}}$ of missing values from the conditional distribution $p(z_{i_k,\mis}|z_{i_k,\obs}, y_{i_k}; \hp{k-1})$ using an MCMC sampler and computing the estimated parameters as follows:
+\beq \label{eq:msteplog}
+\begin{split}
+& {\bm \beta}^{(k)} = \arg \min \limits_{\beta \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega^{(k)},\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  =  \frac{1}{n}\sum_{i=1}^{n} \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}} z_{i,m}^{(k)} \\
+& {\bm \Omega}^{(k)} = \arg \min \limits_{\Omega \in \Theta} \frac{1}{n} \sum_{i=1}^{n}  \tilde{\mathcal{L}}^{(2)}_i(\beta^{(k)}, \Omega,\theta^{(\tau_i^k)},\{z_{i,m}\}_{m=1}^{M_{(\tau_i^k)}})  =   \frac{1}{n}\sum_{i=1}^{n} \frac{1}{M_{(\tau_i^k)}}\sum_{m=1}^{M_{(\tau_i^k)}} w_{i,m}^{(k)}\\
+& {\bm \delta}^{(k)} = \frac{1}{n}\sum_{i=1}^{n} {\bm \delta}^{(\tau_i^k)} - (\tilde{H}^{(k)})^{-1} \tilde{D}^{(k)} \eqsp.
+\end{split}
+\eeq
+where $z_{i,m}^{(k)} = (z_{i,\mis,m}^{(k)},z_{i,\obs})$ is composed of a simulated and an observed part,  $\tilde{D}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{D}_i^{(\tau_i^k)}$, $\tilde{H}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{H}_i^{(\tau_i^k)}$ and $w_{i,m}^{(k)} = z_{i,m}^{(k)}(z_{i,m}^{(k)})^\top  -  {\bm \beta}^{(k)} ({\bm \beta}^{(k)})^\top $.
+Besides, $\tilde{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ and $\tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ are defined as MC approximation of $\hat{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op)$ and $\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)$, for all $i \in \inter[n]$ as components of the surrogate function \eqref{eq:surrogatedet}.
+
+ \subsection{Incremental Variational Inference}
+ \subsubsection{Bayesian LeNet-5 Architecture}\label{appendix:bnn}
+\textcolor{red}{put here the table of the architecture}
+
+ \subsubsection{Bayesian ResNet-18 Architecture}\label{appendix:resnet}
+\textcolor{red}{put here the table of the architecture}
+ 
+ \subsubsection{Algorithms updates}\label{bnn:updates}
+First, we initialize the means $\mu_\ell^{(0)}$ for $\ell \in \inter[d]$ and variance estimates $\sigma^{(0)}$.
+In the sequel, at iteration $k$ and for all $i \in \inter[n]$ we define the following terms:
+\beq\label{eq:drifts}
+\begin{split}
+& \hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} =
+  - \frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}} \nabla_{w} \log p(y_{i} | x_{i}, w) \Big|_{w = t(\hp{k-1},z_m^{(k)})}  + \nabla_{\mu_\ell}  d(\hp{k-1}) \eqsp,\\
+  & \hat{{\bm{\delta}}}^{(k)}_{\sigma,i} =
+ - \frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}} z_m^{(k)} \nabla_{w} \log p(y_{i} | x_{i}, w) \Big|_{w = t(\hp{k-1},z_m^{(k)})}  + \nabla_{\sigma}  d(\hp{k-1}) \eqsp.
+\end{split}
+\eeq
+For all benchmark algorithms, we pick, at iteration $k$, a function index $i_k$ uniformly on $\inter[n]$ and sample a Monte Carlo batch $ \{ z_{m}^{(k)} \}_{m=1}^{\Bsize{k}}$ from the standard Gaussian distribution. The updates of the parameters $\mu_\ell$ for all $ \ell \in \inter[d]$ and $\sigma$ break down as follows:
+
+\textbf{Monte Carlo SAG update}: Set
+\beq
+\begin{split}
+\mu_\ell^{(k)} = \mu_\ell^{(k-1)} -  \frac{\gamma}{n}\sum_{i=1}^{n}{\hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} } \quad \textrm{and} \quad \sigma^{(k)} = \sigma^{(k-1)} - \frac{\gamma}{n} \sum_{i=1}^{n}{\hat{{\bm{\delta}}}^{(k)}_{\sigma,i} }\eqsp,
+\end{split}
+\eeq
+where $\hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} = \hat{{\bm{\delta}}}^{(k-1)}_{\mu_\ell,i}$ and $\hat{{\bm{\delta}}}^{(k)}_{\sigma,i} = \hat{{\bm{\delta}}}^{(k-1)}_{\sigma,i}$ for $i \neq i_k$ and are defined by \eqref{eq:drifts} for $i = i_k$.
+The learning rate is set to $\gamma = 10^{-3}$.
+
+\textbf{Bayes By Backprop update}: Set
+\beq
+\begin{split}
+\mu_\ell^{(k)} = \mu_\ell^{(k-1)} -  \frac{\gamma}{n} \hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i_k}  \quad \textrm{and} \quad \sigma^{(k)} = \sigma^{(k-1)} - \frac{\gamma}{n} \hat{{\bm{\delta}}}^{(k)}_{\sigma,i_k}\eqsp,
+\end{split}
+\eeq
+where the learning rate $\gamma = 10^{-3}$.
+
+\textbf{Monte Carlo Momentum update}: Set
+\beq
+\mu_\ell^{(k)} = \mu_\ell^{(k-1)} + \hat{{\bm{v}}}^{(k)}_{\mu_\ell}  \quad \textrm{and} \quad \sigma^{(k)} = \sigma^{(k-1)} + \hat{{\bm{v}}}^{(k)}_{\sigma} \eqsp,
+\eeq
+where
+\beq
+\hat{{\bm{v}}}^{(k)}_{\mu_\ell,i} = \alpha \hat{{\bm{v}}}^{(k-1)}_{\mu_\ell} -  \frac{\gamma}{n} \hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i_k}  \quad \textrm{and} \quad \hat{{\bm{v}}}^{(k)}_{\sigma} =  \alpha \hat{{\bm{v}}}^{(k-1)}_{\sigma} - \frac{\gamma}{n} \hat{{\bm{\delta}}}^{(k)}_{\sigma,i_k} \eqsp,
+\eeq
+where $\alpha$ and $\gamma$, respectively the momentum and the learning rates, are set to $10^{-3}$.
+
+\textbf{Monte Carlo ADAM update}: Set
+\beq
+\begin{split}
+\mu_\ell^{(k)} = \mu_\ell^{(k-1)} -  \frac{\gamma}{n} \hat{{\bm{m}}}^{(k)}_{\mu_\ell}/(\sqrt{ \hat{{\bm{m}}}^{(k)}_{\mu_\ell}} + \epsilon)  \quad \textrm{and} \quad \sigma^{(k)} = \sigma^{(k-1)} - \frac{\gamma}{n} \hat{{\bm{m}}}^{(k)}_{\sigma} /(\sqrt{ \hat{{\bm{m}}}^{(k)}_{\sigma}} + \epsilon)\eqsp,
+\end{split}
+\eeq
+where
+\beq
+\begin{split}
+& \hat{{\bm{m}}}^{(k)}_{\mu_\ell} = {\bm{m}}^{(k-1)}_{\mu_\ell}/(1 - \rho_1^k) \quad \textrm{with} \quad {\bm{m}}^{(k)}_{\mu_\ell} = \rho_1 {\bm{m}}^{(k-1)}_{\mu_\ell}  + (1- \rho_1) \hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i_k} \eqsp,\\
+& \hat{{\bm{v}}}^{(k)}_{\mu_\ell} = {\bm{v}}^{(k-1)}_{\mu_\ell}/(1 - \rho_2^k) \quad \textrm{with} \quad {\bm{v}}^{(k)}_{\mu_\ell} = \rho_2 {\bm{v}}^{(k-1)}_{\mu_\ell}  + (1- \rho_1) \big(\hat{{\bm{\delta}}}^{(k)}_{\sigma,i_k}\big)^2
+\end{split}
+\eeq
+and
+\beq
+\begin{split}
+& \hat{{\bm{m}}}^{(k)}_{\sigma} = {\bm{m}}^{(k-1)}_{\sigma}/(1 - \rho_1^k) \quad \textrm{with} \quad {\bm{m}}^{(k)}_{\sigma} = \rho_1 {\bm{m}}^{(k-1)}_{\sigma}  + (1- \rho_1) \hat{{\bm{\delta}}}^{(k)}_{\sigma,i_k} \eqsp,\\
+& \hat{{\bm{v}}}^{(k)}_{\sigma} = {\bm{v}}^{(k-1)}_{\sigma}/(1 - \rho_2^k) \quad \textrm{with} \quad {\bm{v}}^{(k)}_{\sigma} = \rho_2 {\bm{v}}^{(k-1)}_{\sigma}  + (1- \rho_1) \big(\hat{{\bm{\delta}}}^{(k)}_{\sigma,i_k}\big)^2 \eqsp.
+\end{split}
+\eeq
+The hyperparameters are set as follows:  $\gamma=10^{-3}, \rho_1=0.9, \rho_2=0.999, \epsilon=10^{-8}$.
+%\linespread{1.1}
+%\normalsize
+
 
 
 %-----------------------------------------------------------------------------
