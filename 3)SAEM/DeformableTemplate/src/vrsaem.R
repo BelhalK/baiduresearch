@@ -14,7 +14,7 @@
 #' \item{Gamma}{Estiamated \eqn{\Gamma}{\Gamma}.}
 
 
-saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
+vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
                        algo = "saem", batchsize=1) {
     set.seed(seed)

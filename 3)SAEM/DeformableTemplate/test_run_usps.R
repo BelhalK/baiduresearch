@@ -25,7 +25,6 @@ data(digits)
 nb <- 5  # number of images
 images = digits[,3000:(3000+nb)]
 
-
 # #plots some digits images
 # for (i in 1:nb){
 #   sample.digit = matrix(images[,i], ncol=16,byrow=FALSE)  
@@ -77,7 +76,7 @@ template.model<-function(z, xi,p,landmarks.p,landmarks.g) {
 
 
 batchsize = 1
-nb.epochs <-5
+nb.epochs <-10
 N <- ncol(images)
 nb.iter <- N/batchsize*nb.epochs
 nb.mcmc <- 4
@@ -86,31 +85,29 @@ nb.mcmc <- 4
 K1 = 0
 
 # SAEM
-fit.saem = saem(images,kp,kg, template.model,maxruns=nb.iter,
-				nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
-
-# fit.inc.saem = saem(images,kp,kg, template.model,maxruns=nb.iter,
-#               nmcmc = nb.mcmc,k1=K1,algo = "isaem", batchsize=batchsize)
-
-# fit.vr.saem = vrsaem(images,kp,kg, template.model,maxruns=nb.iter,
-#               nmcmc = nb.mcmc,k1=K1,algo = "vrsaem", batchsize=batchsize)
-
-# fit.fi.saem = fisaem(images,kp,kg, template.model,maxruns=nb.iter,
-#               nmcmc = nb.mcmc,k1=K1,algo = "fisaem", batchsize=batchsize)
+fit.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
+fit.inc.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "isaem", batchsize=batchsize)
+# fit.vr.saem = vrsaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "vrsaem", batchsize=batchsize)
+# fit.fi.saem = fisaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "fisaem", batchsize=batchsize)
 
 
 
 
+# fit.saem$seqxi
+# fit.saem$seqgamma[[nb.iter]]
+# fit.saem$seqsigma
 
 # #PLOTS
 # dim = 1
-# saem = fit.saem$seqxi[dim,]
+# saem = fit.saem$seqxi[dim,1:nb.iter]
+# isaem = fit.inc.saem$seqxi[dim,1:nb.iter]
 # x = 1:length(saem)
 # df <- data.frame(x,saem)
 # ggplot(data=df)+
 #   geom_line(mapping=aes(y=saem,x= x,color="saem"),size=0.5 ) +
+#   geom_line(mapping=aes(y=isaem,x= x,color="isaem"),size=0.5 ) +
 #   scale_color_manual(values = c(
-#     'saem' = 'darkblue')) +
+#     'saem' = 'darkblue', 'isaem' = 'red')) +
 #   labs(color = 'Algo')+ ylab("xi")
 
 
@@ -127,3 +124,21 @@ fit.saem = saem(images,kp,kg, template.model,maxruns=nb.iter,
 #   scale_color_manual(values = c(
 #     'saem' = 'darkblue','isaem' = 'red')) +
 #   labs(color = 'Algo')
+
+
+## generate new images with fitted params
+landmarks.p = matrix(rnorm(2*kp),ncol=kp) #of template
+landmarks.g = matrix(rnorm(2*kg),ncol=kg) #of deformation
+
+xi <- fit.saem$seqxi[,nb.iter]
+Gamma <- fit.saem$seqgamma[[nb.iter]]
+sigma <- fit.saem$seqsigma[,nb.iter]
+
+chol.omega <- chol(Gamma)
+z.new <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
+p=sqrt(nrow(images)) #dimension of the input
+
+new.sample<-template.model(z.new, xi, p,landmarks.p,landmarks.g) #generated digit
+image(t(new.sample)[,nrow(new.sample):1]) #display generated digit
+
+
