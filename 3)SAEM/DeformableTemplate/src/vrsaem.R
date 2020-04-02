@@ -16,7 +16,7 @@
 
 vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
-                       algo = "saem", batchsize=1) {
+                       algo = "saem", batchsize=1, rho=0.5) {
     set.seed(seed)
     
     images <- as.matrix(X.obs)
@@ -28,7 +28,6 @@ vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     for (indiv in 1:n){
       samples[[indiv]] <-sample.digit #list of all images
     }
-    ptm <- Sys.time()
 
     cov.z.0 <- 1
     xi.0 <- 1
@@ -57,21 +56,21 @@ vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     S1.indiv = matrix(0,nrow=kp)
     S2.indiv = matrix(0,nrow=kp,ncol=kp)
 
-    S1 <- list(S1.indiv,S1.indiv)
-    S2 <- list(S2.indiv,S2.indiv)
-    S3 <- list(Gamma[[1]],Gamma[[1]])
+    S1 <- S.e.0.1 <- list(S1.indiv,S1.indiv)
+    S2 <- S.e.0.2 <- list(S2.indiv,S2.indiv)
+    S3 <- S.e.0.3 <- list(Gamma[[1]],Gamma[[1]])
 
     for (indiv in 1:n){
       chol.omega<-try(chol(Gamma[[1]]))
       z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
       z[[indiv]] <- z1
-      S1[[indiv]] <- S1.indiv
-      S2[[indiv]] <- S2.indiv
-      S3[[indiv]] <- Gamma[[1]]
+      S1[[indiv]] <- S.e.0.1[[indiv]] <- S1.indiv
+      S2[[indiv]] <- S.e.0.2[[indiv]] <- S2.indiv
+      S3[[indiv]] <- S.e.0.3[[indiv]] <- Gamma[[1]]
     }
 
     #global stats
-    suffStat<-list(S1=0,S2=0,S3=0)
+    suffStat<- stats <- list(S1=0,S2=0,S3=0)
 
 
     zproposal <- z #initialise proposal random effects
@@ -81,13 +80,9 @@ vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
 
 
     for (k in 1:maxruns) {
-
+      print(k)
       #mini batch indices sampling
-      if (algo == 'isaem'){
-        index <- sample(1:n, batchsize)
-      } else {
-        index <- 1:n
-      }
+      index <- sample(1:n, batchsize)
 
       #E-step
       for (indiv in index){
@@ -121,17 +116,66 @@ vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
         S3[[indiv]] = compute.stat3(z[[indiv]])
       }
 
+
+      if (k%%(n/batchsize) == 0)
+      { 
+        Gamma.e.0 <- Gamma[[k]]
+        xi.e.0 <- xi[,k]
+        sigma.e.0 <- sigma[,k]
+
+        Z.e.0<-z
+        Z.proposal.e.0<-zproposal
+
+        S.e.0.1 <- S1
+        S.e.0.2 <- S2
+        S.e.0.3 <- S3
+        for (indiv in 1:n){
+          cov <- Gamma.e.0
+          chol.omega<-try(chol(cov))
+          somega<-solve(cov)
+          
+          U.z<-0.5*rowSums(Z.e.0[[indiv]]*(Z.e.0[[indiv]]%*%somega))
+          U.y<-compute.LLy(Z.e.0[[indiv]], xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
+
+          for(u in 1:nmcmc) { 
+
+            Z.proposal.e.0[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
+            Uc.z<-0.5*rowSums(Z.proposal.e.0[[indiv]]*(Z.proposal.e.0[[indiv]]%*%somega))
+            Uc.y<-compute.LLy(Z.proposal.e.0[[indiv]],xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
+
+            #MH acceptance ratio
+            deltu<-Uc.y-U.y+Uc.z-U.z
+            #accept reject step
+            for (dim in 1:2){
+              if (deltu[dim]<(-1)*log(runif(1))){
+                Z.e.0[[indiv]][dim,] = Z.proposal.e.0[[indiv]][dim,]
+              }
+            }
+          }
+
+          #M-Step
+          ### Compute individual and summed statistics
+          S.e.0.1[[indiv]] = compute.stat1(samples[[indiv]],Z.e.0[[indiv]], xi.e.0, p, kp, landmarks.p, landmarks.g)
+          S.e.0.2[[indiv]] = compute.stat2(Z.e.0[[indiv]],xi.e.0, p, kp, landmarks.p,landmarks.g)
+          S.e.0.3[[indiv]] = compute.stat3(Z.e.0[[indiv]])
+        }
+      }
       if(k <k1){gamma <- 1}else{gamma <- 1/(k-(k1-1))^tau}
       #M-Step
       ###update sufficient statistics
-      suffStat$S1 = suffStat$S1 + gamma*(Reduce("+",S1) - suffStat$S1)
-      suffStat$S2 = suffStat$S2 + gamma*(Reduce("+",S2) - suffStat$S2)
-      suffStat$S3 = suffStat$S3 + gamma*(Reduce("+",S3) - suffStat$S3)
+      stats$S1 = (1-rho)*stats$S1 + rho*((S1[[index]] - S.e.0.1[[index]]) + Reduce("+",S1) )
+      stats$S2 = (1-rho)*stats$S2 + rho*((S2[[index]] - S.e.0.2[[index]]) + Reduce("+",S2) )
+      stats$S3 = (1-rho)*stats$S3 + rho*((S3[[index]] - S.e.0.3[[index]]) + Reduce("+",S3) )
       
+      suffStat$S1 = suffStat$S1 + gamma*(stats$S1 - suffStat$S1)
+      suffStat$S2 = suffStat$S2 + gamma*(stats$S2 - suffStat$S2)
+      suffStat$S3 = suffStat$S3 + gamma*(stats$S3 - suffStat$S3)
+
+
       ###update global parameters
-      Gamma[[k]] = suffStat$S3/n
-      xi[,k] = solve(suffStat$S2)%*%suffStat$S1
-      sigma[,k] = (t(xi[,k])%*%suffStat$S2%*%xi[,k] - 2*xi[,k]%*%suffStat$S1)/(n*p**p)
+      Gamma[[k+1]] = suffStat$S3/n
+      xi[,k+1] = solve(suffStat$S2)%*%suffStat$S1
+      sigma[,k+1] = (t(xi[,k+1])%*%suffStat$S2%*%xi[,k+1] - 2*xi[,k+1]%*%suffStat$S1)/(n*p**p)
     }
 
 

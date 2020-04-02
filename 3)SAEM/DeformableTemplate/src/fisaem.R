@@ -16,9 +16,9 @@
 
 fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
-                       algo = "saem", batchsize=1) {
+                       algo = "saem", batchsize=1, rho=0.5) {
     set.seed(seed)
-    
+  
     images <- as.matrix(X.obs)
     p=sqrt(nrow(images)) #dimension of the input
     n=ncol(images) #number of images in the dataset (n)
@@ -28,7 +28,6 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     for (indiv in 1:n){
       samples[[indiv]] <-sample.digit #list of all images
     }
-    ptm <- Sys.time()
 
     cov.z.0 <- 1
     xi.0 <- 1
@@ -39,6 +38,7 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     for (k in 1:maxruns){
       Gamma[[k]] <-cov #list of all estimated cov of z
     }
+  
 
     xi = matrix(xi.0,nrow=kp,ncol=(maxruns+1)) #template fixed parameters (1 X kp)
     sigma = matrix(sigma.0,nrow=1,ncol=(maxruns+1)) #residual errors variance
@@ -69,7 +69,7 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
       S2[[indiv]] <- S2.indiv
       S3[[indiv]] <- Gamma[[1]]
     }
-
+  
     #global stats
     suffStat<-list(S1=0,S2=0,S3=0)
 
@@ -78,10 +78,9 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     # landmarks
     landmarks.p = matrix(rnorm(2*kp),ncol=kp) #of template
     landmarks.g = matrix(rnorm(2*kg),ncol=kg) #of deformation
-
-
+    print(maxruns)
     for (k in 1:maxruns) {
-
+      print(k)
       #mini batch indices sampling
       if (algo == 'isaem'){
         index <- sample(1:n, batchsize)
@@ -129,9 +128,11 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
       suffStat$S3 = suffStat$S3 + gamma*(Reduce("+",S3) - suffStat$S3)
       
       ###update global parameters
-      Gamma[[k]] = suffStat$S3/n
-      xi[,k] = solve(suffStat$S2)%*%suffStat$S1
-      sigma[,k] = (t(xi[,k])%*%suffStat$S2%*%xi[,k] - 2*xi[,k]%*%suffStat$S1)/(n*p**p)
+      Gamma[[k+1]] = suffStat$S3/n
+      xi[,k+1] = solve(suffStat$S2)%*%suffStat$S1
+      sigma[,k+1] = (t(xi[,k+1])%*%suffStat$S2%*%xi[,k+1] - 2*xi[,k+1]%*%suffStat$S1)/(n*p**p)
+
+      # browser()
     }
 
 

@@ -40,8 +40,8 @@ tts.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     }
   
 
-    xi = matrix(xi.0,nrow=kp,ncol=maxruns) #template fixed parameters (1 X kp)
-    sigma = matrix(sigma.0,nrow=1,ncol=maxruns) #residual errors variance
+    xi = matrix(xi.0,nrow=kp,ncol=(maxruns+1)) #template fixed parameters (1 X kp)
+    sigma = matrix(sigma.0,nrow=1,ncol=(maxruns+1)) #residual errors variance
 
     # # Normal proposal covariance
     # omega.eta <- diag(rep(1,kg))
@@ -128,9 +128,9 @@ tts.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
       suffStat$S3 = suffStat$S3 + gamma*(Reduce("+",S3) - suffStat$S3)
       
       ###update global parameters
-      Gamma[[k]] = suffStat$S3/n
-      xi[,k] = solve(suffStat$S2)%*%suffStat$S1
-      sigma[,k] = (t(xi[,k])%*%suffStat$S2%*%xi[,k] - 2*xi[,k]%*%suffStat$S1)/(n*p**p)
+      Gamma[[k+1]] = suffStat$S3/n
+      xi[,k+1] = solve(suffStat$S2)%*%suffStat$S1
+      sigma[,k+1] = (t(xi[,k+1])%*%suffStat$S2%*%xi[,k+1] - 2*xi[,k+1]%*%suffStat$S1)/(n*p**p)
 
       # browser()
     }

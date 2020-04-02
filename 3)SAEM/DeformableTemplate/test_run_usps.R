@@ -43,40 +43,34 @@ Gamma.star <- diag(rep(1,kg)) # covariance
 template.model<-function(z, xi,p,landmarks.p,landmarks.g) { 
   zi<-z
   ypred = matrix(NA,nrow=p,ncol=p)
-
   phi <- as.list(numeric(p^2))
   dim(phi) <- c(p,p)
-  
   sigma.g = 1
   sigma.p = 1
-
   for (m in 1:p){
   	for (j in 1:p){
-      #Image Coordinate Standard
+      	#Image Coordinate Standard
   		x.ind = 2*m/p-1
   		y.ind = 2*j/p-1
   		rep.coord = matrix(c(x.ind,y.ind), nrow=1)
 	   	coord <- t(apply(rep.coord, 2, rep, kg))
-  		
-      #deformation computation
+      	#deformation computation
   		kernel.deformation = exp(-(coord - landmarks.g)^2/(2*sigma.g))
 	   	phi[[m,j]]= colSums(kernel.deformation)%*%t(zi)
-  		
-      #template computation
-      coord.template = rep.coord - phi[[m,j]]
-      rep.coord.template <- t(apply(coord.template, 2, rep, kp))
-      kernel.template = exp(-(rep.coord.template - landmarks.p)^2/(2*sigma.p))
+      	#template computation
+      	coord.template = rep.coord - phi[[m,j]]
+      	rep.coord.template <- t(apply(coord.template, 2, rep, kp))
+      	kernel.template = exp(-(rep.coord.template - landmarks.p)^2/(2*sigma.p))
   		template = colSums(kernel.template)%*%xi
   		ypred[m,j] = template
   	}
   } 
-
   return(ypred)
 }
 
 
 batchsize = 1
-nb.epochs <-10
+nb.epochs <-3
 N <- ncol(images)
 nb.iter <- N/batchsize*nb.epochs
 nb.mcmc <- 4
@@ -84,12 +78,15 @@ nb.mcmc <- 4
 #first stage of SAEM
 K1 = 0
 
-# SAEM
-fit.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
-fit.inc.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "isaem", batchsize=batchsize)
-# fit.vr.saem = vrsaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "vrsaem", batchsize=batchsize)
-# fit.fi.saem = fisaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "fisaem", batchsize=batchsize)
+rho.vr = 1/N**(2/3)
+rho.saga = 1/N**(2/3)
 
+
+# SAEM
+# fit.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
+# fit.inc.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "isaem", batchsize=batchsize)
+# fit.vr.saem = vrsaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "vrsaem", batchsize=batchsize,rho.vr)
+fit.fi.saem = fisaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "fisaem", batchsize=batchsize,rho.saga)
 
 
 
