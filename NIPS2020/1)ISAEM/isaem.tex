@@ -179,27 +179,32 @@ For all $ i \in \inter$, draw for $m \in \llbracket 1, M \rrbracket$, samples $z
 \beq\label{eq:mcstep}
 \textsf{MC-step}:~ \tilde{\bss} = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}, y_i)
 \eeq
-and compute $\hat{\param} = \overline{\param}( \hat{\bss} ) $.
-
+and then update the parameter $\hat{\param} = \overline{\param}( \hat{\bss} ) $.
 This algorithm bypasses the intractable expectation issue but is rather computationally expensive in order to reach point wise convergence ($M$ needs to be large).
-
-As a result, an alternative to that stochastic algorithm is to use a Robbins-Monro (RM) type of update.
-We denote
+An alternative to that stochastic algorithm is to use a Robbins-Monro (RM) type of update.
+We denote, at iteration $k$, the following quantity
 \beq\label{eq:stats}
-\tilde{S}^{(k+1)} = \frac{1}{n} \sum_{i=1}^n \tilde{S}^{(k+1)}_i = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}^{(k)}, y_i)
+\tilde{S}^{(k+1)} = \frac{1}{n} \sum_{i=1}^n \tilde{S}^{(k+1)}_i = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}^{(k)}, y_i) \quad \textrm{where} \quad z_{i,m}^{(k)} \sim p(z_i|y_i;\theta^{(k)})
 \eeq
-where $z_{i,m}^{(k)} \sim p(z_i|y_i;\theta^{(k)})$.
-At iteration $k$, the sufficient statistics $\hat{\bss}^{(k+1)}$ is approximated as follows:
-
+Then, the RM updated of the sufficient statistics $\hat{\bss}^{(k+1)}$ reads:
 \beq\label{eq:rmstep}
 \textsf{SA-step}:~ \hat{\bss}^{(k+1)} =  \hat{\bss}^{(k)}  + \gamma_{k+1}(\tilde{S}^{(k+1)} - \hat{\bss}^{(k)} )
 \eeq
+where $\{ \gamma_{k} \}_{k>1} \in (0,1)$ is a sequence of decreasing step sizes to ensure asymptotic convergence.
+This is called the Stochastic Approximation of the EM (SAEM) and has been shown theoretically to converge to a maximum of the likelihood of the observations under very general conditions \citep{delyon1999}.
+In the simulation step \eqref{eq:stats}, since the relation between the observed data $y_i$ and the latent variable $z_i$ can be non linear, sampling from the posterior distribution $p(z_i|y_i;\theta)$, under the current model $\theta$, could require using an inference algorithm. 
+\citep{kuhn2004coupling} proved almost sure convergence of the sequence of parameters obtained by this algorithm coupled with an MCMC procedure during the simulation step. 
+In simple scenarios, the samples $\{z_{i,m}\}_{m=0}^{M-1}$ are conditionally independent and identically distributed with distribution $p(z_i,\theta)$.
+Nevertheless, in most cases, sampling exactly from this distribution is not an option and the Monte Carlo batch is sampled by Monte Carlo Markov Chains (MCMC) algorithm.
+In the \textsf{SA-step}, the sequence of decreasing positive integers $\{ \gamma_{k} \}_{k>1}$ controls the convergence of the algorithm.
+ In practice, $\gamma_k$ is set equal to $1$ during the first few iterations to let the algorithm explore the parameter space without memory and converge quickly to a neighbourhood of the target estimate. 
+ The Stochastic Approximation is performed during the remaining iterations where $\gamma_k = 1/k^\alpha$, where $\alpha \in (0,1)$, ensuring the almost sure convergence of the estimate.
+ It is inappropriate to start with small values for step size $\gamma_k$ and large values for the number of simulations $M_k$. Rather, it is recommended that one decrease $\gamma_k$ and keep a constant and small numer of MC samples $M_k$ which shows a great advantage over the \textsf{MC-step} \eqref{eq:mcstep}, which requires large $M_k$ to converge.
 
-where $\{ \gamma_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of decreasing step sizes to ensure asymptotic convergence.
-This is called the Stochastic Approximation of the EM (SAEM), see \citep{delyon1999} and allows a smooth convergence to the target parameter.
-It represents the \textit{first level} of our algorithm (needed to temper the variance and noise implied by MC integration).
 
-In the next section, we derive variants of this algorithm to adapt of the sheer size of data of today's applications.
+
+This Robbins-Monro type of update represents the \textit{first level} of our algorithm, needed to temper the variance and noise implied by MC integration.
+In the next section, we derive variants of this algorithm to adapt to the sheer size of data of today's applications and formalize the \textit{second level} of our class of Two-Time-Scale EM methods.
 
 \subsection{Incremental and Bi-Level Inexact EM Methods} \label{sec:sEM}
 Strategies to scale to large datasets include classical incremental and variance reduced variants.
@@ -209,7 +214,7 @@ We will explicit a general update that will cover those variants and that repres
 \textsf{Incremental-step}:~\tilde{S}^{(k+1)} = \tilde{S}^{(k)} + \rho_{k+1} \big( \StocEstep^{(k+1)}- \tilde{S}^{(k)}  \big),
 \eeq
 
-Note $\{ \rho_{k} \}_{k=1}^\infty \in [0,1]$ is a sequence of step sizes, $\StocEstep^{(k)}$ is a proxy for $\tilde{S}^{(k)}$,
+Note $\{ \rho_{k} \}_{k>1} \in (0,1)$ is a sequence of step sizes, $\StocEstep^{(k)}$ is a proxy for $\tilde{S}^{(k)}$,
 If the stepsize is equal to one and the proxy $\StocEstep^{(k)} = \hat{S}^{(k)}$, i.e., computed in a full batch manner as in \eqref{eq:stats}, then we recover the SAEM algorithm.
 Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, then we recover the Monte Carlo EM algorithm.
 
@@ -231,7 +236,7 @@ Moreover, for \ISAEM\ we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; f
 We now introduce the general method derived using the two variance reduction techniques described above.
 Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:sestep} in order to output a vector of fitted parameters $\hat{\param}^{(K)}$ where $K$ is some randomly chosen termination point.
 
-The updates in \eqref{eq:twolevels} is said to have two timescales as the step sizes satisfy $\lim \limits_{k \to \infty} \gamma_k/\rho_k < 1$ such that $ \tilde{S}^{(k+1)} $  is updated at a faster timescale than $\hat{\bss}^{(k+1)}$.
+The update in \eqref{eq:twolevels} is said to have two timescales as the step sizes satisfy $\lim \limits_{k \to \infty} \gamma_k/\rho_k < 1$ such that $ \tilde{S}^{(k+1)} $  is updated at a faster timescale than $\hat{\bss}^{(k+1)}$.
 
 \begin{algorithm}[H]
 \caption{Two-Time-Scale Noisy EM methods.}\label{alg:ttsem}
@@ -702,6 +707,12 @@ Let us define
 \Delta^{(k)} \eqdef \frac{1}{n} \sum_{i=1}^n \EE[ \| \hs{k} - \hs{t_i^{k}} \|^2 ]
 \eeq
 From the above, we get
+\beq
+\begin{split}
+ \Delta^{(k+1)} \leq & \big(\frac{n-1}{n}(1 + \gamma_{k+1}\beta + \frac{2\Lip{\bss}}{n^2}  \gamma_{k+1}) +\frac{2\Lip{\bss}\gamma_{k+1}^2}{n^2}  \big) \Delta^{(k)} +4\big(\gamma_{k+1}^2 +\frac{n-1}{n}\frac{\gamma_{k+1}}{\beta}  \big)\EE \Big[  \|   \os^{(k)} - \hs{k}  \|^2  \Big]\\
+ &  + 2\big(\gamma_{k+1}^2  +\frac{n-1}{n}\frac{\gamma_{k+1}}{\beta}  \big)\EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right]+  4 \big(\gamma_{k+1}^2 +\frac{n-1}{n}\frac{\gamma_{k+1}}{\beta}  \big)\EE\left[\norm{ \frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}}^2\right]
+\end{split}
+\eeq
 
 
 \textcolor{red}{FINAL}
