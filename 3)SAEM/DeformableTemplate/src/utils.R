@@ -87,3 +87,28 @@ compute.stat3<-function(z) {
   return(res)
 }
 
+MCMC<-function(z, sample.digit, Gamma,xi, sigma,p,landmarks.p,landmarks.g ,nmcmc) {
+  chol.omega<-try(chol(Gamma))
+  somega<-solve(Gamma)
+  
+  U.z<-0.5*rowSums(z*(z%*%somega))
+  U.y<-compute.LLy(z, xi, sample.digit,p, sigma,landmarks.p,landmarks.g)
+
+  for(u in 1:nmcmc) { 
+    zproposal<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
+    Uc.z<-0.5*rowSums(zproposal*(zproposal%*%somega))
+    Uc.y<-compute.LLy(zproposal,xi, sample.digit,p, sigma,landmarks.p,landmarks.g)
+
+    #MH acceptance ratio
+    deltu<-Uc.y-U.y+Uc.z-U.z
+
+    #accept reject step
+    for (dim in 1:2){
+      if (deltu[dim]<(-1)*log(runif(1))){
+        z[dim,] = zproposal[dim,]
+      }
+    }
+  }
+
+  return(z)
+}

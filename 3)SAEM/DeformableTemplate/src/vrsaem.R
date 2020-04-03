@@ -86,31 +86,9 @@ vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
 
       #E-step
       for (indiv in index){
-        cov <- Gamma[[k]]
-        chol.omega<-try(chol(cov))
-        somega<-solve(cov)
+        z[[indiv]] <- MCMC(z[[indiv]], samples[[indiv]], Gamma[[k]],xi[,k], sigma[,k],p,landmarks.p,landmarks.g,nmcmc)
         
-        U.z<-0.5*rowSums(z[[indiv]]*(z[[indiv]]%*%somega))
-        U.y<-compute.LLy(z[[indiv]], xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
-
-        for(u in 1:nmcmc) { 
-
-          zproposal[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
-          Uc.z<-0.5*rowSums(zproposal[[indiv]]*(zproposal[[indiv]]%*%somega))
-          Uc.y<-compute.LLy(zproposal[[indiv]],xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
-
-          #MH acceptance ratio
-          deltu<-Uc.y-U.y+Uc.z-U.z
-          #accept reject step
-          for (dim in 1:2){
-            if (deltu[dim]<(-1)*log(runif(1))){
-              z[[indiv]][dim,] = zproposal[[indiv]][dim,]
-            }
-          }
-        }
-
-        #M-Step
-        ### Compute individual and summed statistics
+        ### Compute individual statistics
         S1[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], xi[,k], p, kp, landmarks.p, landmarks.g)
         S2[[indiv]] = compute.stat2(z[[indiv]],xi[,k], p, kp, landmarks.p,landmarks.g)
         S3[[indiv]] = compute.stat3(z[[indiv]])
@@ -130,42 +108,43 @@ vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
         S.e.0.2 <- S2
         S.e.0.3 <- S3
         for (indiv in 1:n){
-          cov <- Gamma.e.0
-          chol.omega<-try(chol(cov))
-          somega<-solve(cov)
+          # cov <- Gamma.e.0
+          # chol.omega<-try(chol(cov))
+          # somega<-solve(cov)
           
-          U.z<-0.5*rowSums(Z.e.0[[indiv]]*(Z.e.0[[indiv]]%*%somega))
-          U.y<-compute.LLy(Z.e.0[[indiv]], xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
+          # U.z<-0.5*rowSums(Z.e.0[[indiv]]*(Z.e.0[[indiv]]%*%somega))
+          # U.y<-compute.LLy(Z.e.0[[indiv]], xi.e.0, samples[[indiv]],p, sigma.e.0,landmarks.p,landmarks.g)
 
-          for(u in 1:nmcmc) { 
+          # for(u in 1:nmcmc) { 
 
-            Z.proposal.e.0[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
-            Uc.z<-0.5*rowSums(Z.proposal.e.0[[indiv]]*(Z.proposal.e.0[[indiv]]%*%somega))
-            Uc.y<-compute.LLy(Z.proposal.e.0[[indiv]],xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
+          #   Z.proposal.e.0[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
+          #   Uc.z<-0.5*rowSums(Z.proposal.e.0[[indiv]]*(Z.proposal.e.0[[indiv]]%*%somega))
+          #   Uc.y<-compute.LLy(Z.proposal.e.0[[indiv]],xi.e.0, samples[[indiv]],p, sigma.e.0,landmarks.p,landmarks.g)
 
-            #MH acceptance ratio
-            deltu<-Uc.y-U.y+Uc.z-U.z
-            #accept reject step
-            for (dim in 1:2){
-              if (deltu[dim]<(-1)*log(runif(1))){
-                Z.e.0[[indiv]][dim,] = Z.proposal.e.0[[indiv]][dim,]
-              }
-            }
-          }
+          #   #MH acceptance ratio
+          #   deltu<-Uc.y-U.y+Uc.z-U.z
+          #   #accept reject step
+          #   for (dim in 1:2){
+          #     if (deltu[dim]<(-1)*log(runif(1))){
+          #       Z.e.0[[indiv]][dim,] = Z.proposal.e.0[[indiv]][dim,]
+          #     }
+          #   }
+          # }
+          Z.e.0[[indiv]] <- MCMC(Z.e.0[[indiv]], samples[[indiv]], Gamma.e.0,xi.e.0, sigma.e.0,p,landmarks.p,landmarks.g,nmcmc)
 
-          #M-Step
-          ### Compute individual and summed statistics
+          ### Compute individual statistics
           S.e.0.1[[indiv]] = compute.stat1(samples[[indiv]],Z.e.0[[indiv]], xi.e.0, p, kp, landmarks.p, landmarks.g)
           S.e.0.2[[indiv]] = compute.stat2(Z.e.0[[indiv]],xi.e.0, p, kp, landmarks.p,landmarks.g)
           S.e.0.3[[indiv]] = compute.stat3(Z.e.0[[indiv]])
         }
       }
       if(k <k1){gamma <- 1}else{gamma <- 1/(k-(k1-1))^tau}
+
       #M-Step
       ###update sufficient statistics
-      stats$S1 = (1-rho)*stats$S1 + rho*((S1[[index]] - S.e.0.1[[index]]) + Reduce("+",S1) )
-      stats$S2 = (1-rho)*stats$S2 + rho*((S2[[index]] - S.e.0.2[[index]]) + Reduce("+",S2) )
-      stats$S3 = (1-rho)*stats$S3 + rho*((S3[[index]] - S.e.0.3[[index]]) + Reduce("+",S3) )
+      stats$S1 = (1-rho)*stats$S1 + rho*((S1[[index]] - S.e.0.1[[index]]) + Reduce("+",S.e.0.1) )
+      stats$S2 = (1-rho)*stats$S2 + rho*((S2[[index]] - S.e.0.2[[index]]) + Reduce("+",S.e.0.2) )
+      stats$S3 = (1-rho)*stats$S3 + rho*((S3[[index]] - S.e.0.3[[index]]) + Reduce("+",S.e.0.3) )
       
       suffStat$S1 = suffStat$S1 + gamma*(stats$S1 - suffStat$S1)
       suffStat$S2 = suffStat$S2 + gamma*(stats$S2 - suffStat$S2)

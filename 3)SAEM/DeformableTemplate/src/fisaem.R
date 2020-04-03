@@ -43,6 +43,9 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     xi = matrix(xi.0,nrow=kp,ncol=(maxruns+1)) #template fixed parameters (1 X kp)
     sigma = matrix(sigma.0,nrow=1,ncol=(maxruns+1)) #residual errors variance
 
+    theta0 <- list(xi = xi[,1], Gamma = Gamma[[1]], sigma=sigma[1] )
+    alphas <- rep(list(theta0),n)
+
     # # Normal proposal covariance
     # omega.eta <- diag(rep(1,kg))
     # chol.omega<-try(chol(omega.eta))
@@ -69,12 +72,17 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
       S2[[indiv]] <- S2.indiv
       S3[[indiv]] <- Gamma[[1]]
     }
-  
+    S1.j <- S1.old <- S1.old.j <- S1
+    S2.j <- S2.old <- S2.old.j <- S2
+    S3.j <- S3.old <- S3.old.j <- S3
+
     #global stats
-    suffStat<-list(S1=0,S2=0,S3=0)
+    suffStat <- hstats <- stats <- list(S1=0,S2=0,S3=0)
 
 
     zproposal <- z #initialise proposal random effects
+    z.old <- z.j <- z.old.j <- z
+
     # landmarks
     landmarks.p = matrix(rnorm(2*kp),ncol=kp) #of template
     landmarks.g = matrix(rnorm(2*kg),ncol=kg) #of deformation
@@ -82,57 +90,79 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     for (k in 1:maxruns) {
       print(k)
       #mini batch indices sampling
-      if (algo == 'isaem'){
-        index <- sample(1:n, batchsize)
-      } else {
-        index <- 1:n
+      index.i <- sample(1:n, batchsize)
+      index.j <- sample(1:n, batchsize)
+      while (index.j==index.i)
+      { 
+        index.j <- sample(1:n, batchsize)
       }
 
       #E-step
-      for (indiv in index){
-        cov <- Gamma[[k]]
-        chol.omega<-try(chol(cov))
-        somega<-solve(cov)
-        
-        U.z<-0.5*rowSums(z[[indiv]]*(z[[indiv]]%*%somega))
-        U.y<-compute.LLy(z[[indiv]], xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
+      for (indiv in index.i){
+        z[[indiv]] <- MCMC(z[[indiv]], samples[[indiv]], Gamma[[k]],xi[,k], sigma[,k],p,landmarks.p,landmarks.g,nmcmc)
+        z.old[[indiv]] <- MCMC(z.old[[indiv]], samples[[indiv]], alphas[[indiv]]$Gamma,alphas[[indiv]]$xi, alphas[[indiv]]$sigma,p,landmarks.p,landmarks.g,nmcmc)
 
-        for(u in 1:nmcmc) { 
-
-          zproposal[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
-          Uc.z<-0.5*rowSums(zproposal[[indiv]]*(zproposal[[indiv]]%*%somega))
-          Uc.y<-compute.LLy(zproposal[[indiv]],xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
-
-          #MH acceptance ratio
-          deltu<-Uc.y-U.y+Uc.z-U.z
-          #accept reject step
-          for (dim in 1:2){
-            if (deltu[dim]<(-1)*log(runif(1))){
-              z[[indiv]][dim,] = zproposal[[indiv]][dim,]
-            }
-          }
-        }
-
-        #M-Step
-        ### Compute individual and summed statistics
+        ### Compute individual statistics
         S1[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], xi[,k], p, kp, landmarks.p, landmarks.g)
         S2[[indiv]] = compute.stat2(z[[indiv]],xi[,k], p, kp, landmarks.p,landmarks.g)
         S3[[indiv]] = compute.stat3(z[[indiv]])
+
+        S1.old[[indiv]] = compute.stat1(samples[[indiv]],z.old[[indiv]], alphas[[indiv]]$xi, p, kp, landmarks.p, landmarks.g)
+        S2.old[[indiv]] = compute.stat2(z.old[[indiv]],alphas[[indiv]]$xi, p, kp, landmarks.p,landmarks.g)
+        S3.old[[indiv]] = compute.stat3(z.old[[indiv]])
       }
 
+  
       if(k <k1){gamma <- 1}else{gamma <- 1/(k-(k1-1))^tau}
       #M-Step
+
+      #Saga update 
+      vS1 = hstats$S1 + (S1[[index.i]] - S1.old[[index.i]])
+      vS2 = hstats$S2 + (S2[[index.i]] - S2.old[[index.i]])
+      vS3 = hstats$S3 + (S3[[index.i]] - S3.old[[index.i]])
+
+      stats$S1 = (1-rho)*stats$S1 + rho*vS1
+      stats$S2 = (1-rho)*stats$S2 + rho*vS2
+      stats$S3 = (1-rho)*stats$S3 + rho*vS3
+
+
       ###update sufficient statistics
       suffStat$S1 = suffStat$S1 + gamma*(Reduce("+",S1) - suffStat$S1)
       suffStat$S2 = suffStat$S2 + gamma*(Reduce("+",S2) - suffStat$S2)
       suffStat$S3 = suffStat$S3 + gamma*(Reduce("+",S3) - suffStat$S3)
       
+      oldtheta <- list(xi = xi[,k], Gamma = Gamma[[k]], sigma=sigma[k] )
+
       ###update global parameters
       Gamma[[k+1]] = suffStat$S3/n
       xi[,k+1] = solve(suffStat$S2)%*%suffStat$S1
       sigma[,k+1] = (t(xi[,k+1])%*%suffStat$S2%*%xi[,k+1] - 2*xi[,k+1]%*%suffStat$S1)/(n*p**p)
 
-      # browser()
+
+      #saga like updates after global parms updates
+      oldalpha.j <- alphas[[index.j]]
+      alphas[[index.j]] <- oldtheta
+
+      indiv = index.j
+      for (indiv in index.j){
+        z.j[[indiv]] <- MCMC(z.j[[indiv]], samples[[indiv]], oldtheta$Gamma,oldtheta$xi, oldtheta$sigma,p,landmarks.p,landmarks.g,nmcmc)
+        z.old.j[[indiv]] <- MCMC(z.old.j[[indiv]], samples[[indiv]], oldalpha.j$Gamma,oldalpha.j$xi, oldalpha.j$sigma,p,landmarks.p,landmarks.g,nmcmc)
+
+        ### Compute individual statistics
+        S1.j[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], oldtheta$xi, p, kp, landmarks.p, landmarks.g)
+        S2.j[[indiv]] = compute.stat2(z[[indiv]],oldtheta$xi, p, kp, landmarks.p,landmarks.g)
+        S3.j[[indiv]] = compute.stat3(z[[indiv]])
+
+        S1.old.j[[indiv]] = compute.stat1(samples[[indiv]],z.old[[indiv]], oldalpha.j$xi, p, kp, landmarks.p, landmarks.g)
+        S2.old.j[[indiv]] = compute.stat2(z.old[[indiv]],oldalpha.j$xi, p, kp, landmarks.p,landmarks.g)
+        S3.old.j[[indiv]] = compute.stat3(z.old[[indiv]])
+      }
+
+
+      hstats$S1 <- hstats$S1 + (S1.j[[index.j]] - S1.old.j[[index.j]])
+      hstats$S2 <- hstats$S2 + (S2.j[[index.j]] - S2.old.j[[index.j]])
+      hstats$S3 <- hstats$S3 + (S3.j[[index.j]] - S3.old.j[[index.j]])
+
     }
 
 

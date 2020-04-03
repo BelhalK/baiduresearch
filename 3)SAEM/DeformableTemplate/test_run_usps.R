@@ -83,9 +83,9 @@ rho.saga = 1/N**(2/3)
 
 
 # SAEM
-# fit.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
-# fit.inc.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "isaem", batchsize=batchsize)
-# fit.vr.saem = vrsaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "vrsaem", batchsize=batchsize,rho.vr)
+fit.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
+fit.inc.saem = tts.saem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "isaem", batchsize=batchsize)
+fit.vr.saem = vrsaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "vrsaem", batchsize=batchsize,rho.vr)
 fit.fi.saem = fisaem(images,kp,kg, template.model,maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "fisaem", batchsize=batchsize,rho.saga)
 
 

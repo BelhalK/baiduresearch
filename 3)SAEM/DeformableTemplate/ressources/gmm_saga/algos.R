@@ -394,62 +394,63 @@ mixt.isaemsaga <- function(x, theta0, K, K1=NULL, M=1, alpha=1,nbr, rho)
   return(df)
 }
 
-mixt.saga <- function(x, theta0, K,nbr, rho.saga)
-{
-   G<-length(mu)
-  col.names <- c("iteration", paste0("p",1:G), paste0("mu",1:G), paste0("sigma",1:G))
-  theta.est <- matrix(NA,K+1,3*G+1)
-  theta.est[1,] <- c(0, theta0$p, theta0$mu, theta0$sigma)
-  theta<-theta0
-  
-  #Init
-  tau <- compute.tau(x,theta)
-  s <- v <- h <- compute.stat(x,tau)
-  n<-length(x)
-  li <- NULL
-  alphas <- rep(list(theta0),n)
-  # l <- sample(1:n,K,replace = TRUE)
-  # l <- rep(1:n,K/n)
-  li <- rep(sample(1:n,n), K/n)
-  lj <- NULL
-  for (index in 1:(K/n)){
-    lj <- list.append(lj, sample(li[(1+(index-1)*n):(index*n)]))
-  }
-  i <- 1:nbr
-  j <- 1:nbr
-  
-  for (k in 1:K)
-  {
-    newtau.i<- compute.tau(x[li[i]],theta)
-    oldtau.i<- compute.tau(x[li[i]],alphas[[li[i]]])
 
-    v$s1 <- h$s1 + (newtau.i - oldtau.i)*n
-    v$s2 <- h$s2 + (x[li[i]]*newtau.i - x[li[i]]*oldtau.i)*n
+# mixt.saga <- function(x, theta0, K,nbr, rho.saga)
+# {
+#    G<-length(mu)
+#   col.names <- c("iteration", paste0("p",1:G), paste0("mu",1:G), paste0("sigma",1:G))
+#   theta.est <- matrix(NA,K+1,3*G+1)
+#   theta.est[1,] <- c(0, theta0$p, theta0$mu, theta0$sigma)
+#   theta<-theta0
+  
+#   #Init
+#   tau <- compute.tau(x,theta)
+#   s <- v <- h <- compute.stat(x,tau)
+#   n<-length(x)
+#   li <- NULL
+#   alphas <- rep(list(theta0),n)
+#   # l <- sample(1:n,K,replace = TRUE)
+#   # l <- rep(1:n,K/n)
+#   li <- rep(sample(1:n,n), K/n)
+#   lj <- NULL
+#   for (index in 1:(K/n)){
+#     lj <- list.append(lj, sample(li[(1+(index-1)*n):(index*n)]))
+#   }
+#   i <- 1:nbr
+#   j <- 1:nbr
+  
+#   for (k in 1:K)
+#   {
+#     newtau.i<- compute.tau(x[li[i]],theta)
+#     oldtau.i<- compute.tau(x[li[i]],alphas[[li[i]]])
+
+#     v$s1 <- h$s1 + (newtau.i - oldtau.i)*n
+#     v$s2 <- h$s2 + (x[li[i]]*newtau.i - x[li[i]]*oldtau.i)*n
     
-    s$s1 <- (1-rho.saga)*s$s1 + rho.saga*v$s1
-    s$s2 <- (1-rho.saga)*s$s2 + rho.saga*v$s2
+#     s$s1 <- (1-rho.saga)*s$s1 + rho.saga*v$s1
+#     s$s2 <- (1-rho.saga)*s$s2 + rho.saga*v$s2
 
-    oldtheta <- theta
-    theta$mu<-step.M(s,n)
+#     oldtheta <- theta
+#     theta$mu<-step.M(s,n)
 
-    theta.est[k+1,] <- c(k, theta0$p, theta$mu, theta0$sigma)
+#     theta.est[k+1,] <- c(k, theta0$p, theta$mu, theta0$sigma)
 
-    oldalpha.j <- alphas[[lj[j]]]
-    alphas[[lj[j]]] <- oldtheta
-    newtau.j<- compute.tau(x[lj[j]],oldtheta)
-    oldtau.j<- compute.tau(x[lj[j]],oldalpha.j)
-    # tau[lj[j],] <- newtau.i - oldtau.i
-    h$s1 <- h$s1 + (newtau.j - oldtau.j)
-    h$s2 <- h$s2 + (x[lj[j]]*newtau.j - x[lj[j]]*oldtau.j)
+#     oldalpha.j <- alphas[[lj[j]]]
+#     alphas[[lj[j]]] <- oldtheta
+#     newtau.j<- compute.tau(x[lj[j]],oldtheta)
+#     oldtau.j<- compute.tau(x[lj[j]],oldalpha.j)
+#     # tau[lj[j],] <- newtau.i - oldtau.i
+#     h$s1 <- h$s1 + (newtau.j - oldtau.j)
+#     h$s2 <- h$s2 + (x[lj[j]]*newtau.j - x[lj[j]]*oldtau.j)
 
-    i <- i+nbr
-    j <- j+nbr
-  }
+#     i <- i+nbr
+#     j <- j+nbr
+#   }
   
-  df <- as.data.frame(theta.est)
-  names(df) <- col.names
-  return(df)
-}
+#   df <- as.data.frame(theta.est)
+#   names(df) <- col.names
+#   return(df)
+# }
 
 
 
