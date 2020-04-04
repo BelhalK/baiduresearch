@@ -249,19 +249,19 @@ with open('losses/adadelta', 'wb') as fp:
     pickle.dump(adadelta, fp)
 print("ADADELTA done")
 
-lr_rmsprop = 0.0001
-rmsprop = []
+lr_misso = 0.0001
+misso = []
 for _ in range(nb_runs):
     tf.random.set_random_seed(_*seed0)
     loss, kl = run_experiment(algo='rmsprop', 
                          fake_data=fake_data, 
                          batch_size = batch_size, 
                          epochs=epochs,
-                         learning_rate=lr_rmsprop, 
+                         learning_rate=lr_misso, 
                          verbose= True)
-    rmsprop.append(loss)
-with open('losses/rmsprop', 'wb') as fp: 
-    pickle.dump(rmsprop, fp)
+    misso.append(loss)
+with open('losses/misso', 'wb') as fp: 
+    pickle.dump(misso, fp)
 print("MISSO done")
 
 print("ALL LOSSES ARE SAVED")

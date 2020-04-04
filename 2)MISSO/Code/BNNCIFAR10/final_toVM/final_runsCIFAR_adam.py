@@ -219,49 +219,5 @@ with open('losses/adam', 'wb') as fp:
     pickle.dump(adam, fp)
 print("ADAM done")
 
-# lr_adagrad = 0.001
-# adagrad = []
-# for _ in range(nb_runs):
-#     tf.random.set_random_seed(_*seed0)
-#     loss, kl = run_experiment(algo='adagrad', 
-#                          fake_data=fake_data, 
-#                          batch_size = batch_size, 
-#                          epochs=epochs,
-#                          learning_rate=lr_adagrad, 
-#                          verbose= True)
-#     adagrad.append(loss)
-# with open('losses/adagrad', 'wb') as fp: 
-#     pickle.dump(adagrad, fp)
-# print("ADAGRAD done")
-
-# lr_adadelta = 0.0001
-# adadelta = []
-# for _ in range(nb_runs):
-#     tf.random.set_random_seed(_*seed0)
-#     loss, kl = run_experiment(algo='adadelta', 
-#                          fake_data=fake_data, 
-#                          batch_size = batch_size, 
-#                          epochs=epochs,
-#                          learning_rate=lr_adadelta, 
-#                          verbose= True)
-#     adadelta.append(loss)
-# with open('losses/adadelta', 'wb') as fp: 
-#     pickle.dump(adadelta, fp)
-# print("ADADELTA done")
-
-# lr_rmsprop = 0.0001
-# rmsprop = []
-# for _ in range(nb_runs):
-#     tf.random.set_random_seed(_*seed0)
-#     loss, kl = run_experiment(algo='rmsprop', 
-#                          fake_data=fake_data, 
-#                          batch_size = batch_size, 
-#                          epochs=epochs,
-#                          learning_rate=lr_rmsprop, 
-#                          verbose= True)
-#     rmsprop.append(loss)
-# with open('losses/rmsprop', 'wb') as fp: 
-#     pickle.dump(rmsprop, fp)
-# print("MISSO done")
 
 print("ALL LOSSES ARE SAVED")
