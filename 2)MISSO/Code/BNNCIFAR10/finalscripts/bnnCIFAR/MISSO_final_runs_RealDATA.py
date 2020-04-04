@@ -1,25 +1,24 @@
-#python3 final_runs.py --batchsize=2 --nbepochs=1 --nbruns=1
+#python3 final_runs.py --batchsize=2 --nbepochs=3 --nbruns=1
 from __future__ import absolute_import
 from __future__ import division
-
 from __future__ import print_function
 
-import warnings
 import os
-
+import warnings
 
 # Dependency imports
 import argparse
 from absl import flags
+import matplotlib
 import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
-import pickle
-
+import pickle 
 
 from models.bayesian_resnet import bayesian_resnet
 from models.bayesian_vgg import bayesian_vgg
 
+# matplotlib.use("Agg")
 # warnings.simplefilter(action="ignore")
 tfd = tfp.distributions
 
@@ -77,13 +76,13 @@ def build_input_pipeline(x_train, x_test, y_train, y_test,
   return images, labels, handle, training_iterator, heldout_iterator
 
 
-def build_fake_data(num_examples):
-  num_examples = num_examples
-  x_train = np.random.rand(num_examples, *IMAGE_SHAPE).astype(np.float32)
-  y_train = np.random.permutation(np.arange(num_examples)).astype(np.int32)
-  x_test = np.random.rand(num_examples, *IMAGE_SHAPE).astype(np.float32)
-  y_test = np.random.permutation(np.arange(num_examples)).astype(np.int32)
-  return (x_train, y_train), (x_test, y_test)
+# def build_fake_data(num_examples):
+#   num_examples = num_examples
+#   x_train = np.random.rand(num_examples, *IMAGE_SHAPE).astype(np.float32)
+#   y_train = np.random.permutation(np.arange(num_examples)).astype(np.int32)
+#   x_test = np.random.rand(num_examples, *IMAGE_SHAPE).astype(np.float32)
+#   y_test = np.random.permutation(np.arange(num_examples)).astype(np.int32)
+#   return (x_train, y_train), (x_test, y_test)
 
 model_dir = "bnnmodels/"
 
@@ -158,8 +157,7 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
             #set_trace()
             loss_value, accuracy_value, kl_value = sess.run(
                   [loss, train_accuracy, kl], feed_dict={handle: train_handle})
-            if step % 100 == 0:
-                print("Step: {:>3d} Loss: {:.3f} Accuracy: {:.3f} KL: {:.3f}".format(
+            print("Step: {:>3d} Loss: {:.3f} Accuracy: {:.3f} KL: {:.3f}".format(
                       step, loss_value, accuracy_value, kl_value))
             listkl.append(kl_value)
             listloss.append(loss_value)
@@ -170,8 +168,8 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
     return listloss,listkl
 
 
-#Generate fake data for now before switching to CIFAR10
-fake_data = True
+#REAL CIFAR10
+fake_data = False
 #batch_size = 128
 data_dir = "data/"
 eval_freq = 400
@@ -202,66 +200,21 @@ with tf.Session() as sess:
      heldout_iterator) = build_input_pipeline(x_train, x_test, y_train, y_test,
                                               batch_size, 500)
 
-print("STARTING RUNS")
 
-lr_adam = 0.001
-adam = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adam', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adam, 
-                         verbose= True)
-    adam.append(loss)
-with open('losses/adam', 'wb') as fp: 
-    pickle.dump(adam, fp)
-print("ADAM done")
 
-lr_adagrad = 0.001
-adagrad = []
-for _ in range(nb_runs):
+lr_misso = 0.001
+misso = []
+for run in range(nb_runs):
     tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adagrad', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adagrad, 
-                         verbose= True)
-    adagrad.append(loss)
-with open('losses/adagrad', 'wb') as fp: 
-    pickle.dump(adagrad, fp)
-print("ADAGRAD done")
+    run = run_experiment_misso(algo='misso', 
+      fake_data=fake_data, batch_size = batch_size, epochs=epochs, verbose= True)
+    misso.append(run)
 
-lr_adadelta = 0.0001
-adadelta = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adadelta', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adadelta, 
-                         verbose= True)
-    adadelta.append(loss)
-with open('losses/adadelta', 'wb') as fp: 
-    pickle.dump(adadelta, fp)
-print("ADADELTA done")
 
-lr_rmsprop = 0.001
-rmsprop = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='rmsprop', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_rmsprop, 
-                         verbose= True)
-    rmsprop.append(loss)
-with open('losses/rmsprop', 'wb') as fp: 
-    pickle.dump(rmsprop, fp)
-print("MISSO done")
+##SAVE LOSSES
+with open('lossesCIFAR/misso', 'wb') as fp: 
+    pickle.dump(misso, fp)
+
 
 print("ALL LOSSES ARE SAVED")
+

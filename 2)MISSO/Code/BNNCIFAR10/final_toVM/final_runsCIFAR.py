@@ -1,4 +1,4 @@
-#python3 final_runs.py --batchsize=2 --nbepochs=1 --nbruns=1
+#python3 final_runs.py --batchsize=128 --nbepochs=30 --nbruns=4
 from __future__ import absolute_import
 from __future__ import division
 
@@ -171,7 +171,7 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
 
 
 #Generate fake data for now before switching to CIFAR10
-fake_data = True
+fake_data = False
 #batch_size = 128
 data_dir = "data/"
 eval_freq = 400
@@ -249,7 +249,7 @@ with open('losses/adadelta', 'wb') as fp:
     pickle.dump(adadelta, fp)
 print("ADADELTA done")
 
-lr_rmsprop = 0.001
+lr_rmsprop = 0.0001
 rmsprop = []
 for _ in range(nb_runs):
     tf.random.set_random_seed(_*seed0)

@@ -1,4 +1,4 @@
-#python3 final_runs.py --batchsize=2 --nbepochs=1 --nbruns=1
+#python3 final_runs_FakeDATA.py --batchsize=2 --nbepochs=3 --nbruns=1
 from __future__ import absolute_import
 from __future__ import division
 
@@ -11,15 +11,17 @@ import os
 # Dependency imports
 import argparse
 from absl import flags
+import matplotlib
 import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
-import pickle
+import pickle 
 
 
 from models.bayesian_resnet import bayesian_resnet
 from models.bayesian_vgg import bayesian_vgg
 
+# matplotlib.use("Agg")
 # warnings.simplefilter(action="ignore")
 tfd = tfp.distributions
 
@@ -158,8 +160,7 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
             #set_trace()
             loss_value, accuracy_value, kl_value = sess.run(
                   [loss, train_accuracy, kl], feed_dict={handle: train_handle})
-            if step % 100 == 0:
-                print("Step: {:>3d} Loss: {:.3f} Accuracy: {:.3f} KL: {:.3f}".format(
+            print("Step: {:>3d} Loss: {:.3f} Accuracy: {:.3f} KL: {:.3f}".format(
                       step, loss_value, accuracy_value, kl_value))
             listkl.append(kl_value)
             listloss.append(loss_value)
@@ -202,7 +203,6 @@ with tf.Session() as sess:
      heldout_iterator) = build_input_pipeline(x_train, x_test, y_train, y_test,
                                               batch_size, 500)
 
-print("STARTING RUNS")
 
 lr_adam = 0.001
 adam = []
@@ -215,9 +215,6 @@ for _ in range(nb_runs):
                          learning_rate=lr_adam, 
                          verbose= True)
     adam.append(loss)
-with open('losses/adam', 'wb') as fp: 
-    pickle.dump(adam, fp)
-print("ADAM done")
 
 lr_adagrad = 0.001
 adagrad = []
@@ -230,9 +227,6 @@ for _ in range(nb_runs):
                          learning_rate=lr_adagrad, 
                          verbose= True)
     adagrad.append(loss)
-with open('losses/adagrad', 'wb') as fp: 
-    pickle.dump(adagrad, fp)
-print("ADAGRAD done")
 
 lr_adadelta = 0.0001
 adadelta = []
@@ -245,23 +239,29 @@ for _ in range(nb_runs):
                          learning_rate=lr_adadelta, 
                          verbose= True)
     adadelta.append(loss)
-with open('losses/adadelta', 'wb') as fp: 
-    pickle.dump(adadelta, fp)
-print("ADADELTA done")
 
-lr_rmsprop = 0.001
+
+lr_rmsprop = 0.0001
 rmsprop = []
 for _ in range(nb_runs):
     tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='rmsprop', 
+    loss, kl = run_experiment(algo='adagrad', 
                          fake_data=fake_data, 
                          batch_size = batch_size, 
                          epochs=epochs,
                          learning_rate=lr_rmsprop, 
                          verbose= True)
     rmsprop.append(loss)
-with open('losses/rmsprop', 'wb') as fp: 
+
+##SAVE LOSSES
+with open('lossesFAKE/adagrad', 'wb') as fp: 
+    pickle.dump(adagrad, fp)
+with open('lossesFAKE/adam', 'wb') as fp: 
+    pickle.dump(adam, fp)
+
+with open('lossesFAKE/adadelta', 'wb') as fp: 
+    pickle.dump(adadelta, fp)
+with open('lossesFAKE/rmsprop', 'wb') as fp: 
     pickle.dump(rmsprop, fp)
-print("MISSO done")
 
 print("ALL LOSSES ARE SAVED")

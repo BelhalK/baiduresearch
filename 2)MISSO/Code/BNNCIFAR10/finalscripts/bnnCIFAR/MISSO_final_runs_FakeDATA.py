@@ -1,25 +1,25 @@
-#python3 final_runs.py --batchsize=2 --nbepochs=1 --nbruns=1
+#python3 final_runs.py --batchsize=2 --nbepochs=3 --nbruns=1
+
 from __future__ import absolute_import
 from __future__ import division
-
 from __future__ import print_function
 
-import warnings
 import os
-
+import warnings
 
 # Dependency imports
 import argparse
 from absl import flags
+import matplotlib
 import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
-import pickle
-
+import pickle 
 
 from models.bayesian_resnet import bayesian_resnet
 from models.bayesian_vgg import bayesian_vgg
 
+# matplotlib.use("Agg")
 # warnings.simplefilter(action="ignore")
 tfd = tfp.distributions
 
@@ -88,11 +88,11 @@ def build_fake_data(num_examples):
 model_dir = "bnnmodels/"
 
 
-def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
+def run_experiment_misso(algo,fake_data, batch_size, epochs, verbose):
     with tf.Session() as sess:
-        
+            
+        #instanciate model (bayesian resnet)
         model_fn = bayesian_resnet
-        #model_fn = bayesian_vgg
         model = model_fn(
             IMAGE_SHAPE,
             num_classes=10,
@@ -112,22 +112,15 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
 
         with tf.compat.v1.name_scope("train"):
             train_accuracy, train_accuracy_update_op = tf.compat.v1.metrics.accuracy(
-              labels=labels, predictions=predictions)
-            if algo=="adam":
-                opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
-            if algo=="adagrad":
-                opt = tf.compat.v1.train.AdagradOptimizer(learning_rate=learning_rate)
-            if algo=="adadelta":
-                opt = tf.compat.v1.train.AdadeltaOptimizer(learning_rate=learning_rate)
-            if algo=="rmsprop":
-                opt = tf.compat.v1.train.RMSPropOptimizer(learning_rate=learning_rate)
-
+                labels=labels, predictions=predictions)
+            opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=learning_rate)
+        
             train_op = opt.minimize(loss)
             update_step_op = tf.compat.v1.assign(t, t + 1)
 
         with tf.compat.v1.name_scope("valid"):
             valid_accuracy, valid_accuracy_update_op = tf.compat.v1.metrics.accuracy(
-              labels=labels, predictions=predictions)
+                labels=labels, predictions=predictions)
 
             init_op = tf.group(tf.compat.v1.global_variables_initializer(),
                            tf.compat.v1.local_variables_initializer())
@@ -136,38 +129,57 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
             reset_valid_op = tf.compat.v1.variables_initializer(stream_vars_valid)
     
     
-   # with tf.compat.v1.Session() as sess:
         sess.run(init_op)
-
+        indivgrads = []
+        indivvar = []
         # Run the training loop
         train_handle = sess.run(training_iterator.string_handle())
         heldout_handle = sess.run(heldout_iterator.string_handle())
         training_steps = int(
           round(epochs * (len(x_train) / batch_size)))
-        
-        listkl = []
         listloss = []
         listaccuracy = []
         print(training_steps)
-        for step in range(training_steps):
-            _ = sess.run([train_op,
-                      train_accuracy_update_op,
-                      update_step_op],
-                     feed_dict={handle: train_handle})
-            # Print loss values
+        for indiv in range(0,total,batch_size):
+            print(indiv)
+            gradss = tf.gradients(loss, tf.trainable_variables())
+            grads = [x for x in gradss if x is not None]
             #set_trace()
-            loss_value, accuracy_value, kl_value = sess.run(
+            var_updates = []
+            var_list = tf.trainable_variables()
+            for grad, var in zip(grads, var_list):
+                var_updates.append(var.assign_sub(0.001 * grad))
+            train_op = tf.group(*var_updates)
+            indivgrads.append(grads)
+            indivvar.append(var_list)
+#        for step in range(training_steps):
+        for epoch in range(epochs):
+            for step in range(0,int(total/batch_size)):
+                gradss = tf.gradients(loss, tf.trainable_variables())
+                grads = [x for x in gradss if x is not None]
+                indivgrads[step] = grads
+                var_updates = []
+                var_list = tf.trainable_variables()
+                print('ok')
+                for gradstemp, varlist in zip(indivgrads, indivvar):
+                    for grad, var in zip(gradstemp, varlist):
+                        var_updates.append(var.assign_sub(0.001 * grad)) #\theta^{\tau_i^k} - \grad f_{\tau_i^k}
+                _ = sess.run([train_op,
+                              train_accuracy_update_op,
+                              update_step_op],
+                              feed_dict={handle: train_handle})
+                # Print loss values
+                loss_value, accuracy_value, kl_value = sess.run(
                   [loss, train_accuracy, kl], feed_dict={handle: train_handle})
-            if step % 100 == 0:
-                print("Step: {:>3d} Loss: {:.3f} Accuracy: {:.3f} KL: {:.3f}".format(
+                print(
+                  "Step: {:>3d} Loss: {:.3f} Accuracy: {:.3f} KL: {:.3f}".format(
                       step, loss_value, accuracy_value, kl_value))
-            listkl.append(kl_value)
-            listloss.append(loss_value)
-            listaccuracy.append(accuracy_value)
+                listloss.append(loss_value)
+                listaccuracy.append(accuracy_value)
+                
         sess.run(reset_valid_op)
-        
-
-    return listloss,listkl
+    return listloss
+    
 
 
 #Generate fake data for now before switching to CIFAR10
@@ -189,6 +201,7 @@ nb_runs = args["nbruns"]
 seed0 = 23456
 
 
+
 with tf.Session() as sess:
     if fake_data:
         (x_train, y_train), (x_test, y_test) = build_fake_data(num_examples)
@@ -202,66 +215,20 @@ with tf.Session() as sess:
      heldout_iterator) = build_input_pipeline(x_train, x_test, y_train, y_test,
                                               batch_size, 500)
 
-print("STARTING RUNS")
 
-lr_adam = 0.001
-adam = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adam', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adam, 
-                         verbose= True)
-    adam.append(loss)
-with open('losses/adam', 'wb') as fp: 
-    pickle.dump(adam, fp)
-print("ADAM done")
 
-lr_adagrad = 0.001
-adagrad = []
-for _ in range(nb_runs):
+lr_misso = 0.001
+misso = []
+for run in range(nb_runs):
     tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adagrad', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adagrad, 
-                         verbose= True)
-    adagrad.append(loss)
-with open('losses/adagrad', 'wb') as fp: 
-    pickle.dump(adagrad, fp)
-print("ADAGRAD done")
+    run = run_experiment_misso(algo='misso', 
+      fake_data=fake_data, batch_size = batch_size, epochs=epochs, verbose= True)
+    misso.append(run)
 
-lr_adadelta = 0.0001
-adadelta = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adadelta', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adadelta, 
-                         verbose= True)
-    adadelta.append(loss)
-with open('losses/adadelta', 'wb') as fp: 
-    pickle.dump(adadelta, fp)
-print("ADADELTA done")
 
-lr_rmsprop = 0.001
-rmsprop = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='rmsprop', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_rmsprop, 
-                         verbose= True)
-    rmsprop.append(loss)
-with open('losses/rmsprop', 'wb') as fp: 
-    pickle.dump(rmsprop, fp)
-print("MISSO done")
+##SAVE LOSSES
+with open('lossesFAKE/misso', 'wb') as fp: 
+    pickle.dump(misso, fp)
+
 
 print("ALL LOSSES ARE SAVED")
