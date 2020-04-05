@@ -10,7 +10,6 @@ import os
 
 # Dependency imports
 import argparse
-from absl import flags
 import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp

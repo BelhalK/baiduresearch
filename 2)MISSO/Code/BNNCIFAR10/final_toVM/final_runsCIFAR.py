@@ -1,4 +1,4 @@
-#python3 final_runs.py --batchsize=128 --nbepochs=30 --nbruns=4
+#python3 final_runsCIFAR.py --batchsize=128 --nbepochs=20 --nbruns=4
 from __future__ import absolute_import
 from __future__ import division
 
@@ -10,7 +10,6 @@ import os
 
 # Dependency imports
 import argparse
-from absl import flags
 import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
@@ -33,7 +32,7 @@ ap.add_argument("-r", "--nbruns", type=int, default=1,help="")
 args = vars(ap.parse_args())
 
 def build_input_pipeline(x_train, x_test, y_train, y_test,
-                         batch_size, valid_size):
+                         batch_size, valid_size,ntrain):
   """Build an Iterator switching between train and heldout data."""
   x_train = x_train.astype("float32")
   x_test = x_test.astype("float32")
@@ -57,7 +56,7 @@ def build_input_pipeline(x_train, x_test, y_train, y_test,
   training_dataset = tf.data.Dataset.from_tensor_slices(
       (x_train, np.int32(y_train)))
   training_batches = training_dataset.shuffle(
-      50000, reshuffle_each_iteration=True).repeat().batch(batch_size)
+      ntrain, reshuffle_each_iteration=True).repeat().batch(batch_size)
   training_iterator = tf.compat.v1.data.make_one_shot_iterator(training_batches)
 
   # Build a iterator over the heldout set with batch_size=heldout_size,
@@ -187,7 +186,8 @@ batch_size = args["batchsize"]
 epochs = args["nbepochs"]
 nb_runs = args["nbruns"]
 seed0 = 23456
-
+ntest = 2000
+ntrain = 2000
 
 with tf.Session() as sess:
     if fake_data:
@@ -196,11 +196,18 @@ with tf.Session() as sess:
     else:
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
         print("Using CIFAR10 DATA")
+        x_test = x_test[0:ntest]
+        y_test = y_test[0:ntest]
 
+        x_train = x_train[0:ntrain]
+        y_train = y_train[0:ntrain]
     (images, labels, handle,
      training_iterator,
      heldout_iterator) = build_input_pipeline(x_train, x_test, y_train, y_test,
-                                              batch_size, 500)
+                                              batch_size, 500,ntrain)
+
+
+
 
 print("STARTING RUNS")
 
@@ -249,7 +256,7 @@ with open('losses/adadelta', 'wb') as fp:
     pickle.dump(adadelta, fp)
 print("ADADELTA done")
 
-lr_misso = 0.0001
+lr_misso = 0.001
 misso = []
 for _ in range(nb_runs):
     tf.random.set_random_seed(_*seed0)

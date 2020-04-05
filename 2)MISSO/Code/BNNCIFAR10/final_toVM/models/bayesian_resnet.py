@@ -28,7 +28,6 @@ def bayesian_resnet(input_shape,
                     kernel_posterior_scale_stddev=0.1,
                     kernel_posterior_scale_constraint=0.2):
   """Constructs a ResNet18 model.
-
   Args:
     input_shape: A `tuple` indicating the Tensor shape.
     num_classes: `int` representing the number of class labels.
