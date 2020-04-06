@@ -1,4 +1,4 @@
-#python3 adagrad.py --batchsize=128 --nbepochs=3 --nbruns=1 --ntrains=30000
+#python3 adagrad.py --batchsize=128 --nbepochs=1 --nbruns=1 --ntrains=25000 --lr=0.01
 from __future__ import absolute_import
 from __future__ import division
 
@@ -30,6 +30,7 @@ ap.add_argument("-b", "--batchsize", type=int, default=1,help="")
 ap.add_argument("-e", "--nbepochs", type=int, default=1,help="")
 ap.add_argument("-r", "--nbruns", type=int, default=1,help="")
 ap.add_argument("-n", "--ntrains", type=int, default=2000,help="")
+ap.add_argument("-l", "--lr", type=float, default=0.001,help="")
 args = vars(ap.parse_args())
 
 def build_input_pipeline(x_train, x_test, y_train, y_test,
@@ -127,7 +128,7 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
             stream_vars_valid = [v for v in tf.compat.v1.local_variables() if "valid/" in v.name]
             reset_valid_op = tf.compat.v1.variables_initializer(stream_vars_valid)
     
-    
+   
    # with tf.compat.v1.Session() as sess:
         sess.run(init_op)
 
@@ -188,7 +189,7 @@ with tf.Session() as sess:
     x_train = x_train[0:ntrain]
     y_train = y_train[0:ntrain]
     (images, labels, handle,training_iterator,heldout_iterator) = build_input_pipeline(x_train, x_test, y_train, y_test,batch_size, 500,ntrain)
-    lr_adagrad = 0.001
+    lr_adagrad = args["lr"]
     adagrad = []
     adagrad_acc = []
     for _ in range(nb_runs):
