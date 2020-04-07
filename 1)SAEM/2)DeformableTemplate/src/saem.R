@@ -14,11 +14,10 @@
 #' \item{Gamma}{Estiamated \eqn{\Gamma}{\Gamma}.}
 
 
-tts.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
+tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
                        algo = "saem", batchsize=1) {
     set.seed(seed)
-  
     images <- as.matrix(X.obs)
     p=sqrt(nrow(images)) #dimension of the input
     n=ncol(images) #number of images in the dataset (n)
@@ -39,7 +38,6 @@ tts.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
       Gamma[[k]] <-cov #list of all estimated cov of z
     }
   
-
     xi = matrix(xi.0,nrow=kp,ncol=(maxruns+1)) #template fixed parameters (1 X kp)
     sigma = matrix(sigma.0,nrow=1,ncol=(maxruns+1)) #residual errors variance
 
@@ -73,11 +71,7 @@ tts.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     #global stats
     suffStat<-list(S1=0,S2=0,S3=0)
 
-
     zproposal <- z #initialise proposal random effects
-    # landmarks
-    landmarks.p = matrix(rnorm(2*kp),ncol=kp) #of template
-    landmarks.g = matrix(rnorm(2*kg),ncol=kg) #of deformation
     print(maxruns)
     for (k in 1:maxruns) {
       print(k)
@@ -134,8 +128,6 @@ tts.saem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
 
       # browser()
     }
-
-
 
   return(list(seqgamma=Gamma, seqxi = xi, seqsigma = sigma))
 }

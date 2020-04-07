@@ -1,12 +1,9 @@
 compute.LLy<-function(z,xi, sample.digit,p, sigma,landmarks.p,landmarks.g) {
       ypred<-template.model(z, xi, p,landmarks.p,landmarks.g) #prediction of image
-
       sigma.cov <- diag(rep(sigma,p))
       inv.sigma<-solve(sigma.cov)
-      
       DYF<-0.5*rowSums((sample.digit - ypred)*(sample.digit - ypred)%*%inv.sigma)
       U<-sum(DYF)
-
       return(U)
     }
 
@@ -112,3 +109,5 @@ MCMC<-function(z, sample.digit, Gamma,xi, sigma,p,landmarks.p,landmarks.g ,nmcmc
 
   return(z)
 }
+
+
