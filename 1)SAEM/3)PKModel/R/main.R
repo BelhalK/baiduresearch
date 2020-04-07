@@ -142,6 +142,7 @@ saemix<-function(model,data,control=list()) {
   var.eta<-varList$diag.omega
   if (Dargs$type=="structural"){
     theta0<-c(fixed.psi,var.eta[Uargs$i1.omega2],varList$pres[Uargs$ind.res])
+    alphas <- rep(list(theta0),Dargs$N)
     parpop<-matrix(data=0,nrow=(saemix.options$nbiter.tot+1),ncol=(Uargs$nb.parameters+length(Uargs$i1.omega2)+length(saemix.model["indx.res"])))
     colnames(parpop)<-c(saemix.model["name.modpar"], saemix.model["name.random"], saemix.model["name.res"][saemix.model["indx.res"]])
     allpar<-matrix(data=0,nrow=(saemix.options$nbiter.tot+1), ncol=(Uargs$nb.betas+length(Uargs$i1.omega2)+length(saemix.model["indx.res"])))
@@ -161,6 +162,7 @@ saemix<-function(model,data,control=list()) {
 # List of sufficient statistics - change during call to stochasticApprox
   suffStat<-list(statphi1=0,statphi2=0,statphi3=0,statrese=0)
   suffStat.vr<-list(stat1.vr=0,stat2.vr=0,stat3.vr=0,statr.vr=0)
+  h.suffStat<-list(h.stat1=0,h.stat2=0,h.stat3=0,h.statr=0)
   phi<-array(data=0,dim=c(Dargs$N, Uargs$nb.parameters, saemix.options$nb.chains))
   phi.e.0 <- phi
 # structural model, check nb of parameters
@@ -220,7 +222,7 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
     }
 
   	# E-step
-    xmcmc<-estep_incremental(kiter, Uargs, Dargs, opt, structural.model, mean.phi, varList, DYF, phiM,saemixObject,l,ind_rand)
+    xmcmc<-estep(kiter, Uargs, Dargs, opt, structural.model, mean.phi, varList, DYF, phiM,saemixObject,l,ind_rand)
     indchosen <- xmcmc$indchosen
     ind_rand <- ind_rand + nb_replacement
 
@@ -234,6 +236,10 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
   ############# Stochastic Approximation
       if(saemix.options$algo=="vr"){
         xstoch<-mstep.vr(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,phi.e.0, suffStat.vr)
+        phi.e.0 <- xstoch$phi.e.0
+        suffStat.vr <- xstoch$suffStat.vr
+      } else if(saemix.options$algo=="fi"){
+        xstoch<-mstep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,phi.e.0, suffStat.vr,h.suffStat)
         phi.e.0 <- xstoch$phi.e.0
         suffStat.vr <- xstoch$suffStat.vr
       } else{

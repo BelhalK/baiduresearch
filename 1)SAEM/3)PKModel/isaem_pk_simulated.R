@@ -9,6 +9,7 @@ library(abind)
 require(ggplot2)
 require(gridExtra)
 require(reshape2)
+
 source('R/aaa_generics.R') 
 source('R/compute_LL.R') 
 source('R/func_aux.R') 
@@ -17,16 +18,18 @@ source('R/func_FIM.R')
 source('R/func_plots.R') 
 source('R/func_simulations.R') 
 source('R/main.R')
-source('R/main_estep.R')
-source('R/main_estep_incremental.R')
 source('R/main_initialiseMainAlgo.R') 
 source('R/main_mstep.R') 
-source('R/main_mstep_vrandfi.R') 
 source('R/SaemixData.R')
 source('R/SaemixModel.R')
 source('R/SaemixRes.R')
 source('R/SaemixObject.R') 
 source('R/zzz.R')
+
+#new
+source('R/main_estep.R')
+source('R/main_mstep_vr.R') 
+source('R/main_mstep_fi.R') 
 source('R/mixtureFunctions.R')
 source('R/plots.R')
 
@@ -102,7 +105,7 @@ fit.vr.50 <- cbind(iterations, fit.vr.50[-1,])
 # ### Fast Iterative ###
 # options.fi.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
 #                           nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),nbiter.sa=0,
-#                           nbiter.burn =0, nb.replacement=50,sampling='seq',gamma=gamma,algo="fi")
+#                           nbiter.burn =0, nb.replacement=50,sampling='seq',gamma=gamma,algo="fi", rho =0.1)
 # fit.fi.50<-saemix(saemix.model,saemix.data,options.fi.50)
 # fit.fi.50 <- data.frame(fit.fi.50$param)
 # fit.fi.50 <- cbind(iterations, fit.fi.50[-1,])
