@@ -160,8 +160,9 @@ saemix<-function(model,data,control=list()) {
   
 # List of sufficient statistics - change during call to stochasticApprox
   suffStat<-list(statphi1=0,statphi2=0,statphi3=0,statrese=0)
+  suffStat.vr<-list(stat1.vr=0,stat2.vr=0,stat3.vr=0,statr.vr=0)
   phi<-array(data=0,dim=c(Dargs$N, Uargs$nb.parameters, saemix.options$nb.chains))
-  tempphi <- phi
+  phi.e.0 <- phi
 # structural model, check nb of parameters
   structural.model<-saemix.model["model"]
   #  nb.parameters<-saemix.model["nb.parameters"]
@@ -231,8 +232,13 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
     # M-step
     if(opt$stepsize[kiter]>0) {
   ############# Stochastic Approximation
-    	xstoch<-mstep(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,tempphi,saemix.options)
-      tempphi <- xstoch$tempphi
+      if(saemix.options$algo=="vr"){
+        xstoch<-mstep.vr(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,phi.e.0, suffStat.vr)
+        phi.e.0 <- xstoch$phi.e.0
+        suffStat.vr <- xstoch$suffStat.vr
+      } else{
+        xstoch<-mstep(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options)
+      }
     	
       varList<-xstoch$varList
     	mean.phi<-xstoch$mean.phi

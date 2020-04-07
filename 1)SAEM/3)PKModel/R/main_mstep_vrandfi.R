@@ -1,5 +1,5 @@
 ################## Stochastic approximation - compute sufficient statistics (M-step) #####################
-mstep<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,tempphi,saemix.options) {
+mstep.vr<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,phi.e.0,suffStat.vr) {
 	# M-step - stochastic approximation
 	# Input: kiter, Uargs, structural.model, DYF, phiM (unchanged)
 	# Output: varList, phi, betas, suffStat (changed)
@@ -22,72 +22,84 @@ mstep<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, 
 	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
 	for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
 	
-
-	### ONLINE SAEM#####
-	if(saemix.options$algo=="online"){
-		# if (kiter < 50){
-		# 	block <- setdiff(1:Dargs$N,indchosen)
-		# 	for(k in 1:Uargs$nchains) phi[block,,k]<-0
-		# }
-		block <- setdiff(1:Dargs$N,indchosen)
-		for(k in 1:Uargs$nchains) phi[block,,k]<-0
-	}
 	
 	### SAEM-vr#####
 	if(saemix.options$algo=="vr"){
 		block <- setdiff(1:Dargs$N,indchosen)
-
-		if(kiter%%round(Dargs$N/length(indchosen))==0) tempphi <- phi #update the temp phi at each epoch
-		
-		tempsum <- apply(tempphi[,varList$ind.eta,,drop=FALSE],c(1,2),sum)
-		tempsum <- colSums(tempsum)
-
-		for(k in 1:Uargs$nchains){
-			phi[block,,k]<- 0 
-			phi[indchosen,,k]<- phiM[indchosen,] - tempphi[indchosen,,k]+1/length(indchosen)*tempsum
-		}
+		if(kiter%%round(Dargs$N/length(indchosen))==0){
+			phi.e.0 <- phi #update the temp phi at each epoch
+		} 
 	}
-	
 
-	# if (kiter <= 3){ #if rwm
+	stat1.e.0<-apply(phi.e.0[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
+	stat2.e.0<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3.e.0<-apply(phi.e.0**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
+	statr.e.0<-0
+		for(k in 1:Uargs$nchains) {
+			phik<-phi.e.0[,varList$ind.eta,k]
+			stat2.e.0<-stat2.e.0+t(phik)%*%phik
+			fk<-ff[,k]
+			if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+				resk<-sum((Dargs$yobs-fk)**2) else {
+					if(Dargs$error.model=="proportional")
+						resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
+				}
+			statr.e.0<-statr.e.0+resk
+		}
 
-	# 	# weight <- eta_map[,1]
-	# 	# gamma = saemix.options$gamma
-		
-	# 	# for (m in 1:Dargs$NM){
-	# 	# 	weight[m] <- exp(gamma*eta_map[m,2]^2)
-	# 	# 	# weight[m] <- exp(gamma*eta_map[m,2])
-	# 	# }
-	# 	ordered <- sort(phi[,,1][,2], decreasing = TRUE)
-	# 	# indchosen <- sample(1:Dargs$NM, size = nb_replacement, replace = FALSE)
-	# 	indchosen <- which(phi[,,1][,2] >= ordered[nb_replacement])
-	# 	block <- setdiff(1:Dargs$NM, indchosen)
-		
-	# 	phi[,,1][block,2] = 0
-	# }
-
-	stat1<-apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
-	stat2<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
-	stat3<-apply(phi**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
-	statr<-0
+	#indiv stat of epoch
+	stat1.indiv.e.0<-apply(phi.e.0[indchosen,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
+	stat2.indiv.e.0<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3.indiv.e.0<-apply(phi.e.0[indchosen,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
+	statr.indiv.e.0<-0
 	for(k in 1:Uargs$nchains) {
-		phik<-phi[,varList$ind.eta,k]
-		stat2<-stat2+t(phik)%*%phik
+		phik<-phi.e.0[indchosen,varList$ind.eta,k]
+		stat2.indiv.e.0<-stat2.indiv.e.0+t(phik)%*%phik
 		fk<-ff[,k]
 		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
 			resk<-sum((Dargs$yobs-fk)**2) else {
 				if(Dargs$error.model=="proportional")
 					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
 			}
-		statr<-statr+resk
+		statr.indiv.e.0<-statr.indiv.e.0+resk
 	}
 
+	#new indiv stat
+	stat1.indiv<-apply(phi[indchosen,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
+	stat2.indiv<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3.indiv<-apply(phi[indchosen,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
+	statr.indiv<-0
+	for(k in 1:Uargs$nchains) {
+		phik<-phi[indchosen,varList$ind.eta,k]
+		stat2.indiv<-stat2.indiv+t(phik)%*%phik
+		fk<-ff[,k]
+		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+			resk<-sum((Dargs$yobs-fk)**2) else {
+				if(Dargs$error.model=="proportional")
+					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
+			}
+		statr.indiv<-statr.indiv+resk
+	}
+
+	##new indiv stats
+	stat1.e.0[indchosen,] = stat1.e.0[indchosen,] + stat1.indiv - stat1.indiv.e.0
+	stat2.e.0 = stat2.e.0 + stat2.indiv - stat2.indiv.e.0
+	stat3.e.0[indchosen,] = stat3.e.0[indchosen,] + stat3.indiv - stat3.indiv.e.0
+	statr.e.0 = statr.e.0 + statr.indiv - statr.indiv.e.0
+
+
+	#Variance Reduction Update
+	rho = saemix.options$rho
+	suffStat.vr$stat1.vr = (1 - rho)*suffStat.vr$stat1.vr + rho*(stat1.e.0/Uargs$nchains)
+	suffStat.vr$stat2.vr = (1 - rho)*suffStat.vr$stat2.vr + rho*(stat2.e.0/Uargs$nchains)
+	suffStat.vr$stat3.vr = (1 - rho)*suffStat.vr$stat3.vr + rho*(stat3.e.0/Uargs$nchains)
+	suffStat.vr$statr.vr = (1 - rho)*suffStat.vr$statr.vr + rho*(statr.e.0/Uargs$nchains)
 
 	# Update sufficient statistics
-	suffStat$statphi1<-suffStat$statphi1+opt$stepsize[kiter]*(stat1/Uargs$nchains-suffStat$statphi1)
-	suffStat$statphi2<-suffStat$statphi2+opt$stepsize[kiter]*(stat2/Uargs$nchains-suffStat$statphi2)
-	suffStat$statphi3<-suffStat$statphi3+opt$stepsize[kiter]*(stat3/Uargs$nchains-suffStat$statphi3)
-	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(statr/Uargs$nchains-suffStat$statrese)
+	suffStat$statphi1<-suffStat$statphi1+opt$stepsize[kiter]*(suffStat.vr$stat1.vr/Uargs$nchains-suffStat$statphi1)
+	suffStat$statphi2<-suffStat$statphi2+opt$stepsize[kiter]*(suffStat.vr$stat2.vr/Uargs$nchains-suffStat$statphi2)
+	suffStat$statphi3<-suffStat$statphi3+opt$stepsize[kiter]*(suffStat.vr$stat3.vr/Uargs$nchains-suffStat$statphi3)
+	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(suffStat.vr$statr.vr/Uargs$nchains-suffStat$statrese)
 	
 	############# Maximisation
 	##### fixed effects
@@ -110,6 +122,7 @@ mstep<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, 
 	mean.phi<-Uargs$COV %*% varList$MCOV
 	e1.phi<-mean.phi[,varList$ind.eta,drop=FALSE]
 	
+
 	# Covariance of the random effects
 	omega.full<-matrix(data=0,nrow=Uargs$nb.parameters,ncol=Uargs$nb.parameters)
 	omega.full[varList$ind.eta,varList$ind.eta]<-suffStat$statphi2/Dargs$N + t(e1.phi)%*%e1.phi/Dargs$N - t(suffStat$statphi1)%*%e1.phi/Dargs$N - t(e1.phi)%*%suffStat$statphi1/Dargs$N
@@ -148,5 +161,5 @@ mstep<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, 
 			varList$pres[2]<-varList$pres[2]+opt$stepsize[kiter]*(ABres[2]-varList$pres[2])
 		}
 	}
-	return(list(varList=varList,mean.phi=mean.phi,phi=phi,betas=betas,suffStat=suffStat,tempphi=tempphi))
+	return(list(varList=varList,mean.phi=mean.phi,phi=phi,betas=betas,suffStat=suffStat,phi.e.0=phi.e.0,suffStat.vr= suffStat.vr))
 }

@@ -1,5 +1,5 @@
 ################## Stochastic approximation - compute sufficient statistics (M-step) #####################
-mstep<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,tempphi,saemix.options) {
+mstep<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options) {
 	# M-step - stochastic approximation
 	# Input: kiter, Uargs, structural.model, DYF, phiM (unchanged)
 	# Output: varList, phi, betas, suffStat (changed)
@@ -32,22 +32,6 @@ mstep<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, 
 		block <- setdiff(1:Dargs$N,indchosen)
 		for(k in 1:Uargs$nchains) phi[block,,k]<-0
 	}
-	
-	### SAEM-vr#####
-	if(saemix.options$algo=="vr"){
-		block <- setdiff(1:Dargs$N,indchosen)
-
-		if(kiter%%round(Dargs$N/length(indchosen))==0) tempphi <- phi #update the temp phi at each epoch
-		
-		tempsum <- apply(tempphi[,varList$ind.eta,,drop=FALSE],c(1,2),sum)
-		tempsum <- colSums(tempsum)
-
-		for(k in 1:Uargs$nchains){
-			phi[block,,k]<- 0 
-			phi[indchosen,,k]<- phiM[indchosen,] - tempphi[indchosen,,k]+1/length(indchosen)*tempsum
-		}
-	}
-
 
 	stat1<-apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
 	stat2<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
@@ -131,5 +115,5 @@ mstep<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, 
 			varList$pres[2]<-varList$pres[2]+opt$stepsize[kiter]*(ABres[2]-varList$pres[2])
 		}
 	}
-	return(list(varList=varList,mean.phi=mean.phi,phi=phi,betas=betas,suffStat=suffStat,tempphi=tempphi))
+	return(list(varList=varList,mean.phi=mean.phi,phi=phi,betas=betas,suffStat=suffStat))
 }
