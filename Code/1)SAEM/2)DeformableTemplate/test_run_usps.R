@@ -17,8 +17,8 @@ options(digits = 2)
 #import USPS digits dataabse
 data(digits) 
 
-nb <- 20  # number of images
-start = 2000
+nb <- 30  # number of images
+start = 5000
 images = digits[,start:(start+nb)]
 
 # plots some digits images
@@ -61,7 +61,7 @@ p <- ncol(sample.digit) #dimension of the input
 Gamma.star <- diag(rep(1,kg)) # covariance
 
 batchsize = 1
-nb.epochs <- 5
+nb.epochs <- 12
 N <- ncol(images)
 nb.iter <- N/batchsize*nb.epochs
 nb.mcmc <- 4
@@ -72,11 +72,12 @@ rho.vr = 1/N**(2/3)
 rho.saga = 1/N**(2/3)
 
 #fixed landmarks points
-kp <- 5 #dimension of the parameter of the template
-kg <- 6 #dimension of the random effects
+kp <- 2 #dimension of the parameter of the template
+kg <- 2 #dimension of the random effects
 landmarks.p = matrix(rnorm(2*kp,mean = 0, sd = 0.5),ncol=kp) #of template
 landmarks.g = matrix(rnorm(2*kg,mean = 0, sd = 0.5),ncol=kg) #of deformation
 
+nb.iter
 # SAEM
 fit.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,
   maxruns=nb.epochs,nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
