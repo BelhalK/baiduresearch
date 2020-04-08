@@ -166,6 +166,33 @@ saemix<-function(model,data,control=list()) {
   phi.e.0 <- phi
 # structural model, check nb of parameters
   structural.model<-saemix.model["model"]
+
+  varList$ind0.eta<-Uargs$i0.omega2
+  varList$ind.eta<-1:(Uargs$nb.parameters)  
+
+  psiM<-transphi(phiM,Dargs$transform.par)
+  fpred<-structural.model(psiM, Dargs$IdM, Dargs$XM)
+  if(Dargs$error.model=="exponential")
+    fpred<-log(cutoff(fpred))
+  ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
+  for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
+
+  h.suffStat$h.stat1<-apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
+  h.suffStat$h.stat2<-matrix(data=0,nrow=Uargs$nb.etas,ncol=Uargs$nb.etas)
+  h.suffStat$h.stat3<-apply(phi[,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
+  h.suffStat$h.statr<-0
+  for(k in 1:Uargs$nchains) {
+    phik<-phi[,varList$ind.eta,k]
+    h.suffStat$h.stat2<-h.suffStat$h.stat2+t(phik)%*%phik
+    fk<-ff[,k]
+    if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+      resk<-sum((Dargs$yobs-fk)**2) else {
+        if(Dargs$error.model=="proportional")
+          resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
+      }
+    h.suffStat$h.statr<-h.suffStat$h.statr+resk
+  }
+
   #  nb.parameters<-saemix.model["nb.parameters"]
   
 # Running the algorithm
@@ -233,6 +260,7 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
   	# E-step
     xmcmc<-estep(kiter, Uargs, Dargs, opt, structural.model, mean.phi, varList, DYF, phiM,saemixObject,l,ind_rand)
     indchosen <- xmcmc$indchosen
+    indchosen.j <- lj[ind_rand]
     ind_rand <- ind_rand + nb_replacement
     varList<-xmcmc$varList
     DYF<-xmcmc$DYF
@@ -246,13 +274,11 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
         phi.e.0 <- xstoch$phi.e.0
         suffStat.vr <- xstoch$suffStat.vr
       } else if(saemix.options$algo=="fi"){
-        xstoch<-mstep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options, suffStat.vr,h.suffStat, indchosen.j,alphas)
+        xstoch<-mstep.fi(kiter, Uargs, Dargs, opt, structural.model, 
+          DYF, phiM, varList, phi, betas, suffStat,nb_replacement,
+          indchosen,saemix.options, suffStat.vr,h.suffStat, indchosen.j,alphas,saemixObject)
         suffStat.vr <- xstoch$suffStat.vr
-        #update alphas
-        alphas[[indchosen.j]]$mean.phi <- mean.phi
-        alphas[[indchosen.j]]$varList <- varList
-        alphas[[indchosen.j]]$phiM <- phiM
-        alphas[[indchosen.j]]$phi <- phi
+        alphas <- xstoch$alphas
       } else{
         xstoch<-mstep(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options)
       }

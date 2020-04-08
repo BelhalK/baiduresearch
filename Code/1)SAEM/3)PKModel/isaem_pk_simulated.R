@@ -28,6 +28,7 @@ source('R/zzz.R')
 
 #new
 source('R/main_estep.R')
+source('R/main_estep_fi.R')
 source('R/main_mstep_vr.R') 
 source('R/main_mstep_fi.R') 
 source('R/mixtureFunctions.R')
@@ -63,6 +64,7 @@ seed0=3456
 nchains = 1
 gamma = 1
 
+### BATCH ###
 options<-list(seed=39546,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains,nbiter.mcmc = c(2,2,2,0), 
   nbiter.saemix = c(K1,K2),nbiter.sa=0,displayProgress=FALSE,nbiter.burn =0, 
   map.range=c(0), nb.replacement=100,sampling='randomiter',gamma=gamma, algo="full")
@@ -71,28 +73,12 @@ fit.ref <- data.frame(fit.ref$param)
 fit.ref <- cbind(iterations, fit.ref[-1,])
 
 ### INCREMENTAL ###
-# options.75<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, 
-#   nbiter.mcmc = c(2,2,2,0), nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),
-#   nbiter.sa=0,nbiter.burn =0, nb.replacement=75,sampling='randomiter',gamma=gamma,algo="minibatch")
-# fit.75<-saemix(saemix.model,saemix.data,options.75)
-# fit.75 <- data.frame(fit.75$param)
-# fit.75 <- cbind(iterations, fit.75[-1,])
-
-
 options.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
                           nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),nbiter.sa=0,
                           nbiter.burn =0, nb.replacement=50,sampling='seq',gamma=gamma,algo="minibatch")
 fit.50<-saemix(saemix.model,saemix.data,options.50)
 fit.50 <- data.frame(fit.50$param)
 fit.50 <- cbind(iterations, fit.50[-1,])
-
-
-# options.25<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, 
-#   nbiter.mcmc = c(2,2,2,0), nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),
-#   nbiter.sa=0,nbiter.burn =0, nb.replacement=25,sampling='seq',gamma=gamma,algo="minibatch")
-# fit.25<-saemix(saemix.model,saemix.data,options.25)
-# fit.25 <- data.frame(fit.25$param)
-# fit.25 <- cbind(iterations, fit.25[-1,])
 
 ### Variance Reduced ###
 options.vr.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
@@ -121,7 +107,21 @@ fit.50.vr.scaled <- fit.vr.50
 fit.50.vr.scaled$iterations = fit.50.vr.scaled$iterations*0.5
 graphConvMC_5(fit.ref.scaled,fit.50.scaled,fit.50.scaled,fit.50.scaled,fit.50.vr.scaled)
 #black, blue, red, yellow, pink
-# graphConvMC_5(fit.ref.scaled,fit.25.scaled,fit.50.scaled,fit.50.scaled,fit.75.scaled)
-# graphConvMC_5(fit.ref.scaled,fit.25.scaled,fit.50.scaled,fit.50.scaled,fit.50.vr.scaled)
 
 
+
+
+
+# options.75<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, 
+#   nbiter.mcmc = c(2,2,2,0), nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),
+#   nbiter.sa=0,nbiter.burn =0, nb.replacement=75,sampling='randomiter',gamma=gamma,algo="minibatch")
+# fit.75<-saemix(saemix.model,saemix.data,options.75)
+# fit.75 <- data.frame(fit.75$param)
+# fit.75 <- cbind(iterations, fit.75[-1,])
+
+# options.25<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, 
+#   nbiter.mcmc = c(2,2,2,0), nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),
+#   nbiter.sa=0,nbiter.burn =0, nb.replacement=25,sampling='seq',gamma=gamma,algo="minibatch")
+# fit.25<-saemix(saemix.model,saemix.data,options.25)
+# fit.25 <- data.frame(fit.25$param)
+# fit.25 <- cbind(iterations, fit.25[-1,])
