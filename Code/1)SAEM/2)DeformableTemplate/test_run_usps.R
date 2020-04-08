@@ -18,13 +18,14 @@ options(digits = 2)
 data(digits) 
 
 nb <- 20  # number of images
-images = digits[,5000:(5000+nb)]
+start = 2000
+images = digits[,start:(start+nb)]
 
-# # plots some digits images
-# for (i in 1:nb){
-#   sample.digit = matrix(images[,i], ncol=16,byrow=FALSE)  
-#   image(t(sample.digit)[,nrow(sample.digit):1])
-# }
+# plots some digits images
+for (i in 1:nb){
+  sample.digit = matrix(images[,i], ncol=16,byrow=FALSE)  
+  image(t(sample.digit)[,nrow(sample.digit):1])
+}
 
 template.model<-function(z, xi,p,landmarks.p,landmarks.g) { 
   zi<-z
@@ -57,8 +58,6 @@ template.model<-function(z, xi,p,landmarks.p,landmarks.g) {
 
 #Hyperparam
 p <- ncol(sample.digit) #dimension of the input
-kp <- 5 #dimension of the parameter of the template
-kg <- 6 #dimension of the random effects
 Gamma.star <- diag(rep(1,kg)) # covariance
 
 batchsize = 1
@@ -73,6 +72,8 @@ rho.vr = 1/N**(2/3)
 rho.saga = 1/N**(2/3)
 
 #fixed landmarks points
+kp <- 5 #dimension of the parameter of the template
+kg <- 6 #dimension of the random effects
 landmarks.p = matrix(rnorm(2*kp,mean = 0, sd = 0.5),ncol=kp) #of template
 landmarks.g = matrix(rnorm(2*kg,mean = 0, sd = 0.5),ncol=kg) #of deformation
 
