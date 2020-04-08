@@ -14,11 +14,9 @@
 #' \item{Gamma}{Estiamated \eqn{\Gamma}{\Gamma}.}
 
 
-fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
+fisaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
                        algo = "saem", batchsize=1, rho=0.5) {
-    set.seed(seed)
-  
     images <- as.matrix(X.obs)
     p=sqrt(nrow(images)) #dimension of the input
     n=ncol(images) #number of images in the dataset (n)
@@ -38,13 +36,9 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     for (k in 1:maxruns){
       Gamma[[k]] <-cov #list of all estimated cov of z
     }
-  
 
     xi = matrix(xi.0,nrow=kp,ncol=(maxruns+1)) #template fixed parameters (1 X kp)
     sigma = matrix(sigma.0,nrow=1,ncol=(maxruns+1)) #residual errors variance
-
-    theta0 <- list(xi = xi[,1], Gamma = Gamma[[1]], sigma=sigma[1] )
-    alphas <- rep(list(theta0),n)
 
     # # Normal proposal covariance
     # omega.eta <- diag(rep(1,kg))
@@ -55,6 +49,9 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     chol.omega<-try(chol(Gamma[[1]]))
     z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
     z <- list(z1,z1) #random effects (2 X kg)
+
+    theta0 <- list(xi = xi[,1], Gamma = Gamma[[1]], sigma=sigma[1] )
+    alphas <- rep(list(theta0),n)
 
     #Individuals stats initialization
     S1.indiv = matrix(0,nrow=kp)
@@ -79,13 +76,9 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
     #global stats
     suffStat <- hstats <- stats <- list(S1=0,S2=0,S3=0)
 
-
     zproposal <- z #initialise proposal random effects
     z.old <- z.j <- z.old.j <- z
 
-    # landmarks
-    landmarks.p = matrix(rnorm(2*kp),ncol=kp) #of template
-    landmarks.g = matrix(rnorm(2*kg),ncol=kg) #of deformation
     print(maxruns)
     for (k in 1:maxruns) {
       print(k)
@@ -112,14 +105,13 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
         S3.old[[indiv]] = compute.stat3(z.old[[indiv]])
       }
 
-  
       if(k <k1){gamma <- 1}else{gamma <- 1/(k-(k1-1))^tau}
       #M-Step
 
       #Saga update 
-      vS1 = hstats$S1 + (S1[[index.i]] - S1.old[[index.i]])
-      vS2 = hstats$S2 + (S2[[index.i]] - S2.old[[index.i]])
-      vS3 = hstats$S3 + (S3[[index.i]] - S3.old[[index.i]])
+      vS1 = hstats$S1 + (S1[[index.i]] - S1.old[[index.i]])*n
+      vS2 = hstats$S2 + (S2[[index.i]] - S2.old[[index.i]])*n
+      vS3 = hstats$S3 + (S3[[index.i]] - S3.old[[index.i]])*n
 
       stats$S1 = (1-rho)*stats$S1 + rho*vS1
       stats$S2 = (1-rho)*stats$S2 + rho*vS2
@@ -127,9 +119,12 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
 
 
       ###update sufficient statistics
-      suffStat$S1 = suffStat$S1 + gamma*(stats$S1 - suffStat$S1)
-      suffStat$S2 = suffStat$S2 + gamma*(stats$S2 - suffStat$S2)
-      suffStat$S3 = suffStat$S3 + gamma*(stats$S3 - suffStat$S3)
+      suffStat$S1 = suffStat$S1 + gamma*(Reduce("+",S1) - suffStat$S1)
+      suffStat$S2 = suffStat$S2 + gamma*(Reduce("+",S2) - suffStat$S2)
+      suffStat$S3 = suffStat$S3 + gamma*(Reduce("+",S3) - suffStat$S3)
+      # suffStat$S1 = suffStat$S1 + gamma*(stats$S1 - suffStat$S1)
+      # suffStat$S2 = suffStat$S2 + gamma*(stats$S2 - suffStat$S2)
+      # suffStat$S3 = suffStat$S3 + gamma*(stats$S3 - suffStat$S3)
       
       oldtheta <- list(xi = xi[,k], Gamma = Gamma[[k]], sigma=sigma[k] )
 
@@ -138,11 +133,9 @@ fisaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
       xi[,k+1] = solve(suffStat$S2)%*%suffStat$S1
       sigma[,k+1] = (t(xi[,k+1])%*%suffStat$S2%*%xi[,k+1] - 2*xi[,k+1]%*%suffStat$S1)/(n*p**p)
 
-
       #saga like updates after global parms updates
       oldalpha.j <- alphas[[index.j]]
       alphas[[index.j]] <- oldtheta
-
       indiv = index.j
       for (indiv in index.j){
         z.j[[indiv]] <- MCMC(z.j[[indiv]], samples[[indiv]], oldtheta$Gamma,oldtheta$xi, oldtheta$sigma,p,landmarks.p,landmarks.g,nmcmc)

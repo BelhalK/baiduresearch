@@ -14,7 +14,7 @@
 #' \item{Gamma}{Estiamated \eqn{\Gamma}{\Gamma}.}
 
 
-vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
+vrsaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
                        algo = "saem", batchsize=1, rho=0.5) {
     set.seed(seed)
@@ -74,9 +74,6 @@ vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
 
 
     zproposal <- z #initialise proposal random effects
-    # landmarks
-    landmarks.p = matrix(rnorm(2*kp),ncol=kp) #of template
-    landmarks.g = matrix(rnorm(2*kg),ncol=kg) #of deformation
 
 
     for (k in 1:maxruns) {
@@ -108,28 +105,6 @@ vrsaem <- function(X.obs,kp,kg,template.model,maxruns=500,tol_em=1e-7,
         S.e.0.2 <- S2
         S.e.0.3 <- S3
         for (indiv in 1:n){
-          # cov <- Gamma.e.0
-          # chol.omega<-try(chol(cov))
-          # somega<-solve(cov)
-          
-          # U.z<-0.5*rowSums(Z.e.0[[indiv]]*(Z.e.0[[indiv]]%*%somega))
-          # U.y<-compute.LLy(Z.e.0[[indiv]], xi.e.0, samples[[indiv]],p, sigma.e.0,landmarks.p,landmarks.g)
-
-          # for(u in 1:nmcmc) { 
-
-          #   Z.proposal.e.0[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
-          #   Uc.z<-0.5*rowSums(Z.proposal.e.0[[indiv]]*(Z.proposal.e.0[[indiv]]%*%somega))
-          #   Uc.y<-compute.LLy(Z.proposal.e.0[[indiv]],xi.e.0, samples[[indiv]],p, sigma.e.0,landmarks.p,landmarks.g)
-
-          #   #MH acceptance ratio
-          #   deltu<-Uc.y-U.y+Uc.z-U.z
-          #   #accept reject step
-          #   for (dim in 1:2){
-          #     if (deltu[dim]<(-1)*log(runif(1))){
-          #       Z.e.0[[indiv]][dim,] = Z.proposal.e.0[[indiv]][dim,]
-          #     }
-          #   }
-          # }
           Z.e.0[[indiv]] <- MCMC(Z.e.0[[indiv]], samples[[indiv]], Gamma.e.0,xi.e.0, sigma.e.0,p,landmarks.p,landmarks.g,nmcmc)
 
           ### Compute individual statistics
