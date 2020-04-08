@@ -87,10 +87,10 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 
 
 	##update Vstats
-	vS1 = h.suffStat$h.stat1 + stat1.indiv - stat1.indiv.old
-	vS2 = h.suffStat$h.stat2 + stat2.indiv - stat2.indiv.old
-	vS3 = h.suffStat$h.stat3 + stat3.indiv - stat3.indiv.old
-	vSr = h.suffStat$h.statr + statr.indiv - statr.indiv.old
+	vS1 = h.suffStat$h.stat1 + (stat1.indiv - stat1.indiv.old)*Dargs$N
+	vS2 = h.suffStat$h.stat2 + (stat2.indiv - stat2.indiv.old)*Dargs$N
+	vS3 = h.suffStat$h.stat3 + (stat3.indiv - stat3.indiv.old)*Dargs$N
+	vSr = h.suffStat$h.statr + (statr.indiv - statr.indiv.old)*Dargs$N
 
 	#Variance Reduction Update
 	rho = saemix.options$rho
@@ -106,8 +106,6 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(suffStat.vr$statr.vr/Uargs$nchains-suffStat$statrese)
 	
 
-
-	oldphiM <- 
 	############# Maximisation
 	##### fixed effects
 	if (opt$flag.fmin && kiter>=opt$nbiter.sa) {
@@ -169,17 +167,20 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 		}
 	}
 
-    #old indiv.j stat
+	#old indiv.j stat
 	mean.phi.old.j <- alphas[[indchosen.j]]$mean.phi 
     varList.old.j <- alphas[[indchosen.j]]$varList
     phiM.old.j <- alphas[[indchosen.j]]$phiM
     phi.old.j <- alphas[[indchosen.j]]$phi
 
-    alphas[[indchosen.j]]$mean.phi <- mean.phi.old
-    alphas[[indchosen.j]]$varList <- varList.old 
-    alphas[[indchosen.j]]$phiM <- phiM.old 
-    alphas[[indchosen.j]]$phi <- phi.old
+    browser()	
+	xmcmc.old.j<-estep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,indchosen.j, alphas)
 
+    varList.old.j<-xmcmc.old.j$varList
+    DYF.old.j<-xmcmc.old.j$DYF
+    phiM.old.j<-xmcmc.old.j$phiM
+    phi.old.j <- alphas[[indchosen.j]]$phi
+    mean.phi.old.j <- alphas[[indchosen.j]]$mean.phi 
 
     stat1.indiv.old.j<-apply(phi.old.j[indchosen,varList.old.j$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
 	stat2.indiv.old.j<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
@@ -202,6 +203,14 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	h.suffStat$h.stat2 = h.suffStat$h.stat2 + stat2.indiv.j - stat2.indiv.old.j
 	h.suffStat$h.stat3 = h.suffStat$h.stat3 + stat3.indiv.j - stat3.indiv.old.j
 	h.suffStat$h.statr = h.suffStat$h.statr + statr.indiv.j - statr.indiv.old.j
+
+	for (index in indchosen.j){
+		alphas[[index]]$mean.phi <- mean.phi
+	    alphas[[index]]$varList <- varList 
+	    alphas[[index]]$phiM <- phiM 
+	    alphas[[index]]$phi <- phi	
+	}
+    
 
 	return(list(varList=varList,mean.phi=mean.phi,phi=phi,betas=betas,suffStat=suffStat,phi.e.0=phi.e.0,suffStat.vr= suffStat.vr))
 }

@@ -188,7 +188,7 @@ lj <- NULL
 if (saemix.options$algo=="fi"){
   l <- c(replicate(saemix.options$nbiter.tot,sample(1:Dargs$N,Dargs$N,replace=TRUE)))
   for (index in 1:(saemix.options$nbiter.tot/Dargs$N)){
-    lj <- list.append(lj, sample(l[(1+(index-1)*n):(index*n)]))
+    lj <- list.append(lj, sample(l[(1+(index-1)*Dargs$N):(index*Dargs$N)]))
   }
 }
 ind_rand<-1:nb_replacement
@@ -238,18 +238,6 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
     DYF<-xmcmc$DYF
     phiM<-xmcmc$phiM
 
-    if(saemix.options$algo=="fi"){
-      print("ok fi")
-      mean.phi.old <- alphas[[indchosen]]$mean.phi 
-      varList.old <- alphas[[indchosen]]$varList
-      phiM.old <- alphas[[indchosen]]$phiM
-      phi.old <- alphas[[indchosen]]$phi
-      xmcmc.old<-estep(kiter, Uargs, Dargs, opt, structural.model, mean.phi.old, varList.old, DYF, phiM.old,saemixObject,l,ind_rand)
-      indchosen.j <- lj[ind_rand.j]
-      varList.old<-xmcmc.old$varList
-      DYF.old<-xmcmc.old$DYF
-      phiM.old<-xmcmc.old$phiM    
-    }
     # M-step
     if(opt$stepsize[kiter]>0) {
   ############# Stochastic Approximation

@@ -103,10 +103,10 @@ fit.vr.50 <- data.frame(fit.vr.50$param)
 fit.vr.50 <- cbind(iterations, fit.vr.50[-1,])
 
 # ### Fast Iterative ###
-# options.fi.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
-#                           nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),nbiter.sa=0,
-#                           nbiter.burn =0, nb.replacement=50,sampling='seq',gamma=gamma,algo="fi", rho =0.1)
-# fit.fi.50<-saemix(saemix.model,saemix.data,options.fi.50)
+options.fi.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
+                          nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),nbiter.sa=0,
+                          nbiter.burn =0, nb.replacement=50,sampling='seq',gamma=gamma,algo="fi", rho =0.1)
+fit.fi.50<-saemix(saemix.model,saemix.data,options.fi.50)
 # fit.fi.50 <- data.frame(fit.fi.50$param)
 # fit.fi.50 <- cbind(iterations, fit.fi.50[-1,])
 
