@@ -214,10 +214,11 @@ if (saemix.options$sampling=='seq'){
 lj <- NULL
 if (saemix.options$algo=="fi"){
   l <- c(replicate(saemix.options$nbiter.tot,sample(1:Dargs$N,Dargs$N,replace=TRUE)))
-  for (index in 1:(saemix.options$nbiter.tot/Dargs$N)){
+  for (index in 1:(saemix.options$nbiter.tot)){
     lj <- list.append(lj, sample(l[(1+(index-1)*Dargs$N):(index*Dargs$N)]))
   }
 }
+
 ind_rand<-1:nb_replacement
 ind_rand.j<-1:nb_replacement
 
@@ -238,6 +239,7 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
   # duration <- end_time - start_time
   # kiter = kiter + 1
   # SAEM convergence plots
+print(kiter)
   	if(kiter%%saemix.options$nbdisplay==0) {
       cat(".")
       if(saemix.options$displayProgress)    
@@ -265,7 +267,7 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
     varList<-xmcmc$varList
     DYF<-xmcmc$DYF
     phiM<-xmcmc$phiM
-
+    
     # M-step
     if(opt$stepsize[kiter]>0) {
   ############# Stochastic Approximation
@@ -470,5 +472,5 @@ cond.mean.eta<-t(apply(cond.mean.eta,c(1,2),mean))
 
   options(warn=opt.warn)
   # return(parpop)
-  return(list(param = parpop, summary = summary[,1:30], chosen = chosen[,1:30]))
+  return(list(param = parpop, summary = summary, chosen = chosen))
 }

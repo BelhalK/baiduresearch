@@ -1,4 +1,4 @@
-# load("usps1.RData")
+load("usps1.RData")
 library(MASS)
 library(ggplot2)
 library(reshape2)
@@ -77,7 +77,7 @@ kg <- 2 #dimension of the random effects
 landmarks.p = matrix(rnorm(2*kp,mean = 0, sd = 0.5),ncol=kp) #of template
 landmarks.g = matrix(rnorm(2*kg,mean = 0, sd = 0.5),ncol=kg) #of deformation
 
-nb.iter
+
 # SAEM
 fit.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,
   maxruns=nb.epochs,nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)

@@ -10,63 +10,15 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	omega.eta<-varList$omega[varList$ind.eta,varList$ind.eta,drop=FALSE]
 	omega.eta<-omega.eta-mydiag(mydiag(varList$omega[varList$ind.eta,varList$ind.eta]))+mydiag(domega)
 	#  print(varList$omega.eta)
+	
 	chol.omega<-try(chol(omega.eta))
 	d1.omega<-Uargs$LCOV[,varList$ind.eta]%*%solve(omega.eta)
 	d2.omega<-d1.omega%*%t(Uargs$LCOV[,varList$ind.eta])
 	comega<-Uargs$COV2*d2.omega
 	
-	#old indiv stat
-	stat1.indiv.old<-apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum) 
-	stat2.indiv.old<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
-	stat3.indiv.old<-apply(phi[,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
-    statr.indiv.old <- 0
-    for (index in indchosen){
-    	psiM<-transphi(alphas[[index]]$phiM,Dargs$transform.par)
-		fpred<-structural.model(psiM, Dargs$IdM, Dargs$XM)
-		ff.j<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
-		for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
-    	phi.j <- alphas[[index]]$phi
-	    mean.phi.j <- alphas[[index]]$mean.phi 
-	    stat1.indiv.old[index,]<- apply(phi.j[index,varList$ind.eta,,drop=FALSE],c(1,2),sum) 
-		stat3.indiv.old[index,]<-  phi.j[index,,]**2 #  sum on phi**2, across 3rd dimension
-		for(k in 1:Uargs$nchains) {
-			phik<-phi.j[,varList$ind.eta,k]
-			stat2.indiv.old<-stat2.indiv.old+t(phik)%*%phik
-			fk<-ff.j[index,k]
-			if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
-				resk<-sum((Dargs$yobs[index]-fk)**2)
-			statr.indiv.old<-statr.indiv.old+resk
-		}
-    }
-	statr.indiv.old <- statr.indiv.old/Dargs$N
-
-	#for hstats
-	stat1.indiv.j<-apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum) 
-	stat2.indiv.j<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
-	stat3.indiv.j<-apply(phi[,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
-    statr.indiv.j <- 0
-    for (index in indchosen.j){
-    	psiM<-transphi(alphas[[index]]$phiM,Dargs$transform.par)
-		fpred<-structural.model(psiM, Dargs$IdM, Dargs$XM)
-		ff.j<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
-		for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
-    	phi.j <- alphas[[index]]$phi
-	    mean.phi.j <- alphas[[index]]$mean.phi 
-	    stat1.indiv.j[index,]<- apply(phi.j[index,varList$ind.eta,,drop=FALSE],c(1,2),sum) 
-		stat3.indiv.j[index,]<-  phi.j[index,,]**2 #  sum on phi**2, across 3rd dimension
-		for(k in 1:Uargs$nchains) {
-			phik<-phi.j[,varList$ind.eta,k]
-			stat2.indiv.j<-stat2.indiv.j+t(phik)%*%phik
-			fk<-ff.j[index,k]
-			if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
-				resk<-sum((Dargs$yobs[index]-fk)**2)
-			statr.indiv.j<-statr.indiv.j+resk
-		}
-    }
-	statr.indiv.j <- statr.indiv.j/Dargs$N
-
-
- 	#new indiv stat
+	
+	
+	#new indiv stat
 	psiM<-transphi(phiM,Dargs$transform.par)
 	fpred<-structural.model(psiM, Dargs$IdM, Dargs$XM)
 	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
@@ -76,6 +28,7 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	stat2.indiv<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
 	stat3.indiv<-apply(phi[,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
 	statr.indiv<-0
+	resk<-0
 	for(k in 1:Uargs$nchains) {
 		phik<-phi[,varList$ind.eta,k]
 		stat2.indiv<-stat2.indiv+t(phik)%*%phik
@@ -88,6 +41,32 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 		statr.indiv<-statr.indiv+resk
 	}
 
+	#old indiv stat i
+	xmcmc.old.i<-estep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,indchosen, alphas)
+	phiM.old.i<-xmcmc.old.i$phiM
+	psiM.old.i<-transphi(phiM.old.i,Dargs$transform.par)
+	fpred<-structural.model(psiM.old.i, Dargs$IdM, Dargs$XM)
+	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
+	for(k in 1:Uargs$nchains) phi[,,k]<-phiM.old.i[((k-1)*Dargs$N+1):(k*Dargs$N),]
+
+	stat1.indiv.old <- apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum)
+	stat2.indiv.old<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3.indiv.old<-apply(phi[,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
+	statr.indiv.old<-0
+	resk<-0
+	for(k in 1:Uargs$nchains) {
+		phik<-phi[,varList$ind.eta,k]
+		stat2.indiv.old<-stat2.indiv.old+t(phik)%*%phik
+		fk<-ff[,k]
+		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+			resk<-sum((Dargs$yobs-fk)**2) else {
+				if(Dargs$error.model=="proportional")
+					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
+			}
+		statr.indiv.old<-statr.indiv.old+resk
+	}
+
+ 
 	##update Vstats
 	h.suffStat$h.stat1[indchosen,]  = h.suffStat$h.stat1[indchosen,] + (stat1.indiv[indchosen,] - stat1.indiv.old[indchosen,])
 	h.suffStat$h.stat2  = h.suffStat$h.stat2 + (stat2.indiv - stat2.indiv.old)
@@ -110,7 +89,13 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	suffStat$statphi1<-suffStat$statphi1+opt$stepsize[kiter]*(suffStat.vr$stat1.vr/Uargs$nchains-suffStat$statphi1)
 	suffStat$statphi2<-suffStat$statphi2+opt$stepsize[kiter]*(suffStat.vr$stat2.vr/Uargs$nchains-suffStat$statphi2)
 	suffStat$statphi3<-suffStat$statphi3+opt$stepsize[kiter]*(suffStat.vr$stat3.vr/Uargs$nchains-suffStat$statphi3)
-	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(suffStat.vr$statr.vr/Uargs$nchains-suffStat$statrese)
+	# suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(suffStat.vr$statr.vr/Uargs$nchains-suffStat$statrese)
+	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(statr.indiv/Uargs$nchains-suffStat$statrese)
+
+	# suffStat$statphi1<-suffStat$statphi1+opt$stepsize[kiter]*(stat1.indiv.old/Uargs$nchains-suffStat$statphi1)
+	# suffStat$statphi2<-suffStat$statphi2+opt$stepsize[kiter]*(stat2.indiv.old/Uargs$nchains-suffStat$statphi2)
+	# suffStat$statphi3<-suffStat$statphi3+opt$stepsize[kiter]*(stat3.indiv.old/Uargs$nchains-suffStat$statphi3)
+	# suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(statr.indiv.old/Uargs$nchains-suffStat$statrese)
 
 
 	############# Maximisation
@@ -174,41 +159,32 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 		}
 	}
 
+	
 	#old indiv.j stat
 	xmcmc.old.j<-estep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,indchosen.j, alphas)
+	phiM.old.j<-xmcmc.old.j$phiM
+	psiM.old.j<-transphi(phiM.old.j,Dargs$transform.par)
+	fpred<-structural.model(psiM.old.j, Dargs$IdM, Dargs$XM)
+	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
+	for(k in 1:Uargs$nchains) phi[,,k]<-phiM.old.j[((k-1)*Dargs$N+1):(k*Dargs$N),]
 
-	stat1.indiv.old.j<-apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum) 
+	stat1.indiv.old.j <- apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum)
 	stat2.indiv.old.j<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
 	stat3.indiv.old.j<-apply(phi[,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
-    statr.indiv.old.j <- 0
-    for (index in indchosen.j){
-    	psiM<-transphi(alphas[[index]]$phiM,Dargs$transform.par)
-		fpred<-structural.model(psiM, Dargs$IdM, Dargs$XM)
-		ff.j<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
-		for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
-    	phi.j <- alphas[[index]]$phi
-	    mean.phi.j <- alphas[[index]]$mean.phi 
-	    stat1.indiv.old.j[index,]<- apply(phi.j[index,varList$ind.eta,,drop=FALSE],c(1,2),sum) 
-		stat3.indiv.old.j[index,]<-  phi.j[index,,]**2 #  sum on phi**2, across 3rd dimension
-		for(k in 1:Uargs$nchains) {
-			phik<-phi.j[,varList$ind.eta,k]
-			stat2.indiv.old.j<-stat2.indiv.old.j+t(phik)%*%phik
-			fk<-ff.j[index,k]
-			if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
-				resk<-sum((Dargs$yobs[index]-fk)**2)
-			statr.indiv.old.j<-statr.indiv.old.j+resk
-		}
-    }
-	statr.indiv.old.j <- statr.indiv.old.j/Dargs$N
-
+	statr.indiv.old.j<-0
+	resk<-0
+	for(k in 1:Uargs$nchains) {
+		phik<-phi[,varList$ind.eta,k]
+		stat2.indiv.old.j<-stat2.indiv.old.j+t(phik)%*%phik
+		fk<-ff[,k]
+		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+			resk<-sum((Dargs$yobs-fk)**2) else {
+				if(Dargs$error.model=="proportional")
+					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
+			}
+		statr.indiv.old.j<-statr.indiv.old.j+resk
+	}
     
-
-    ##update hstats
-	h.suffStat$h.stat1 = h.suffStat$h.stat1 + stat1.indiv.j - stat1.indiv.old.j
-	h.suffStat$h.stat2 = h.suffStat$h.stat2 + stat2.indiv.j - stat2.indiv.old.j
-	h.suffStat$h.stat3 = h.suffStat$h.stat3 + stat3.indiv.j - stat3.indiv.old.j
-	h.suffStat$h.statr = h.suffStat$h.statr + statr.indiv.j - statr.indiv.old.j
-
 	for (index in indchosen.j){
 		alphas[[index]]$mean.phi <- mean.phi
 	    alphas[[index]]$varList <- varList 
@@ -216,6 +192,37 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	    alphas[[index]]$phi <- phi	
 	}
     
+    #indv stat j for hstats
+	xmcmc.j<-estep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,indchosen.j, alphas)
+	phiM.new.j<-xmcmc.j$phiM
+	psiM.new.j<-transphi(phiM.new.j,Dargs$transform.par)
+	fpred<-structural.model(psiM.new.j, Dargs$IdM, Dargs$XM)
+	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
+	for(k in 1:Uargs$nchains) phi[,,k]<-phiM.new.j[((k-1)*Dargs$N+1):(k*Dargs$N),]
+
+	stat1.indiv.new.j <- apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum)
+	stat2.indiv.new.j<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3.indiv.new.j<-apply(phi[,,]**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
+	statr.indiv.new.j<-0
+	resk<-0
+	for(k in 1:Uargs$nchains) {
+		phik<-phi[,varList$ind.eta,k]
+		stat2.indiv.new.j<-stat2.indiv.new.j+t(phik)%*%phik
+		fk<-ff[,k]
+		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+			resk<-sum((Dargs$yobs-fk)**2) else {
+				if(Dargs$error.model=="proportional")
+					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
+			}
+		statr.indiv.new.j<-statr.indiv.new.j+resk
+	}
+
+
+	##update hstats
+	h.suffStat$h.stat1 = h.suffStat$h.stat1 + stat1.indiv.new.j - stat1.indiv.old.j
+	h.suffStat$h.stat2 = h.suffStat$h.stat2 + stat2.indiv.new.j - stat2.indiv.old.j
+	h.suffStat$h.stat3 = h.suffStat$h.stat3 + stat3.indiv.new.j - stat3.indiv.old.j
+	h.suffStat$h.statr = h.suffStat$h.statr + statr.indiv.new.j - statr.indiv.old.j
 
 	return(list(varList=varList,mean.phi=mean.phi,phi=phi,betas=betas,suffStat=suffStat,suffStat.vr= suffStat.vr,alphas=alphas))
 }
