@@ -48,16 +48,7 @@ estep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,
 	  	xind<-saemixObject["data"]["data"][,saemixObject["data"]["name.predictors"], drop=FALSE]
 	  	yobs<-saemixObject["data"]["data"][,saemixObject["data"]["name.response"]]
 	  	id.list<-unique(id)
-			
-		#indchosen <- 1:Dargs$NM
-		block <- NULL
-		for (m in 1:Uargs$nchains){	
-			block <- list.append(block,setdiff(1:Dargs$N, indchosen)+(m-1)*Dargs$N)
-		}
-		chosen <- NULL
-		for (m in 1:Uargs$nchains){	
-			chosen <- list.append(chosen, indchosen+(m-1)*Dargs$N)
-		}
+		
 		etaM<-phiM[,varList$ind.eta]-mean.phiM[,varList$ind.eta,drop=FALSE]
 		phiMc<-phiM
 
@@ -71,7 +62,6 @@ estep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,
 				Uc.y<-compute.LLy_d(phiMc,Uargs,Dargs,DYF)
 			}
 			deltau<-Uc.y-U.y
-			deltau[block] = 1000000
 			ind<-which(deltau<(-1)*log(runif(Dargs$NM)))
 			# print(length(ind)/length(indchosen))
 			etaM[ind,]<-etaMc[ind,]
@@ -97,7 +87,6 @@ estep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,
 					}
 					Uc.eta<-0.5*rowSums(etaMc*(etaMc%*%somega))
 					deltu<-Uc.y-U.y+Uc.eta-U.eta
-					deltu[block] = 1000000
 					ind<-which(deltu<(-1)*log(runif(Dargs$NM)))
 					# print(length(ind)/length(indchosen))
 					etaM[ind,]<-etaMc[ind,]
@@ -136,7 +125,6 @@ estep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,
 					}
 					Uc.eta<-0.5*rowSums(etaMc*(etaMc%*%somega))
 					deltu<-Uc.y-U.y+Uc.eta-U.eta
-					deltu[block] = 1000000
 					ind<-which(deltu<(-log(runif(Dargs$NM))))
 					# print(length(ind)/length(indchosen))
 					etaM[ind,]<-etaMc[ind,]
@@ -151,5 +139,5 @@ estep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,
 		phiM[index,varList$ind.eta]<-mean.phiM[index,varList$ind.eta]+etaM[index,varList$ind.eta]
 	}
 	U.eta<-0.5*rowSums(etaM*(etaM%*%somega))
-	return(list(varList=varList,DYF=DYF,phiM=phiM, etaM=etaM, indchosen = indchosen))
+	return(list(varList=varList,DYF=DYF,phiM=phiM, etaM=etaM))
 }

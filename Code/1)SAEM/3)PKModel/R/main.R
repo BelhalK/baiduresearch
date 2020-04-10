@@ -161,6 +161,7 @@ saemix<-function(model,data,control=list()) {
 # List of sufficient statistics - change during call to stochasticApprox
   suffStat<-list(statphi1=0,statphi2=0,statphi3=0,statrese=0)
   suffStat.vr<-list(stat1.vr=0,stat2.vr=0,stat3.vr=0,statr.vr=0)
+  suffStat.fi<-list(stat1.fi=0,stat2.fi=0,stat3.fi=0,statr.fi=0)
   h.suffStat<-list(h.stat1=0,h.stat2=0,h.stat3=0,h.statr=0)
   phi<-array(data=0,dim=c(Dargs$N, Uargs$nb.parameters, saemix.options$nb.chains))
   phi.e.0 <- phi
@@ -220,17 +221,7 @@ if (saemix.options$algo=="fi"){
 }
 
 ind_rand<-1:nb_replacement
-ind_rand.j<-1:nb_replacement
 
-summary <- as.data.frame(matrix(nrow = nrow(mean.phi),ncol = saemix.options$nbiter.tot))
-chosen <- as.data.frame(matrix(nrow = nrow(mean.phi),ncol = saemix.options$nbiter.tot))
-
-start_time <- Sys.time()
-end_time <- Sys.time()
-duration <- end_time - start_time
-kiter = 0
-
-duration <- end_time - start_time
 
 alpha0 <- list(varList = varList, mean.phi = mean.phi, phiM=phiM, phi = phi )
 alphas <- rep(list(alpha0),Dargs$N)
@@ -271,18 +262,30 @@ print(kiter)
     # M-step
     if(opt$stepsize[kiter]>0) {
   ############# Stochastic Approximation
+      
       if(saemix.options$algo=="vr"){
-        xstoch<-mstep.vr(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,phi.e.0, suffStat.vr)
+
+        xstoch<-mstep.vr(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, 
+          varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,
+          phi.e.0, suffStat.vr)
         phi.e.0 <- xstoch$phi.e.0
         suffStat.vr <- xstoch$suffStat.vr
+
       } else if(saemix.options$algo=="fi"){
-        xstoch<-mstep.fi(kiter, Uargs, Dargs, opt, structural.model, 
-          DYF, phiM, varList, phi, betas, suffStat,nb_replacement,
-          indchosen,saemix.options, suffStat.vr,h.suffStat, indchosen.j,alphas,saemixObject)
-        suffStat.vr <- xstoch$suffStat.vr
+
+        xstoch<-mstep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM,
+         varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,
+          suffStat.fi,h.suffStat, indchosen.j,alphas,saemixObject)
+       
+        suffStat.fi <- xstoch$suffStat.fi
+        h.suffStat <- xstoch$h.suffStat
         alphas <- xstoch$alphas
+
       } else{
-        xstoch<-mstep(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options)
+
+        xstoch<-mstep(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, 
+          varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options)
+
       }
     	
       varList<-xstoch$varList
@@ -472,5 +475,5 @@ cond.mean.eta<-t(apply(cond.mean.eta,c(1,2),mean))
 
   options(warn=opt.warn)
   # return(parpop)
-  return(list(param = parpop, summary = summary, chosen = chosen))
+  return(list(param = parpop))
 }
