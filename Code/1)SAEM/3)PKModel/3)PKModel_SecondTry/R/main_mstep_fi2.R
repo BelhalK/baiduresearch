@@ -1,5 +1,5 @@
 ################## Stochastic approximation - compute sufficient statistics (M-step) #####################
-mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,suffStat.fi,h.suffStat, indchosen.j,alphas,saemixObject) {
+mstep.fi2<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM,varList, phi, betas, suffStat,saemix.options, phiMs, h.suffStat,suffStat.fi, indchosen, indchosen.j) {
 	# M-step - stochastic approximation
 	# Input: kiter, Uargs, structural.model, DYF, phiM (unchanged)
 	# Output: varList, phi, betas, suffStat (changed)
@@ -9,16 +9,18 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	domega<-cutoff(mydiag(varList$omega[varList$ind.eta,varList$ind.eta]),.Machine$double.eps)
 	omega.eta<-varList$omega[varList$ind.eta,varList$ind.eta,drop=FALSE]
 	omega.eta<-omega.eta-mydiag(mydiag(varList$omega[varList$ind.eta,varList$ind.eta]))+mydiag(domega)
-	
+	#  print(varList$omega.eta)
 	chol.omega<-try(chol(omega.eta))
 	d1.omega<-Uargs$LCOV[,varList$ind.eta]%*%solve(omega.eta)
 	d2.omega<-d1.omega%*%t(Uargs$LCOV[,varList$ind.eta])
 	comega<-Uargs$COV2*d2.omega
 	
-	
-	phi.old.i <- phi.old.j <-phi.new.j <-phi
 
-	#new indiv stat
+	#new stat full
+	phi.old.i <- phi.old.j <- phi.new.j <-phi
+	phiM.old.i <- phiM.old.j<- phiM
+
+
 	psiM<-transphi(phiM,Dargs$transform.par)
 	fpred<-structural.model(psiM, Dargs$IdM, Dargs$XM)
 	if(Dargs$error.model=="exponential")
@@ -26,45 +28,49 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
 	for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
 
-	stat1.indiv <- apply(phi[indchosen,varList$ind.eta,,drop=FALSE],c(1,2),sum)
-	stat2.indiv<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
-	stat3.indiv<-apply(phi[indchosen,,]**2,c(1,2),sum) 
-	statr.indiv<-0
+	
+	stat1<-apply(phi[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
+	stat2<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3<-apply(phi**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
+	statr<-0
+	for(k in 1:Uargs$nchains) {
+		phik<-phi[,varList$ind.eta,k]
+		stat2<-stat2+t(phik)%*%phik
+		fk<-ff[,k]
+		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+			resk<-sum((Dargs$yobs-fk)**2) else {
+				if(Dargs$error.model=="proportional")
+					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
+			}
+		statr<-statr+resk
+	}
+
+	#new indiv stat i
+	psiM.new.i<-transphi(phiM,Dargs$transform.par)
+	fpred<-structural.model(psiM.new.i, Dargs$IdM, Dargs$XM)
+	if(Dargs$error.model=="exponential")
+		fpred<-log(cutoff(fpred))
+	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
+	for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
+
+	stat1.indiv.new <- apply(phi[indchosen,varList$ind.eta,,drop=FALSE],c(1,2),sum)
+	stat2.indiv.new<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3.indiv.new<-apply(phi[indchosen,,]**2,c(1,2),sum) 
+	statr.indiv.new<-0
 	
 	for(k in 1:Uargs$nchains) {
 		phik<-phi[indchosen,varList$ind.eta,k]
-		stat2.indiv<-stat2.indiv+t(phik)%*%phik
+		stat2.indiv.new<-stat2.indiv.new+t(phik)%*%phik
 		fk<-ff[,k]
 		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
-			resk<-sum((Dargs$yobs-fk)**2) else {
-				if(Dargs$error.model=="proportional")
-					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
-			}
-		statr.indiv<-statr.indiv+resk
+			resk<-sum((Dargs$yobs[indchosen]-fk[indchosen])**2) 
+		statr.indiv.new<-statr.indiv.new+resk
 	}
-
-	#new j hstats under current model bur for j indices
-	stat1.indiv.new.j <- apply(phi[indchosen.j,varList$ind.eta,,drop=FALSE],c(1,2),sum)
-	stat2.indiv.new.j<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
-	stat3.indiv.new.j<-apply(phi[indchosen.j,,]**2,c(1,2),sum) 
-	statr.indiv.new.j<-0
-	
-	for(k in 1:Uargs$nchains) {
-		phik<-phi[indchosen.j,varList$ind.eta,k]
-		stat2.indiv.new.j<-stat2.indiv.new.j+t(phik)%*%phik
-		fk<-ff[,k]
-		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
-			resk<-sum((Dargs$yobs-fk)**2) else {
-				if(Dargs$error.model=="proportional")
-					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
-			}
-		statr.indiv.new.j<-statr.indiv.new.j+resk
-	}
-
 
 	#old indiv stat i
-	xmcmc.old.i<-estep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,indchosen, alphas)
-	phiM.old.i<-xmcmc.old.i$phiM
+	for (index in indchosen){
+      phiM.old.i[index,] <- phiMs[[index]]$phiM[index,]
+    }
 	psiM.old.i<-transphi(phiM.old.i,Dargs$transform.par)
 	fpred<-structural.model(psiM.old.i, Dargs$IdM, Dargs$XM)
 	if(Dargs$error.model=="exponential")
@@ -82,23 +88,36 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 		stat2.indiv.old<-stat2.indiv.old+t(phik)%*%phik
 		fk<-ff[,k]
 		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
-			resk<-sum((Dargs$yobs-fk)**2) else {
-				if(Dargs$error.model=="proportional")
-					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
-			}
+			resk<-sum((Dargs$yobs[indchosen]-fk[indchosen])**2) 
 		statr.indiv.old<-statr.indiv.old+resk
 	}
- 
+
+	#new j hstats under current model bur for j indices
+	stat1.indiv.new.j <- apply(phi[indchosen.j,varList$ind.eta,,drop=FALSE],c(1,2),sum)
+	stat2.indiv.new.j<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3.indiv.new.j<-apply(phi[indchosen.j,,]**2,c(1,2),sum) 
+	statr.indiv.new.j<-0
+	
+	for(k in 1:Uargs$nchains) {
+		phik<-phi[indchosen.j,varList$ind.eta,k]
+		stat2.indiv.new.j<-stat2.indiv.new.j+t(phik)%*%phik
+		fk<-ff[,k]
+		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+			resk<-sum((Dargs$yobs[indchosen.j]-fk[indchosen.j])**2)  
+		statr.indiv.new.j<-statr.indiv.new.j+resk
+	}
+
 	#update Vstats
 	vS1 = h.suffStat$h.stat1
 	vS2 = h.suffStat$h.stat2
 	vS3 = h.suffStat$h.stat3
 	vSr = h.suffStat$h.statr
 
-	vS1[indchosen,]  = h.suffStat$h.stat1[indchosen,] + (stat1.indiv - stat1.indiv.old)
-	vS2  = h.suffStat$h.stat2 + (stat2.indiv - stat2.indiv.old)
-	vS3[indchosen,]  = h.suffStat$h.stat3[indchosen,] + (stat3.indiv - stat3.indiv.old)
-	vSr  = h.suffStat$h.statr + (statr.indiv - statr.indiv.old)
+	vS1[indchosen,]  = h.suffStat$h.stat1[indchosen,] + (stat1.indiv.new - stat1.indiv.old)
+	vS2  = h.suffStat$h.stat2 + (stat2.indiv.new - stat2.indiv.old)
+	vS3[indchosen,]  = h.suffStat$h.stat3[indchosen,] + (stat3.indiv.new - stat3.indiv.old)
+	vSr  = h.suffStat$h.statr + (statr.indiv.new - statr.indiv.old)
+
 
 	#Variance Reduction Update
 	rho = saemix.options$rho
@@ -107,17 +126,23 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	suffStat.fi$stat3.fi = (1 - rho)*suffStat.fi$stat3.fi + rho*vS3
 	suffStat.fi$statr.fi = (1 - rho)*suffStat.fi$statr.fi + rho*vSr
 
+
 	# Update sufficient statistics
 	suffStat$statphi1<-suffStat$statphi1+opt$stepsize[kiter]*(suffStat.fi$stat1.fi/Uargs$nchains-suffStat$statphi1)
 	suffStat$statphi2<-suffStat$statphi2+opt$stepsize[kiter]*(suffStat.fi$stat2.fi/Uargs$nchains-suffStat$statphi2)
 	suffStat$statphi3<-suffStat$statphi3+opt$stepsize[kiter]*(suffStat.fi$stat3.fi/Uargs$nchains-suffStat$statphi3)
 	# suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(suffStat.fi$statr.fi/Uargs$nchains-suffStat$statrese)
-	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(statr.indiv/Uargs$nchains-suffStat$statrese)
 
-
+	# # Update sufficient statistics
+	# suffStat$statphi1<-suffStat$statphi1+opt$stepsize[kiter]*(stat1/Uargs$nchains-suffStat$statphi1)
+	# suffStat$statphi2<-suffStat$statphi2+opt$stepsize[kiter]*(stat2/Uargs$nchains-suffStat$statphi2)
+	# suffStat$statphi3<-suffStat$statphi3+opt$stepsize[kiter]*(stat3/Uargs$nchains-suffStat$statphi3)
+	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(statr/Uargs$nchains-suffStat$statrese)
+	
 	#old indv stat j for hstats
-	xmcmc.old.j<-estep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,indchosen.j, alphas)
-	phiM.old.j<-xmcmc.old.j$phiM
+	for (index in indchosen.j){
+      phiM.old.j[index,] <- phiMs[[index]]$phiM[index,]
+    }
 	psiM.old.j<-transphi(phiM.old.j,Dargs$transform.par)
 	fpred<-structural.model(psiM.old.j, Dargs$IdM, Dargs$XM)
 	if(Dargs$error.model=="exponential")
@@ -135,46 +160,9 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 		stat2.indiv.old.j<-stat2.indiv.old.j+t(phik)%*%phik
 		fk<-ff[,k]
 		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
-			resk<-sum((Dargs$yobs-fk)**2) else {
-				if(Dargs$error.model=="proportional")
-					resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
-			}
+			resk<-sum((Dargs$yobs[indchosen.j]-fk[indchosen.j])**2)
 		statr.indiv.old.j<-statr.indiv.old.j+resk
 	}
-    
-	for (index in indchosen.j){
-		alphas[[index]]$mean.phi <- Uargs$COV %*% varList$MCOV
-	    alphas[[index]]$varList <- varList 
-	    alphas[[index]]$phiM <- phiM 
-	    alphas[[index]]$phi <- phi	
-	}
-    
- #    #new indv stat j for hstats
-	# xmcmc.j<-estep.fi(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,indchosen.j, alphas)
-	# phiM.new.j<-xmcmc.j$phiM
-	# psiM.new.j<-transphi(phiM.new.j,Dargs$transform.par)
-	# fpred<-structural.model(psiM.new.j, Dargs$IdM, Dargs$XM)
-	# if(Dargs$error.model=="exponential")
-	# 	fpred<-log(cutoff(fpred))
-	# ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
-	# for(k in 1:Uargs$nchains) phi.new.j[,,k]<-phiM.new.j[((k-1)*Dargs$N+1):(k*Dargs$N),]
-
-	# stat1.indiv.new.j <- apply(phi.new.j[indchosen.j,varList$ind.eta,,drop=FALSE],c(1,2),sum)
-	# stat2.indiv.new.j<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
-	# stat3.indiv.new.j<-apply(phi.new.j[indchosen.j,,]**2,c(1,2),sum) 
-	# statr.indiv.new.j<-0
-	
-	# for(k in 1:Uargs$nchains) {
-	# 	phik<-phi.new.j[indchosen.j,varList$ind.eta,k]
-	# 	stat2.indiv.new.j<-stat2.indiv.new.j+t(phik)%*%phik
-	# 	fk<-ff[,k]
-	# 	if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
-	# 		resk<-sum((Dargs$yobs-fk)**2) else {
-	# 			if(Dargs$error.model=="proportional")
-	# 				resk<-sum((Dargs$yobs-fk)**2/cutoff(fk**2,.Machine$double.eps)) else resk<-0
-	# 		}
-	# 	statr.indiv.new.j<-statr.indiv.new.j+resk
-	# }
 
 	############# Maximisation
 	##### fixed effects
@@ -197,7 +185,6 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	mean.phi<-Uargs$COV %*% varList$MCOV
 	e1.phi<-mean.phi[,varList$ind.eta,drop=FALSE]
 	
-
 	# Covariance of the random effects
 	omega.full<-matrix(data=0,nrow=Uargs$nb.parameters,ncol=Uargs$nb.parameters)
 	omega.full[varList$ind.eta,varList$ind.eta]<-suffStat$statphi2/Dargs$N + t(e1.phi)%*%e1.phi/Dargs$N - t(suffStat$statphi1)%*%e1.phi/Dargs$N - t(e1.phi)%*%suffStat$statphi1/Dargs$N
@@ -245,5 +232,5 @@ mstep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 	h.suffStat$h.statr = h.suffStat$h.statr + (statr.indiv.new.j - statr.indiv.old.j)/Dargs$N
 
 
-	return(list(varList=varList,mean.phi=mean.phi,phi=phi,betas=betas,suffStat=suffStat,suffStat.fi= suffStat.fi,h.suffStat = h.suffStat,alphas=alphas))
+	return(list(varList=varList,mean.phi=mean.phi,phi=phi,betas=betas,suffStat=suffStat,h.suffStat=h.suffStat,suffStat.fi=suffStat.fi))
 }
