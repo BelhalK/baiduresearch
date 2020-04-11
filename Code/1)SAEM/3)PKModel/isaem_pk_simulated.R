@@ -53,16 +53,15 @@ saemix.model<-saemixModel(model=model1cpt,description="pkmodel",type="structural
   covariance.model=matrix(c(1,0,0,0,1,0,0,0,1),ncol=3, 
   byrow=TRUE))
 
-
 seed0=3456
 
 # K1 = 1000
 # K2 = 30
 # iter.mcmc = c(1,0,0,0)
 
-K1 = 100
+K1 = 30
 K2 = 2
-iter.mcmc = c(2,2,2,0)
+iter.mcmc = c(2,0,0,0)
 
 iterations = 0:(K1+K2-1)
 end = K1+K2
@@ -99,31 +98,25 @@ fit.vr.50<-saemix(saemix.model,saemix.data,options.vr.50)
 fit.vr.50 <- data.frame(fit.vr.50$param)
 fit.vr.50 <- cbind(iterations, fit.vr.50[-1,])
 
-
-# ### Fast Iterative ###
-options.fi.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains,
-  nbiter.mcmc = iter.mcmc, nbiter.saemix = c(K1,K2),displayProgress=FALSE,map.range=c(0),
-  nbiter.sa=0,nbiter.burn =0, nb.replacement=50,sampling='seq',algo="fi", rho =0.1)
-fit.fi.50<-saemix(saemix.model,saemix.data,options.fi.50)
-fit.fi.50 <- data.frame(fit.fi.50$param)
-fit.fi.50 <- cbind(iterations, fit.fi.50[-1,])
-
-fit.50.fi.scaled <- fit.fi.50
-fit.50.fi.scaled$iterations = fit.50.fi.scaled$iterations*0.5
-
-
-
 fit.ref.scaled <- fit.ref
-# fit.25.scaled <- fit.25
-# fit.75.scaled <- fit.75
-# fit.25.scaled$iterations = fit.25.scaled$iterations*0.25
-# fit.75.scaled$iterations = fit.75.scaled$iterations*0.75
 fit.50.scaled <- fit.50
 fit.50.scaled$iterations = fit.50.scaled$iterations*0.5
 fit.50.vr.scaled <- fit.vr.50
 fit.50.vr.scaled$iterations = fit.50.vr.scaled$iterations*0.5
 #black, blue, red, yellow, pink
 graphConvMC_5(fit.ref.scaled,fit.50.scaled,fit.50.scaled,fit.50.scaled,fit.50.vr.scaled)
+
+# ### Fast Iterative ###
+options.fi.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains,
+  nbiter.mcmc = iter.mcmc, nbiter.saemix = c(K1,K2),displayProgress=FALSE,map.range=c(0),
+  nbiter.sa=0,nbiter.burn =0, nb.replacement=50,sampling='randomiter',algo="fi", rho =0.1)
+fit.fi.50<-saemix(saemix.model,saemix.data,options.fi.50)
+fit.fi.50 <- data.frame(fit.fi.50$param)
+fit.fi.50 <- cbind(iterations, fit.fi.50[-1,])
+
+
+fit.50.fi.scaled <- fit.fi.50
+fit.50.fi.scaled$iterations = fit.50.fi.scaled$iterations*0.5
 
 graphConvMC_5(fit.ref.scaled,fit.50.scaled,fit.50.scaled,fit.50.fi.scaled,fit.50.vr.scaled)
 

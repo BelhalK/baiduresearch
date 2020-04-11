@@ -27,7 +27,6 @@ estep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,
 		mean.phiM<-do.call(rbind,rep(list(mean.phi),Uargs$nchains))
 		phiM[,varList$ind0.eta]<-mean.phiM[,varList$ind0.eta]
 		saemix.options<-saemixObject["options"]
-		map_range <- saemix.options$map.range
 
 		if(Dargs$type=="structural"){
 			U.y<-compute.LLy_c(phiM,varList$pres,Uargs,Dargs,DYF)
@@ -38,12 +37,6 @@ estep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,
 		saemix.options<-saemixObject["options"]
 	  	saemix.model<-saemixObject["model"]
 	  	saemix.data<-saemixObject["data"]
-	  	saemix.options$map <- TRUE
-	  	saemixObject["results"]["omega"] <- omega.eta
-	  	saemixObject["results"]["mean.phi"] <- mean.phi
-	  	saemixObject["results"]["phi"] <- phiM
-	  	i1.omega2<-varList$ind.eta
-	    iomega.phi1<-solve(saemixObject["results"]["omega"][i1.omega2,i1.omega2])
 	  	id<-saemixObject["data"]["data"][,saemixObject["data"]["name.group"]]
 	  	xind<-saemixObject["data"]["data"][,saemixObject["data"]["name.predictors"], drop=FALSE]
 	  	yobs<-saemixObject["data"]["data"][,saemixObject["data"]["name.response"]]
@@ -138,6 +131,7 @@ estep.fi<-function(kiter, Uargs, Dargs, opt, structural.model, DYF,saemixObject,
 		}
 		phiM[index,varList$ind.eta]<-mean.phiM[index,varList$ind.eta]+etaM[index,varList$ind.eta]
 	}
+
 	U.eta<-0.5*rowSums(etaM*(etaM%*%somega))
 	return(list(varList=varList,DYF=DYF,phiM=phiM, etaM=etaM))
 }
