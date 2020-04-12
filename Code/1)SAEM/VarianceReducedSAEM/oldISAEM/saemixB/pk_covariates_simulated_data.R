@@ -326,7 +326,7 @@ err_mix25seq$method <- 'seq'
 for (i in 2:10){
 # i = 6
 comparison <- 0
-comparison <- rbind(err_rwm_scaled[0:end,c(1,i,12,13)],err_mixseq_scaled [0:end,c(1,i,12,13)],err_mix25seq[0:end,c(1,i,12,13)])
+comparison <- rbind(err_rwm_scaled[0:end,c(1,i,12,13)],err_mixseq_scaled[0:end,c(1,i,12,13)],err_mix25seq[0:end,c(1,i,12,13)])
 
 var <- melt(comparison, id.var = c('iterations','algo','method'), na.rm = TRUE)
 

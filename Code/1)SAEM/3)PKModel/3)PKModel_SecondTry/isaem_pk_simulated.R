@@ -1,4 +1,4 @@
-load("Rdata/testFI.RData")
+load("Rdata/final_FI.RData")
 library("mlxR")
 library("rlist")
 library("psych")
@@ -15,6 +15,55 @@ source('R/SaemixRes.R')
 source('R/SaemixObject.R') 
 source('R/zzz.R')
 
+
+
+
+K1 = 200
+K2 = 2
+iter.mcmc = c(2,2,2,0)
+
+iterations = 0:(K1+K2-1)
+end = K1+K2
+nchains = 1
+
+
+### BATCH ###
+options<-list(seed=39546,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains,
+  nbiter.mcmc = iter.mcmc, nbiter.saemix = c(K1,K2),nbiter.sa=0,displayProgress=FALSE,
+  nbiter.burn =0, map.range=c(0), nb.replacement=100,sampling='randomiter', algo="full")
+fit.ref<-saemix(saemix.model,saemix.data,options)
+fit.ref <- data.frame(fit.ref$param)
+fit.ref <- cbind(iterations, fit.ref[-1,])
+
+### INCREMENTAL ###
+options.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, 
+  nbiter.mcmc = iter.mcmc, nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),
+  nbiter.sa=0,nbiter.burn =0, nb.replacement=50,sampling='seq',algo="minibatch")
+# start_time <- Sys.time()
+fit.50<-saemix(saemix.model,saemix.data,options.50)
+# end_time <- Sys.time()
+# end_time - start_time
+fit.50 <- data.frame(fit.50$param)
+fit.50 <- cbind(iterations, fit.50[-1,])
+
+### Variance Reduced ###
+options.vr.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains,
+  nbiter.mcmc = iter.mcmc, nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),
+  nbiter.sa=0,nbiter.burn =0, nb.replacement=50,sampling='randomiter',algo="vr", rho =0.1)
+# start_time <- Sys.time()
+fit.vr.50<-saemix(saemix.model,saemix.data,options.vr.50)
+# end_time <- Sys.time()
+# end_time - start_time
+fit.vr.50 <- data.frame(fit.vr.50$param)
+fit.vr.50 <- cbind(iterations, fit.vr.50[-1,])
+
+fit.ref.scaled <- fit.ref
+fit.50.scaled <- fit.50
+fit.50.scaled$iterations = fit.50.scaled$iterations*0.5
+fit.50.vr.scaled <- fit.vr.50
+fit.50.vr.scaled$iterations = fit.50.vr.scaled$iterations*0.5
+#black, blue, red, yellow, pink
+graphConvMC_5(fit.ref.scaled,fit.50.scaled,fit.50.scaled,fit.50.scaled,fit.50.vr.scaled)
 
 
 # ### Fast Iterative ###

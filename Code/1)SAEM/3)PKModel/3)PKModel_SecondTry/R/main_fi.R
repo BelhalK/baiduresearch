@@ -231,7 +231,6 @@ for (kiter in 1:saemix.options$nbiter.tot) { # Iterative portion of algorithm
   # duration <- end_time - start_time
   # kiter = kiter + 1
   # SAEM convergence plots
-print(kiter)
   	if(kiter%%saemix.options$nbdisplay==0) {
       cat(".")
       if(saemix.options$displayProgress)    

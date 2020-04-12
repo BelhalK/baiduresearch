@@ -524,9 +524,9 @@ The vector of parameters we ought to estimate is thus $\param = \big( \beta, \Ga
 The complete model belongs to the curved exponential family, see \citep{allassonniere2007towards}, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
 \beq \label{eq:suffstat_deformable}
 \begin{split}
-& S_1(z) = \sum_{i=1}^nS_1(y_i, z_i)  = \sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^{t} y_{i}\\
-& S_2(z) =\sum_{i=1}^n S_2(y_i, z_i) =\sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^{t}\left(\mathbf{K}_{p}^{z_{i}}\right)\\
-& S_3(z) =\sum_{i=1}^n S_3(y_i, z_i)  = \sum_{i=1}^n  z_{i}^{t} z_{i} 
+& S_1(z) = \frac{1}{n} \sum_{i=1}^nS_1(y_i, z_i)  = \frac{1}{n} \sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^\top y_{i}\\
+& S_2(z) =\frac{1}{n} \sum_{i=1}^n S_2(y_i, z_i) = \frac{1}{n} \sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^\top\left(\mathbf{K}_{p}^{z_{i}}\right)\\
+& S_3(z) =\frac{1}{n} \sum_{i=1}^n S_3(y_i, z_i)  = \frac{1}{n}  \sum_{i=1}^n  z_{i}^{t} z_{i} 
 \end{split}
 \eeq
 where for any pixel $u \in \rset^2$ and $j \in \llbracket 1, k_g \rrbracket$ we noted:
@@ -550,6 +550,65 @@ where $\hat{s} = (\hat{s}_1(z),\hat{s}_2(z),\hat{s}_3(z))$ is the vector of stat
 
 
 \paragraph{Comparison using number of training samples credit}
+
+
+\subsection{PK Model with Absorption Lag Time}
+This numerical example was conducted in order to characterize the pharmacokinetics of orally administered drug to simulated patients, using a population pharmacokinetic approach. $M = 50$ synthetic datasets were generated for $n = 500$ patients with $10$ observations (concentration measures) per patient.
+
+\paragraph{The model:}
+We consider a one-compartment pharmacokinetics (PK) model for oral administration with an absorption lag-time ($T^{\textrm{lag}}$), assuming first-order absorption and linear elimination processes.
+The final model includes $ka$ is the absorption rate constant, $V$ the volume of distribution, $k$ the elimination rate constant.
+We also add several covariates to our model such as $D$ the dose of drug administered, $t$ the time at which measures are taken and the weight such as $V$ is function of it. More precisely, the log-volume $\log(V)$ is a linear function of the log-weight $lw70= \log(wt/70)$.
+The final reads:
+\begin{equation} \label{eq:pkmodel}
+f(t,ka, V, k) = \frac{D\,ka}{V(ka - k)}(\exponential^{-ka\,(t - T^{\textrm{lag}})}-\exponential^{-k\,(t - T^{\textrm{lag}})})\eqs,
+\end{equation}
+Here, $T^{\textrm{lag}}$, $ka$, $V$ and $k$ are  PK parameters that can change from one individual to another.
+
+
+Let $ z_i=(T_i^{\textrm{lag}}, ka_i, V_i, k_i)$ be the vector of individual PK parameters for individual $i$.
+The model for the $j$-th measured concentration, noted $y_{ij}$, for individual $i$ writes:
+\begin{equation}
+y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij}\eqs.
+\end{equation}
+
+We assume in this example that the residual errors are independent and normally distributed with mean 0 and variance $\sigma^2$.
+Lognormal distributions are used for the three PK parameters:
+\begin{align}
+& \log(T_i^{\textrm{lag}}) \sim \mathcal{N}(\log(T^{\textrm{lag}}_{\rm pop}), \omega^2_{T^{\textrm{lag}}} ) \sim \mathcal{N}(\log(ka_{\rm pop}), \omega^2_{ka})\eqs,\\
+&\log(V_i) \sim \mathcal{N}(\log(V_{\rm pop}), \omega^2_{V})\eqs,
+ \log(k_i) \sim \mathcal{N}(\log(k_{\rm pop}), \omega^2_{k})\eqs.
+\end{align}
+
+The complete model belongs to the curved exponential family, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
+\beq \label{eq:suffstat_deformable}
+\begin{split}
+S_1(z)  = \frac{1}{n} \sum_{i=1}^n z_i  ,  \quad S_2(z) =\frac{1}{n} \sum_{i=1}^n z_i^\top z_i  , \quad S_3(z)  = \frac{1}{n}  \sum_{i=1}^n  \left(y_i - f(t_{i},z_i)\right)^2
+\end{split}
+\eeq
+where we have noted $y_i$ and $t_i$ the vector of observations and time for each patient $i$.
+
+\paragraph{Monte Carlo study:}
+We conduct a Monte Carlo study to showcase the benefits of our scheme.
+
+$M=50$ datasets have been simulated using the following PK parameters values:
+$T^{\textrm{lag}}_{\rm pop} =1$, $ka_{\rm pop} =1$, $V_{\rm pop}= 8$, $k_{\rm pop}=0.1$, $ \omega_{T^{\textrm{lag}}}=0.4$, $\omega_{ka}=0.5$, $\omega_{V}=0.2$, $\omega_{k}=0.3$ and $\sigma^2=0.5$.
+We defined the mean square distance over the $M$ replicates
+\begin{equation}\label{error}
+E_k(\ell) = \frac{1}{M}\sum_{m=1}^{M}{\left(\theta_k^{(m)}(\ell) - \theta^* \right)^2}\eqs.
+\end{equation}
+
+Note that the MC simulation is performed using a Metropolis Hastings procedure since the posterior distribution under the model $\theta$ noted $p(z_i | y_i, \theta)$ is intractable due to the nonlinearity of the model \eqref{eq:pkmodel}.
+Figure~\ref{fig:pk_tts} shows
+
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.5\textwidth]{pic_paper/pk500.png}\vspace{-.2cm}
+\caption{TO COMPLETE}\vspace{-.2cm}
+\label{fig:pk_tts}
+\end{center}
+\end{figure}
 
 \section{Conclusion}
 

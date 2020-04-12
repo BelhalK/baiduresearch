@@ -67,7 +67,7 @@ mstep.fi2<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM,varLis
 		statr.indiv.new<-statr.indiv.new+resk
 	}
 
-	#old indiv stat i
+	# old indiv stat i
 	for (index in indchosen){
       phiM.old.i[index,] <- phiMs[[index]]$phiM[index,]
     }
@@ -92,6 +92,32 @@ mstep.fi2<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM,varLis
 		statr.indiv.old<-statr.indiv.old+resk
 	}
 
+
+	for (index in indchosen){
+      phiM.old.i[index,] <- phiMs[[index]]$phiM[index,]
+    }
+	psiM.old.i<-transphi(phiM.old.i,Dargs$transform.par)
+	fpred<-structural.model(psiM.old.i, Dargs$IdM, Dargs$XM)
+	if(Dargs$error.model=="exponential")
+		fpred<-log(cutoff(fpred))
+	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
+	for(k in 1:Uargs$nchains) phi.old.i[,,k]<-phiM.old.i[((k-1)*Dargs$N+1):(k*Dargs$N),]
+
+	stat1.old <- apply(phi.old.i[,varList$ind.eta,,drop=FALSE],c(1,2),sum)
+	stat2.old<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
+	stat3.old<-apply(phi.old.i[,,]**2,c(1,2),sum) 
+	statr.old<-0
+	
+	for(k in 1:Uargs$nchains) {
+		phik<-phi.old.i[,varList$ind.eta,k]
+		stat2.old<-stat2.old+t(phik)%*%phik
+		fk<-ff[,k]
+		if(!is.na(match(Dargs$error.model,c("constant","exponential"))))
+			resk<-sum((Dargs$yobs-fk)**2) 
+		statr.old<-statr.old+resk
+	}
+
+
 	#new j hstats under current model bur for j indices
 	stat1.indiv.new.j <- apply(phi[indchosen.j,varList$ind.eta,,drop=FALSE],c(1,2),sum)
 	stat2.indiv.new.j<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
@@ -108,16 +134,26 @@ mstep.fi2<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM,varLis
 	}
 
 	#update Vstats
-	vS1 = h.suffStat$h.stat1
-	vS2 = h.suffStat$h.stat2
-	vS3 = h.suffStat$h.stat3
-	vSr = h.suffStat$h.statr
+	vS1 = stat1.old
+	vS1[indchosen,]  = vS1[indchosen,] +(stat1.indiv.new - stat1.indiv.old)
+	vS3 = stat3.old
+	vS3[indchosen,]  = vS3[indchosen,] + (stat3.indiv.new - stat3.indiv.old)
 
-	vS1[indchosen,]  = h.suffStat$h.stat1[indchosen,] + (stat1.indiv.new - stat1.indiv.old)
-	vS2  = h.suffStat$h.stat2 + (stat2.indiv.new - stat2.indiv.old)
-	vS3[indchosen,]  = h.suffStat$h.stat3[indchosen,] + (stat3.indiv.new - stat3.indiv.old)
-	vSr  = h.suffStat$h.statr + (statr.indiv.new - statr.indiv.old)
+	# vS2 = h.suffStat$h.stat2
+	# vSr = h.suffStat$h.statr
+	# vS2  = h.suffStat$h.stat2 + (stat2.indiv.new - stat2.indiv.old)
+	# vSr  = h.suffStat$h.statr + (statr.indiv.new - statr.indiv.old)
 
+	#update Vstats
+	# vS1 = stat1.old
+	# vS1[indchosen,] = stat1.indiv.new
+	# vS3 = stat3.old
+	# vS3[indchosen,] = stat3.indiv.new
+	
+	vS2 = stat2.old
+	vSr = statr.old
+	# vS2 = stat2.indiv.new
+	# vSr = statr.indiv.new
 
 	#Variance Reduction Update
 	rho = saemix.options$rho
@@ -127,17 +163,18 @@ mstep.fi2<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM,varLis
 	suffStat.fi$statr.fi = (1 - rho)*suffStat.fi$statr.fi + rho*vSr
 
 
+
 	# Update sufficient statistics
 	suffStat$statphi1<-suffStat$statphi1+opt$stepsize[kiter]*(suffStat.fi$stat1.fi/Uargs$nchains-suffStat$statphi1)
 	suffStat$statphi2<-suffStat$statphi2+opt$stepsize[kiter]*(suffStat.fi$stat2.fi/Uargs$nchains-suffStat$statphi2)
 	suffStat$statphi3<-suffStat$statphi3+opt$stepsize[kiter]*(suffStat.fi$stat3.fi/Uargs$nchains-suffStat$statphi3)
-	# suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(suffStat.fi$statr.fi/Uargs$nchains-suffStat$statrese)
+	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(suffStat.fi$statr.fi/Uargs$nchains-suffStat$statrese)
 
 	# # Update sufficient statistics
 	# suffStat$statphi1<-suffStat$statphi1+opt$stepsize[kiter]*(stat1/Uargs$nchains-suffStat$statphi1)
 	# suffStat$statphi2<-suffStat$statphi2+opt$stepsize[kiter]*(stat2/Uargs$nchains-suffStat$statphi2)
 	# suffStat$statphi3<-suffStat$statphi3+opt$stepsize[kiter]*(stat3/Uargs$nchains-suffStat$statphi3)
-	suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(statr/Uargs$nchains-suffStat$statrese)
+	# suffStat$statrese<-suffStat$statrese+opt$stepsize[kiter]*(statr/Uargs$nchains-suffStat$statrese)
 	
 	#old indv stat j for hstats
 	for (index in indchosen.j){
