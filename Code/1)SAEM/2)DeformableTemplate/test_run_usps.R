@@ -17,7 +17,7 @@ options(digits = 2)
 #import USPS digits dataabse
 data(digits) 
 
-nb <- 30  # number of images
+nb <- 20  # number of images
 start = 5000
 images = digits[,start:(start+nb)]
 
@@ -27,13 +27,11 @@ for (i in 1:nb){
   image(t(sample.digit)[,nrow(sample.digit):1])
 }
 
-template.model<-function(z, xi,p,landmarks.p,landmarks.g) { 
+template.model<-function(z, xi,p,landmarks.p,landmarks.g,sigma.g,sigma.p) { 
   zi<-z
   ypred = matrix(NA,nrow=p,ncol=p)
   phi <- as.list(numeric(p^2))
   dim(phi) <- c(p,p)
-  sigma.g = 1
-  sigma.p = 1
   for (m in 1:p){
   	for (j in 1:p){
       #Image Coordinate Standard
@@ -42,13 +40,13 @@ template.model<-function(z, xi,p,landmarks.p,landmarks.g) {
   		rep.coord = matrix(c(x.ind,y.ind), nrow=1)
 	   	coord <- t(apply(rep.coord, 2, rep, kg))
       coord
-      	#deformation computation
-  		kernel.deformation = exp(-(coord - landmarks.g)^2/(2*sigma.g))
+      #deformation computation
+  		kernel.deformation = exp(-(coord - landmarks.g)^2/(2*sigma.g**2))
 	   	phi[[m,j]]= colSums(kernel.deformation)%*%t(zi)
-      	#template computation
-      	coord.template = rep.coord - phi[[m,j]]
-      	rep.coord.template <- t(apply(coord.template, 2, rep, kp))
-      	kernel.template = exp(-(rep.coord.template - landmarks.p)^2/(2*sigma.p))
+    	#template computation
+    	coord.template = rep.coord - phi[[m,j]]
+    	rep.coord.template <- t(apply(coord.template, 2, rep, kp))
+    	kernel.template = exp(-(rep.coord.template - landmarks.p)^2/(2*sigma.p**2))
   		template = colSums(kernel.template)%*%xi
   		ypred[m,j] = template
   	}
@@ -61,10 +59,10 @@ p <- ncol(sample.digit) #dimension of the input
 Gamma.star <- diag(rep(1,kg)) # covariance
 
 batchsize = 1
-nb.epochs <- 12
+nb.epochs <- 5
 N <- ncol(images)
 nb.iter <- N/batchsize*nb.epochs
-nb.mcmc <- 4
+nb.mcmc <- 5
 
 #first stage of SAEM
 K1 = 0
@@ -72,20 +70,21 @@ rho.vr = 1/N**(2/3)
 rho.saga = 1/N**(2/3)
 
 #fixed landmarks points
-kp <- 2 #dimension of the parameter of the template
-kg <- 2 #dimension of the random effects
+kp <- 6 #dimension of the parameter of the template
+kg <- 6 #dimension of the random effects
 landmarks.p = matrix(rnorm(2*kp,mean = 0, sd = 0.5),ncol=kp) #of template
 landmarks.g = matrix(rnorm(2*kg,mean = 0, sd = 0.5),ncol=kg) #of deformation
-
+sigma.g = 0.7
+sigma.p = 0.7
 
 # SAEM
-fit.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,
+fit.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,
   maxruns=nb.epochs,nmcmc = nb.mcmc,k1=K1,algo = "saem", batchsize=batchsize)
-fit.inc.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,
+fit.inc.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,
   maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "isaem", batchsize=batchsize)
-fit.vr.saem = vrsaem(images,kp,kg,landmarks.p,landmarks.g, template.model,
+fit.vr.saem = vrsaem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,
   maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "vrsaem", batchsize=batchsize,rho.vr)
-fit.fi.saem = fisaem(images,kp,kg,landmarks.p,landmarks.g, template.model,
+fit.fi.saem = fisaem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,
   maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "fisaem", batchsize=batchsize,rho.saga)
 
 
@@ -132,7 +131,7 @@ for (i in 1:nb.epochs){
   sigma <- fit.saem$seqsigma[,i]
   chol.omega <- chol(Gamma)
   z.new <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
-  newsamples[[i]]<-template.model(z.new, xi, p,landmarks.p,landmarks.g) #generated digit  
+  newsamples[[i]]<-template.model(z.new, xi, p,landmarks.p,landmarks.g,sigma.g,sigma.p) #generated digit  
 }
 
 for (i in 1:nb.epochs){
@@ -150,7 +149,7 @@ for (i in epochs){
   sigma <- fit.inc.saem$seqsigma[,i]
   chol.omega <- chol(Gamma)
   z.new <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
-  newsamples.inc[[i]]<-template.model(z.new, xi, p,landmarks.p,landmarks.g) #generated digit  
+  newsamples.inc[[i]]<-template.model(z.new, xi, p,landmarks.p,landmarks.g,sigma.g,sigma.p) #generated digit  
 }
 
 for (i in epochs){
@@ -160,7 +159,7 @@ for (i in epochs){
 
 #last one for both
 image(t(tail(newsamples,1)[[1]] + meantemp)[,nrow(tail(newsamples,1)[[1]] + meantemp):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
-image(t(tail(newsamples.inc,1)[[1]] + meantemp)[,nrow(tail(newsamples.inc,1)[[1]] + meantemp):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
+image(t(tail(newsamples.inc,1)[[1]] )[,nrow(tail(newsamples.inc,1)[[1]] ):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
 
 
 #VR 
@@ -171,7 +170,7 @@ for (i in 1:nb.epochs){
   sigma <- fit.vr.saem$seqsigma[,i]
   chol.omega <- chol(Gamma)
   z.new <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
-  newsamples.vr[[i]]<-template.model(z.new, xi, p,landmarks.p,landmarks.g) #generated digit  
+  newsamples.vr[[i]]<-template.model(z.new, xi, p,landmarks.p,landmarks.g,sigma.g,sigma.p) #generated digit  
 }
 
 for (i in 1:nb.epochs){
@@ -188,7 +187,7 @@ for (i in epochs){
   sigma <- fit.fi.saem$seqsigma[,i]
   chol.omega <- chol(Gamma)
   z.new <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
-  newsamples.fi[[i]]<-template.model(z.new, xi, p,landmarks.p,landmarks.g) #generated digit  
+  newsamples.fi[[i]]<-template.model(z.new, xi, p,landmarks.p,landmarks.g,sigma.g,sigma.p) #generated digit  
 }
 
 for (i in epochs){
@@ -201,4 +200,9 @@ image(t(tail(newsamples.inc,1)[[1]] + meantemp)[,nrow(tail(newsamples.inc,1)[[1]
 image(t(tail(newsamples.vr,1)[[1]] + meantemp)[,nrow(tail(newsamples.vr,1)[[1]] + meantemp):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
 image(t(tail(newsamples.fi,1)[[1]] + meantemp)[,nrow(tail(newsamples.fi,1)[[1]] + meantemp):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
 
+
+image(t(tail(newsamples,1)[[1]] )[,nrow(tail(newsamples,1)[[1]] ):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
+image(t(tail(newsamples.inc,1)[[1]] )[,nrow(tail(newsamples.inc,1)[[1]] ):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
+image(t(tail(newsamples.vr,1)[[1]] )[,nrow(tail(newsamples.vr,1)[[1]] ):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
+image(t(tail(newsamples.fi,1)[[1]] )[,nrow(tail(newsamples.fi,1)[[1]] ):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
 # save.image("usps2.RData")

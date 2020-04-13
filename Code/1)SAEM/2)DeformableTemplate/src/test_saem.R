@@ -14,7 +14,7 @@
 #' \item{Gamma}{Estiamated \eqn{\Gamma}{\Gamma}.}
 
 
-tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,maxruns=500,tol_em=1e-7,
+tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
                        algo = "saem", batchsize=1) {
     set.seed(seed)
@@ -32,7 +32,7 @@ tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g
     xi.0 <- 1
     sigma.0 <- 1
 
-    cov <- diag(rep(cov.z.0,kg)) # covariance of the random effects
+    cov <- diag(rep(cov.z.0,2*kg))
     Gamma <-list(cov,cov)
     for (k in 1:maxruns){
       Gamma[[k]] <-cov #list of all estimated cov of z
@@ -48,7 +48,7 @@ tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g
 
     #random effects and proposal initialisation 
     chol.omega<-try(chol(Gamma[[1]]))
-    z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
+    z1 <- matrix(rnorm(2*kg),ncol=2*kg)%*%chol.omega
     z <- list(z1,z1) #random effects (2 X kg)
 
     #Individuals stats initialization
@@ -61,7 +61,7 @@ tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g
 
     for (indiv in 1:n){
       chol.omega<-try(chol(Gamma[[1]]))
-      z1 <- matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
+      z1 <- matrix(rnorm(2*kg),ncol=2*kg)%*%chol.omega
       z[[indiv]] <- z1
       S1[[indiv]] <- S1.indiv
       S2[[indiv]] <- S2.indiv
@@ -72,6 +72,7 @@ tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g
     suffStat<-list(S1=0,S2=0,S3=0)
 
     zproposal <- z #initialise proposal random effects
+    print(maxruns)
     for (k in 1:maxruns) {
       print(k)
       #mini batch indices sampling
@@ -88,13 +89,13 @@ tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g
         somega<-solve(cov)
         
         U.z<-0.5*rowSums(z[[indiv]]*(z[[indiv]]%*%somega))
-        U.y<-compute.LLy(z[[indiv]], xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g,sigma.g,sigma.p)
-
-        for(u in 1:nmcmc) { 
+        U.y<-compute.LLy(z[[indiv]], xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
+        browser()
+        for(u in 1:nmcmc) {  
 
           zproposal[[indiv]]<-matrix(rnorm(2*kg),ncol=kg)%*%chol.omega
           Uc.z<-0.5*rowSums(zproposal[[indiv]]*(zproposal[[indiv]]%*%somega))
-          Uc.y<-compute.LLy(zproposal[[indiv]],xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g,sigma.g,sigma.p)
+          Uc.y<-compute.LLy(zproposal[[indiv]],xi[,k], samples[[indiv]],p, sigma[,k],landmarks.p,landmarks.g)
 
           #MH acceptance ratio
           deltu<-Uc.y-U.y+Uc.z-U.z
@@ -108,8 +109,8 @@ tts.saem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g
 
         #M-Step
         ### Compute individual and summed statistics
-        S1[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], xi[,k], p, kp, landmarks.p, landmarks.g,sigma.g,sigma.p)
-        S2[[indiv]] = compute.stat2(z[[indiv]],xi[,k], p, kp, landmarks.p,landmarks.g,sigma.g,sigma.p)
+        S1[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], xi[,k], p, kp, landmarks.p, landmarks.g)
+        S2[[indiv]] = compute.stat2(z[[indiv]],xi[,k], p, kp, landmarks.p,landmarks.g)
         S3[[indiv]] = compute.stat3(z[[indiv]])
       }
 

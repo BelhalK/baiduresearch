@@ -14,7 +14,7 @@
 #' \item{Gamma}{Estiamated \eqn{\Gamma}{\Gamma}.}
 
 
-vrsaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=500,tol_em=1e-7,
+vrsaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
                        algo = "saem", batchsize=1, rho=0.5) {
     set.seed(seed)
@@ -83,11 +83,11 @@ vrsaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=5
 
       #E-step
       for (indiv in index){
-        z[[indiv]] <- MCMC(z[[indiv]], samples[[indiv]], Gamma[[k]],xi[,k], sigma[,k],p,landmarks.p,landmarks.g,nmcmc)
+        z[[indiv]] <- MCMC(z[[indiv]], samples[[indiv]], Gamma[[k]],xi[,k], sigma[,k],p,landmarks.p,landmarks.g,nmcmc,sigma.g,sigma.p)
         
         ### Compute individual statistics
-        S1[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], xi[,k], p, kp, landmarks.p, landmarks.g)
-        S2[[indiv]] = compute.stat2(z[[indiv]],xi[,k], p, kp, landmarks.p,landmarks.g)
+        S1[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], xi[,k], p, kp, landmarks.p, landmarks.g,sigma.g,sigma.p)
+        S2[[indiv]] = compute.stat2(z[[indiv]],xi[,k], p, kp, landmarks.p,landmarks.g,sigma.g,sigma.p)
         S3[[indiv]] = compute.stat3(z[[indiv]])
       }
 
@@ -105,11 +105,11 @@ vrsaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=5
         S.e.0.2 <- S2
         S.e.0.3 <- S3
         for (indiv in 1:n){
-          Z.e.0[[indiv]] <- MCMC(Z.e.0[[indiv]], samples[[indiv]], Gamma.e.0,xi.e.0, sigma.e.0,p,landmarks.p,landmarks.g,nmcmc)
+          Z.e.0[[indiv]] <- MCMC(Z.e.0[[indiv]], samples[[indiv]], Gamma.e.0,xi.e.0, sigma.e.0,p,landmarks.p,landmarks.g,nmcmc,sigma.g,sigma.p)
 
           ### Compute individual statistics
-          S.e.0.1[[indiv]] = compute.stat1(samples[[indiv]],Z.e.0[[indiv]], xi.e.0, p, kp, landmarks.p, landmarks.g)
-          S.e.0.2[[indiv]] = compute.stat2(Z.e.0[[indiv]],xi.e.0, p, kp, landmarks.p,landmarks.g)
+          S.e.0.1[[indiv]] = compute.stat1(samples[[indiv]],Z.e.0[[indiv]], xi.e.0, p, kp, landmarks.p, landmarks.g,sigma.g,sigma.p)
+          S.e.0.2[[indiv]] = compute.stat2(Z.e.0[[indiv]],xi.e.0, p, kp, landmarks.p,landmarks.g,sigma.g,sigma.p)
           S.e.0.3[[indiv]] = compute.stat3(Z.e.0[[indiv]])
         }
       }

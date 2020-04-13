@@ -14,7 +14,7 @@
 #' \item{Gamma}{Estiamated \eqn{\Gamma}{\Gamma}.}
 
 
-fisaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=500,tol_em=1e-7,
+fisaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,maxruns=500,tol_em=1e-7,
                       nmcmc=3,tau=1,k1=50, seed=200, print_iter=TRUE,
                        algo = "saem", batchsize=1, rho=0.5) {
     images <- as.matrix(X.obs)
@@ -92,16 +92,16 @@ fisaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=5
 
       #E-step
       for (indiv in index.i){
-        z[[indiv]] <- MCMC(z[[indiv]], samples[[indiv]], Gamma[[k]],xi[,k], sigma[,k],p,landmarks.p,landmarks.g,nmcmc)
-        z.old[[indiv]] <- MCMC(z.old[[indiv]], samples[[indiv]], alphas[[indiv]]$Gamma,alphas[[indiv]]$xi, alphas[[indiv]]$sigma,p,landmarks.p,landmarks.g,nmcmc)
+        z[[indiv]] <- MCMC(z[[indiv]], samples[[indiv]], Gamma[[k]],xi[,k], sigma[,k],p,landmarks.p,landmarks.g,nmcmc,sigma.g,sigma.p)
+        z.old[[indiv]] <- MCMC(z.old[[indiv]], samples[[indiv]], alphas[[indiv]]$Gamma,alphas[[indiv]]$xi, alphas[[indiv]]$sigma,p,landmarks.p,landmarks.g,nmcmc,sigma.g,sigma.p)
 
         ### Compute individual statistics
-        S1[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], xi[,k], p, kp, landmarks.p, landmarks.g)
-        S2[[indiv]] = compute.stat2(z[[indiv]],xi[,k], p, kp, landmarks.p,landmarks.g)
+        S1[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], xi[,k], p, kp, landmarks.p, landmarks.g,sigma.g,sigma.p)
+        S2[[indiv]] = compute.stat2(z[[indiv]],xi[,k], p, kp, landmarks.p,landmarks.g,sigma.g,sigma.p)
         S3[[indiv]] = compute.stat3(z[[indiv]])
 
-        S1.old[[indiv]] = compute.stat1(samples[[indiv]],z.old[[indiv]], alphas[[indiv]]$xi, p, kp, landmarks.p, landmarks.g)
-        S2.old[[indiv]] = compute.stat2(z.old[[indiv]],alphas[[indiv]]$xi, p, kp, landmarks.p,landmarks.g)
+        S1.old[[indiv]] = compute.stat1(samples[[indiv]],z.old[[indiv]], alphas[[indiv]]$xi, p, kp, landmarks.p, landmarks.g,sigma.g,sigma.p)
+        S2.old[[indiv]] = compute.stat2(z.old[[indiv]],alphas[[indiv]]$xi, p, kp, landmarks.p,landmarks.g,sigma.g,sigma.p)
         S3.old[[indiv]] = compute.stat3(z.old[[indiv]])
       }
 
@@ -138,16 +138,16 @@ fisaem <- function(X.obs,kp,kg,landmarks.p,landmarks.g, template.model,maxruns=5
       alphas[[index.j]] <- oldtheta
       indiv = index.j
       for (indiv in index.j){
-        z.j[[indiv]] <- MCMC(z.j[[indiv]], samples[[indiv]], oldtheta$Gamma,oldtheta$xi, oldtheta$sigma,p,landmarks.p,landmarks.g,nmcmc)
-        z.old.j[[indiv]] <- MCMC(z.old.j[[indiv]], samples[[indiv]], oldalpha.j$Gamma,oldalpha.j$xi, oldalpha.j$sigma,p,landmarks.p,landmarks.g,nmcmc)
+        z.j[[indiv]] <- MCMC(z.j[[indiv]], samples[[indiv]], oldtheta$Gamma,oldtheta$xi, oldtheta$sigma,p,landmarks.p,landmarks.g,nmcmc,sigma.g,sigma.p)
+        z.old.j[[indiv]] <- MCMC(z.old.j[[indiv]], samples[[indiv]], oldalpha.j$Gamma,oldalpha.j$xi, oldalpha.j$sigma,p,landmarks.p,landmarks.g,nmcmc,sigma.g,sigma.p)
 
         ### Compute individual statistics
-        S1.j[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], oldtheta$xi, p, kp, landmarks.p, landmarks.g)
-        S2.j[[indiv]] = compute.stat2(z[[indiv]],oldtheta$xi, p, kp, landmarks.p,landmarks.g)
+        S1.j[[indiv]] = compute.stat1(samples[[indiv]],z[[indiv]], oldtheta$xi, p, kp, landmarks.p, landmarks.g,sigma.g,sigma.p)
+        S2.j[[indiv]] = compute.stat2(z[[indiv]],oldtheta$xi, p, kp, landmarks.p,landmarks.g,sigma.g,sigma.p)
         S3.j[[indiv]] = compute.stat3(z[[indiv]])
 
-        S1.old.j[[indiv]] = compute.stat1(samples[[indiv]],z.old[[indiv]], oldalpha.j$xi, p, kp, landmarks.p, landmarks.g)
-        S2.old.j[[indiv]] = compute.stat2(z.old[[indiv]],oldalpha.j$xi, p, kp, landmarks.p,landmarks.g)
+        S1.old.j[[indiv]] = compute.stat1(samples[[indiv]],z.old[[indiv]], oldalpha.j$xi, p, kp, landmarks.p, landmarks.g,sigma.g,sigma.p)
+        S2.old.j[[indiv]] = compute.stat2(z.old[[indiv]],oldalpha.j$xi, p, kp, landmarks.p,landmarks.g,sigma.g,sigma.p)
         S3.old.j[[indiv]] = compute.stat3(z.old[[indiv]])
       }
 
