@@ -183,7 +183,7 @@ For all $ i \in \inter$, draw for $m \in \llbracket 1, M \rrbracket$, samples $z
 \beq\label{eq:mcstep}
 \textsf{MC-step}:~ \tilde{\bss} = \frac{1}{n} \sum_{i=1}^n\frac{1}{M} \sum_{m=1}^M S(z_{i,m}, y_i)
 \eeq
-and then update the parameter $\hat{\param} = \overline{\param}( \hat{\bss} ) $.
+and then update the parameter $\hat{\param} = \overline{\param}( \tilde{\bss} ) $.
 This algorithm bypasses the intractable expectation issue but is rather computationally expensive in order to reach point wise convergence ($M$ needs to be large).
 An alternative to that stochastic algorithm is to use a Robbins-Monro (RM) type of update.
 We denote, at iteration $k$, the following quantity
@@ -210,7 +210,7 @@ In the \textsf{SA-step}, the sequence of decreasing positive integers $\{ \gamma
 This Robbins-Monro type of update represents the \textit{first level} of our algorithm, needed to temper the variance and noise implied by MC integration.
 In the next section, we derive variants of this algorithm to adapt to the sheer size of data of today's applications and formalize the \textit{second level} of our class of Two-Time-Scale EM methods.
 
-\subsection{Incremental and Bi-Level Inexact EM Methods} \label{sec:sEM}
+\subsection{Incremental and Bi-Level Noisy EM Methods} \label{sec:sEM}
 Strategies to scale to large datasets include classical incremental and variance reduced variants.
 We will explicit a general update that will cover those variants and that represents the \textit{second level} of our algorithm, namely the incremental update of the noisy statistics $\hat{S}^{(k)}$ inside the RM type of update.
 
@@ -220,7 +220,7 @@ We will explicit a general update that will cover those variants and that repres
 
 Note $\{ \rho_{k} \}_{k>1} \in (0,1)$ is a sequence of step sizes, $\StocEstep^{(k)}$ is a proxy for $\tilde{S}^{(k)}$,
 If the stepsize is equal to one and the proxy $\StocEstep^{(k)} = \hat{S}^{(k)}$, i.e., computed in a full batch manner as in \eqref{eq:stats}, then we recover the SAEM algorithm.
-Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, then we recover the Monte Carlo EM algorithm.
+Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, then we recover the Monte Carlo EM algorithm \citep{wei1990monte}.
 
 We now introduce three variants of the SAEM update depending on different definitions of the proxy $\StocEstep^{(k)}$ and the choice of the stepsize $\rho_k$.
 Let $i_k \in \inter$ be a random index drawn at iteration $k$ and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ be the iteration index where $i \in \inter$ is last drawn prior to iteration $k$.
@@ -232,11 +232,15 @@ For iteration $k \geq 0$, the \FISAEM\ method draws \emph{two} indices \emph{ind
 &    &\overline{\StocEstep}^{(k+1)} &= \overline{\StocEstep}^{(k)} + n^{-1} \big( \tilde{S}_{j_k}^{(k)}  - \tilde{S}_{j_k}^{(t_{j_k}^k)} \big).
 %\emph{(SAGA-EM)} & ~~~~\StocEstep^{(k+1)} = s & \gamma_{k+1} =
 \end{align}
+where $\tilde{S}_{i_k}^{(k)} $ is the MC approximation of the expectation $ \overline{\bss}_{i_k}(\param^{(k)})$ :
+\beq
+\tilde{S}_{i_k}^{(k)}=  \frac{1}{M_k} \sum_{m=1}^{M_k} S(z_{i_k,m}^{(k)}, y_{i_k}) \quad \textrm{with} \quad z_{i_k,m}^{(k)}, \sim p(z_{i_k}|y_{i_k};\theta^{(k)})
+\eeq
 The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method; $\rho_{k+1} = \gamma$ is  constant for the \SAEMVR\ and \FISAEM\ methods.
-Moreover, for \ISAEM\ we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; for \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in. \vspace{-.2cm}
+Moreover, for \ISAEM\ we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; for \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in.
 
 
-\subsection{Two-Time-Scale Noisy EM methods}
+\textbf{Two-Time-Scale Noisy EM methods:}
 We now introduce the general method derived using the two variance reduction techniques described above.
 Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:sestep} in order to output a vector of fitted parameters $\hat{\param}^{(K)}$ where $K$ is some randomly chosen termination point.
 
@@ -258,7 +262,7 @@ Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:
 &  \hat{\bss}^{(k+1)} =  \hat{\bss}^{(k)}  + \gamma_{k+1}(\tilde{S}^{(k+1)} - \hat{\bss}^{(k)} )
 \end{split}
 \eeq
-   \STATE Compute $\hat{\param}^{(k+1)}$ via the {\sf M-step} \eqref{eq:mstep}.
+   \STATE Compute $\hat{\param}^{(k+1)} = \overline{\param}(  \hat{\bss}^{(k+1)}) $ via the {\sf M-step} \eqref{eq:mstep}.
 \ENDFOR
 \STATE \textbf{Return}: $\hat{\param}^{(K)}$.
 %\STATE \textbf{Return:} $\prm_t$.
@@ -404,7 +408,7 @@ For any $k \geq 0$ and consider the \FISAEM\ update in \eqref{eq:fisaem} with $\
 \eeq
 \end{Lemma}
 
-Recalling that $K$ is an independent discrete r.v.~drawn from $\{1,\dots,K_{\sf max}\}$ under the probability distribution defined in \eqref{eq:random}, we have
+Recalling that $K$ is an independent discrete r.v.~drawn from $\{1,\dots,K_{\sf max}\}$ with distribution $\{ \gamma_k/ {\sf P}_{\sf max},0 \leq k \leq K_{\max } - 1 \}$, as in \eqref{eq:random}, we have
 \beq
 \EE[ \| \grd V( \hs{K} ) \|^2 ]  = \frac{1}{{\sf P}_{\sf max}} \sum_{k=0}^{K_{\sf max}-1} \gamma_{k+1} \EE[ \| \grd V( \hs{k} ) \|^2 ] 
 \eeq
@@ -569,13 +573,14 @@ where $\hat{s} = (\hat{s}_1(z),\hat{s}_2(z),\hat{s}_3(z))$ is the vector of stat
 
 
 \subsection{PK Model with Absorption Lag Time}
-This numerical example was conducted in order to characterize the pharmacokinetics of orally administered drug to simulated patients, using a population pharmacokinetic approach. $M = 50$ synthetic datasets were generated for $n = 500$ patients with $10$ observations (concentration measures) per patient.
+This numerical example was conducted in order to characterize the pharmacokinetics (PK) of orally administered drug to simulated patients, using a population pharmacokinetic approach. $M = 50$ synthetic datasets were generated for $n = 500$ patients with $10$ observations (concentration measures) per patient.
+The goal tis to model the evolution of the concentration of the absorbed drug using a nonlinear and latent data model. The fitting of that model is done using our two-time-scale class of algorithms.
 
 \textbf{The model:}
 We consider a one-compartment pharmacokinetics (PK) model for oral administration with an absorption lag-time ($T^{\textrm{lag}}$), assuming first-order absorption and linear elimination processes.
-The final model includes $ka$ is the absorption rate constant, $V$ the volume of distribution, $k$ the elimination rate constant.
-We also add several covariates to our model such as $D$ the dose of drug administered, $t$ the time at which measures are taken and the weight such as $V$ is function of it. More precisely, the log-volume $\log(V)$ is a linear function of the log-weight $lw70= \log(wt/70)$.
-The final reads:
+The final model includes the following variables: $ka$ the absorption rate constant, $V$ the volume of distribution, $k$ the elimination rate constant and $T^{\textrm{lag}}$ the absorption lag-time. 
+We also add several covariates to our model such as $D$ the dose of drug administered, $t$ the time at which measures are taken and the weight of the patient influencing the volume $V$. More precisely, the log-volume $\log(V)$ is a linear function of the log-weight $lw70= \log(wt/70)$.
+The final model reads:
 \begin{equation} \label{eq:pkmodel}
 f(t,ka, V, k) = \frac{D\,ka}{V(ka - k)}(\exponential^{-ka\,(t - T^{\textrm{lag}})}-\exponential^{-k\,(t - T^{\textrm{lag}})})\eqs,
 \end{equation}
@@ -583,15 +588,15 @@ Here, $T^{\textrm{lag}}$, $ka$, $V$ and $k$ are  PK parameters that can change f
 
 
 Let $ z_i=(T_i^{\textrm{lag}}, ka_i, V_i, k_i)$ be the vector of individual PK parameters for individual $i$.
-The model for the $j$-th measured concentration, noted $y_{ij}$, for individual $i$ writes:
-\begin{equation}
-y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij}\eqs.
+The model for the $j$-th measured concentration, noted $y_{ij}$, for individual $i$ reads:
+\begin{equation}\label{eq:pkmodel2}
+y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij}
 \end{equation}
-
-We assume in this example that the residual errors are independent and normally distributed with mean 0 and variance $\sigma^2$.
+where $y_{ij}$ is the $j$-th concentration measurement of the drug of dosage $D$ injected at time $t_{ij}$ for patient $i$.
+We assume in this example that the residual errors $\varepsilon_{ij}$ are independent and normally distributed with mean 0 and variance $\sigma^2$.
 Lognormal distributions are used for the three PK parameters:
 \begin{align}
-& \log(T_i^{\textrm{lag}}) \sim \mathcal{N}(\log(T^{\textrm{lag}}_{\rm pop}), \omega^2_{T^{\textrm{lag}}} ) \sim \mathcal{N}(\log(ka_{\rm pop}), \omega^2_{ka})\eqs,\\
+& \log(T_i^{\textrm{lag}}) \sim \mathcal{N}(\log(T^{\textrm{lag}}_{\rm pop}), \omega^2_{T^{\textrm{lag}}} ) \eqs, \log(ka_i) \sim \mathcal{N}(\log(ka_{\rm pop}), \omega^2_{ka})\eqs,\\
 &\log(V_i) \sim \mathcal{N}(\log(V_{\rm pop}), \omega^2_{V})\eqs,
  \log(k_i) \sim \mathcal{N}(\log(k_{\rm pop}), \omega^2_{k})\eqs.
 \end{align}
@@ -622,8 +627,8 @@ We conduct a Monte Carlo study to showcase the benefits of our scheme.
 $M=50$ datasets have been simulated using the following PK parameters values:
 $T^{\textrm{lag}}_{\rm pop} =1$, $ka_{\rm pop} =1$, $V_{\rm pop}= 8$, $k_{\rm pop}=0.1$, $ \omega_{T^{\textrm{lag}}}=0.4$, $\omega_{ka}=0.5$, $\omega_{V}=0.2$, $\omega_{k}=0.3$ and $\sigma^2=0.5$.
 We define the mean square distance over the $M$ replicates $E_k(\ell) = \frac{1}{M}\sum_{m=1}^{M}{\left(\theta_k^{(m)}(\ell) - \theta^* \right)^2}$ and plot it against the epochs (passes over the data) Figure~\ref{fig:pk_tts}.	
-Note that the {\sf MC-step} \eqref{eq:mcstep} is performed using a Metropolis Hastings procedure since the posterior distribution under the model $\theta$ noted $p(z_i | y_i, \theta)$ is intractable due to the nonlinearity of the model \eqref{eq:pkmodel}.	
-Figure~\ref{fig:pk_tts} shows
+Note that the {\sf MC-step} \eqref{eq:mcstep} is performed using a Metropolis Hastings procedure since the posterior distribution under the model $\theta$ noted $p(z_i | y_i, \theta)$ is intractable due to the nonlinearity of the model \eqref{eq:pkmodel} (see Appendix~\ref{app:pkmodel} for implementation details).
+Figure~\ref{fig:pk_tts} shows clear advantage of variance reduced methods (\SAEMVR\ and \FISAEM\ ) avoiding the twists and turns displayed by the incremental and the batch methods.
 
 
 
@@ -1418,7 +1423,7 @@ proving the final bound on the gradient of the Lyapunov function:
 
 \section{Practical Implementations of Two-Time-Scale EM Methods}
 \subsection{Application on GMM}\label{app:gmm_update}
-
+\subsubsection{Explicit Updates}
 We first recognize that the constraint set for $\param$ is given by
 \beq \textstyle
 \Param = \Delta^M \times \rset^M.
@@ -1473,7 +1478,7 @@ where we have defined for all $m \in \llbracket1,M\rrbracket$ and $j \in \llbrac
 %It can be verified that with $\epsilon > 0$, the stochastic EM methods have $\hat{\bm{\omega}}^{(k)} \geq \delta {\bf 1}$ for some $\delta > 0$ 
 
 
-\subsection{Model Assumptions (GMM example)}\label{app:gmm_assumptions}
+\subsubsection{Model Assumptions (GMM example)}\label{app:gmm_assumptions}
 We use the GMM example to illustrate the required assumptions.
 
 Many practical models can satisfy the compactness of the sets as in Assumption~H\ref{ass:compact}
@@ -1492,7 +1497,7 @@ Again, H\ref{ass:eigen} is satisfied by practical models. For GMM, it can be ver
 Under H\ref{ass:compact} and H\ref{ass:reg}, we have $\| \hat{\bm s}^{(k)} \| < \infty$ since $\Sset$ is compact and $\hat{\param}^{(k)} \in {\rm int}( \Param )$ for any $k \geq 0$ which thus ensure that the EM methods operate in a closed set throughout the optimization process.
 
 
-\subsection{Algorithms updates}
+\subsubsection{Algorithms updates}
 In the sequel, recall that, for all $i \in \inter[n]$ and iteration $k$, the computed statistic $ \tilde{S}_{i_k}^{(k)}$ is defined by \eqref{eq:stat_gmm}.
 At iteration $k$, the several E-steps defined by \eqref{eq:isaem} or \eqref{eq:vrsaem} and \eqref{eq:fisaem} leads to the definition of the quantity $\hat{\bss}^{(k+1)} $. For the GMM example, after the initialization of the quantity $\hat{\bss}^{(0)} = n^{-1} \sum\nolimits_{i=1}^n \overline{\bss}_i^{(0)} $, those E-steps break down as follows:
 
@@ -1535,6 +1540,60 @@ where $ = \frac{1}{n} \sum_{i=1}^n  \tilde{S}_{i}^{(k)}$ with $ \tilde{S}_{i}^{(
 
 
 Finally, the $k$-th update reads $\hp{k+1} = \overline{\param} (\hat{\bss}^{(k+1)})$ where the function ${\bm s} \to \overline{\param}({\bm s})$ is defined by \eqref{eq:mstep_gmm}.
+
+\subsection{Application on PK Model}\label{app:pkmodel}
+\subsubsection{Explicit Updates}
+We recall that the complete model $(y,z)$ defined by \eqref{eq:pkmodel} and \eqref{eq:pkmodel2} belongs to the curved exponential family, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
+\beq \label{eq:suffstat_deformable}
+\begin{split}
+S_1(z)  = \frac{1}{n} \sum_{i=1}^n z_i  ,  \quad S_2(z) =\frac{1}{n} \sum_{i=1}^n z_i^\top z_i  , \quad S_3(z)  = \frac{1}{n}  \sum_{i=1}^n  \left(y_i - f(t_{i},z_i)\right)^2
+\end{split}
+\eeq
+where we have noted $y_i$ and $t_i$ the vector of observations and time for each patient $i$.
+At iteration $k$, and setting the number of MC samples to $1$ for the sake of clarity, the MC sampling $z_i^{(k)} \sim p(z_i |y_i, \theta^{(k)})$ is performed using a Metropolis-Hastings procedure detailed in algorithm~\ref{alg:mh}. The quantities $\tilde{S}^{(k+1}$ and $\hat{\bss}^{(k+1)}$ are then updated according to the different methods.
+Finally the maximization step yields:
+\beq \label{eq:mstep_pk}
+\overline{\param} ( {\bm s} )
+= \left(
+\begin{array}{c}
+\hat{\bss}^{(k+1)}_1 \\
+\hat{\bss}^{(k+1)}_2 - \hat{\bss}^{(k+1)}_1 \left(\hat{\bss}^{(k+1)}_1 \right)^\top \vspace{.2cm} \\
+\hat{\bss}^{(k+1)}_3
+\end{array}
+\right)
+= \left(
+\begin{array}{c}
+\overline{\bm{z_{\rm pop}}} ( \hat{\bss}^{(k+1)}) \\
+\overline{\bm{\omega_{z}}} ( \hat{\bss}^{(k+1)}) \\
+\overline{\bm{\sigma}} ( \hat{\bss}^{(k+1)})
+\end{array}
+\right) \eqsp.
+\eeq
+
+
+\subsubsection{Metropolis Hastings algorithm}
+During the simulation step of the MISSO method, the sampling from the target distribution $\pi(z_{i} , \param) \eqdef p(z_{i}|y_i ,\param)$ is performed using a Metropolis Hastings (MH) algorithm \citep{meyn2012markov} with proposal distribution $q(z_{i}, \delta)$ where $\param = (z_{\rm pop}, \omega_{z})$ and $ \delta$ is the vector of parameters of the proposal distribution. Commonly they parameterize a Gaussian proposal.
+The MH algorithm is summarized in \ref{alg:mh}.
+
+\begin{algorithm}[H]
+\algsetup{indent=1em}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} initialization $z_{i,0} \sim q(z_{i}; {\bm \delta})$
+\FOR {$m=1, \cdots ,M$}
+\STATE Sample $z_{i,m} \sim q(z_{i}; {\bm \delta})$
+\STATE Sample $u \sim \mathcal{U}(\llbracket 0, 1 \rrbracket)$
+\STATE Calculate the ratio $r = \frac{\pi(z_{i,m}; \param)/q(z_{i,m}); {\bm \delta})}{\pi(z_{i,m-1}; \param)/q(z_{i,m-1}); {\bm \delta})}$
+\IF{$u < r$}
+\STATE Accept $z_{i,m}$
+\ELSE
+\STATE $z_{i,m} \leftarrow z_{i,m-1}$
+\ENDIF
+\ENDFOR
+\STATE \textbf{Output:} $z_{i,M}$
+\end{algorithmic}
+\caption{MH aglorithm}
+\label{alg:mh}
+        \end{algorithm}
 
 
 
