@@ -59,7 +59,7 @@ p <- ncol(sample.digit) #dimension of the input
 Gamma.star <- diag(rep(1,kg)) # covariance
 
 batchsize = 1
-nb.epochs <- 5
+nb.epochs <- 30
 N <- ncol(images)
 nb.iter <- N/batchsize*nb.epochs
 nb.mcmc <- 5
@@ -70,12 +70,12 @@ rho.vr = 1/N**(2/3)
 rho.saga = 1/N**(2/3)
 
 #fixed landmarks points
-kp <- 6 #dimension of the parameter of the template
-kg <- 6 #dimension of the random effects
+kp <- 4 #dimension of the parameter of the template
+kg <- 4 #dimension of the random effects
 landmarks.p = matrix(rnorm(2*kp,mean = 0, sd = 0.5),ncol=kp) #of template
 landmarks.g = matrix(rnorm(2*kg,mean = 0, sd = 0.5),ncol=kg) #of deformation
-sigma.g = 0.7
-sigma.p = 0.7
+sigma.g = 0.5
+sigma.p = 0.5
 
 # SAEM
 fit.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,

@@ -105,18 +105,18 @@ citecolor=blue]{hyperref}
 \maketitle
 
 \begin{abstract}
-Training latent data models using the Expectation-Maximization (EM) algorithm is the most popular choice for current learning tasks. 
-For today's modern and complex tasks, variants of the EM have been initially introduced by \citep{neal1998view}, using incremental updates to scale to large dataset, and by \citep{wei1990monte, delyon1999}, using Monte-Carlo (MC) approximations to bypass the impossible conditional expectation of the latent data for most nonconvex models.
+Using the Expectation-Maximization (EM) algorithm is the most popular choice for current latent data model learning tasks. 
+For today's modern and complex models, variants of the EM have been initially introduced by \citep{neal1998view}, using incremental updates to scale to large dataset, and by \citep{wei1990monte, delyon1999}, using Monte-Carlo (MC) approximations to bypass the impossible conditional expectation of the latent data for most nonconvex models.
 In this paper, we propose a general class of methods called Two-Time-Scale EM Methods based on double levels of stochastic updates to tackle a growingly common large and nonconvex optimization task for latent data models.
 We motivate the choice of a double dynamics by invoking the variance reduction virtue of each stage of the method on both sources of noise: the incremental update and the MC approximation.
-We establish finite-time and independent of the initialization convergence bounds for nonconvex objective function.
+We establish finite-time and global convergence bounds for nonconvex objective functions.
 Numerical applications are also presented in this article to illustrate our findings.
 \end{abstract}
 
 
 \section{Introduction}
 Learning latent data models is critical for modern machine learning problems, see \citep{mclachlan2007algorithm} for references.
-We formulate the training of such model as the following empirical risk minimization problem:
+We formulate the training of such model as an empirical risk minimization problem:
 \beq \label{eq:em_motivate}
 \min_{ \param \in \Param }~ \overline{\calL} ( \param ) \eqdef \Pen (\param) + \calL ( \param )~~\text{with}~~\calL ( \param ) = \frac{1}{n} \sum_{i=1}^n \calL_i( \param) \eqdef  \frac{1}{n} \sum_{i=1}^n \big\{ - \log g( y_i ; \param ) \big\}\eqs,
 \eeq
@@ -126,9 +126,8 @@ The objective function $ \overline{\calL} ( \param )$ is possibly \emph{nonconve
 
 %We assume that $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
 In the latent variable model,  $g(y_i ; \param)$, is the marginal of the
-complete data likelihood defined as $f(z_i,y_i; \param)$, i.e. $g(y_i; \param) = \int_{\Zset} f (z_i,y_i;\param) \mu(\rmd z_i)$, where $\{ z_i \}_{i=1}^n$ are the (unobserved)
-latent variables.   
-In this papaer, we make the assumption of a complete model belonging to the curved exponential family, \ie
+complete data likelihood defined as $f(z_i,y_i; \param)$, i.e. $g(y_i; \param) = \int_{\Zset} f (z_i,y_i;\param) \mu(\rmd z_i)$, where $\{ z_i \}_{i=1}^n$ are the latent variables.  
+In this paper, we make the assumption of a complete model belonging to the curved exponential family:
 \beq \label{eq:exp}
 f(z_i,y_i; \param) = h  (z_i,y_i) \exp \big( \pscal{S(z_i,y_i)}{\phi(\param)} - \psi(\param) \big)\eqs,
 \eeq
@@ -144,21 +143,20 @@ The {\sf M-step} is given by
 \textsf{M-step:}~~\hat{\param} = \overline{\param}( \overline{\bss}(\param) ) \eqdef \argmin_{ \vartheta \in \Param } ~\big\{ \Pen( \vartheta ) + \psi( \vartheta) - \pscal{ \overline{\bss}(\param)}{ \phi ( \vartheta) } \big\},
 \eeq
 
-Two caveats of this method are the following: (a) with the explosion of data, the first step of the EM is computationally inefficient as it requires a full pass over the dataset at each iteration and (b) the complexity of modern models makes the expectation intractable. So far, both challenges have been addressed separately, to the best of our knowledge, and we give an overview of current solutions in the sequel.
+Two caveats of this method are the following: \textsf{(a)} with the explosion of data, the first step of the EM is computationally inefficient as it requires a full pass over the dataset at each iteration and \textsf{(b)} the complexity of modern models makes the expectation in \eqref{eq:definition-overline-bss} intractable. 
+So far, both challenges have been addressed separately, to the best of our knowledge, as detailed the sequel.
 
 \textbf{Prior Work} Inspired by stochastic optimization procedures, \citep{neal1998view} and \citep{cappe2009line} developed respectively an incremental and an online variant of the \textsf{E-step} in models where the expectation is computable then extensively used and studied in \citep{nguyen2020mini, liang2009online,cappe2011online}.
 Some improvements of that methods have been provided and analyzed, globally and in finite-time, in \citep{karimi2019global} where variance reduction techniques taken from the optimization literature have been efficiently applied to scale the EM algorithm to large datasets.
 
 Regarding the computation of the expectation under the posterior distribution, the first method was the Monte-Carlo EM (MCEM) introduced in the seminal paper \citep{wei1990monte} where a MC approximation fo this expectation is computed. A variant of that method is the Stochastic Approximation of the EM (SAEM) in \citep{delyon1999} leveraging the power of Robbins-Monro type of update \citep{robbins1951stochastic} to ensure pointwise convergence of the vector of estimated parameters rather using a decreasing stepsize than increasing the number of MC samples.
 The MCEM and the SAEM have been successfully applied in mixed effects models \citep{mcculloch1997maximum,hughes1999mixed,baey2016nonlinear} or to do inference for joint modelling of time to event data coming from clinical trials in \citep{das2010Inferences}, among other applications.
-
 Recently, an incremental variant of the SAEM was proposed in \citep{kuhn2019properties} showing positive empirical results but its analysis is limited to asymptotic consideration. 
 Gradient-based methods have been developed and analyzed in \citep{zhu2017high} but they remain out of the scope of this paper as they tackle the high-dimensionality issue.
 
 
 \textbf{Contributions} This paper \textit{introduces} and \textit{analyzes} a new class of methods which purpose is update two proxies for target expected quantities in a two-time-scale manner. 
 Those approximated quantities are then used to optimize \eqref{eq:em_motivate} for current modern examples and settings using EM-fashion \textsf{Maximization} step.
-
 The main contributions of the paper are:
 \begin{itemize}
 
@@ -170,9 +168,7 @@ The main contributions of the paper are:
 \end{itemize}
 
 In Section~\ref{sec:tts} we give rigorous mathematical definitions of the various updates used for both incremental and Monte-Carlo EMs and we introduce the main class of new algorithms, based on two different dynamics, we are proposing to analyze and compare to baselines algorithms. Section~\ref{sec:mainanalysis} presents the main theoretical guarantees of this newly introduced two-time-scale class of algorithms. Results are given both in finite-time and in the nonconvex setting.
-Finally, we illustrate the advantages of our method in Section~\ref{sec:numerical} on two numerical experiments.
-
-
+Finally, we illustrate the advantages of our method in Section~\ref{sec:numerical} on two numerical experiments.\vspace{-.1cm}
 
 \section{Two-Time-Scale Stochastic EM Algorithms}\label{sec:tts}
 We recall and formalize in this section the different methods found in the literature that aim to solving the large-scale problem and the intractable expectation. 
@@ -195,15 +191,15 @@ Then, the RM updated of the sufficient statistics $\hat{\bss}^{(k+1)}$ reads:
 \textsf{SA-step}:~ \hat{\bss}^{(k+1)} =  \hat{\bss}^{(k)}  + \gamma_{k+1}(\tilde{S}^{(k+1)} - \hat{\bss}^{(k)} )
 \eeq
 where $\{ \gamma_{k} \}_{k>1} \in (0,1)$ is a sequence of decreasing step sizes to ensure asymptotic convergence.
-This is called the Stochastic Approximation of the EM (SAEM) and has been shown theoretically to converge to a maximum of the likelihood of the observations under very general conditions \citep{delyon1999}.
-In the simulation step \eqref{eq:stats}, since the relation between the observed data $y_i$ and the latent variable $z_i$ can be non linear, sampling from the posterior distribution $p(z_i|y_i;\theta)$, under the current model $\theta$, could require using an inference algorithm. 
+This is called the Stochastic Approximation of the EM (SAEM) and has been shown to converge to a maximum likelihood of the observations under very general conditions \citep{delyon1999}.
+In the simulation step \eqref{eq:stats}, since the loss function between the observed data $y_i$ and the latent variable $z_i$ can be nonconvex, sampling from the posterior distribution $p(z_i|y_i;\theta)$, under the current model $\theta$, requires using an inference algorithm. 
 \citep{kuhn2004coupling} proved almost sure convergence of the sequence of parameters obtained by this algorithm coupled with an MCMC procedure during the simulation step. 
 In simple scenarios, the samples $\{z_{i,m}\}_{m=0}^{M-1}$ are conditionally independent and identically distributed with distribution $p(z_i,\theta)$.
 Nevertheless, in most cases, sampling exactly from this distribution is not an option and the Monte Carlo batch is sampled by Monte Carlo Markov Chains (MCMC) algorithm.
 In the \textsf{SA-step}, the sequence of decreasing positive integers $\{ \gamma_{k} \}_{k>1}$ controls the convergence of the algorithm.
- In practice, $\gamma_k$ is set equal to $1$ during the first few iterations to let the algorithm explore the parameter space without memory and converge quickly to a neighbourhood of the target estimate. 
+ In practice, $\gamma_k$ is set equal to $1$ during the first few iterations to let the algorithm explore the parameter space without memory and converge quickly to a neighborhood of the target estimate. 
  The Stochastic Approximation is performed during the remaining iterations where $\gamma_k = 1/k^\alpha$, where $\alpha \in (0,1)$, ensuring the almost sure convergence of the estimate.
- It is inappropriate to start with small values for step size $\gamma_k$ and large values for the number of simulations $M_k$. Rather, it is recommended that one decrease $\gamma_k$ and keep a constant and small numer of MC samples $M_k$ which shows a great advantage over the \textsf{MC-step} \eqref{eq:mcstep}, which requires large $M_k$ to converge.
+ It is inappropriate to start with small values for step size $\gamma_k$ and large values for the number of simulations $M_k$. Rather, it is recommended that one decrease $\gamma_k$ and keep a constant and small number of MC samples $M_k$ which shows a great advantage over the \textsf{MC-step} \eqref{eq:mcstep}, which requires large $M_k$ to converge.
 
 
 
@@ -220,7 +216,7 @@ We will explicit a general update that will cover those variants and that repres
 
 Note $\{ \rho_{k} \}_{k>1} \in (0,1)$ is a sequence of step sizes, $\StocEstep^{(k)}$ is a proxy for $\tilde{S}^{(k)}$,
 If the stepsize is equal to one and the proxy $\StocEstep^{(k)} = \hat{S}^{(k)}$, i.e., computed in a full batch manner as in \eqref{eq:stats}, then we recover the SAEM algorithm.
-Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, then we recover the Monte Carlo EM algorithm \citep{wei1990monte}.
+Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, then we recover the MCEM \citep{wei1990monte}.
 
 We now introduce three variants of the SAEM update depending on different definitions of the proxy $\StocEstep^{(k)}$ and the choice of the stepsize $\rho_k$.
 Let $i_k \in \inter$ be a random index drawn at iteration $k$ and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ be the iteration index where $i \in \inter$ is last drawn prior to iteration $k$.
@@ -236,13 +232,13 @@ where $\tilde{S}_{i_k}^{(k)} $ is the MC approximation of the expectation $ \ove
 \beq
 \tilde{S}_{i_k}^{(k)}=  \frac{1}{M_k} \sum_{m=1}^{M_k} S(z_{i_k,m}^{(k)}, y_{i_k}) \quad \textrm{with} \quad z_{i_k,m}^{(k)}, \sim p(z_{i_k}|y_{i_k};\theta^{(k)})
 \eeq
-The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method; $\rho_{k+1} = \gamma$ is  constant for the \SAEMVR\ and \FISAEM\ methods.
-Moreover, for \ISAEM\ we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; for \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in.
+The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method and we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \gamma$ is  constant for the \SAEMVR\ and \FISAEM\ methods.
+Moreover, for \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in.
 
 
 \textbf{Two-Time-Scale Noisy EM methods:}
 We now introduce the general method derived using the two variance reduction techniques described above.
-Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:sestep} in order to output a vector of fitted parameters $\hat{\param}^{(K)}$ where $K$ is some randomly chosen termination point.
+Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:sestep} in order to output a vector of fitted parameters $\hat{\param}^{(K)}$ where $K$ is a randomly chosen termination point.
 
 \begin{algorithm}[H]
 \caption{Two-Time-Scale Noisy EM methods.}\label{alg:ttsem}
@@ -277,16 +273,8 @@ Following \citep{cappe2009line}, it can be shown that stationary points of the o
 \beq\label{eq:em_sspace}
 \min_{ {\bss} \in \Sset }~  V ( {\bss} ) \eqdef \overline\calL( \op(\bss) ) = \Pen (  \op(\bss) ) + \frac{1}{n} \sum_{i=1}^n {\cal L}_i (  \op(\bss) )
 \eeq
-We thus propose to study the latter minimization problem in the sequel.
-%\begin{assumption}\label{ass:convset}
-%$\Theta$ is an open set of $\rset^d$ and the sets $\Zset, \Sset$ are measurable open sets such that:
-%\beq
-%\Sset \supset \left\{  n^{-1} \sum_{i=1}^n u_i, u_i \in {\rm conv}(\overline{\bss}_i(\param))  \right\}
-%\eeq
-%where $\overline{\bss}_i(\param)$ is defined in \eqref{eq:definition-overline-bss} and ${\rm conv} \{ A \}$ denotes the closed convex hull of the set $A$.
-%\end{assumption}
-
-An important assumption in order to derive convergence guarantees reads as follows:
+that we propose to study in this article.
+Several critical assumptions required to derive convergence guarantees read as follows:
 \begin{assumption}\label{ass:compact}
 The sets $\Zset, \Sset$ are compact. There exists constants $C_{\Sset}, C_{\Zset}$ such that:
 \beq \textstyle \label{eq:compact}
@@ -319,9 +307,9 @@ The second stage is the Robbins-Monro type of update that aims to reduce the var
 
 Indeed the expectations \eqref{eq:definition-overline-bss} are never available and requires Monte Carlo approximation.
 Thus, at iteration $k+1$, we introduce the errors when approximating the quantity $ \overline{\bss}_i(\hat{\param}(\hat{\bss}^{(k-1)}))$.
-For all $i \in \inter$, $r > 0$ and $\vartheta \in \Theta$, define:
+Define:
 \beq\label{eq:mcerror}
-\eta_{i}^{(r)} \eqdef \tilde{S}_{i}^{(r)} -  \overline{\bss}_i(\vartheta^{(r)})
+\eta_{i}^{(r)} \eqdef \tilde{S}_{i}^{(r)} -  \overline{\bss}_i(\vartheta^{(r)})\quad  \textrm{for all} \quad  i \in \inter, \, r > 0 \quad \textrm{and} \quad  \vartheta \in \Theta
 \eeq
 For instance, we consider that the MC approximation is unbiased if for all $ i \in \inter$ and $m \in \llbracket 1, M \rrbracket$, the samples $z_{i,m} \sim p(z_i|y_i;\theta)$ are i.i.d. under the posterior distribution, \ie $\EE[\eta_{i}^{(r)}|{\cal F}_r] = 0$ where  ${\cal F}_r$ is the filtration up to iteration $r$.
 The following results are derived under the assumption of control of the fluctuations implied by the approximation stated as follows:
@@ -331,7 +319,7 @@ There exist a positive sequence of MC batch size $\{M_r\}_{r > 0}$ and constants
 \EE\left[\norm{\eta_{i}^{(r)}}^2 \right] \leq \frac{C_{\eta}}{M_r} \quad \textrm{and} \quad \EE\left[\norm{\EE[\eta_{i}^{(r)}|{\cal F}_r]}^2\right] \leq \frac{C}{M_r}
 \eeq
 \end{assumption}
-In that setting, we can prove two important results on the Lyapunov function. The first one suggests smoothness:
+We can prove two important results on the Lyapunov function. The first one suggests smoothness:
 \begin{Lemma} \label{lem:smooth}
 \citep{karimi2019global} Assume H\ref{ass:compact}-H\ref{ass:eigen}.  
 For all $\bss,\bss' \in \Sset$ and $i \in \inter$, we have
@@ -353,7 +341,7 @@ Proof of this Lemma can be found in Appendix~\ref{app:growth}.
 \subsection{Global Convergence of Incremental Noisy EM Algorithms}
 We present in this section a finite-time analysis of the incremental variant of the Stochastic Approximation of the EM algorithm. We want to draw the attention of the readers that the word "global" here does not mean for a global optimum of the nonconvex function, but of the independence of our analysis on the initialization and the iteration $k$ (finite time).
 
-The first intermediate result is the computation of the quantity $\hat{S}^{(k+1)} - \hat{\bss}^{(k)}$, which corresponds to the dirft term of \eqref{eq:rmstep} and reads as follows:
+The first intermediate result, see proof in Appendix~\ref{app:prooflemmainc}, is the computation of the quantity $\hat{S}^{(k+1)} - \hat{\bss}^{(k)}$, which corresponds to the drift term of \eqref{eq:rmstep} and reads as follows:
 \begin{Lemma} \label{lem:meanfield_isaem}
 The update \eqref{eq:isaem} is equivalent to the following update on the resulting statistics 
 \beq
@@ -365,10 +353,8 @@ Also:
 \eeq
 where $\overline{\bss}^{(k)}$ is defined by \eqref{eq:definition-overline-bss} and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$.
 \end{Lemma}
-Proof of this Lemma can be found in Appendix~\ref{app:prooflemmainc}.
-
-The following main result for the \ISAEM\ algorithm is derived under a control of the Monte Carlo fluctuations as described by assumption H~\ref{ass:mcerror}.
-Typically, the controls exhibited below are of interest when the number of MC samples $M_k$ increase with the iteration index $f$.
+The following main result for the \ISAEM\ algorithm, which proof can be found in Appendix~\ref{app:theoremisaem}, is derived under a control of the Monte Carlo fluctuations as described by assumption H~\ref{ass:mcerror}.
+Typically, the controls exhibited abover are of interest when the number of MC samples $M_k$ increase with $k$.
 
 \begin{Theorem}\label{thm:isaem}
 Assume H\ref{ass:compact}-H\ref{ass:mcerror}.
@@ -379,7 +365,6 @@ Assume that $ \hat{\bss}^{(k)} \in \mathcal{S}$ for any $k \leq K_{\max }$.
 \upsilon_{\max}^{-2}\sum_{k=0}^{K_{\max}} \tilde{\alpha}_k \EE \left[\norm{\grd V( \hs{k} )}^2 \right]  \leq   \EE \left[ V( \hs{0} ) - V( \hs{K} ) \right]+ \sum_{k=0}^{K_{\max}-1} \tilde{\Gamma}_k         \EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] 
 \eeq
 \end{Theorem} 
-Proof of this Theorem can be found in Appendix~\ref{app:theoremisaem}.
 
 \subsection{Global Convergence of Two-Time-Scale Noisy EM Algorithms}
 We now proceed by giving our main result regarding the global convergence of the \FISAEM\ algorithm.
@@ -411,15 +396,15 @@ For any $k \geq 0$ and consider the \FISAEM\ update in \eqref{eq:fisaem} with $\
 Recalling that $K$ is an independent discrete r.v.~drawn from $\{1,\dots,K_{\sf max}\}$ with distribution $\{ \gamma_k/ {\sf P}_{\sf max},0 \leq k \leq K_{\max } - 1 \}$, as in \eqref{eq:random}, we have
 \beq
 \EE[ \| \grd V( \hs{K} ) \|^2 ]  = \frac{1}{{\sf P}_{\sf max}} \sum_{k=0}^{K_{\sf max}-1} \gamma_{k+1} \EE[ \| \grd V( \hs{k} ) \|^2 ] 
-\eeq
+\eeq \vspace{-.2cm}
 
-We now state the main result regarding the \SAEMVR\ method.
+We now state the main result regarding the \SAEMVR\ method, see proof in Appendix~\ref{app:theoremvrsaem}:
 \begin{Theorem}\label{thm:vrsaem}
 Assume H\ref{ass:compact}-H\ref{ass:mcerror}.
 Let $K_{\max }$ be a positive integer. 
 Let $\left\{\gamma_{k}, k \in \mathbb{N}\right\}$ be a sequence of positive step sizes and consider the \SAEMVR\ sequence $\left\{\hat{\bss}^{(k)}, k \in \mathbb{N}\right\}$ obtained with $\rho_{k+1}=\rho$ for any $k>0$.
 Assume that $ \hat{\bss}^{(k)} \in \mathcal{S}$ for any $k \leq K_{\max }$.
-By setting $\overline{L} = \max \{\Lip{\bss}, \Lip{V} \}$, $\rho = \frac{\mu}{ c_1 \overline{L}  n^{2/3}}$, $m = \frac{n c_1^2}{2 \mu^2+\mu c_1^2}$ and a constant $\mu \in (0,1)$ and $\gamma_{k+1} = \frac{1}{k^a \overline{L}}$ where $a \in (0,1)$, we have the following bound:
+Setting $\overline{L} = \max \{\Lip{\bss}, \Lip{V} \}$, $\rho = \frac{\mu}{ c_1 \overline{L}  n^{2/3}}$, $m = \frac{n c_1^2}{2 \mu^2+\mu c_1^2}$, a constant $\mu \in (0,1)$, $\gamma_{k+1} = \frac{1}{k^a \overline{L}}$ where $a \in (0,1)$, we have the following bound:
 %\beq
 %\begin{split}
 % \sum_{k=0}^{K_{\sf max}-1}\gamma_{k+1} \EE[ \| \grd V( \hs{k} ) \|^2 ] \leq & \frac{2 n^{2/3} \overline{L}}{\mu \upsilon_{\min}^2\upsilon_{\max}^2}\EE[ V( \hs{0} ) - V( \hs{K_{\sf max}}) ] \\
@@ -433,7 +418,6 @@ By setting $\overline{L} = \max \{\Lip{\bss}, \Lip{V} \}$, $\rho = \frac{\mu}{ c
  \end{split}
 \eeq
 \end{Theorem} 
-Proof of this Theorem can be found in Appendix~\ref{app:theoremvrsaem}.
 We now state the main result regarding the \FISAEM\ method.
 \begin{Theorem}\label{thm:fisaem}
 Assume H\ref{ass:compact}-H\ref{ass:mcerror}.
@@ -455,10 +439,10 @@ Assume that $ \hat{\bss}^{(k)} \in \mathcal{S}$ for any $k \leq K_{\max }$. By s
 
 \end{Theorem} 
 Proof of this Theorem can be found in Appendix~\ref{app:theoremfisaem}.
-Note that in those two bounds, the quantities $\tilde{\eta}^{(k+1)} $ and $ \Xi^{(k+1)} $ depends only on the MC fluctuations $\EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] $ and some constants.
-
+Note that in those two bounds, the quantities $\tilde{\eta}^{(k+1)} $ and $ \Xi^{(k+1)} $ depends only on the MC fluctuations $\EE \left[\norm{ \eta_{i_k}^{(k)}}^2 \right] $ and some constants.\vspace{-.2cm}
 
 \textbf{Remarks:} The following remarks are worth noting on the quantity $\EE\big[\norm{ \hs{k} -  \tilde{S}^{(k)} }^2\big] $:
+\vspace{-.2cm}
 \begin{itemize}
 \item This term is the price we pay for the two-time-scale dynamics and corresponds to the gap between the two asynchronous updates (one is on  $\hs{k}$ and the other on $ \tilde{S}^{(k)}$).
 \item It is trivial to see that if $\rho = 1$, \ie\ there is no variance reduction, then for any $k >0$
@@ -467,7 +451,7 @@ $$
 $$
 which strengthen the fact that this quantity characterizes the impact of the variance reduction technique introduced in our two stages class of methods. 
 \end{itemize}
-The following lemma, which proof can be found in Appendix~\ref{app:gap_dynamics}, can be derived to characterize this gap:
+The following lemma, which proof can be found in Appendix~\ref{app:gap_dynamics}, characterizes this gap:
 \begin{Lemma} \label{lem:gap_dynamics}
 Consider a decreasing stepsize $\gamma_k \in (0,1)$ and a constant $\rho \in (0,1)$, then the following inequality holds:
 \beq
@@ -478,7 +462,7 @@ Consider a decreasing stepsize $\gamma_k \in (0,1)$ and a constant $\rho \in (0,
 where $\StocEstep^{(k)}  $ is defined either by \eqref{eq:vrsaem} (\SAEMVR\ ) or \eqref{eq:fisaem} (\FISAEM\ ).
 \end{Lemma}
 
-In the next section, we illustrate the benefits of our two-time-scale class of methods on several numerical applications.
+In the next section, we illustrate the benefits of our two-time-scale class of algorithms on several numerical applications.
 \section{Numerical Examples}\label{sec:numerical}
 \subsection{Gaussian Mixture Models}
 We begin by a simple and illustrative example.
