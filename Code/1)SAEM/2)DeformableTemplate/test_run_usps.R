@@ -21,11 +21,17 @@ nb <- 20  # number of images
 start = 5000
 images = digits[,start:(start+nb)]
 
+
 # plots some digits images
-for (i in 1:nb){
+par(mfrow = c(1,20),
+          oma = c(5,4,0,0) + 0.1,
+          mar = c(0,0,1,1) + 0.1)
+
+for (i in 1:20){
   sample.digit = matrix(images[,i], ncol=16,byrow=FALSE)  
-  image(t(sample.digit)[,nrow(sample.digit):1])
+  image(t(sample.digit)[,nrow(sample.digit):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
 }
+
 
 template.model<-function(z, xi,p,landmarks.p,landmarks.g,sigma.g,sigma.p) { 
   zi<-z
@@ -59,7 +65,7 @@ p <- ncol(sample.digit) #dimension of the input
 Gamma.star <- diag(rep(1,kg)) # covariance
 
 batchsize = 1
-nb.epochs <- 30
+nb.epochs <- 10
 N <- ncol(images)
 nb.iter <- N/batchsize*nb.epochs
 nb.mcmc <- 5
@@ -74,8 +80,8 @@ kp <- 4 #dimension of the parameter of the template
 kg <- 4 #dimension of the random effects
 landmarks.p = matrix(rnorm(2*kp,mean = 0, sd = 0.5),ncol=kp) #of template
 landmarks.g = matrix(rnorm(2*kg,mean = 0, sd = 0.5),ncol=kg) #of deformation
-sigma.g = 0.5
-sigma.p = 0.5
+sigma.g = 0.9
+sigma.p = 0.9
 
 # SAEM
 fit.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,
@@ -159,7 +165,7 @@ for (i in epochs){
 
 #last one for both
 image(t(tail(newsamples,1)[[1]] + meantemp)[,nrow(tail(newsamples,1)[[1]] + meantemp):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
-image(t(tail(newsamples.inc,1)[[1]] )[,nrow(tail(newsamples.inc,1)[[1]] ):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
+image(t(tail(newsamples.inc,1)[[1]] + meantemp)[,nrow(tail(newsamples.inc,1)[[1]] + meantemp):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
 
 
 #VR 
@@ -206,3 +212,15 @@ image(t(tail(newsamples.inc,1)[[1]] )[,nrow(tail(newsamples.inc,1)[[1]] ):1], ax
 image(t(tail(newsamples.vr,1)[[1]] )[,nrow(tail(newsamples.vr,1)[[1]] ):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
 image(t(tail(newsamples.fi,1)[[1]] )[,nrow(tail(newsamples.fi,1)[[1]] ):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
 # save.image("usps2.RData")
+
+
+jpeg('rplot.jpg')
+par(mfrow = c(4,4),
+          oma = c(5,4,0,0) + 0.1,
+          mar = c(0,0,1,1) + 0.1)
+for (i in 1:16){
+  sample.digit = matrix(images[,i], ncol=16,byrow=FALSE)  
+  image(t(sample.digit)[,nrow(sample.digit):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
+}
+
+dev.off()
