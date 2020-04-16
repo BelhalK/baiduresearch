@@ -1,4 +1,6 @@
 load("usps1.RData")
+library(raster)
+library("fields")
 library(MASS)
 library(ggplot2)
 library(reshape2)
@@ -45,7 +47,6 @@ template.model<-function(z, xi,p,landmarks.p,landmarks.g,sigma.g,sigma.p) {
   		y.ind = 2*j/p-1
   		rep.coord = matrix(c(x.ind,y.ind), nrow=1)
 	   	coord <- t(apply(rep.coord, 2, rep, kg))
-      coord
       #deformation computation
   		kernel.deformation = exp(-(coord - landmarks.g)^2/(2*sigma.g**2))
 	   	phi[[m,j]]= colSums(kernel.deformation)%*%t(zi)
@@ -76,12 +77,22 @@ rho.vr = 1/N**(2/3)
 rho.saga = 1/N**(2/3)
 
 #fixed landmarks points
-kp <- 4 #dimension of the parameter of the template
-kg <- 4 #dimension of the random effects
+kp <- 9 #dimension of the parameter of the template
+kg <- 9 #dimension of the random effects
+#fixed landmarks points
 landmarks.p = matrix(rnorm(2*kp,mean = 0, sd = 0.5),ncol=kp) #of template
 landmarks.g = matrix(rnorm(2*kg,mean = 0, sd = 0.5),ncol=kg) #of deformation
+
+r <- raster(nrow=sqrt(kg), ncol=sqrt(kg), xmn=1, xmx=16, ymn=1, ymx=16, crs=NA) 
+r[] <- runif(ncell(r))
+# r[r<0] <- NA
+xyz <- rasterToPoints(r) 
+landmarks.p = landmarks.g =t(matrix(xyz[,c(1,2)], nrow = kp))
+# landmarks.p = 2*landmarks.p/p - 1
+# landmarks.g = 2*landmarks.g/p - 1
 sigma.g = 0.9
 sigma.p = 0.9
+
 
 # SAEM
 fit.saem = tts.saem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,
@@ -93,6 +104,12 @@ fit.vr.saem = vrsaem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.
 fit.fi.saem = fisaem(images,kp,kg,landmarks.p,landmarks.g, template.model,sigma.g,sigma.p,
   maxruns=nb.iter,nmcmc = nb.mcmc,k1=K1,algo = "fisaem", batchsize=batchsize,rho.saga)
 
+
+#plot average of 5 with landmark points
+myimage = t(meantemp)[,nrow(meantemp):1]
+obj<- list( x=1:16,y=1:16,z=myimage)
+image.plot(obj, col = grey(seq(0, 1, length = 256)))
+points(xyz, pch="X", cex=1, col = "red")
 
 #PLOTS
 # dim=1
@@ -142,7 +159,11 @@ for (i in 1:nb.epochs){
 
 for (i in 1:nb.epochs){
   final = newsamples[[i]] + meantemp
-  image(t(final)[,nrow(final):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
+  # image(t(final)[,nrow(final):1], axes = FALSE, col = grey(seq(0, 1, length = 256)))
+  myimage = t(final)[,nrow(final):1]
+  obj<- list( x=1:16,y=1:16,z=myimage)
+  image.plot(obj, col = grey(seq(0, 1, length = 256)))
+  points(xyz, pch="X", cex=1, col = "red")
 }
 
 
@@ -224,3 +245,7 @@ for (i in 1:16){
 }
 
 dev.off()
+
+
+
+
