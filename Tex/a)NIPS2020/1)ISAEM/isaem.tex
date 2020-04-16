@@ -121,8 +121,8 @@ We formulate the training of such model as an empirical risk minimization proble
 \min_{ \param \in \Param }~ \overline{\calL} ( \param ) \eqdef \Pen (\param) + \calL ( \param )~~\text{with}~~\calL ( \param ) = \frac{1}{n} \sum_{i=1}^n \calL_i( \param) \eqdef  \frac{1}{n} \sum_{i=1}^n \big\{ - \log g( y_i ; \param ) \big\}\eqs,
 \eeq
 We denote the observations by $\{y_i\}_{i=1}^n$, $\Param \subset \rset^d$ is the convex parameters space.
-We consider a regularized model where $\Pen : \Param \rightarrow \rset$ is a smooth convex regularization function and for $\param \in \Param$, $g(y;\param)$ is the (incomplete) likelihood of each individual  observation.
-The objective function $ \overline{\calL} ( \param )$ is possibly \emph{nonconvex} and is assumed to be lower bounded $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
+We consider a smooth convex regularization noted $\Pen : \Param \rightarrow \rset$ and $g(y;\param)$ is the (incomplete) likelihood of each observation.
+The objective function $ \overline{\calL} ( \param )$ is possibly \emph{nonconvex} and is assumed to be lower bounded.
 
 %We assume that $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
 In the latent variable model,  $g(y_i ; \param)$, is the marginal of the
@@ -132,7 +132,6 @@ In this paper, we make the assumption of a complete model belonging to the curve
 f(z_i,y_i; \param) = h  (z_i,y_i) \exp \big( \pscal{S(z_i,y_i)}{\phi(\param)} - \psi(\param) \big)\eqs,
 \eeq
 where $\psi(\param)$, $h(z_i,y_i)$ are scalar functions, $\phi(\param) \in \rset^k$ is a vector function, and $S(z_i,y_i) \in \rset^k$ is the complete data sufficient statistics.
-
 Full batch EM \citep{dempster1977Maximum} is the method of reference for that kind of task and is a two steps procedure. The {\sf E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, 
 \begin{equation}
 \label{eq:definition-overline-bss}
@@ -154,21 +153,16 @@ The MCEM and the SAEM have been successfully applied in mixed effects models \ci
 Recently, an incremental variant of the SAEM was proposed in \citep{kuhn2019properties} showing positive empirical results but its analysis is limited to asymptotic consideration. 
 Gradient-based methods have been developed and analyzed in \citep{zhu2017high} but they remain out of the scope of this paper as they tackle the high-dimensionality issue.
 
-
 \textbf{Contributions} This paper \textit{introduces} and \textit{analyzes} a new class of methods which purpose is update two proxies for target expected quantities in a two-time-scale manner. 
 Those approximated quantities are then used to optimize \eqref{eq:em_motivate} for current modern examples and settings using EM-fashion \textsf{Maximization} step.
 The main contributions of the paper are:
 \begin{itemize}
-
 \item We propose a two-time-scale method based on Stochastic Approximation (SA), to alleviate the problem of MC computation, and on Incremental updates, to scale to large datasets. We describe in details the edges of each level of our method based on variance reduction arguments. The derivation of such class of algorithms has two advantages. First, it naturally leverages variance reduction and Robbins-Monro type of updates to tackle large-scale and highly nonlinear learning tasks. Then, it gives a simple formulation as a \textit{scaled-gradient method} which makes the global analysis and the implementation accessible.
-
 \item We also establish global (independent of the initialization) and finite-time (true at each iteration) upper bounds on a classical suboptimality condition in the nonconvex literature, \ie\ the second order moment of the gradient of the objective function. 
-
-
 \end{itemize}
 
-In Section~\ref{sec:tts} we give rigorous mathematical definitions of the various updates used for both incremental and Monte-Carlo EMs and we introduce the main class of new algorithms, based on two different dynamics, we are proposing to analyze and compare to baselines algorithms. Section~\ref{sec:mainanalysis} presents the main theoretical guarantees of this newly introduced two-time-scale class of algorithms. Results are given both in finite-time and in the nonconvex setting.
-Finally, we illustrate the advantages of our method in Section~\ref{sec:numerical} on two numerical experiments.\vspace{-.1cm}
+In Section~\ref{sec:tts} we formalize both incremental and Monte-Carlo variants of the EM. Then, we introduce our two-time-scale class of EM algoirithms for which we derive several global statistical guarantees in Section~\ref{sec:mainanalysis} for possibly \textit{nonconvex} functions.
+Section~\ref{sec:numerical} is devoted to numerical illustrations.\vspace{-.1cm}
 
 \section{Two-Time-Scale Stochastic EM Algorithms}\label{sec:tts}
 We recall and formalize in this section the different methods found in the literature that aim to solving the large-scale problem and the intractable expectation. 
@@ -224,9 +218,7 @@ For iteration $k \geq 0$, the \FISAEM\ method draws \emph{two} indices \emph{ind
 \begin{align}
 &\emph{(\ISAEM\ \citep{ kuhn2019properties})} & \StocEstep^{(k+1)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:isaem} \\
 &\emph{(\SAEMVR\  )} &\StocEstep^{(k+1)} &= \tilde{S}^{(\ell(k))} +  \big( \tilde{S}_{i_k}^{(k)}  -\tilde{S}_{i_k}^{(\ell(k))}   \big) \label{eq:vrsaem}\\
-&\emph{(\FISAEM\  )} &\StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(t_{i_k}^k)} \big) \label{eq:fisaem}\\
-&    &\overline{\StocEstep}^{(k+1)} &= \overline{\StocEstep}^{(k)} + n^{-1} \big( \tilde{S}_{j_k}^{(k)}  - \tilde{S}_{j_k}^{(t_{j_k}^k)} \big).
-%\emph{(SAGA-EM)} & ~~~~\StocEstep^{(k+1)} = s & \gamma_{k+1} =
+&\emph{(\FISAEM\  )} &\StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(t_{i_k}^k)} \big) \label{eq:fisaem} , \quad  \overline{\StocEstep}^{(k+1)} = \overline{\StocEstep}^{(k)} + n^{-1} \big( \tilde{S}_{j_k}^{(k)}  - \tilde{S}_{j_k}^{(t_{j_k}^k)} \big)
 \end{align}
 where $\tilde{S}_{i_k}^{(k)} $ is the MC approximation of the expectation $ \overline{\bss}_{i_k}(\param^{(k)})$ :
 \beq
@@ -239,7 +231,7 @@ Moreover, for \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m
 \textbf{Two-Time-Scale Noisy EM methods:}
 We now introduce the general method derived using the two variance reduction techniques described above.
 Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:sestep} in order to output a vector of fitted parameters $\hat{\param}^{(K)}$ where $K$ is a randomly chosen termination point.
-
+\vspace{-.2cm}
 \begin{algorithm}[H]
 \caption{Two-Time-Scale Noisy EM methods.}\label{alg:ttsem}
   \begin{algorithmic}[1]
@@ -264,10 +256,10 @@ Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:
 %\STATE \textbf{Return:} $\prm_t$.
   \end{algorithmic}
 \end{algorithm}
-
+\vspace{-.2cm}
 The update in \eqref{eq:twolevels} is said to have two-time-scales as the step sizes satisfy $\lim \limits_{k \to \infty} \gamma_k/\rho_k < 1$ such that $ \tilde{S}^{(k+1)} $  is updated at a faster time-scale, determined by $\rho_k$, than $\hat{\bss}^{(k+1)}$, determined by $\gamma_k$.
 The next section presents the main results of this paper and establishes global and finite-time bounds for the three different updates of our two-time-scale scheme.
-
+\vspace{-.2cm}
 \section{Finite Time Analysis of the Two-Time-Scale Scheme} \label{sec:mainanalysis}
 Following \citep{cappe2009line}, it can be shown that stationary points of the objective function \eqref{eq:em_motivate} corresponds to the stationary points of the following \textit{nonconvex} Lyapunov function:
 \beq\label{eq:em_sspace}
@@ -304,10 +296,8 @@ There exists a constant $\Lip{B}$ such that for all $\bss, \bss' \in \Sset^2$, w
 
 The class of algorithms we develop in this paper are two-time-scale where the first stage corresponds to the variance reduction trick used in \citep{karimi2019global} in order to accelerate incremental methods and reduce the variance induced by the index sampling. 
 The second stage is the Robbins-Monro type of update that aims to reduce the variance induced by the MC approximations
-
-Indeed the expectations \eqref{eq:definition-overline-bss} are never available and requires Monte Carlo approximation.
-Thus, at iteration $k+1$, we introduce the errors when approximating the quantity $ \overline{\bss}_i(\hat{\param}(\hat{\bss}^{(k-1)}))$.
-Define:
+As the expectations \eqref{eq:definition-overline-bss} are never available, we introduce the errors when approximating the quantity $ \overline{\bss}_i(\hat{\param}(\hat{\bss}^{(k-1)}))$ at iteration $k+1$:
+\vspace{-.1cm}
 \beq\label{eq:mcerror}
 \eta_{i}^{(r)} \eqdef \tilde{S}_{i}^{(r)} -  \overline{\bss}_i(\vartheta^{(r)})\quad  \textrm{for all} \quad  i \in \inter, \, r > 0 \quad \textrm{and} \quad  \vartheta \in \Theta
 \eeq
@@ -461,9 +451,10 @@ Consider a decreasing stepsize $\gamma_k \in (0,1)$ and a constant $\rho \in (0,
 \eeq
 where $\StocEstep^{(k)}  $ is defined either by \eqref{eq:vrsaem} (\SAEMVR\ ) or \eqref{eq:fisaem} (\FISAEM\ ).
 \end{Lemma}
-
 In the next section, we illustrate the benefits of our two-time-scale class of algorithms on several numerical applications.
+
 \section{Numerical Examples}\label{sec:numerical}
+For the sake of space, we provide details on the experiments in Appendix~\ref{app:experiments}.
 \subsection{Gaussian Mixture Models}
 We begin by a simple and illustrative example.
 The authors acknowledge that the following model can be trained using deterministic EM-type of algorithms but propose to apply stochastic methods, including theirs, and to compare their performances.
@@ -481,30 +472,29 @@ The constraint set on $\param$ is given by
 \beq \textstyle
 \Param = \{ \omega_m,~m=1,...,M-1 : \omega_m \geq 0,~\sum_{m=1}^{M-1} \omega_m \leq 1\} \times \{ \mu_m \in \rset ,~m=1,...,M \}.
 \eeq
-Exact two-time-scale updates are given in Appendix~\ref{app:gmm_update}.
 
-In the following experiments on synthetic data, we generate samples from a GMM model with $M=2$ components with two mixtures with means $\mu_1 = - \mu_2 = 0.5$.
-We use $n = 10^5$ synthetic samples and run the bEM method until convergence (to double precision) to obtain the ML estimate $\mu^\star$ averaged on $50$ datasets. We compare the bEM, iEM (incremental EM), SAEM, \ISAEM, \SAEMVR\ and \FISAEM\ methods in terms of their precision measured by $| \mu - \mu^\star |^2$. 
-We set the stepsize of the \textsf{SA-step} of all method as $\gamma_k = 1/k^{\alpha}$ with $\alpha = 0.5$, and the stepsizes of the \textsf{Incremental-step} for \SAEMVR\ and the \FISAEM\ to a constant stepsize equal to $1/n^{2/3}$. 
-\begin{wrapfigure}[10]{r}{.5\textwidth}
+\begin{wrapfigure}[12]{r}{.5\textwidth}
 \begin{minipage}{0.5\textwidth}\vspace{-.9cm}
 
 
 \begin{figure}[H]
 \includegraphics[width=\textwidth]{pic_paper/tts_gmm_n100k.png}\vspace{-.2cm}
-\caption{TO COMPLETE}\vspace{-.2cm}
+\caption{Precision $|\mu^{(k)} - \mu^*|^2$ per epoch}\vspace{-.2cm}
 \label{fig:gmm_tts}
 \end{figure}
 
 \end{minipage}
 \end{wrapfigure}
 
-The number of MC samples is fixed to $M=10$ chains.
-Figure \ref{fig:gmm_tts} shows the convergence of the precision $|\mu - \mu^*|^2$ for the different methods against the epoch(s) elapsed (one epoch equals $n$ iterations). We observe that the \SAEMVR\ and \FISAEM\ methods outperform the other stochastic methods, supporting the benefits of our newly introduced scheme.
+
+In the following experiments on synthetic data, we generate $30$ synthetic datasets of size $n = 10^5$ from a GMM model with $M=2$ components with two mixtures with means $\mu_1 = - \mu_2 = 0.5$.
+We run the bEM method until convergence (to double precision) to obtain the ML estimate $\mu^\star$ averaged on $50$ datasets. We compare the bEM, iEM (incremental EM), SAEM, \ISAEM, \SAEMVR\ and \FISAEM\ methods in terms of their precision measured by $| \mu - \mu^\star |^2$. 
+We set the stepsize of the \textsf{SA-step} of all method as $\gamma_k = 1/k^{\alpha}$ with $\alpha = 0.5$, and the stepsizes of the \textsf{Incremental-step} for \SAEMVR\ and the \FISAEM\ to a constant stepsize equal to $1/n^{2/3}$. The number of MC samples is fixed to $M=10$ chains.
+Figure \ref{fig:gmm_tts} shows the convergence of the precision $|\mu - \mu^*|^2$ for the different methods against the epoch(s) elapsed (one epoch equals $n$ iterations). Besides, \SAEMVR\ and \FISAEM\ methods outperform the other stochastic methods, supporting the benefits of our scheme.
 
 
 
-\vspace{.2cm}
+
 \subsection{Deformable Template Model for Image Analysis}
 Let $(y_i, i \in \inter)$ be observed gray level images defined on a grid of pixels.
 Let $u \in \mathcal{U} \subset \rset^2$ denotes the pixel index on the image and $x_u \in \mathcal{D} \subset \rset^2$ its location.
@@ -514,86 +504,75 @@ y_{i}(u)=I\left(x_{u}-\Phi_{i}\left(x_{u}, z_i\right)\right)+\varepsilon_{i}(u)
 \eeq
 where $\phi_i: \rset^2 \to \rset^2$ is a deformation function, $z_i$ some latent variable parameterizing this deformation and $\varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)$ is an observation error.
 
-The template model, given $(p_k, k \in \llbracket 1, k_p \rrbracket)$ landmarks on the template, a fixed known kernel $\mathbf{K}_{\mathbf{p}}$ and a vector of parameters $\beta \in \rset^{k_p}$ is defined as follows:
+The template model, given $\{p_k\}_{k=1}^{k_p}$ landmarks on the template, a fixed known kernel $\mathbf{K}_{\mathbf{p}}$ and a vector of parameters $\beta \in \rset^{k_p}$ is defined as follows:
 \beq
 I_{\xi}=\mathbf{K}_{\mathbf{p}} \beta, \quad \textrm{where} \quad \left(\mathbf{K}_{\mathbf{p}} \beta \right)(x)=\sum_{k=1}^{k_{p}} \mathbf{K}_{\mathbf{p}}\left(x, p_{k}\right) \beta_k
 \eeq
 
-Besides, we parameterize the deformation model given some landmarks $(g_k, k \in \llbracket 1, k_g \rrbracket)$ and a fixed kernel $\mathbf{K}_{\mathbf{g}}$ as:
+Besides, we parameterize the deformation model given some landmarks $\{g_k\}_{k=1}^{k_g}$ and a fixed kernel $\mathbf{K}_{\mathbf{g}}$ as:
 \beq
 \Phi_{i}=\mathbf{K}_{\mathbf{g}} z_{i} \quad \textrm{where} \quad \left(\mathbf{K}_{\mathbf{g}} z_{i}\right)(x)=\sum_{k=1}^{k_{s}} \mathbf{K}_{\mathbf{g}}\left(x, g_{k}\right)\left(z_{i}^{(1)}(k), z_{i}^{(2)}(k)\right)
 \eeq
 where we put a Gaussian prior on the latent variables, $z_i \sim \mathcal{N}(0,\Gamma)$ and $z_i \in \left( \rset^{k_g}\right)^2$.
 The vector of parameters we ought to estimate is thus $\param = \big( \beta, \Gamma, \sigma  \big)$.
-The complete model belongs to the curved exponential family, see \citep{allassonniere2007towards}, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
-\beq \label{eq:suffstat_deformable}
-\begin{split}
-& S_1(z) = \frac{1}{n} \sum_{i=1}^nS_1(y_i, z_i)  = \frac{1}{n} \sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^\top y_{i}\\
-& S_2(z) =\frac{1}{n} \sum_{i=1}^n S_2(y_i, z_i) = \frac{1}{n} \sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^\top\left(\mathbf{K}_{p}^{z_{i}}\right)\\
-& S_3(z) =\frac{1}{n} \sum_{i=1}^n S_3(y_i, z_i)  = \frac{1}{n}  \sum_{i=1}^n  z_{i}^{t} z_{i} 
-\end{split}
-\eeq
-where for any pixel $u \in \rset^2$ and $j \in \llbracket 1, k_g \rrbracket$ we noted:
-\beq
-\mathbf{K}_{p}^{z_{i}}(x_u,j) = \mathbf{K}_{p}^{z_{i}}(x_u - \phi_i(x_u,z_i), p_j)
-\eeq
-Finally, the Two-Time-Scale \textsf{M-step} yields the following parameter updates:
-\beq
-\bar{\param}(\hat{s}) 
-= \left(
-\begin{array}{c}
-\beta(\hat{s}) =   \hat{s}_2^{-1}(z) \hat{s}_1(z)    \\
-\Gamma(\hat{s}) = \frac{1}{n} \hat{s}_3(z)   \\
- \sigma(\hat{s}) =\beta(\hat{s})^\top  \hat{s}_2(z) \beta(\hat{s}) - 2\beta(\hat{s}) \hat{s}_1(z)
-\end{array}
-\right)
-\eeq
-where $\hat{s} = (\hat{s}_1(z),\hat{s}_2(z),\hat{s}_3(z))$ is the vector of statistics obtained via the \textsf{SA-step} \eqref{eq:rmstep} and using the MC approximation of the sufficient statistics $\big(S_1(z),S_2(z),S_3(z) \big)$ defined in \eqref{eq:suffstat_deformable}.
 
-\textbf{Comparison using epochs credit}
+\textbf{Numerical Experiment:} We apply model \eqref{eq:deformablemodel} and our algorithms to a collection of handwritten digits, called the US postal database \citep{hull1994database}, featuring $n = 1\, 000$ $(16 \times 16)$-pixel images for each handwritten digit from $0$ to $9$.
+The main difficulty with these data comes from the geometric dispersion within each class of digit as shown Figure~\ref{fig:variancedigit} for digit $5$.
+We thus ought to use our deformable template model in order to account for both sources of variability: the intrinsic template to each class of digit and the small and local deformation in each observed image.
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{pic_paper/variancedigit.png}\vspace{-.2cm}
+\caption{Training set of the USPS database (20 images for figit $5$)}\vspace{-.2cm}
+\label{fig:variancedigit}
+\end{figure}
 
+Firgure~\ref{fig:results} shows the resulting synthetic images for digit $5$ through several epochs and for the bEM, SAEM and the TTS methods.
+We choose Gaussian kernels for both, $\mathbf{K}_{\mathbf{p}}$ and $\mathbf{K}_{\mathbf{g}}$, defined on $\rset^2$ and centered on the landmark points$\{p_k\}_{k=1}^{k_p}$ and $\{g_k\}_{k=1}^{k_g}$ with standard deviations $0.4$. 
+$k_p = k_g = 6$ landmarks are chosen randomly on the image for the training. 
+Average of the images in the digit class is plotted on the left hand side in order to show how fast each method achieves a sharper template \wrt the average.
 
-\textbf{Comparison using number of training samples credit}
-
+%\begin{figure}[H]
+%\includegraphics[width=\textwidth]{pic_paper/variancedigit.png}\vspace{-.2cm}
+%\caption{TO COMPLETE}\vspace{-.2cm}
+%\label{fig:results}
+%\end{figure}
 
 \subsection{PK Model with Absorption Lag Time}
 This numerical example was conducted in order to characterize the pharmacokinetics (PK) of orally administered drug to simulated patients, using a population pharmacokinetic approach. $M = 50$ synthetic datasets were generated for $n = 500$ patients with $10$ observations (concentration measures) per patient.
-The goal tis to model the evolution of the concentration of the absorbed drug using a nonlinear and latent data model. The fitting of that model is done using our two-time-scale class of algorithms.
+The goal tis to model the evolution of the concentration of the absorbed drug using a nonlinear and latent data model. 
 
 \textbf{The model:}
 We consider a one-compartment PK model for oral administration with an absorption lag-time ($T^{\textrm{lag}}$), assuming first-order absorption and linear elimination processes.
 The final model includes the following variables: $ka$ the absorption rate constant, $V$ the volume of distribution, $k$ the elimination rate constant and $T^{\textrm{lag}}$ the absorption lag-time. 
 We also add several covariates to our model such as $D$ the dose of drug administered, $t$ the time at which measures are taken and the weight of the patient influencing the volume $V$. More precisely, the log-volume $\log(V)$ is a linear function of the log-weight $lw70= \log(wt/70)$.
+Let $ z_i=(T_i^{\textrm{lag}}, ka_i, V_i, k_i)$ be the vector of individual PK parameters, different for each individual $i$.
 The final model reads:
 \begin{equation} \label{eq:pkmodel}
-f(t,ka, V, k) = \frac{D\,ka}{V(ka - k)}(\exponential^{-ka\,(t - T^{\textrm{lag}})}-\exponential^{-k\,(t - T^{\textrm{lag}})})\eqs,
-\end{equation}
-Here, $T^{\textrm{lag}}$, $ka$, $V$ and $k$ are  PK parameters that can change from one individual to another.
-
-
-Let $ z_i=(T_i^{\textrm{lag}}, ka_i, V_i, k_i)$ be the vector of individual PK parameters for individual $i$.
-The model for the $j$-th measured concentration, noted $y_{ij}$, for individual $i$ reads:
-\begin{equation}\label{eq:pkmodel2}
-y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij}
+y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij} \quad \textrm{where} \quad f(t_{ij},z_i) = \frac{D\,ka_i}{V(ka_i - k_i)}(\exponential^{-ka_i\,(t_{ij} - T_i^{\textrm{lag}})}-\exponential^{-k_i\,(t_{ij} - T_i^{\textrm{lag}})})
 \end{equation}
 where $y_{ij}$ is the $j$-th concentration measurement of the drug of dosage $D$ injected at time $t_{ij}$ for patient $i$.
 We assume in this example that the residual errors $\varepsilon_{ij}$ are independent and normally distributed with mean 0 and variance $\sigma^2$.
-Lognormal distributions are used for the three PK parameters:
-\begin{align}
-& \log(T_i^{\textrm{lag}}) \sim \mathcal{N}(\log(T^{\textrm{lag}}_{\rm pop}), \omega^2_{T^{\textrm{lag}}} ) \eqs, \log(ka_i) \sim \mathcal{N}(\log(ka_{\rm pop}), \omega^2_{ka})\eqs,\\
-&\log(V_i) \sim \mathcal{N}(\log(V_{\rm pop}), \omega^2_{V})\eqs,
- \log(k_i) \sim \mathcal{N}(\log(k_{\rm pop}), \omega^2_{k})\eqs.
-\end{align}
+Lognormal distributions are used for the four PK parameters.
+%\begin{align}
+%& \log(T_i^{\textrm{lag}}) \sim \mathcal{N}(\log(T^{\textrm{lag}}_{\rm pop}), \omega^2_{T^{\textrm{lag}}} ) \eqs, \log(ka_i) \sim \mathcal{N}(\log(ka_{\rm pop}), \omega^2_{ka})\eqs,\\
+%&\log(V_i) \sim \mathcal{N}(\log(V_{\rm pop}), \omega^2_{V})\eqs,
+% \log(k_i) \sim \mathcal{N}(\log(k_{\rm pop}), \omega^2_{k})\eqs.
+%\end{align}
 
-The complete model belongs to the curved exponential family, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
-\beq \label{eq:suffstat_deformable}
-\begin{split}
-S_1(z)  = \frac{1}{n} \sum_{i=1}^n z_i  ,  \quad S_2(z) =\frac{1}{n} \sum_{i=1}^n z_i^\top z_i  , \quad S_3(z)  = \frac{1}{n}  \sum_{i=1}^n  \left(y_i - f(t_{i},z_i)\right)^2
-\end{split}
-\eeq
-where we have noted $y_i$ and $t_i$ the vector of observations and time for each patient $i$.
+%The complete model belongs to the curved exponential family, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
+%\beq \label{eq:suffstat_deformable}
+%\begin{split}
+%S_1(z)  = \frac{1}{n} \sum_{i=1}^n z_i  ,  \quad S_2(z) =\frac{1}{n} \sum_{i=1}^n z_i^\top z_i  , \quad S_3(z)  = \frac{1}{n}  \sum_{i=1}^n  \left(y_i - f(t_{i},z_i)\right)^2
+%\end{split}
+%\eeq
+%where we have noted $y_i$ and $t_i$ the vector of observations and time for each patient $i$.
 
-\begin{wrapfigure}[10]{r}{.5\textwidth}
+
+\textbf{Monte Carlo study:}
+We conduct a Monte Carlo study to showcase the benefits of our scheme.
+
+$M=50$ datasets have been simulated using the following PK parameters values:
+$T^{\textrm{lag}}_{\rm pop} =1$, $ka_{\rm pop} =1$, $V_{\rm pop}= 8$, $k_{\rm pop}=0.1$, $ \omega_{T^{\textrm{lag}}}=0.4$, $\omega_{ka}=0.5$, $\omega_{V}=0.2$, $\omega_{k}=0.3$ and $\sigma^2=0.5$.
+\begin{wrapfigure}[11]{r}{.5\textwidth}
 \begin{minipage}{0.5\textwidth}\vspace{-.9cm}
 
 
@@ -605,13 +584,8 @@ where we have noted $y_i$ and $t_i$ the vector of observations and time for each
 
 \end{minipage}
 \end{wrapfigure}
-\textbf{Monte Carlo study:}
-We conduct a Monte Carlo study to showcase the benefits of our scheme.
-
-$M=50$ datasets have been simulated using the following PK parameters values:
-$T^{\textrm{lag}}_{\rm pop} =1$, $ka_{\rm pop} =1$, $V_{\rm pop}= 8$, $k_{\rm pop}=0.1$, $ \omega_{T^{\textrm{lag}}}=0.4$, $\omega_{ka}=0.5$, $\omega_{V}=0.2$, $\omega_{k}=0.3$ and $\sigma^2=0.5$.
 We define the mean square distance over the $M$ replicates $E_k(\ell) = \frac{1}{M}\sum_{m=1}^{M}{\left(\theta_k^{(m)}(\ell) - \theta^* \right)^2}$ and plot it against the epochs (passes over the data) Figure~\ref{fig:pk_tts}.	
-Note that the {\sf MC-step} \eqref{eq:mcstep} is performed using a Metropolis Hastings procedure since the posterior distribution under the model $\theta$ noted $p(z_i | y_i, \theta)$ is intractable due to the nonlinearity of the model \eqref{eq:pkmodel} (see Appendix~\ref{app:pkmodel} for implementation details).
+Note that the {\sf MC-step} \eqref{eq:mcstep} is performed using a Metropolis Hastings procedure since the posterior distribution under the model $\theta$ noted $p(z_i | y_i, \theta)$ is intractable due to the nonlinearity of the model \eqref{eq:pkmodel}.
 Figure~\ref{fig:pk_tts} shows clear advantage of variance reduced methods (\SAEMVR\ and \FISAEM\ ) avoiding the twists and turns displayed by the incremental and the batch methods.
 
 
@@ -1405,7 +1379,7 @@ proving the final bound on the gradient of the Lyapunov function:
 \clearpage
 
 
-\section{Practical Implementations of Two-Time-Scale EM Methods}
+\section{Practical Implementations of Two-Time-Scale EM Methods}\label{app:experiments}
 \subsection{Application on GMM}\label{app:gmm_update}
 \subsubsection{Explicit Updates}
 We first recognize that the constraint set for $\param$ is given by
@@ -1525,8 +1499,52 @@ where $ = \frac{1}{n} \sum_{i=1}^n  \tilde{S}_{i}^{(k)}$ with $ \tilde{S}_{i}^{(
 
 Finally, the $k$-th update reads $\hp{k+1} = \overline{\param} (\hat{\bss}^{(k+1)})$ where the function ${\bm s} \to \overline{\param}({\bm s})$ is defined by \eqref{eq:mstep_gmm}.
 
+
+\subsection{Deformable Template Model for Image Analysis}\label{app:deformable}
+\subsubsection{Model and Updates}
+The complete model belongs to the curved exponential family, see \citep{allassonniere2007towards}, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
+\beq \label{eq:suffstat_deformable}
+\begin{split}
+& S_1(z) = \frac{1}{n} \sum_{i=1}^nS_1(y_i, z_i)  = \frac{1}{n} \sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^\top y_{i}\\
+& S_2(z) =\frac{1}{n} \sum_{i=1}^n S_2(y_i, z_i) = \frac{1}{n} \sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^\top\left(\mathbf{K}_{p}^{z_{i}}\right)\\
+& S_3(z) =\frac{1}{n} \sum_{i=1}^n S_3(y_i, z_i)  = \frac{1}{n}  \sum_{i=1}^n  z_{i}^{t} z_{i} 
+\end{split}
+\eeq
+where for any pixel $u \in \rset^2$ and $j \in \llbracket 1, k_g \rrbracket$ we noted:
+\beq
+\mathbf{K}_{p}^{z_{i}}(x_u,j) = \mathbf{K}_{p}^{z_{i}}(x_u - \phi_i(x_u,z_i), p_j)
+\eeq
+Finally, the Two-Time-Scale \textsf{M-step} yields the following parameter updates:
+\beq
+\bar{\param}(\hat{s}) 
+= \left(
+\begin{array}{c}
+\beta(\hat{s}) =   \hat{s}_2^{-1}(z) \hat{s}_1(z)    \\
+\Gamma(\hat{s}) = \frac{1}{n} \hat{s}_3(z)   \\
+ \sigma(\hat{s}) =\beta(\hat{s})^\top  \hat{s}_2(z) \beta(\hat{s}) - 2\beta(\hat{s}) \hat{s}_1(z)
+\end{array}
+\right)
+\eeq
+where $\hat{s} = (\hat{s}_1(z),\hat{s}_2(z),\hat{s}_3(z))$ is the vector of statistics obtained via the \textsf{SA-step} \eqref{eq:rmstep} and using the MC approximation of the sufficient statistics $\big(S_1(z),S_2(z),S_3(z) \big)$ defined in \eqref{eq:suffstat_deformable}.
+
+
 \subsection{Application on PK Model}\label{app:pkmodel}
-\subsubsection{Explicit Updates}
+\subsubsection{Model and Explicit Updates}
+Lognormal distributions are used for the four PK parameters:
+\begin{align}
+& \log(T_i^{\textrm{lag}}) \sim \mathcal{N}(\log(T^{\textrm{lag}}_{\rm pop}), \omega^2_{T^{\textrm{lag}}} ) \eqs, \log(ka_i) \sim \mathcal{N}(\log(ka_{\rm pop}), \omega^2_{ka})\eqs,\\
+&\log(V_i) \sim \mathcal{N}(\log(V_{\rm pop}), \omega^2_{V})\eqs,
+ \log(k_i) \sim \mathcal{N}(\log(k_{\rm pop}), \omega^2_{k})\eqs.
+\end{align}
+
+The complete model belongs to the curved exponential family, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
+\beq \label{eq:suffstat_deformable}
+\begin{split}
+S_1(z)  = \frac{1}{n} \sum_{i=1}^n z_i  ,  \quad S_2(z) =\frac{1}{n} \sum_{i=1}^n z_i^\top z_i  , \quad S_3(z)  = \frac{1}{n}  \sum_{i=1}^n  \left(y_i - f(t_{i},z_i)\right)^2
+\end{split}
+\eeq
+where we have noted $y_i$ and $t_i$ the vector of observations and time for each patient $i$.
+
 We recall that the complete model $(y,z)$ defined by \eqref{eq:pkmodel} and \eqref{eq:pkmodel2} belongs to the curved exponential family, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
 \beq \label{eq:suffstat_deformable}
 \begin{split}
