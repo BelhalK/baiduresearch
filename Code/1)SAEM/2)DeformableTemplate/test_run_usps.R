@@ -133,7 +133,6 @@ points(xyz, pch="X", cex=1, col = "red")
 # ggplot(df2, aes(x,value)) + geom_line(aes(colour = algo))
 
 
-
 ## generate new images with fitted params
 #mean template
 p=sqrt(nrow(images)) #dimension of the input
