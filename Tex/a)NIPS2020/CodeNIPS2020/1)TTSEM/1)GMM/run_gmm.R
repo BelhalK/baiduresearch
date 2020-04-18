@@ -11,7 +11,7 @@ options(digits = 2)
 
 ### IMPORTANT PARAMS ####
 n <- 100000
-nsim=30
+nsim=50
 nb.epochs <- 1
 ########################
 
@@ -68,7 +68,7 @@ kiter = 1:K
 rho.vr = 1/(n)**(2/3)
 rho.saga = 1/(n)**(2/3)
 
-nb.chains <- 2
+nb.chains <- 5
 
 for (j in (1:nsim))
 {	

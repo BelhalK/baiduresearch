@@ -1,4 +1,4 @@
-#python3 final_runsCIFAR_adam.py --batchsize=128 --nbepochs=20 --nbruns=4
+#python3 adagrad.py --batchsize=128 --nbepochs=1 --nbruns=1 --ntrains=25000 --lr=0.01
 from __future__ import absolute_import
 from __future__ import division
 
@@ -29,10 +29,12 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-b", "--batchsize", type=int, default=1,help="")
 ap.add_argument("-e", "--nbepochs", type=int, default=1,help="")
 ap.add_argument("-r", "--nbruns", type=int, default=1,help="")
+ap.add_argument("-n", "--ntrains", type=int, default=2000,help="")
+ap.add_argument("-l", "--lr", type=float, default=0.001,help="")
 args = vars(ap.parse_args())
 
 def build_input_pipeline(x_train, x_test, y_train, y_test,
-                         batch_size, valid_size, ntrain):
+                         batch_size, valid_size,ntrain):
   """Build an Iterator switching between train and heldout data."""
   x_train = x_train.astype("float32")
   x_test = x_test.astype("float32")
@@ -75,14 +77,6 @@ def build_input_pipeline(x_train, x_test, y_train, y_test,
 
   return images, labels, handle, training_iterator, heldout_iterator
 
-
-def build_fake_data(num_examples):
-  num_examples = num_examples
-  x_train = np.random.rand(num_examples, *IMAGE_SHAPE).astype(np.float32)
-  y_train = np.random.permutation(np.arange(num_examples)).astype(np.int32)
-  x_test = np.random.rand(num_examples, *IMAGE_SHAPE).astype(np.float32)
-  y_test = np.random.permutation(np.arange(num_examples)).astype(np.int32)
-  return (x_train, y_train), (x_test, y_test)
 
 model_dir = "bnnmodels/"
 
@@ -134,7 +128,7 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
             stream_vars_valid = [v for v in tf.compat.v1.local_variables() if "valid/" in v.name]
             reset_valid_op = tf.compat.v1.variables_initializer(stream_vars_valid)
     
-    
+   
    # with tf.compat.v1.Session() as sess:
         sess.run(init_op)
 
@@ -166,11 +160,10 @@ def run_experiment(algo,fake_data, batch_size, epochs, learning_rate,verbose):
         sess.run(reset_valid_op)
         
 
-    return listloss,listkl
+    return listloss,listkl,listaccuracy
 
 
-#Generate fake data for now before switching to CIFAR10
-fake_data = False
+fake_data=False
 #batch_size = 128
 data_dir = "data/"
 eval_freq = 400
@@ -181,92 +174,37 @@ kernel_posterior_scale_constraint = 0.2
 kl_annealing = 50
 subtract_pixel_mean = True
 
-num_examples = 10
 batch_size = args["batchsize"]
 epochs = args["nbepochs"]
 nb_runs = args["nbruns"]
 seed0 = 23456
 ntest = 2000
-ntrain = 2000
+ntrain = args["ntrains"]
 
 with tf.Session() as sess:
-    if fake_data:
-        (x_train, y_train), (x_test, y_test) = build_fake_data(num_examples)
-        print("Using Fake DATA")
-    else:
-        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-        print("Using CIFAR10 DATA")
-        x_test = x_test[0:ntest]
-        y_test = y_test[0:ntest]
-
-        x_train = x_train[0:ntrain]
-        y_train = y_train[0:ntrain]
-    (images, labels, handle,
-     training_iterator,
-     heldout_iterator) = build_input_pipeline(x_train, x_test, y_train, y_test,
-                                              batch_size, 500,ntrain)
-
-print("STARTING RUNS")
-
-lr_adam = 0.001
-adam = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adam', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adam, 
-                         verbose= True)
-    adam.append(loss)
-with open('losses/adam', 'wb') as fp: 
-    pickle.dump(adam, fp)
-print("ADAM done")
-
-
-lr_adagrad = 0.001
-adagrad = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adagrad', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adagrad, 
-                         verbose= True)
-    adagrad.append(loss)
-with open('losses/adagrad', 'wb') as fp: 
-    pickle.dump(adagrad, fp)
-print("ADAGRAD done")
-
-lr_adadelta = 0.0001
-adadelta = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='adadelta', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_adadelta, 
-                         verbose= True)
-    adadelta.append(loss)
-with open('losses/adadelta', 'wb') as fp: 
-    pickle.dump(adadelta, fp)
-print("ADADELTA done")
-
-lr_rmsprop = 0.001
-rmsprop = []
-for _ in range(nb_runs):
-    tf.random.set_random_seed(_*seed0)
-    loss, kl = run_experiment(algo='rmsprop', 
-                         fake_data=fake_data, 
-                         batch_size = batch_size, 
-                         epochs=epochs,
-                         learning_rate=lr_rmsprop, 
-                         verbose= True)
-    rmsprop.append(loss)
-with open('losses/rmsprop', 'wb') as fp: 
-    pickle.dump(rmsprop, fp)
-print("MISSO done")
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    print("Using CIFAR10 DATA")
+    x_test = x_test[0:ntest]
+    y_test = y_test[0:ntest]
+    x_train = x_train[0:ntrain]
+    y_train = y_train[0:ntrain]
+    (images, labels, handle,training_iterator,heldout_iterator) = build_input_pipeline(x_train, x_test, y_train, y_test,batch_size, 500,ntrain)
+    lr_adagrad = args["lr"]
+    adagrad = []
+    adagrad_acc = []
+    for _ in range(nb_runs):
+      tf.random.set_random_seed(_*seed0)
+      loss, kl, accuracy = run_experiment(algo='adagrad', 
+  	                         fake_data=fake_data, 
+  	                         batch_size = batch_size, 
+  	                         epochs=epochs,
+  	                         learning_rate=lr_adagrad, 
+  	                         verbose= True)
+      adagrad.append(loss)
+      adagrad_acc.append(accuracy)
+    with open('losses/adagrad', 'wb') as fp: 
+      pickle.dump(adagrad, fp)
+    with open('losses/adagradacc', 'wb') as fp: 
+      pickle.dump(adagrad_acc, fp)
 
 print("ALL LOSSES ARE SAVED")
