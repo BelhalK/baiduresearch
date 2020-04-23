@@ -131,16 +131,26 @@ citecolor=blue]{hyperref}
 %\begin{abstract}
 %\end{abstract}
 
-\section{Algorithm}
+\section{Nonconvex Analysis}
+We tackle the following classical optimization problem:
+\beq\label{eq:minproblem}
+\min \limits_{w \in \Theta} f(w) \eqdef \EE[ f(w, \xi)]
+\eeq
+where $\xi$ is some random noise and only noisy versions of the objective function are accessible in this work.
+The objective function $f(w)$ is (potentially) nonconvex and has Lipschitz gradients.
+
+\textbf{Optimistic Algorithm}
+We present here the algorithm studied in this paper to tackle problem \eqref{eq:minproblem}.
 Set the terminating iteration number, $K \in \{0,\dots,K_{\sf max}-1\}$, as a discrete r.v.~with:
 \beq \label{eq:random}
-   P( K = k ) = \frac{ \eta_{k} }{\sum_{\ell=0}^{K_{\sf max}-1} \eta_\ell}.
+   P( K = k ) = \frac{ \eta_{k} }{\sum_{f=0}^{K_{\sf max}-1} \eta_f}.
 \eeq
 where $K_{\sf max}$ $\leftarrow$ is the maximum number of iteration.
 The random termination number \eqref{eq:random} is inspired by \citep{ghadimi2013stochastic} which enables one to show non-asymptotic convergence to stationary point for non-convex optimization. 
+Consider constants $(\beta_1, \beta_2) \in [0,1]$, a sequence of decreasing stepsizes $\{\eta_k\}_{k>0}$, Algorithm~\ref{alg:opt-ams} introduces the new optimistic AMSGrad method.
 
 \begin{algorithm}[H]
-\caption{OPTIMISTIC-AMSGRAD}\label{alg:sem}
+\caption{OPTIMISTIC-AMSGRAD}\label{alg:opt-ams}
   \begin{algorithmic}[1]
   \STATE \textbf{Input:} Parameters $\beta_{1}, \beta_{2}, \epsilon, \eta_{k}$
   \STATE \textbf{Init.:} $w_{1}=w_{-1 / 2} \in \mathcal{K} \subseteq \mathbb{R}^{d} \text { and } v_{0}=\epsilon \mathbf{1} \in \mathbb{R}^{d}$
@@ -149,7 +159,7 @@ The random termination number \eqref{eq:random} is inspired by \citep{ghadimi201
    \STATE $\theta_{k}=\beta_{1} \theta_{k-1}+\left(1-\beta_{1}\right) g_{k}$
    \STATE $v_{k}=\beta_{2} v_{k-1}+\left(1-\beta_{2}\right) g_{k}^{2}$
    \STATE $ \hat{v}_{k}=\max \left(\hat{v}_{k-1}, v_{k}\right)$
-   \STATE $ w_{k+\frac{1}{2}}=\Pi_{\mathcal{K}}\left[w_k-\eta_{k} \frac{\theta_{k}}{\sqrt{\hat{v}_{k}}}\right]$
+   \STATE $ w_{k+\frac{1}{2}}=\Pi_{\mathcal{K}}\left[w_k-\eta_{k+1} \frac{\theta_{k}}{\sqrt{\hat{v}_{k}}}\right]$
    \STATE $ w_{k+1}=\Pi_{\mathcal{K}}\left[w_{k+\frac{1}{2}}-\eta_{k+1} \frac{h_{k+1}}{\sqrt{v}_{k}}\right]$
    \STATE $ \quad \text{where} \quad h_{k+1}:=\beta_{1} \theta_{k-1} + (1-\beta_{1}) m_{k+1}$
       \STATE $ \quad\quad \text{and} \quad m_{k+1}$ is a guess of $g_{k+1}$
@@ -159,13 +169,64 @@ The random termination number \eqref{eq:random} is inspired by \citep{ghadimi201
 \end{algorithm}\vspace{.1cm}
 The final update at iteration $k$ can be summarized as:
 \beq\label{eq:finalupdate}
-w_{k+1}=w_{k}-\eta_{k} \frac{\theta_{k}}{\sqrt{\hat{v}_{k}}}-\eta_{k+1} \frac{h_{k+1}}{\sqrt{v}_{k}}
+w_{k+1}=w_{k}-\eta_{k} \frac{\theta_{k+1}}{\sqrt{\hat{v}_{k}}}-\eta_{k+1} \frac{h_{k+1}}{\sqrt{v}_{k}}
 \eeq
 
-\section{Nonconvex Analysis}
 
-\subsection{Containment of the iterates for a DNN}
-\subsection{Non Asymptotic analysis}
+
+We make the following assumptions:
+\begin{assumption}\label{ass:nonconv}
+The loss function $f(w)$ is nonconvex \wrt the parameter $w$.
+\end{assumption}
+\begin{assumption}\label{ass:smooth}
+The function $f(w)$ is $L$-smooth w.r.t. the parameter w.
+There exist some constant $L > 0$ such that for $(w, \vartheta) \in \Theta^2$:
+\beq
+f(w) - f(\vartheta) - \nabla f(\vartheta)^\top(w - \vartheta) \leq \frac{L}{2} \norm{w - \vartheta}^2\eqsp.
+\eeq
+\end{assumption}
+Finally and classically (see \citep{ghadimi2013stochastic}) in nonconvex optimization, we make an assumption on the magnitude of the gradient:
+\begin{assumption}\label{ass:bounded}
+There exists a constant $G >0$ such that 
+$$
+\|\nabla f(w, \xi)\| < M \quad \textrm{for any $w$ and $\xi$}
+$$
+\end{assumption}
+
+We begin with some auxiliary Lemmas important for the analysis. 
+The first one ensures bounded norms of various quantities of interests (boiling down from the classical stochastic gradient boundedness assumption):
+\begin{Lemma}
+Assume assumption H~\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:opt-ams} satisfy for any $w \in \Theta$ and $k>0$:
+$$ \|\nabla f(w)\| < M ,~~~\|\theta_k \| < M^2 ,~~~\|\hat{v}_k\| < M \eqsp.$$
+\end{Lemma}
+Then, following \citep{yan2018unified} and their study of the SGD with Momentum (not AMSGrad but simple momentum) we denote for any $k >0$:
+\beq
+\overline{w}_k = w_k + \frac{\beta_1}{1 - \beta_1} (w_k - w_{k-1})\eqsp,
+\eeq
+and derive an important Lemma:
+\begin{Lemma}\label{lem:momentum}
+Assume a strictly positive and non increasing sequence of stepsizes $\{\eta_k \}_{k>0}$, $\beta_ \in [0,1]$, then the following holds:
+\beq
+\overline{w}_{k+1} - \overline{w}_k = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{k-1} \left[ \eta_{k-1} v_{k-1}^{-1/2} - \eta_{k} v_{k}^{-1/2}\right] - \eta_{k} v_{k}^{-1/2} \tilde{g}_k \eqsp,
+\eeq
+where $\tilde{\theta}_{k} = \theta_k + \beta_1 \theta_{k-1} + (1 - \beta_1) m_{k+1} $ and $\tilde{g}_k = g_k + \beta_1 g_{k-1}$ 
+\end{Lemma}
+
+
+We now formulate the main result of our paper giving an finite-time upper bound of the quantity $\EE\left[\|\nabla f(w_K)\|^2\right]$ where K is a random termination number distributed according to \ref{eq:random}, see \citep{ghadimi2013stochastic}.
+
+\begin{Theorem}
+Assume H~\ref{ass:smooth}-H~\ref{ass:bounded}, $(\beta_1, \beta_2) \in [0,1]$ and a sequence of decreasing stepsizes $\{\eta_k\}_{k>0}$, then the following result holds:
+\beq
+\EE\left[\|\nabla f(w_K)\|^2\right] \leq tocomplete
+\eeq
+\end{Theorem}
+\begin{proof}
+Using H~\ref{ass:smooth} we have:
+
+\end{proof}
+\section{Containment of the iterates for a DNN}
+
 
 \newpage
 
