@@ -122,7 +122,7 @@ citecolor=blue]{hyperref}
 \makeatother
 
 \begin{document}
-\title{Optimistic Acceleration of AMSGrad: Theory and Applications.}
+\title{Optimistic Acceleration of AMSGrad for Nonconvex Optimization.}
 %\author{}
 \date{\today}
 
@@ -159,8 +159,8 @@ Consider constants $(\beta_1, \beta_2) \in [0,1]$, a sequence of decreasing step
    \STATE $\theta_{k}=\beta_{1} \theta_{k-1}+\left(1-\beta_{1}\right) g_{k}$
    \STATE $v_{k}=\beta_{2} v_{k-1}+\left(1-\beta_{2}\right) g_{k}^{2}$
    \STATE $ \hat{v}_{k}=\max \left(\hat{v}_{k-1}, v_{k}\right)$
-   \STATE $ w_{k+\frac{1}{2}}=\Pi_{\mathcal{K}}\left[w_k-\eta_{k+1} \frac{\theta_{k}}{\sqrt{\hat{v}_{k}}}\right]$
-   \STATE $ w_{k+1}=\Pi_{\mathcal{K}}\left[w_{k+\frac{1}{2}}-\eta_{k+1} \frac{h_{k+1}}{\sqrt{v}_{k}}\right]$
+   \STATE $ w_{k+\frac{1}{2}}=\Pi_{\mathcal{K}}\left[w_k-\eta_{k} \frac{\theta_{k}}{\sqrt{\hat{v}_{k}}}\right]$
+   \STATE $ w_{k+1}=\Pi_{\mathcal{K}}\left[w_{k+\frac{1}{2}}-\eta_{k} \frac{h_{k+1}}{\sqrt{v}_{k}}\right]$
    \STATE $ \quad \text{where} \quad h_{k+1}:=\beta_{1} \theta_{k-1} + (1-\beta_{1}) m_{k+1}$
       \STATE $ \quad\quad \text{and} \quad m_{k+1}$ is a guess of $g_{k+1}$
 \ENDFOR
@@ -169,7 +169,7 @@ Consider constants $(\beta_1, \beta_2) \in [0,1]$, a sequence of decreasing step
 \end{algorithm}\vspace{.1cm}
 The final update at iteration $k$ can be summarized as:
 \beq\label{eq:finalupdate}
-w_{k+1}=w_{k}-\eta_{k} \frac{\theta_{k+1}}{\sqrt{\hat{v}_{k}}}-\eta_{k+1} \frac{h_{k+1}}{\sqrt{v}_{k}}
+w_{k+1}=w_{k}-\eta_{k} \frac{\theta_{k}}{\sqrt{\hat{v}_{k}}}-\eta_{k} \frac{h_{k+1}}{\sqrt{v}_{k}}
 \eeq
 
 
@@ -185,23 +185,29 @@ There exist some constant $L > 0$ such that for $(w, \vartheta) \in \Theta^2$:
 f(w) - f(\vartheta) - \nabla f(\vartheta)^\top(w - \vartheta) \leq \frac{L}{2} \norm{w - \vartheta}^2\eqsp.
 \eeq
 \end{assumption}
-Finally and classically (see \citep{ghadimi2013stochastic}) in nonconvex optimization, we make an assumption on the magnitude of the gradient:
-\begin{assumption}\label{ass:bounded}
-There exists a constant $G >0$ such that 
+\begin{assumption}\label{ass:guessbound}
+There exists a constant $a >0$ such that for any $k >0$:
 $$
-\|\nabla f(w, \xi)\| < M \quad \textrm{for any $w$ and $\xi$}
+\norm{m_{k+1}} \leq a \norm{g_{k+1}}
+$$
+\end{assumption}
+Classically (see \citep{ghadimi2013stochastic}) in nonconvex optimization, we make an assumption on the magnitude of the gradient:
+\begin{assumption}\label{ass:bounded}
+There exists a constant $\major >0$ such that 
+$$
+\|\nabla f(w, \xi)\| < \major \quad \textrm{for any $w$ and $\xi$}
 $$
 \end{assumption}
 
 We begin with some auxiliary Lemmas important for the analysis. 
 The first one ensures bounded norms of various quantities of interests (boiling down from the classical stochastic gradient boundedness assumption):
-\begin{Lemma}
+\begin{Lemma}\label{lem:bound}
 Assume assumption H~\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:opt-ams} satisfy for any $w \in \Theta$ and $k>0$:
-$$ \|\nabla f(w)\| < M ,~~~\|\theta_k \| < M^2 ,~~~\|\hat{v}_k\| < M \eqsp.$$
+$$ \|\nabla f(w)\| < \major ,~~~\|\theta_k \| < \major^2 ,~~~\|\hat{v}_k\| < \major \eqsp.$$
 \end{Lemma}
 Then, following \citep{yan2018unified} and their study of the SGD with Momentum (not AMSGrad but simple momentum) we denote for any $k >0$:
-\beq
-\overline{w}_k = w_k + \frac{\beta_1}{1 - \beta_1} (w_k - w_{k-1})\eqsp,
+\beq\label{eq:deftilde}
+\overline{w}_k = w_k + \frac{\beta_1}{1 - \beta_1} (w_k - w_{k-1}) = \frac{1}{1 - \beta_1} w_k -  \frac{\beta_1}{1 - \beta_1} w_{k-1} \eqsp,
 \eeq
 and derive an important Lemma:
 \begin{Lemma}\label{lem:momentum}
@@ -209,9 +215,25 @@ Assume a strictly positive and non increasing sequence of stepsizes $\{\eta_k \}
 \beq
 \overline{w}_{k+1} - \overline{w}_k = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{k-1} \left[ \eta_{k-1} v_{k-1}^{-1/2} - \eta_{k} v_{k}^{-1/2}\right] - \eta_{k} v_{k}^{-1/2} \tilde{g}_k \eqsp,
 \eeq
-where $\tilde{\theta}_{k} = \theta_k + \beta_1 \theta_{k-1} + (1 - \beta_1) m_{k+1} $ and $\tilde{g}_k = g_k + \beta_1 g_{k-1}$ 
+where $\tilde{\theta}_{k} = \theta_k + \beta_1 \theta_{k-1} + (1 - \beta_1) m_{k+1} $ and $\tilde{g}_k = g_k - \beta_1 g_{k-1}$ 
 \end{Lemma}
-
+\begin{proof}
+By definition \eqref{eq:deftilde} and using the Algorithm updates, we have:
+\beq
+\begin{split}
+\overline{w}_{k+1} - \overline{w}_k  &= \frac{1}{1 - \beta_1} ( w_{k+1} - w_k)  -  \frac{\beta_1}{1 - \beta_1}( w_{k} - w_{k-1})\\
+& = - \frac{1}{1 - \beta_1} \eta_{k} v_{k}^{-1/2} (\theta_k + h_{k+1})  +  \frac{\beta_1}{1 - \beta_1}\eta_{k-1} v_{k-1}^{-1/2} (\theta_{k-1} + h_{k})\\
+& = - \frac{1}{1 - \beta_1}  \eta_{k} v_{k}^{-1/2} (\theta_k + \beta_1 \theta_{k-1}) -\frac{1}{1 - \beta_1}  \eta_{k} v_{k}^{-1/2} (1- \beta_1) m_{k+1}\\
+& + \frac{\beta_1}{1 - \beta_1} \eta_{k-1} v_{k-1}^{-1/2} (\theta_{k-1} + \beta_1 \theta_{k-2}) + \frac{\beta_1}{1 - \beta_1}  \eta_{k-1} v_{k-1}^{-1/2} (1- \beta_1) m_{k}
+\end{split}
+\eeq
+Denote $\tilde{\theta}_k = \theta_k + \beta_1 \theta_{k-1}$ we notice that $\tilde{\theta}_k = \beta_1 \tilde{\theta}_{k-1} + (1 - \beta_1) (g_k + \beta_1 g_{k-1})$.
+\beq
+\begin{split}
+\overline{w}_{k+1} - \overline{w}_k  & \leq
+\end{split}
+\eeq
+\end{proof}
 
 We now formulate the main result of our paper giving an finite-time upper bound of the quantity $\EE\left[\|\nabla f(w_K)\|^2\right]$ where K is a random termination number distributed according to \ref{eq:random}, see \citep{ghadimi2013stochastic}.
 
@@ -222,16 +244,48 @@ Assume H~\ref{ass:smooth}-H~\ref{ass:bounded}, $(\beta_1, \beta_2) \in [0,1]$ an
 \eeq
 \end{Theorem}
 \begin{proof}
-Using H~\ref{ass:smooth} we have:
+Using H~\ref{ass:smooth} and the iterate $\overline{w}_k$ we have:
+\beq\label{eq:smoothness}
+\begin{split}
+f(\overline{w}_{k+1}) & \leq  f(\overline{w}_k) + \nabla f(\overline{w}_k)^\top (\overline{w}_{k+1} - \overline{w}_k) + \frac{L}{2} \norm{\overline{w}_{k+1} - \overline{w}_k}^2\\
+& \leq f(\overline{w}_k) + \underbrace{ \nabla f(w_k)^\top (\overline{w}_{k+1} - \overline{w}_k)}_{A} + \underbrace{  \left( \nabla f(\overline{w}_k) -  \nabla f(w_k)\right)^\top (\overline{w}_{k+1} - \overline{w}_k)}_{B} + \frac{L}{2} \norm{\overline{w}_{k+1} - \overline{w}_k}
+\end{split}
+\eeq
 
+\textbf{Term $A$}.
+Using Lemma~\ref{lem:momentum}, we have that:
+\beq
+\begin{split}
+\nabla f(w_k)^\top (\overline{w}_{k+1} - \overline{w}_k) & = \nabla f(w_k)^\top \left[\frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{k-1} \left[ \eta_{k-1} v_{k-1}^{-1/2} - \eta_{k} v_{k}^{-1/2}\right] - \eta_{k} v_{k}^{-1/2} \tilde{g}_k \right]\\
+& \leq  \frac{\beta_1}{1 - \beta_1}  \norm{ \nabla f(w_k)} \norm{\eta_{k-1} v_{k-1}^{-1/2} - \eta_{k} v_{k}^{-1/2} } \norm{\tilde{\theta}_{k-1}} - \nabla f(w_k)^\top\eta_{k} v_{k}^{-1/2} \tilde{g}_k 
+\end{split}
+\eeq
+where the inequality is due to trivial inequality for positive diagonal matrix.
+Using Lemma~\ref{lem:bound} and assumption H\ref{ass:guessbound} we obtain:
+\beq
+\begin{split}
+\nabla f(w_k)^\top (\overline{w}_{k+1} - \overline{w}_k)  \leq  \frac{\beta_1 (a+2)}{1 - \beta_1} \major^2 \left[ \norm{\eta_{k-1} v_{k-1}^{-1/2}} - \norm{\eta_{k} v_{k}^{-1/2} }\right] - \nabla f(w_k)^\top\eta_{k} v_{k}^{-1/2} \tilde{g}_k 
+\end{split}
+\eeq
+where we have used the fact that $\eta_{k} v_{k}^{-1/2} $ is a diagonal matrix such that $\eta_{k-1} v_{k-1}^{-1/2} \succcurlyeq \eta_{k} v_{k}^{-1/2}\succcurlyeq 0$ (decreasing stepsize and $\max$ operator).
+Also note that:
+\beq
+\begin{split}
+ - \nabla f(w_k)^\top\eta_{k} v_{k}^{-1/2} \tilde{g}_k  &=  - \nabla f(w_k)^\top\eta_{k-1} v_{k-1}^{-1/2} \tilde{g}_k   -  - \nabla f(w_k)^\top\left[ \eta_{k} v_{k}^{-1/2} -\eta_{k-1} v_{k-1}^{-1/2} \right] \tilde{g}_k  \\ 
+ & \leq  - \nabla f(w_k)^\top\eta_{k-1} v_{k-1}^{-1/2} \tilde{g}_k +(1-\beta_1)\major^2    \left[ \norm{\eta_{k-1} v_{k-1}^{-1/2}} - \norm{\eta_{k} v_{k}^{-1/2} }\right] 
+\end{split}
+\eeq
+using Lemma~\ref{lem:bound} on $\norm{g_k}$ and recalling that $\tilde{g}_k = g_k -\beta_1 g_{k-1}$ 
 \end{proof}
+
+
 \section{Containment of the iterates for a DNN}
 
 
 \newpage
 
 \bibliographystyle{abbrvnat}
-\bibliography{references}
+\bibliography{referencesB}
 
 
 
