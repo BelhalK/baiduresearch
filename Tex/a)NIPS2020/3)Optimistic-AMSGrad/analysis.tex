@@ -195,7 +195,7 @@ Classically (see \citep{ghadimi2013stochastic}) in nonconvex optimization, we ma
 \begin{assumption}\label{ass:bounded}
 There exists a constant $\major >0$ such that 
 $$
-\|\nabla f(w, \xi)\| < \major \quad \textrm{for any $w$ and $\xi$}
+\norm{\nabla f(w, \xi)} < \major \quad \textrm{for any $w$ and $\xi$}
 $$
 \end{assumption}
 
@@ -205,6 +205,24 @@ The first one ensures bounded norms of various quantities of interests (boiling 
 Assume assumption H~\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:opt-ams} satisfy for any $w \in \Theta$ and $k>0$:
 $$ \|\nabla f(w)\| < \major ,~~~\|\theta_k \| < \major^2 ,~~~\|\hat{v}_k\| < \major \eqsp.$$
 \end{Lemma}
+\begin{proof}
+Assume assumption H~\ref{ass:bounded} we have:
+$$
+\norm{\nabla f(w)} = \norm{\EE[\nabla f(w, \xi)]} \leq \EE[\norm{\nabla f(w, \xi)}] \leq \major
+$$
+By induction reasoning, since $\norm{\theta_0} = 0 \leq \major$ and suppose that for $\norm{\theta_k}\leq \major$ then we have 
+\beq
+\begin{split}
+\norm{\theta_{k+1}}  =\norm{\beta_{1} \theta_{k}+\left(1-\beta_{1}\right) g_{k+1}} \leq \beta_1 \norm{\theta_{k}} + (1 - \beta_1) \norm{g_{k+1}} \leq \major
+\end{split}
+\eeq
+Using the same induction reasoning we prove that
+\beq
+\begin{split}
+\norm{\hat{v}_{k+1}}  =\norm{\beta_{2} \hat{v}_{k}+\left(1-\beta_{2}\right) g_{k+1}^2} \leq \beta_2 \norm{\hat{v}_{k}} + (1 - \beta_1) \norm{g^2_{k+1}} \leq \major^2
+\end{split}
+\eeq
+\end{proof}
 Then, following \citep{yan2018unified} and their study of the SGD with Momentum (not AMSGrad but simple momentum) we denote for any $k >0$:
 \beq\label{eq:deftilde}
 \overline{w}_k = w_k + \frac{\beta_1}{1 - \beta_1} (w_k - w_{k-1}) = \frac{1}{1 - \beta_1} w_k -  \frac{\beta_1}{1 - \beta_1} w_{k-1} \eqsp,
@@ -215,7 +233,8 @@ Assume a strictly positive and non increasing sequence of stepsizes $\{\eta_k \}
 \beq
 \overline{w}_{k+1} - \overline{w}_k = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{k-1} \left[ \eta_{k-1} v_{k-1}^{-1/2} - \eta_{k} v_{k}^{-1/2}\right] - \eta_{k} v_{k}^{-1/2} \tilde{g}_k \eqsp,
 \eeq
-where $\tilde{\theta}_{k} = \theta_k + \beta_1 \theta_{k-1} + (1 - \beta_1) m_{k+1} $ and $\tilde{g}_k = g_k - \beta_1 g_{k-1}$ 
+%where $\tilde{\theta}_k = \theta_k + \beta_1 \theta_{k-1}$ and $\tilde{g}_k = g_k + m_{k+1} - \beta_1(g_{k-1} + m_k)$. 
+where $\tilde{\theta}_k = \theta_k + \beta_1 \theta_{k-1} + (1-\beta_1) m_{k+1}$ and $\tilde{g}_k = g_k  - \beta_1g_{k-1}$.
 \end{Lemma}
 \begin{proof}
 By definition \eqref{eq:deftilde} and using the Algorithm updates, we have:
@@ -227,15 +246,55 @@ By definition \eqref{eq:deftilde} and using the Algorithm updates, we have:
 & + \frac{\beta_1}{1 - \beta_1} \eta_{k-1} v_{k-1}^{-1/2} (\theta_{k-1} + \beta_1 \theta_{k-2}) + \frac{\beta_1}{1 - \beta_1}  \eta_{k-1} v_{k-1}^{-1/2} (1- \beta_1) m_{k}
 \end{split}
 \eeq
-Denote $\tilde{\theta}_k = \theta_k + \beta_1 \theta_{k-1}$ we notice that $\tilde{\theta}_k = \beta_1 \tilde{\theta}_{k-1} + (1 - \beta_1) (g_k + \beta_1 g_{k-1})$.
+%Denote $\tilde{\theta}_k = \theta_k + \beta_1 \theta_{k-1}$ and $\tilde{g}_k = g_k + m_{k+1} - \beta_1(g_{k-1} + m_k)$.
+Denote $\tilde{\theta}_k = \theta_k + \beta_1 \theta_{k-1} + (1-\beta_1) m_{k+1}$ and $\tilde{g}_k = g_k  - \beta_1g_{k-1}$.
+Notice that $\tilde{\theta}_k = \beta_1 \tilde{\theta}_{k-1} + (1 - \beta_1) (g_k + \beta_1 g_{k-1})$.
 \beq
 \begin{split}
-\overline{w}_{k+1} - \overline{w}_k  & \leq
+\overline{w}_{k+1} - \overline{w}_k = \frac{\beta_1}{1- \beta_1} \tilde{\theta}_{k-1} \left[ \eta_{k-1} v_{k-1}^{-1/2} - \eta_{k} v_{k}^{-1/2} \right] - \eta_k v_k^{-1/2} \tilde{g}_k
 \end{split}
 \eeq
 \end{proof}
 
-We now formulate the main result of our paper giving an finite-time upper bound of the quantity $\EE\left[\|\nabla f(w_K)\|^2\right]$ where K is a random termination number distributed according to \ref{eq:random}, see \citep{ghadimi2013stochastic}.
+\begin{Lemma}\label{lem:squarev}
+Assume H~\ref{ass:bounded}, a strictly positive and non increasing sequence of stepsizes $\{\eta_k \}_{k>0}$, $\beta_ \in [0,1]$, then the following holds:
+\beq
+\sum_{k=1}^K \eta_{k}^{2} \EE \left[\left\|\hat{v}_{k}^{-1/2} \theta_{k}\right\|_{2}^{2}\right] \leq  \frac{\eta^{2} d K (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} 
+\eeq
+\end{Lemma}
+\begin{proof}
+We denote by index $p \in [1,d]$ the dimension of each component of vectors of interest. 
+Noting that for any $k >0$ and dimension $p$ we have $\hat{v}_{k,p} \geq v_{k,p}$, then:
+\beq
+\begin{split}
+\eta_{k}^{2} \EE \left[\left\|\hat{v}_{k}^{-1/2} \theta_{k}\right\|_{2}^{2}\right] &=\eta_{k}^{2} \mathbb{E}\left[\sum_{p=1}^{d} \frac{\theta_{k, p}^{2}}{\hat{v}_{k, p}}\right]  \\
+& \leq \eta_{k}^{2} \mathbb{E}\left[\sum_{i=1}^{d} \frac{\theta_{k, p}^{2}}{v_{k, p}}\right] \\
+& \leq \eta_{k}^{2} \mathbb{E}\left[\sum_{i=1}^{d} \frac{( \sum_{t=1}^k (1 - \beta_1) \beta_1^{k-t} g_{t,p})^{2}}{ \sum_{t=1}^k (1 - \beta_2) \beta_2^{k-t} g^2_{t,p}}\right] 
+\end{split}
+\eeq
+where the last inequality is due to initializations.
+Denote $\gamma = \frac{\beta_1}{\beta_2}$.
+Then,
+\beq
+\begin{split}
+\eta_{k}^{2} \EE \left[\left\|\hat{v}_{k}^{-1/2} \theta_{k}\right\|_{2}^{2}\right] &\leq \frac{\eta_{k}^{2} (1- \beta_1)^2}{1 - \beta_2}  \mathbb{E}\left[\sum_{i=1}^{d} \frac{( \sum_{t=1}^k \beta_1^{k-t} g_{t,p})^{2}}{ \sum_{t=1}^k \beta_2^{k-t} g^2_{t,p}}\right] \\
+& \overset{(a)}{\leq}\frac{\eta_{k}^{2} (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[\sum_{i=1}^{d} \frac{ \sum_{t=1}^k \beta_1^{k-t} g_{t,p}^{2}}{ \sum_{t=1}^k \beta_2^{k-t} g^2_{t,p}}\right]\\
+& \leq \frac{\eta_{k}^{2} (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[\sum_{i=1}^{d}\sum_{t=1}^k \gamma^{k-t}\right]  = \frac{\eta_{k}^{2} d (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[\sum_{t=1}^k  \gamma^{k-t}\right] 
+\end{split}
+\eeq
+where $(a)$ is due to $ \sum_{t=1}^k \beta_1^{k-t} \leq \frac{1}{1 - \beta_1}$.
+Summing from  $k =1$ to $k = K$ on both sides yields:
+\beq
+\begin{split}
+\sum_{k=1}^K \eta_{k}^{2} \EE \left[\left\|\hat{v}_{k}^{-1/2} \theta_{k}\right\|_{2}^{2}\right] &\leq   \frac{\eta_{k}^{2} d (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[ \sum_{k=1}^K \sum_{t=1}^k  \gamma^{k-t}\right]\\
+& \leq  \frac{\eta^{2} d K (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[ \sum_{t=t}^k   \gamma^{k-t}\right]\\
+& \leq  \frac{\eta^{2} d K (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} 
+\end{split}
+\eeq
+where the last inequality is due to $\sum_{t=1}^k   \gamma^{k-t} \leq \frac{1}{1 - \gamma}$ as a consequence of the definition of $\gamma$.
+\end{proof}
+
+We now formulate the main result of our paper giving a finite-time upper bound of the quantity $\EE\left[\|\nabla f(w_K)\|^2\right]$ where K is a random termination number distributed according to \ref{eq:random}, see \citep{ghadimi2013stochastic}.
 
 \begin{Theorem}
 Assume H~\ref{ass:smooth}-H~\ref{ass:bounded}, $(\beta_1, \beta_2) \in [0,1]$ and a sequence of decreasing stepsizes $\{\eta_k\}_{k>0}$, then the following result holds:
@@ -252,7 +311,7 @@ f(\overline{w}_{k+1}) & \leq  f(\overline{w}_k) + \nabla f(\overline{w}_k)^\top 
 \end{split}
 \eeq
 
-\textbf{Term $A$}.
+\textbf{Term A}.
 Using Lemma~\ref{lem:momentum}, we have that:
 \beq
 \begin{split}
@@ -262,20 +321,31 @@ Using Lemma~\ref{lem:momentum}, we have that:
 \eeq
 where the inequality is due to trivial inequality for positive diagonal matrix.
 Using Lemma~\ref{lem:bound} and assumption H\ref{ass:guessbound} we obtain:
-\beq
+\beq\label{eq:termA1}
 \begin{split}
-\nabla f(w_k)^\top (\overline{w}_{k+1} - \overline{w}_k)  \leq  \frac{\beta_1 (a+2)}{1 - \beta_1} \major^2 \left[ \norm{\eta_{k-1} v_{k-1}^{-1/2}} - \norm{\eta_{k} v_{k}^{-1/2} }\right] - \nabla f(w_k)^\top\eta_{k} v_{k}^{-1/2} \tilde{g}_k 
+\nabla f(w_k)^\top (\overline{w}_{k+1} - \overline{w}_k)  \leq  \frac{\beta_1 (1+\beta_1 + a)}{1 - \beta_1} \major^2 \left[ \norm{\eta_{k-1} v_{k-1}^{-1/2}} - \norm{\eta_{k} v_{k}^{-1/2} }\right] - \nabla f(w_k)^\top\eta_{k} v_{k}^{-1/2} \tilde{g}_k 
 \end{split}
 \eeq
 where we have used the fact that $\eta_{k} v_{k}^{-1/2} $ is a diagonal matrix such that $\eta_{k-1} v_{k-1}^{-1/2} \succcurlyeq \eta_{k} v_{k}^{-1/2}\succcurlyeq 0$ (decreasing stepsize and $\max$ operator).
 Also note that:
-\beq
+\beq\label{eq:termA2}
 \begin{split}
- - \nabla f(w_k)^\top\eta_{k} v_{k}^{-1/2} \tilde{g}_k  &=  - \nabla f(w_k)^\top\eta_{k-1} v_{k-1}^{-1/2} \tilde{g}_k   -  - \nabla f(w_k)^\top\left[ \eta_{k} v_{k}^{-1/2} -\eta_{k-1} v_{k-1}^{-1/2} \right] \tilde{g}_k  \\ 
+ - \nabla f(w_k)^\top\eta_{k} v_{k}^{-1/2} \tilde{g}_k  &=  - \nabla f(w_k)^\top\eta_{k-1} v_{k-1}^{-1/2} \tilde{g}_k   -  \nabla f(w_k)^\top\left[ \eta_{k} v_{k}^{-1/2} -\eta_{k-1} v_{k-1}^{-1/2} \right] \tilde{g}_k  \\ 
  & \leq  - \nabla f(w_k)^\top\eta_{k-1} v_{k-1}^{-1/2} \tilde{g}_k +(1-\beta_1)\major^2    \left[ \norm{\eta_{k-1} v_{k-1}^{-1/2}} - \norm{\eta_{k} v_{k}^{-1/2} }\right] 
 \end{split}
 \eeq
-using Lemma~\ref{lem:bound} on $\norm{g_k}$ and recalling that $\tilde{g}_k = g_k -\beta_1 g_{k-1}$ 
+using Lemma~\ref{lem:bound} on $\norm{g_k}$ and recalling that $\tilde{g}_k = g_k -\beta_1 g_{k-1}$.
+Plugging \eqref{eq:termA2} into \eqref{eq:termA1} yields:
+\beq\label{eq:termA}
+\begin{split}
+&\nabla f(w_k)^\top (\overline{w}_{k+1} - \overline{w}_k)\\
+&  \leq   - \nabla f(w_k)^\top\eta_{k-1} v_{k-1}^{-1/2} \tilde{g}_k + \frac{1}{1 - \beta_1} (\beta_1^2 + a \beta_1 +1)\major^2 \left[ \norm{\eta_{k-1} v_{k-1}^{-1/2}} - \norm{\eta_{k} v_{k}^{-1/2} }\right] 
+\end{split}
+\eeq
+
+\textbf{Term B}.
+Using Lemma~\ref{lem:momentum}, we have that:
+
 \end{proof}
 
 
