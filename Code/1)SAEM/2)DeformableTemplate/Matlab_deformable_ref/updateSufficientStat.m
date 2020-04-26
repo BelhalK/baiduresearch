@@ -16,17 +16,16 @@ S2_tmp=model.S2_tmp;
 S3_tmp=model.S3_tmp;
 S4_tmp=model.S4_tmp;
 
-for j=1:C
-    model.suffStat.s0(j)=suffStat.s0(j)+step*(S0_tmp(j)/countExp-suffStat.s0(j));
-    model.suffStat.s1(:,j)=suffStat.s1(:,j)+step*(S1_tmp(:,j)/countExp-suffStat.s1(:,j));
-    model.suffStat.s2(:,:,j)=suffStat.s2(:,:,j)+step*(S2_tmp(:,:,j)/countExp-suffStat.s2(:,:,j));
-    model.suffStat.s3(:,:,j)=suffStat.s3(:,:,j)+step*(S3_tmp(:,:,j)/countExp-suffStat.s3(:,:,j));
-    model.suffStat.s4(j)=suffStat.s4(j)+step*(S4_tmp(j)/countExp-suffStat.s4(j));
-end
+model.suffStat.s0(1)=suffStat.s0(1)+step*(S0_tmp(1)/countExp-suffStat.s0(1));
+model.suffStat.s1(:)=suffStat.s1(:)+step*(S1_tmp(:)/countExp-suffStat.s1(:));
+model.suffStat.s2(:,:)=suffStat.s2(:,:)+step*(S2_tmp(:,:)/countExp-suffStat.s2(:,:));
+model.suffStat.s3(:,:)=suffStat.s3(:,:)+step*(S3_tmp(:,:)/countExp-suffStat.s3(:,:));
+model.suffStat.s4(1)=suffStat.s4(1)+step*(S4_tmp(1)/countExp-suffStat.s4(1));
+
 
 model.countExp=0;
 model.S0_tmp=zeros(1,C);
 model.S1_tmp=zeros(Kp,C);
-model.S2_tmp=zeros(Kp,Kp,C);
-model.S3_tmp=zeros(2*Kg,2*Kg,C);
+model.S2_tmp=zeros(Kp,Kp);
+model.S3_tmp=zeros(2*Kg,2*Kg);
 model.S4_tmp=zeros(1,C);

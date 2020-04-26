@@ -29,9 +29,9 @@ for l=burnMCMC+1:nbItMCMC
     homot=carlinChib(l).homot(:,class);
     PHI_DEF=deformatedTemplateKernel(local,rigid,trans,homot,model);
     model.S0_tmp(class)=model.S0_tmp(class)+1;
-    model.S1_tmp(:,class)=model.S1_tmp(:,class)+PHI_DEF'*data';
-    model.S2_tmp(:,:,class)=model.S2_tmp(:,:,class)+PHI_DEF'*PHI_DEF;
-    model.S3_tmp(:,:,class)=model.S3_tmp(:,:,class)+local*local';
+    model.S1_tmp(:)=model.S1_tmp(:)+PHI_DEF'*data';
+    model.S2_tmp(:,:)=model.S2_tmp(:,:)+PHI_DEF'*PHI_DEF;
+    model.S3_tmp(:,:)=model.S3_tmp(:,:)+local*local';
     model.S4_tmp(class)=model.S4_tmp(class)+norm(data)^2;
     model.countExp=model.countExp+1;
 end

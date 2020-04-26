@@ -6,17 +6,15 @@ suffStat=model.suffStat;
 theta=model.theta;
 Kg=model.param.Kg;
 
-for j=1:C
-    theta(it+1).weight(j)=suffStat.s0(j);
-    theta(it+1).gamma_2(j)=trace(suffStat.s3(:,:,j))/(2*Kg*suffStat.s0(j));
-    theta(it+1).alpha(:,j)=pinv(suffStat.s2(:,:,j))*(suffStat.s1(:,j));
-    theta(it+1).sigma_2(j)=(suffStat.s4(j)-...
-        2*theta(it+1).alpha(:,j)'*suffStat.s1(:,j)+...
-        theta(it+1).alpha(:,j)'*suffStat.s2(:,:,j)*theta(it+1).alpha(:,j))...
-        /(suffStat.s0(j)*P*P);
-end
+theta(it+1).weight(1)=suffStat.s0(1);
+theta(it+1).gamma_2(1)=trace(suffStat.s3(:,:))/(2*Kg*suffStat.s0(1));
+theta(it+1).alpha(:)=pinv(suffStat.s2(:,:))*(suffStat.s1(:));
+theta(it+1).sigma_2(1)=(suffStat.s4(1)-...
+	2*theta(it+1).alpha(:)'*suffStat.s1(:)+...
+	theta(it+1).alpha(:)'*suffStat.s2(:,:)*theta(it+1).alpha(:))...
+	/(suffStat.s0(1)*P*P);
 
 model.theta(it+1)=theta(it+1);
 cd ./tmp_new/
-save tmp_2
+save tmp_online
 cd ..

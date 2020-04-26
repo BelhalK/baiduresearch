@@ -1,4 +1,4 @@
-function model=updateSufficientStatInc(model)
+function model=updateSufficientStatVR(model)
 
 C=model.param.C;
 length = model.length;
