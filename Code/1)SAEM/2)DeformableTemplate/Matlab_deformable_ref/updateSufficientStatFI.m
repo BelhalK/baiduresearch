@@ -1,4 +1,4 @@
-function model=updateSufficientStatFI(model,iter,ind)
+function model=updateSufficientStatFI(model,model_old,ind)
 
 C=model.param.C;
 length = model.length;
@@ -18,6 +18,13 @@ S1_tmp=model.S1_tmp;
 S2_tmp=model.S2_tmp;
 S3_tmp=model.S3_tmp;
 S4_tmp=model.S4_tmp;
+
+
+S0_tmp_old=model_old.S0_tmp;
+S1_tmp_old=model_old.S1_tmp;
+S2_tmp_old=model_old.S2_tmp;
+S3_tmp_old=model_old.S3_tmp;
+S4_tmp_old=model_old.S4_tmp;
 
 Vs0 = model.h.S0;
 Vs1 = model.h.S1;

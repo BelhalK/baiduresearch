@@ -39,31 +39,35 @@ model.h.S3=zeros(2*Kg,2*Kg,model.length);
 model.h.S4=zeros(1,C,model.length);
 
 
-model_old = model;
-
 nbItEM
 for n=1:nbItEM
 n
-    if n<=C
-        obs=data_start(n,:);
+    if n<=model.length
+        obs=data(n,:);
         model=simulMissingData_startInc(model,obs,n,n);
+        model=updateSufficientStatInc(model);
+        model_old = model;
     else
         indices  = randperm(model.length);
-        index = indices(1)
-        index_j = indices(2)
+        index = indices(1);
+        index_j = indices(2);
         obs=data(index,:);
         model=simulMissingDataFI(model,obs,index,n);
+        model_old=simulMissingDataFI(model_old,obs,index,index);
+        model=updateSufficientStatFI(model, model_old, index);
+        
+        model=simulMissingDataFI(model,obs,index_j,n);
+        model_old=simulMissingDataFI(model_old,obs,index_j,index_j);
+        model.h.S0(1,C,index_j) = model.h.S0(1,C,index_j) + (model.S0_tmp(1,C,index_j) - model_old.S0_tmp(1,C,index_j))*model.length/model.countExp;
+        model.h.S1(:,:,index_j) = model.h.S1(:,:,index_j) + (model.S1_tmp(:,:,index_j) - model_old.S1_tmp(:,:,index_j))*model.length/model.countExp;
+        model.h.S2(:,:,index_j) = model.h.S2(:,:,index_j) + (model.S2_tmp(:,:,index_j) - model_old.S2_tmp(:,:,index_j))*model.length/model.countExp;
+        model.h.S3(:,:,index_j) = model.h.S3(:,:,index_j) + (model.S3_tmp(:,:,index_j) - model_old.S3_tmp(:,:,index_j))*model.length/model.countExp;
+        model.h.S4(1,C,index_j) = model.h.S4(1,C,index_j) + (model.S4_tmp(1,C,index_j) - model_old.S4_tmp(1,C,index_j))*model.length/model.countExp;
+        model_old.theta(index_j) = model.theta(n);
     end
-    model=updateSufficientStatFI(model,n, index);
+    
     model=updateThetaFI(model,n);
     model.time(n)=toc;
-    
-    model_old=simulMissingDataFI_old(model_old,obs,index_j,n);
-    model.h.S0(1,C,index_j) = model.h.S0(1,C,index_j) + (model.S0_tmp(1,C,index_j) - model_old.S0_tmp(1,C,index_j))*model.length/model.countExp;
-    model.h.S1(:,:,index_j) = model.h.S1(:,:,index_j) + (model.S1_tmp(:,:,index_j) - model_old.S1_tmp(:,:,index_j))*model.length/model.countExp;
-    model.h.S2(:,:,index_j) = model.h.S2(:,:,index_j) + (model.S2_tmp(:,:,index_j) - model_old.S2_tmp(:,:,index_j))*model.length/model.countExp;
-    model.h.S3(:,:,index_j) = model.h.S3(:,:,index_j) + (model.S3_tmp(:,:,index_j) - model_old.S3_tmp(:,:,index_j))*model.length/model.countExp;
-    model.h.S4(1,C,index_j) = model.h.S4(1,C,index_j) + (model.S4_tmp(1,C,index_j) - model_old.S4_tmp(1,C,index_j))*model.length/model.countExp;
    
 end
 fprintf("finished\n")
