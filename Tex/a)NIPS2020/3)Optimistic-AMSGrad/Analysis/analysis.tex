@@ -428,7 +428,7 @@ We consider a fully connected feed forward neural network with $L$ layers modele
 \beq
 \textsf{MLN}( w, \xi) = \sigma\left(w^{(L)} \sigma\left(w^{(L-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)
 \eeq
-where $w = [w^{(1)}w^{(2)} \cdots w^{(L)}]$ is the vector of parameters, $\xi \in \rset^l$ is the input data and $\sigma$ is the sigmoid activation function. We assume a $l$ dimension input data and a scalar output for simplicity.
+where $w = [w^{(1)}, w^{(2)}, \cdots , w^{(L)}]$ is the vector of parameters, $\xi \in \rset^l$ is the input data and $\sigma$ is the sigmoid activation function. We assume a $l$ dimension input data and a scalar output for simplicity.
 The stochastic objective function \eqref{eq:minproblem} reads:
 \beq\label{eq:lossmln}
 f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2
@@ -446,11 +446,11 @@ h^{(\ell)}(w,\xi) = \sigma\left(w^{(\ell)} \sigma\left(w^{(\ell-1)} \ldots \sigm
 $$
 Given the sigmoid assumption we have $\norm{h^{(\ell)}(w,\xi)} \leq 1$ for any $\ell \in [1,L]$ and any $(w, \xi) \in \rset^d \times \rset^l$.
 
-Observe that at layer $\ell$:
+Observe that at the last layer $L$:
 \beq\label{eq:boundderivativeloss}
 \begin{split}
-\norm{\nabla_{w^{(\ell)}}  \mathcal{L}(\textsf{MLN}( w, \xi), y)} & =  \norm{\mathcal{L}'(\textsf{MLN}( w, \xi), y)\nabla_{w^{(\ell)}}\textsf{MLN}( w, \xi)}\\
-&  = \norm{\mathcal{L}'(\textsf{MLN}( w, \xi), y)\sigma'(w^{(\ell)} h^{(\ell-1)}(w,\xi))h^{(\ell-1)}(w,\xi)}\\
+\norm{\nabla_{w^{(L)}}  \mathcal{L}(\textsf{MLN}( w, \xi), y)} & =  \norm{\mathcal{L}'(\textsf{MLN}( w, \xi), y)\nabla_{w^{(L)}}\textsf{MLN}( w, \xi)}\\
+&  = \norm{\mathcal{L}'(\textsf{MLN}( w, \xi), y)\sigma'(w^{(L)} h^{(L-1)}(w,\xi))h^{(L-1)}(w,\xi)}\\
 & \leq \frac{T}{4}
 \end{split}
 \eeq
@@ -477,13 +477,42 @@ Thus:
 In short there exist a constant $B$ such that $\norm{w_k - w_{k-1}} \leq B$.
 
 \textbf{Proof by induction:} As in \citep{defossez2020convergence}, we will prove the containment of the weights by induction.
-Suppose an iteration index $K$ and a coordinate $i$ of the last layer $L$ such that $w^{(L)}_{K, i} \geq \frac{T}{4} + B$.
+Suppose an iteration index $K$ and a coordinate $i$ of the last layer $L$ such that $w^{(L)}_{K, i} \geq \frac{T}{4\lambda} + B$.
 Using \eqref{eq:boundderivativeloss}, we have
 $$
 \nabla_i f(w^{(L)}_K\geq - \frac{T}{4} + \lambda \frac{T}{\lambda4} \geq 0
 $$
 where $f(\cdot)$ is defined by \eqref{eq:lossmln} and is the loss of our MLN.
-This last equation yields $\theta^{(L)}_{K,i} \geq 0$ (given the algorithm and $\beta_1 = 0$).
+This last equation yields $\theta^{(L)}_{K,i} \geq 0$ (given the algorithm and $\beta_1 = 0$) and using the fact that $\norm{w_k - w_{k-1}} \leq B$ we have
+\beq\label{eq:decrease}
+0 \leq w^{(L)}_{K-1,i} - B \leq w^{(L)}_{K,i} \leq w^{(L)}_{K-1,i}
+\eeq
+which means that $| w^{(L)}_{K,i}| \leq w^{(L)}_{K-1,i}$.
+So if the first assumption of that induction reasoning holds, \ie $w^{(L)}_{K-1, i} \geq \frac{T}{4\lambda} + B$, then the next iterates $w^{(L)}_{K, i}$ decreases, see \eqref{eq:decrease} and go below $\frac{T}{4\lambda} + B$. This yields that for any iteration index $k >0$ we have 
+$$
+w^{(L)}_{K, i} \leq \frac{T}{4\lambda} + 2B
+$$
+since $B$ is the biggest jump an iterate can do since $\norm{w_k - w_{k-1}} \leq B$.
+Likewise we can end up showing that 
+$$
+|w^{(L)}_{K, i}| \leq \frac{T}{4\lambda} + 2B
+$$
+meaning that the weights of the last layer at any iteration is bounded in some matrix norm.
+
+Now that we have shown this boundedness property for the last layer $L$, we will do the same for the previous layers and conclude the verification of assumption H~\ref{ass:boundedparam} by induction.
+
+For any layer $\ell \in [1, L-1]$, we have:
+\beq\label{eq:gradientatell}
+\nabla_{w^{(\ell)}}  \mathcal{L}(\textsf{MLN}( w, \xi), y)  =  \mathcal{L}'(\textsf{MLN}( w, \xi), y) \left(\prod_{j=1}^{\ell+1} \sigma'\left(w^{(j)} h^{(j-1)}(w,\xi) \right) \right) h^{(\ell-1)}(w,\xi) 
+\eeq
+This last quantity is bounded as long as we can prove that for any layer $\ell$ the weights $w^{(\ell)}$ are bounded in some matrix norm as $\norm{w^{(\ell)}}_{F} \leq F_\ell$ with the Frobenius norm.
+Suppose we have shown $\norm{w^{(r)}}_{F} \leq F_r$ for any layer $r > \ell$. 
+Then having this gradient \eqref{eq:gradientatell} bounded we can use the same lines of proof for the last layer $L$ and show that the norm of the weights at the selected layer $\ell$ satisfy
+$$
+\norm{w^{(\ell)}} \leq \frac{T \prod_{k > \ell} F_k}{4^{L-\ell+1}} + 2B
+$$
+Showing that the weights of the previous layers $\ell \in [1, L-1]$ as well as for the last layer $L$ of our fully connected feed forward neural network are bounded at each iteration, leads by induction, to the boundedness (at each iteration) assumption we want to check.
+
 \newpage
 
 \bibliographystyle{abbrvnat}
