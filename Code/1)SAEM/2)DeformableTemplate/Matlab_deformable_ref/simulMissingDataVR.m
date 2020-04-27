@@ -1,4 +1,4 @@
-function model=simulMissingDataInc(model,data,index,i)
+function model=simulMissingDataVR(model,data,index,i)
 
 C=model.param.C;
 Kg=model.param.Kg;
@@ -11,11 +11,11 @@ carlinChib(1).trans=zeros(2,C);
 carlinChib(1).homot=[ones(1,C);zeros(2,C)];
 
 
-f_alpha_ref(:)=deformatedTemplateKernel(carlinChib(1).local(:),...
-        carlinChib(1).rigid(:),...
-        carlinChib(1).trans(:),...
-        carlinChib(1).homot(:),...
-        model)*model.theta(i).alpha(:);
+for j=1:C
+    f_alpha_ref(:,j)=deformatedTemplateKernel(carlinChib(1).local(:,j),...
+        carlinChib(1).rigid(:,j),carlinChib(1).trans(:,j),...
+        carlinChib(1).homot(:,j),model)*model.theta(i).alpha(:,j);
+end
 
 for l=2:nbItMCMC
     [model carlinChib(l) f_alpha_ref]=simulCarlinChib(model,carlinChib(l-1),data,l,i,f_alpha_ref); 
