@@ -178,6 +178,14 @@ We make the following assumptions:
 \begin{assumption}\label{ass:nonconv}
 The loss function $f(w)$ is nonconvex \wrt the parameter $w$.
 \end{assumption}
+
+\begin{assumption}\label{ass:boundedparam}
+For any $k >0$, the estimated weight $w_k$ stays within a $\ell_{\infty}-$ball. There exists a constant $W >0$ such that:
+\beq
+\norm{w_k} \leq W \quad \textrm{almost surely}
+\eeq
+\end{assumption}
+
 \begin{assumption}\label{ass:smooth}
 The function $f(w)$ is $L$-smooth w.r.t. the parameter w.
 There exist some constant $L > 0$ such that for $(w, \vartheta) \in \Theta^2$:
@@ -203,7 +211,7 @@ We begin with some auxiliary Lemmas important for the analysis.
 The first one ensures bounded norms of various quantities of interests (boiling down from the classical stochastic gradient boundedness assumption):
 \begin{Lemma}\label{lem:bound}
 Assume assumption H~\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:opt-ams} satisfy for any $w \in \Theta$ and $k>0$:
-$$ \|\nabla f(w)\| < \major ,~~~\|\theta_k \| < \major^2 ,~~~\|\hat{v}_k\| < \major \eqsp.$$
+$$ \|\nabla f(w_k)\| < \major ,~~~\|\theta_k \| < \major^2 ,~~~\|\hat{v}_k\| < \major \eqsp.$$
 \end{Lemma}
 \begin{proof}
 Assume assumption H~\ref{ass:bounded} we have:
@@ -412,8 +420,70 @@ Note that $w_{k-1} - w_k  = - \eta_{k-1} \hat{v}_{k-1}^{-1/2} (\theta_{k-1} + h_
 \eeq
 
 \section{Containment of the iterates for a Deep Neural Network}
+We show in this section that the weights satisfy assumption H~\ref{ass:boundedparam} and stay in a bounded set when the model we are fitting, using our method, is a fully connected feed forward neural network. 
+The activation function for this section will be sigmoid function and we add a $\ell_2$ regularization. 
 
+For the sake of notation, we assume $\beta_1 = 0$.
+We consider a fully connected feed forward neural network with $L$ layers modeled by the function $\textsf{MLN}(w, \xi): \rset^l \to \rset$:
+\beq
+\textsf{MLN}( w, \xi) = \sigma\left(w^{(L)} \sigma\left(w^{(L-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)
+\eeq
+where $w = [w^{(1)}w^{(2)} \cdots w^{(L)}]$ is the vector of parameters, $\xi \in \rset^l$ is the input data and $\sigma$ is the sigmoid activation function. We assume a $l$ dimension input data and a scalar output for simplicity.
+The stochastic objective function \eqref{eq:minproblem} reads:
+\beq\label{eq:lossmln}
+f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2
+\eeq
+where $\mathcal{L}(\cdot, y)$ is the loss function (can be Huber loss or cross entropy), $y$ are the true labels and $\lambda >0$ is the regularization parameter.
+Beforehand, two following mild conditions on the boundedness of the input data and of the loss function should be verified.
+For any $\xi \rset^l$ and $y \in \rset$ there is a constant $T >0$ such that:
+\beq\label{eq:mildassumptions}
+\norm{\xi} \leq 1 \quad \textrm{a.s.} \quad \textrm{and} |\mathcal{L}'(\cdot, y)| \leq T
+\eeq
+where $\mathcal{L}'(\cdot, y)$ denotes its derivative \wrt the paramer.
+For any layer index $\ell \in [1, L]$ we denote the output of layer $\ell$ by $h^{(\ell)}(w,\xi)$:
+$$
+h^{(\ell)}(w,\xi) = \sigma\left(w^{(\ell)} \sigma\left(w^{(\ell-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)
+$$
+Given the sigmoid assumption we have $\norm{h^{(\ell)}(w,\xi)} \leq 1$ for any $\ell \in [1,L]$ and any $(w, \xi) \in \rset^d \times \rset^l$.
 
+Observe that at layer $\ell$:
+\beq\label{eq:boundderivativeloss}
+\begin{split}
+\norm{\nabla_{w^{(\ell)}}  \mathcal{L}(\textsf{MLN}( w, \xi), y)} & =  \norm{\mathcal{L}'(\textsf{MLN}( w, \xi), y)\nabla_{w^{(\ell)}}\textsf{MLN}( w, \xi)}\\
+&  = \norm{\mathcal{L}'(\textsf{MLN}( w, \xi), y)\sigma'(w^{(\ell)} h^{(\ell-1)}(w,\xi))h^{(\ell-1)}(w,\xi)}\\
+& \leq \frac{T}{4}
+\end{split}
+\eeq
+where the last equality is due to mild assumptions \eqref{eq:mildassumptions} and to the fact that the norm of the derivative of the sigmoid function is upperbounded by $1/4$.
+
+From Algorithm~\ref{alg:opt-ams}, with $\beta_1 = 0$ we have for iteration index $k >0$:
+\beq
+\begin{split}
+\norm{w_k - w_{k-1}} & = \norm{-\eta_k \hat{v}_k^{-1/2} (\theta_k + h_{k+1})}\\
+&  = \norm{\eta_k \hat{v}_k^{-1/2} (g_k + m_{k+1})}\\
+& \leq \hat{\eta} \norm{\hat{v}_k^{-1/2} g_k} + \hat{\eta} a \norm{\hat{v}_k^{-1/2} g_{k+1}}
+\end{split}
+\eeq
+where $\hat{\eta} = \max \limits_{k >0} \eta_k$.
+For any dimension $p \in [1,d]$, using assumption H~\ref{ass:guessbound}, we note that 
+$$\sqrt{\hat{v}_{k,p}} \geq \sqrt{1-\beta_2} g_{k,p} \quad \textrm{and} \quad m_{k+1} \leq  a \norm{g_{k+1}}$$ .
+Thus:
+\beq
+\begin{split}
+\norm{w_k - w_{k-1}} & \leq \hat{\eta} \left( \norm{\hat{v}_k^{-1/2} g_k} +  a \norm{\hat{v}_k^{-1/2} g_{k+1}} \right) \\
+& \leq \hat{\eta} \frac{a +1}{\sqrt{1 - \beta_2}} 
+\end{split}
+\eeq
+In short there exist a constant $B$ such that $\norm{w_k - w_{k-1}} \leq B$.
+
+\textbf{Proof by induction:} As in \citep{defossez2020convergence}, we will prove the containment of the weights by induction.
+Suppose an iteration index $K$ and a coordinate $i$ of the last layer $L$ such that $w^{(L)}_{K, i} \geq \frac{T}{4} + B$.
+Using \eqref{eq:boundderivativeloss}, we have
+$$
+\nabla_i f(w^{(L)}_K\geq - \frac{T}{4} + \lambda \frac{T}{\lambda4} \geq 0
+$$
+where $f(\cdot)$ is defined by \eqref{eq:lossmln} and is the loss of our MLN.
+This last equation yields $\theta^{(L)}_{K,i} \geq 0$ (given the algorithm and $\beta_1 = 0$).
 \newpage
 
 \bibliographystyle{abbrvnat}
