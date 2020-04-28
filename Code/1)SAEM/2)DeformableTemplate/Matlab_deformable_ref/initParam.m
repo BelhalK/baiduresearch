@@ -1,7 +1,7 @@
 function param=initParam()
 
 %%paramètres statiques
-param.C=7;
+param.C=1;
 param.P=16;
 param.Np=15;
 param.Ng=6;
@@ -15,7 +15,7 @@ param.SCALE_GEO=1;
 
 param.sig0=0.1;
 
-param.nbItEM=3000;
+param.nbItEM=30;
 
 param.nbData=100;
 
@@ -33,8 +33,10 @@ param.var_rigid=0.5;
 param.var_trans=0.5;
 param.updateSuffStat=cumsum([param.C 50 ones(1,param.nbItEM)]);
 param.updateTheta=cumsum([param.C 150 ones(1,param.nbItEM)]);
-param.nbItMCMC=[400*ones(1,10000)];
-param.burnMCMC=[300*ones(1,10000)];
+param.nbItMCMC=[6*ones(1,10000)];
+param.burnMCMC=[2*ones(1,10000)];
+%param.nbItMCMC=[400*ones(1,10000)];
+%param.burnMCMC=[300*ones(1,10000)];
 
 %%paramètres dynamiques
 param.nbItEM_completed=0;

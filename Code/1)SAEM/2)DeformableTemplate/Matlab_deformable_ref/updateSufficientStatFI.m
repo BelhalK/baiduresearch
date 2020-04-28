@@ -9,7 +9,6 @@ Kg=model.param.Kg;
 model.countSS=model.countSS+1;
 
 step=1/((model.countSS)^coeff_Sto);
-
 stepfi = 1/(length^(2/3));
 
 countExp=model.countExp;
