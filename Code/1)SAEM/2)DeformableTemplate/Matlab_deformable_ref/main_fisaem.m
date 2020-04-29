@@ -58,11 +58,11 @@ n
             
         model=simulMissingDataFI(model,data(index_j,:),index_j,n);
         model_old=simulMissingDataFI(model_old,data(index_j,:),index_j,index_j);
-        model.h.S0(1,C,index_j) = model.h.S0(1,C,index_j) + (model.S0_tmp(1,C,index_j) - model_old.S0_tmp(1,C,index_j))/model.countExp;
-        model.h.S1(:,:,index_j) = model.h.S1(:,:,index_j) + (model.S1_tmp(:,:,index_j) - model_old.S1_tmp(:,:,index_j))/model.countExp;
-        model.h.S2(:,:,index_j) = model.h.S2(:,:,index_j) + (model.S2_tmp(:,:,index_j) - model_old.S2_tmp(:,:,index_j))/model.countExp;
-        model.h.S3(:,:,index_j) = model.h.S3(:,:,index_j) + (model.S3_tmp(:,:,index_j) - model_old.S3_tmp(:,:,index_j))/model.countExp;
-        model.h.S4(1,C,index_j) = model.h.S4(1,C,index_j) + (model.S4_tmp(1,C,index_j) - model_old.S4_tmp(1,C,index_j))/model.countExp;
+        model.h.S0(1,C,index_j) = model.h.S0(1,C,index_j) + (model.S0_tmp(1,C,index_j) - model_old.S0_tmp(1,C,index_j))/(model.length*model.countExp);
+        model.h.S1(:,:,index_j) = model.h.S1(:,:,index_j) + (model.S1_tmp(:,:,index_j) - model_old.S1_tmp(:,:,index_j))/(model.length*model.countExp);
+        model.h.S2(:,:,index_j) = model.h.S2(:,:,index_j) + (model.S2_tmp(:,:,index_j) - model_old.S2_tmp(:,:,index_j))/(model.length*model.countExp);
+        model.h.S3(:,:,index_j) = model.h.S3(:,:,index_j) + (model.S3_tmp(:,:,index_j) - model_old.S3_tmp(:,:,index_j))/(model.length*model.countExp);
+        model.h.S4(1,C,index_j) = model.h.S4(1,C,index_j) + (model.S4_tmp(1,C,index_j) - model_old.S4_tmp(1,C,index_j))/(model.length*model.countExp);
         model_old.theta(index_j) = model.theta(n);
     end
     

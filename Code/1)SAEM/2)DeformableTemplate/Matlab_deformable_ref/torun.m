@@ -1,7 +1,7 @@
 data = load("US_POSTAL_DIGITS_0_1.mat")
 index = 5;
 start = 1;
-finish = 30;
+finish = 20;
 data5 = data.US_POSTAL_DIGITS(start:finish,:,index);
 
 %Online SAEM

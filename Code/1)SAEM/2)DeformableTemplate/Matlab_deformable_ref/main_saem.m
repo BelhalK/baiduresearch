@@ -10,7 +10,7 @@ nbItEM=model.param.nbItEM;
 phi_mat=phi(model);
 sig_init=0.5;
 gam_init=0.5;
-model.theta(1).alpha(:,1)=pinv(phi_mat'*phi_mat)*(phi_mat'*(mean(data(1:10,:))'));
+model.theta(1).alpha(:,1)=pinv(phi_mat'*phi_mat)*(phi_mat'*(mean(data(:,:))'));
 
 model.theta(1).sigma_2(1)=sig_init;
 model.theta(1).gamma_2(1)=gam_init;

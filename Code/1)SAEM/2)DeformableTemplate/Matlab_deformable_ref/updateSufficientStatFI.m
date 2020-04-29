@@ -31,11 +31,11 @@ Vs2 = model.h.S2;
 Vs3 = model.h.S3;
 Vs4 = model.h.S4;
 
-Vs0(1,C,ind) = model.h.S0(1,C,ind) + (S0_tmp(1,C,ind) - S0_tmp_old(1,C,ind))*length/countExp;
-Vs1(:,:,ind) = model.h.S1(:,:,ind) + (S1_tmp(:,:,ind) - S1_tmp_old(:,:,ind))*length/countExp;
-Vs2(:,:,ind) = model.h.S2(:,:,ind) + (S2_tmp(:,:,ind) - S2_tmp_old(:,:,ind))*length/countExp;
-Vs3(:,:,ind) = model.h.S3(:,:,ind) + (S3_tmp(:,:,ind) - S3_tmp_old(:,:,ind))*length/countExp;
-Vs4(1,C,ind) = model.h.S4(1,C,ind) + (S4_tmp(1,C,ind) - S4_tmp_old(1,C,ind))*length/countExp;
+Vs0(1,C,ind) = model.h.S0(1,C,ind) + (S0_tmp(1,C,ind) - S0_tmp_old(1,C,ind));
+Vs1(:,:,ind) = model.h.S1(:,:,ind) + (S1_tmp(:,:,ind) - S1_tmp_old(:,:,ind));
+Vs2(:,:,ind) = model.h.S2(:,:,ind) + (S2_tmp(:,:,ind) - S2_tmp_old(:,:,ind));
+Vs3(:,:,ind) = model.h.S3(:,:,ind) + (S3_tmp(:,:,ind) - S3_tmp_old(:,:,ind));
+Vs4(1,C,ind) = model.h.S4(1,C,ind) + (S4_tmp(1,C,ind) - S4_tmp_old(1,C,ind));
 
 Vs0_sum = 0;
 Vs1_sum = 0;
