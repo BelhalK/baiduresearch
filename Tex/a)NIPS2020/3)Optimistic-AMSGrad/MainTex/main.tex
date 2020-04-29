@@ -146,7 +146,8 @@ citecolor=blue]{hyperref}
 We consider a new variant of AMSGrad. 
 AMSGrad \cite{RKK18} is a popular adaptive gradient based optimization algorithm that is widely used in training deep neural networks. 
 The new variant assumes that mini-batch gradients in consecutive iterations have some underlying structure, which makes the gradients sequentially predictable. 
-By exploiting the predictability and some ideas from Optimistic Online Learning, the proposed algorithm can accelerate the convergence, increase sample efficiency and also enjoys a tighter regret bound under some conditions. We conduct experiments on several deep learning models, which show that by improving sample efficiency, the proposed method achieves a convergence speedup in practice.
+By exploiting the predictability and some ideas from Optimistic Online Learning, the proposed algorithm can accelerate the convergence, increase sample efficiency and also enjoys a tighter non-asymptotic bound under some conditions. 
+We conduct experiments on several deep learning models, which show that by improving sample efficiency, the proposed method achieves a convergence speedup in practice.
 \end{abstract}
 
 \section{Introduction}
@@ -375,101 +376,108 @@ $B_{\psi_t}(u,v) := \psi_t(u)
 $ with $\psi_t(\cdot)$ as the distance generating function.
 We can also define the corresponding dual norm $\| \cdot \|_{\psi_t^*}:= \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{-1/2} \cdot \rangle }$.
 
-\textbf{Regret analysis.}\hspace{0.1in}We prove the following result regarding the regret in the convex optimization setting. That is, we assume that the loss function $f$ is convex. We also assume that $\K$ has bounded diameter $D_{\infty}$, which is a standard assumption in previous works \cite{RKK18,KB15} on adaptive methods. It is necessary in regret analysis since if the boundedness assumption is lifted, one might construct a scenario such that the benchmark is $w^* = \infty$ and the learner's regret is infinite. For simplicity, we analyze the case when $\beta_{1}=0$. One might extend our analysis to more general settings. For conciseness, we place all the proofs in the supplementary material.
-
-\begin{Theorem} \label{thm:main}
-Let $\beta_{1}=0$. Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
-\textsc{Optimistic-AMSGrad} (Algorithm~\ref{optadam}) 
-has regret 
-\begin{equation} \label{bound:optada}
-\begin{aligned}
-\textstyle
- \text{Regret}_T & \textstyle
- \leq
-  \frac{1}{\eta_{\min}} D_{\infty}^2 
-\sum_{i=1}^d \hat{v}_{T}^{1/2}[i]
-+ \frac{ B_{\psi_1}(w^*, w_{1/2})}{\eta_1} \\
-&\hspace{1in}+
- \sum_{t=1}^T
-\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 ,
-\end{aligned}
+\textbf{Non-asymptotic analysis.}\hspace{0.1in}We establish in this section a finite-time upper bound of the expected squared norm of the gradient of the objective function we are optimizing.
+The objective function for most deep learning task reads as follows:
+\begin{equation}\label{eq:minproblem}
+\min \limits_{w \in \Theta} f(w) \eqdef  \frac{1}{n} \sum_{i=1}^n f(w, \xi_i)
 \end{equation}
-where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
-The result holds for any benchmark $w^{*} \in \K$ and any step size sequence $\{ \eta_t \}$.
-\end{Theorem}
-We have the following corollary with further assumptions on $v_t$.
-\begin{Corollary}
-Suppose that $v_{t}$ is always monotone increasing (i.e. $\hat{v}_t = v_t, \forall t$).
-Then, 
-% $\text{Regret}_T \leq $
-%\vspace{-0.05in}
-\begin{equation} \label{bc}
-\begin{aligned}
-\textstyle & \textstyle \text{Regret}_T \leq 
-  \textstyle
- \frac{ B_{\psi_1}(w^*, w_{1/2}) 
-}{\eta_1} 
-+
-\sum_{t=1}^T
-\frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2 \\
-&+\frac{D_{\infty}^2}{\eta_{\min}} \sum_{i=1}^d \{ (1-\beta_2) \sum_{s=1}^{T} \beta_2^{T-s} (g_s[i] - m_s[i])^2 \}^{1/2}.
-\end{aligned}
-\end{equation}
-\end{Corollary}
+where $(\xi_i, i \in [1,n])$ is the vector of $n$ input data.
 
-We should compare the bound of (\ref{bc}) \footnote{The following conclusion in general holds for (\ref{bound:optada}), when $v_t$ may not be monotone-increasing. For brevity, we only consider the case that $\hat{v}_t=v_t$, as $\hat{v}_T$ has a clean expression in this case.}
- with that of \textsc{AMSGrad} \cite{RKK18},
-which is 
-\textit{
-\begin{equation} \label{boundAMS}
-\begin{aligned}
-\textstyle
-& \textstyle
- \text{Regret}_T \leq
-\textstyle
- \frac{ \eta \sqrt{ 1 + \log T}    }{ (1-\beta_1)^2(1 - \gamma) \sqrt{1 - \beta_2}  } \sum_{i=1}^d \| g_{1:T}[i]  \|_2\\
- &+\frac{\sqrt{T}}{2 \eta (1 - \beta_{1})}
-D^2_{\infty} \sum_{i=1}^d \hat{v}_T[i]^2 
-%\\& \textstyle
- + 
-D^2_{\infty} \sum_{t=1}^T \sum_{i=1}^d
-\frac{\beta_{1} \hat{v}_t[i]^{1/2} }{2 \eta_t (1-\beta_1)},
-\end{aligned}
-\end{equation}
-}
-where the result was obtained by setting the step size $\eta_t = \eta /\sqrt{t}$. 
-Notice that $\hat{v}_t$ in (\ref{boundAMS}) is the one in Algorithm~\ref{amsgrad} (\textsc{AMSGrad}).
-For fair comparison, let us set $\eta_t=\eta/\sqrt{t}$ in (\ref{bc}) so that $\eta_1=\eta$ and $\eta_{min}= \eta/ \sqrt{T}$ and also let us set $\beta_{1}=0$ in (\ref{boundAMS}) so that their parameters have the same values.
-By comparing the last term in (\ref{bc}) and the second term in (\ref{boundAMS}),
-we clearly see that if $g_{t}$ and $m_{t}$ are close, the first term in (\ref{bc}) would be 
-smaller than $\frac{\sqrt{T}}{2 \eta (1 - \beta_{1})} D^2_{\infty} \sum_{i=1}^d \hat{v}_T[i]^2$
-of (\ref{boundAMS}).
-Now let us switch to the first term in (\ref{bc}) and last term in (\ref{boundAMS}). We
-see that $\frac{ B_{\psi_1}(w^*, w_{1/2}) 
-}{\eta_1} \simeq D_{\infty}$ in (\ref{bc}), while $0$ in (\ref{boundAMS}).
-For the second term in (\ref{bc}), we have
-\begin{align*}
-    &\textstyle \sum_{t=1}^T \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2\\
-    &=\sum_{t=1}^{T-1} \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2
-    + \eta_T \sum_{i=1}^d \frac{ (g_{T}[i] - m_{T}[i])^2 }{ \sqrt{ v_{T-1}[i]} }\\
-    &=\sum_{t=1}^{T-1} \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2
-    \\
-    &\hspace{0.3in}+ \eta \sum_{i=1}^d \frac{ (g_{T}[i] - m_{T}[i])^2 }{ \sqrt{ T \big( (1-\beta_2) \sum_{s=1}^{T-1} \beta_2^{T-1-s} (g_{s}[i] - m_{s}[i])^2 } \big) }\\
-    &\leq 
-    \eta \sum_{i=1}^d \sum_{t=1}^T \frac{ (g_{t}[i] - m_{t}[i])^2 }{ \sqrt{ t \big( (1-\beta_2) \sum_{s=1}^{t-1} \beta_2^{t-1-s} (g_{s}[i] - m_{s}[i])^2 } \big) }.
-\end{align*}
-To interpret the bound, let us make a rough approximation such that
-$\sum_{s=1}^{t-1} \beta_2^{t-1-s} (g_{s}[i] - m_{s}[i])^2  \simeq (g_{t}[i] - m_t[i])^2 $.
-Then, we can further get an upper-bound as \begin{align*}
-    \sum_{t=1}^T \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2 &\leq
-    \frac{\eta}{\sqrt{1 - \beta}} \sum_{i=1}^d \sum_{t=1}^{T} \frac{ | g_{t}[i] - m_{t}[i] | }{ \sqrt{t} }\\
-    &\leq \frac{\eta \sqrt{1 + \log T}}{\sqrt{1 - \beta}} \sum_{i=1}^d \| (g-m)_{1:T}[i] \|_2 ,
-\end{align*}
-where the last inequality is due to Cauchy-Schwarz. So the bound means that when
-$g_{t}$ and $m_t$ are sufficiently close, the last term in (\ref{bc})
-is smaller than that in (\ref{boundAMS}).
-To conclude, as the second term in (\ref{bc}) (which is approximately $D_{\infty}$) is likely to be dominated by the other terms, the proposed algorithm improves \textsc{AMSGrad} when the good guess $m_t$ is available.
-
+%\textbf{Regret analysis.}\hspace{0.1in}We prove the following result regarding the regret in the convex optimization setting. That is, we assume that the loss function $f$ is convex. We also assume that $\K$ has bounded diameter $D_{\infty}$, which is a standard assumption in previous works \cite{RKK18,KB15} on adaptive methods. It is necessary in regret analysis since if the boundedness assumption is lifted, one might construct a scenario such that the benchmark is $w^* = \infty$ and the learner's regret is infinite. For simplicity, we analyze the case when $\beta_{1}=0$. One might extend our analysis to more general settings. For conciseness, we place all the proofs in the supplementary material.
+%
+%\begin{Theorem} \label{thm:main}
+%Let $\beta_{1}=0$. Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
+%\textsc{Optimistic-AMSGrad} (Algorithm~\ref{optadam}) 
+%has regret 
+%\begin{equation} \label{bound:optada}
+%\begin{aligned}
+%\textstyle
+% \text{Regret}_T & \textstyle
+% \leq
+%  \frac{1}{\eta_{\min}} D_{\infty}^2 
+%\sum_{i=1}^d \hat{v}_{T}^{1/2}[i]
+%+ \frac{ B_{\psi_1}(w^*, w_{1/2})}{\eta_1} \\
+%&\hspace{1in}+
+% \sum_{t=1}^T
+%\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 ,
+%\end{aligned}
+%\end{equation}
+%where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
+%The result holds for any benchmark $w^{*} \in \K$ and any step size sequence $\{ \eta_t \}$.
+%\end{Theorem}
+%We have the following corollary with further assumptions on $v_t$.
+%\begin{Corollary}
+%Suppose that $v_{t}$ is always monotone increasing (i.e. $\hat{v}_t = v_t, \forall t$).
+%Then, 
+%% $\text{Regret}_T \leq $
+%%\vspace{-0.05in}
+%\begin{equation} \label{bc}
+%\begin{aligned}
+%\textstyle & \textstyle \text{Regret}_T \leq 
+%  \textstyle
+% \frac{ B_{\psi_1}(w^*, w_{1/2}) 
+%}{\eta_1} 
+%+
+%\sum_{t=1}^T
+%\frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2 \\
+%&+\frac{D_{\infty}^2}{\eta_{\min}} \sum_{i=1}^d \{ (1-\beta_2) \sum_{s=1}^{T} \beta_2^{T-s} (g_s[i] - m_s[i])^2 \}^{1/2}.
+%\end{aligned}
+%\end{equation}
+%\end{Corollary}
+%
+%We should compare the bound of (\ref{bc}) \footnote{The following conclusion in general holds for (\ref{bound:optada}), when $v_t$ may not be monotone-increasing. For brevity, we only consider the case that $\hat{v}_t=v_t$, as $\hat{v}_T$ has a clean expression in this case.}
+% with that of \textsc{AMSGrad} \cite{RKK18},
+%which is 
+%\textit{
+%\begin{equation} \label{boundAMS}
+%\begin{aligned}
+%\textstyle
+%& \textstyle
+% \text{Regret}_T \leq
+%\textstyle
+% \frac{ \eta \sqrt{ 1 + \log T}    }{ (1-\beta_1)^2(1 - \gamma) \sqrt{1 - \beta_2}  } \sum_{i=1}^d \| g_{1:T}[i]  \|_2\\
+% &+\frac{\sqrt{T}}{2 \eta (1 - \beta_{1})}
+%D^2_{\infty} \sum_{i=1}^d \hat{v}_T[i]^2 
+%%\\& \textstyle
+% + 
+%D^2_{\infty} \sum_{t=1}^T \sum_{i=1}^d
+%\frac{\beta_{1} \hat{v}_t[i]^{1/2} }{2 \eta_t (1-\beta_1)},
+%\end{aligned}
+%\end{equation}
+%}
+%where the result was obtained by setting the step size $\eta_t = \eta /\sqrt{t}$. 
+%Notice that $\hat{v}_t$ in (\ref{boundAMS}) is the one in Algorithm~\ref{amsgrad} (\textsc{AMSGrad}).
+%For fair comparison, let us set $\eta_t=\eta/\sqrt{t}$ in (\ref{bc}) so that $\eta_1=\eta$ and $\eta_{min}= \eta/ \sqrt{T}$ and also let us set $\beta_{1}=0$ in (\ref{boundAMS}) so that their parameters have the same values.
+%By comparing the last term in (\ref{bc}) and the second term in (\ref{boundAMS}),
+%we clearly see that if $g_{t}$ and $m_{t}$ are close, the first term in (\ref{bc}) would be 
+%smaller than $\frac{\sqrt{T}}{2 \eta (1 - \beta_{1})} D^2_{\infty} \sum_{i=1}^d \hat{v}_T[i]^2$
+%of (\ref{boundAMS}).
+%Now let us switch to the first term in (\ref{bc}) and last term in (\ref{boundAMS}). We
+%see that $\frac{ B_{\psi_1}(w^*, w_{1/2}) 
+%}{\eta_1} \simeq D_{\infty}$ in (\ref{bc}), while $0$ in (\ref{boundAMS}).
+%For the second term in (\ref{bc}), we have
+%\begin{align*}
+%    &\textstyle \sum_{t=1}^T \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2\\
+%    &=\sum_{t=1}^{T-1} \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2
+%    + \eta_T \sum_{i=1}^d \frac{ (g_{T}[i] - m_{T}[i])^2 }{ \sqrt{ v_{T-1}[i]} }\\
+%    &=\sum_{t=1}^{T-1} \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2
+%    \\
+%    &\hspace{0.3in}+ \eta \sum_{i=1}^d \frac{ (g_{T}[i] - m_{T}[i])^2 }{ \sqrt{ T \big( (1-\beta_2) \sum_{s=1}^{T-1} \beta_2^{T-1-s} (g_{s}[i] - m_{s}[i])^2 } \big) }\\
+%    &\leq 
+%    \eta \sum_{i=1}^d \sum_{t=1}^T \frac{ (g_{t}[i] - m_{t}[i])^2 }{ \sqrt{ t \big( (1-\beta_2) \sum_{s=1}^{t-1} \beta_2^{t-1-s} (g_{s}[i] - m_{s}[i])^2 } \big) }.
+%\end{align*}
+%To interpret the bound, let us make a rough approximation such that
+%$\sum_{s=1}^{t-1} \beta_2^{t-1-s} (g_{s}[i] - m_{s}[i])^2  \simeq (g_{t}[i] - m_t[i])^2 $.
+%Then, we can further get an upper-bound as \begin{align*}
+%    \sum_{t=1}^T \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2 &\leq
+%    \frac{\eta}{\sqrt{1 - \beta}} \sum_{i=1}^d \sum_{t=1}^{T} \frac{ | g_{t}[i] - m_{t}[i] | }{ \sqrt{t} }\\
+%    &\leq \frac{\eta \sqrt{1 + \log T}}{\sqrt{1 - \beta}} \sum_{i=1}^d \| (g-m)_{1:T}[i] \|_2 ,
+%\end{align*}
+%where the last inequality is due to Cauchy-Schwarz. So the bound means that when
+%$g_{t}$ and $m_t$ are sufficiently close, the last term in (\ref{bc})
+%is smaller than that in (\ref{boundAMS}).
+%To conclude, as the second term in (\ref{bc}) (which is approximately $D_{\infty}$) is likely to be dominated by the other terms, the proposed algorithm improves \textsc{AMSGrad} when the good guess $m_t$ is available.
+%
 
 \subsection{Comparison to some related methods} \label{app:related}
 
