@@ -190,31 +190,26 @@ In the simulation step \eqref{eq:stats}, since the loss function between the obs
 \citep{kuhn2004coupling} proved almost sure convergence of the sequence of parameters obtained by this algorithm coupled with an MCMC procedure during the simulation step. 
 In simple scenarios, the samples $\{z_{i,m}\}_{m=0}^{M-1}$ are conditionally independent and identically distributed with distribution $p(z_i,\theta)$.
 Nevertheless, in most cases, sampling exactly from this distribution is not an option and the Monte Carlo batch is sampled by Monte Carlo Markov Chains (MCMC) algorithm.
-In the \textsf{SA-step}, the sequence of decreasing positive integers $\{ \gamma_{k} \}_{k>1}$ controls the convergence of the algorithm.
- In practice, $\gamma_k$ is set equal to $1$ during the first few iterations to let the algorithm explore the parameter space without memory and converge quickly to a neighborhood of the target estimate. 
- The Stochastic Approximation is performed during the remaining iterations where $\gamma_k = 1/k^\alpha$, where $\alpha \in (0,1)$, ensuring the almost sure convergence of the estimate.
- It is inappropriate to start with small values for step size $\gamma_k$ and large values for the number of simulations $M_k$. Rather, it is recommended that one decrease $\gamma_k$ and keep a constant and small number of MC samples $M_k$ which shows a great advantage over the \textsf{MC-step} \eqref{eq:mcstep}, which requires large $M_k$ to converge.
-
-
-
+%In the \textsf{SA-step}, the sequence of decreasing positive integers $\{ \gamma_{k} \}_{k>1}$ controls the convergence of the algorithm.
+% In practice, $\gamma_k$ is set equal to $1$ during the first few iterations to let the algorithm explore the parameter space without memory and converge quickly to a neighborhood of the target estimate. 
+% The Stochastic Approximation is performed during the remaining iterations where $\gamma_k = 1/k^\alpha$, where $\alpha \in (0,1)$, ensuring the almost sure convergence of the estimate.
+ It is inappropriate to start with small values for step size $\gamma_k$ and large values for the number of simulations $M_k$. Rather, it is recommended that one decrease $\gamma_k$, as in $\gamma_k = 1/k^\alpha$, where $\alpha \in (0,1)$, and keep a constant and small number of MC samples $M_k$ which shows a great advantage over the \textsf{MC-step} \eqref{eq:mcstep}, which requires large $M_k$ to converge.
 This Robbins-Monro type of update represents the \textit{first level} of our algorithm, needed to temper the variance and noise implied by MC integration.
 In the next section, we derive variants of this algorithm to adapt to the sheer size of data of today's applications and formalize the \textit{second level} of our class of two-timescale EM methods.
 
 \subsection{Incremental and Bi-Level Stochastic EM Methods} \label{sec:sEM}
-Strategies to scale to large datasets include classical incremental and variance reduced variants.
-We will explicit a general update that will cover those variants and that represents the \textit{second level} of our algorithm, namely the incremental update of the approximated statistics $\hat{S}^{(k)}$ inside the RM type of update.
-
+Efficient strategies to scale to large datasets include incremental and variance reduced methods.
+We will explicit a general update that covers those latter variants and that represents the \textit{second level} of our algorithm, namely the incremental update of the approached statistics $\hat{S}^{(k)}$ inside the \textsf{SA-Step}.
 \beq \label{eq:sestep}
 \textsf{Incremental-step}:~\tilde{S}^{(k+1)} = \tilde{S}^{(k)} + \rho_{k+1} \big( \StocEstep^{(k+1)}- \tilde{S}^{(k)}  \big)\eqs.
 \eeq
-
 Note $\{ \rho_{k} \}_{k>1} \in (0,1)$ is a sequence of step sizes, $\StocEstep^{(k)}$ is a proxy for $\tilde{S}^{(k)}$,
 If the stepsize is equal to one and the proxy $\StocEstep^{(k)} = \hat{S}^{(k)}$, i.e., computed in a full batch manner as in \eqref{eq:stats}, then we recover the SAEM algorithm.
 Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, then we recover the MCEM \citep{wei1990monte}.
 
 We now introduce three variants of the SAEM update depending on different definitions of the proxy $\StocEstep^{(k)}$ and the choice of the stepsize $\rho_k$.
 Let $i_k \in \inter$ be a random index drawn at iteration $k$ and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ be the iteration index where $i \in \inter$ is last drawn prior to iteration $k$.
-For iteration $k \geq 0$, the \FISAEM\ method draws \emph{two} indices \emph{independently} and uniformly as $i_k, j_k \in \inter$. In addition to $\tau_i^k$ which was defined \wrt $i_k$, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$. With the initialization $\overline{\StocEstep}^{(0)} = \overline{\bss}^{(0)}$, we use a slightly different update rule from SAGA inspired by \citep{reddi2016fast}. Then, we obtain:
+For iteration $k \geq 0$, the \FISAEM\ method draws \emph{two} indices \emph{independently} and uniformly as $i_k, j_k \in \inter$. In addition to $\tau_i^k$ which was defined \wrt $i_k$, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$. We use a slightly different update rule from SAGA inspired by \citep{reddi2016fast}. Then, we obtain:
 \begin{align}
 &\emph{(\ISAEM\ \citep{ kuhn2019properties})} & \StocEstep^{(k+1)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:isaem} \\
 &\emph{(\SAEMVR\  )} &\StocEstep^{(k+1)} &= \tilde{S}^{(\ell(k))} +  \big( \tilde{S}_{i_k}^{(k)}  -\tilde{S}_{i_k}^{(\ell(k))}   \big) \label{eq:vrsaem}\\
@@ -224,7 +219,7 @@ where $\tilde{S}_{i_k}^{(k)} $ is the MC approximation of the expectation $ \ove
 \beq\notag
 \tilde{S}_{i_k}^{(k)}=  \frac{1}{M_k} \sum_{m=1}^{M_k} S(z_{i_k,m}^{(k)}, y_{i_k}) \quad \textrm{with} \quad z_{i_k,m}^{(k)}, \sim p(z_{i_k}|y_{i_k};\theta^{(k)})\eqs.
 \eeq
-The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method and we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \gamma$ is  constant for the \SAEMVR\ and \FISAEM\ methods.
+The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method and we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \gamma$ is  constant for the \SAEMVR\ and \FISAEM\ methods. Note that we initialize as follows $\overline{\StocEstep}^{(0)} = \overline{\bss}^{(0)}$ for the \FISAEM\ .
 Moreover, for \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in.
 
 
@@ -256,7 +251,7 @@ Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:
 %\STATE \textbf{Return:} $\prm_t$.
   \end{algorithmic}
 \end{algorithm}
-\vspace{-.2cm}
+\vspace{-.4cm}
 The update in \eqref{eq:twolevels} is said to have two-timescale as the step sizes satisfy $\lim \limits_{k \to \infty} \gamma_k/\rho_k < 1$ such that $ \tilde{S}^{(k+1)} $  is updated at a faster time-scale, determined by $\rho_k$, than $\hat{\bss}^{(k+1)}$, determined by $\gamma_k$.
 The next section presents the main results of this paper and establishes global and finite-time bounds for the three different updates of our two-timescale scheme.
 \vspace{-.2cm}
@@ -456,7 +451,9 @@ where $\StocEstep^{(k)}  $ is defined either by \eqref{eq:vrsaem} (\SAEMVR\ ) or
 In the next section, we illustrate the benefits of our two-timescale class of algorithms on several numerical applications.
 \vspace{-.2cm}
 \section{Numerical Examples}\label{sec:numerical}
-For the sake of space, we provide details on the experiments in Appendix~\ref{app:experiments}.
+\vspace{-0.2cm}
+%For the sake of space, we provide details on the experiments in Appendix~\ref{app:experiments}.
+%\vspace{-0.2cm}
 \subsection{Gaussian Mixture Models}
 We begin by a simple and illustrative example.
 The authors acknowledge that the following model can be trained using deterministic EM-type of algorithms but propose to apply stochastic methods, including theirs, and to compare their performances.
@@ -466,34 +463,27 @@ Let $z_i \in \inter[M]$ be the latent labels of each component, the complete log
 \log f( z_i, y_i; \param) =
 \sum_{m=1}^{M} \indiacc{m}(z_i) \left[ \log(\omega_m) - \mu_m^2/2 \right] + \sum_{m=1}^M \indiacc{m}(z_i) \mu_m y_i + {\rm constant} \eqsp.
 \eeq
-where $\param \eqdef (\bomega, \bmu)$ with $\bomega= \{\omega_{m}\}_{m=1}^{M-1}$ are the mixing weights with the convention $\omega_M= 1 - \sum_{m=1}^{M-1} \omega_m$  and $\bmu= \{\mu_m \}_{m =1}^M$ are the means.  We use the penalization 
-%$\Pen( \param ) \eqdef  \epsilon \sum_{m=1}^M \big\{ \mu_m^2 / 2 - \log ( \omega_m ) \big\} - \epsilon \log \big( 1 - \sum_{m=1}^{M-1} \omega_m \big)$ where $\epsilon > 0$ is a small regularization parameter. 
-$\Pen(\param)= \frac{\delta}{2}\sum_{m=1}^M \mu_m^2 - \log \Dir(\bomega; M, \epsilon)$ where $\delta > 0$ and $\Dir(\cdot; M,\epsilon)$ is the $M$ dimensional symmetric Dirichlet distribution with concentration parameter $\epsilon > 0$.
-The constraint set on $\param$ is given by\vspace{-.1cm}
-\beq \textstyle\notag
-\Param = \{ \omega_m,~m=1,...,M-1 : \omega_m \geq 0,~\sum_{m=1}^{M-1} \omega_m \leq 1\} \times \{ \mu_m \in \rset ,~m=1,...,M \}.
-\eeq
-
-
-In the following experiments on synthetic data, we generate $30$ synthetic datasets of size $n = 10^5$ from a GMM model with $M=2$ components with two mixtures with means $\mu_1 = - \mu_2 = 0.5$.
-\begin{wrapfigure}[14]{r}{.5\textwidth}\vspace{-.5cm}
+\begin{wrapfigure}[12]{r}{.5\textwidth}\vspace{-.9cm}
 \begin{minipage}{0.5\textwidth}
 \begin{figure}[H]
 \includegraphics[width=\textwidth]{pic_paper/tts_gmm_n100k.png}
 \caption{Precision $|\mu^{(k)} - \mu^*|^2$ per epoch}
 \label{fig:gmm_tts}
 \end{figure}
-
 \end{minipage}
 \end{wrapfigure}
+where $\param \eqdef (\bomega, \bmu)$ with $\bomega= \{\omega_{m}\}_{m=1}^{M-1}$ are the mixing weights with the convention $\omega_M= 1 - \sum_{m=1}^{M-1} \omega_m$  and $\bmu= \{\mu_m \}_{m =1}^M$ are the means.  We use the penalization 
+%$\Pen( \param ) \eqdef  \epsilon \sum_{m=1}^M \big\{ \mu_m^2 / 2 - \log ( \omega_m ) \big\} - \epsilon \log \big( 1 - \sum_{m=1}^{M-1} \omega_m \big)$ where $\epsilon > 0$ is a small regularization parameter. 
+$\Pen(\param)= \frac{\delta}{2}\sum_{m=1}^M \mu_m^2 - \log \Dir(\bomega; M, \epsilon)$ where $\delta > 0$ and $\Dir(\cdot; M,\epsilon)$ is the $M$ dimensional symmetric Dirichlet distribution with concentration parameter $\epsilon > 0$.
+The constraint set on $\Param$ is given by $\Param = \{ \omega_m,~m=1,...,M-1 : \omega_m \geq 0,~\sum_{m=1}^{M-1} \omega_m \leq 1\} \times \{ \mu_m \in \rset ,~m=1,...,M \}.$
+%\beq \textstyle\notag
+%\Param = \{ \omega_m,~m=1,...,M-1 : \omega_m \geq 0,~\sum_{m=1}^{M-1} \omega_m \leq 1\} \times \{ \mu_m \in \rset ,~m=1,...,M \}.
+%\eeq
+In the following experiments on synthetic data, we generate $30$ synthetic datasets of size $n = 10^5$ from a GMM model with $M=2$ components with two mixtures with means $\mu_1 = - \mu_2 = 0.5$.
 We run the bEM method until convergence (to double precision) to obtain the ML estimate $\mu^\star$ averaged on $50$ datasets. We compare the bEM, iEM (incremental EM), SAEM, \ISAEM, \SAEMVR\ and \FISAEM\ methods in terms of their precision measured by $| \mu - \mu^\star |^2$. 
 We set the stepsize of the \textsf{SA-step} of all method as $\gamma_k = 1/k^{\alpha}$ with $\alpha = 0.5$, and the stepsizes of the \textsf{Incremental-step} for \SAEMVR\ and the \FISAEM\ to a constant stepsize equal to $1/n^{2/3}$. The number of MC samples is fixed to $M=10$ chains.
-Figure \ref{fig:gmm_tts} shows the convergence of the precision $|\mu - \mu^*|^2$ for the different methods against the epoch(s) elapsed (one epoch equals $n$ iterations). Besides, \SAEMVR\ and \FISAEM\ methods outperform the other stochastic methods, supporting the benefits of our scheme.
-
-
-
-
-
+Figure \ref{fig:gmm_tts} shows the precision $|\mu - \mu^*|^2$ for the different methods against the epoch(s) elapsed (one epoch equals $n$ iterations). Besides, \SAEMVR\ and \FISAEM\ methods outperform the other stochastic methods, supporting the benefits of our scheme.
+\vspace{-.3cm}
 \subsection{Deformable Template Model for Image Analysis}
 Let $(y_i, i \in \inter)$ be observed gray level images defined on a grid of pixels.
 Let $u \in \mathcal{U} \subset \rset^2$ denotes the pixel index on the image and $x_u \in \mathcal{D} \subset \rset^2$ its location.
@@ -502,13 +492,11 @@ The model used in this experiment suggests that each image $y_i$ is a deformatio
 y_{i}(u)=I\left(x_{u}-\Phi_{i}\left(x_{u}, z_i\right)\right)+\varepsilon_{i}(u)
 \eeq
 where $\phi_i: \rset^2 \to \rset^2$ is a deformation function, $z_i$ some latent variable parameterizing this deformation and $\varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)$ is an observation error.
-
-The template model, given $\{p_k\}_{k=1}^{k_p}$ landmarks on the template, a fixed known kernel $\mathbf{K}_{\mathbf{p}}$ and a vector of parameters $\beta \in \rset^{k_p}$ is defined as follows:
+The template model, given $\{p_k\}_{k=1}^{k_p}$ landmarks on the template, a fixed known kernel $\mathbf{K}_{\mathbf{p}}$ and a vector of parameters $\beta \in \rset^{k_p}$ is defined as follows:\vspace{-0.2cm}
 \beq\notag
 I_{\xi}=\mathbf{K}_{\mathbf{p}} \beta, \quad \textrm{where} \quad \left(\mathbf{K}_{\mathbf{p}} \beta \right)(x)=\sum_{k=1}^{k_{p}} \mathbf{K}_{\mathbf{p}}\left(x, p_{k}\right) \beta_k\eqs.
 \eeq
-
-Besides, we parameterize the deformation model given some landmarks $\{g_k\}_{k=1}^{k_g}$ and a fixed kernel $\mathbf{K}_{\mathbf{g}}$ as:
+Given a set of landmarks $\{g_k\}_{k=1}^{k_g}$ and a fixed kernel $\mathbf{K}_{\mathbf{g}}$, we parameterize the deformation $\Phi_{i}$ as:
 \beq\notag
 \Phi_{i}=\mathbf{K}_{\mathbf{g}} z_{i} \quad \textrm{where} \quad \left(\mathbf{K}_{\mathbf{g}} z_{i}\right)(x)=\sum_{k=1}^{k_{s}} \mathbf{K}_{\mathbf{g}}\left(x, g_{k}\right)\left(z_{i}^{(1)}(k), z_{i}^{(2)}(k)\right)\eqs,
 \eeq
@@ -522,66 +510,74 @@ We thus ought to use our deformable template model \eqref{eq:deformablemodel} in
 \includegraphics[width=\textwidth]{pic_paper/variancedigit.png}\vspace{-.2cm}
 \caption{Training set of the USPS database (20 images for figit $5$)}\vspace{-.2cm}
 \label{fig:variancedigit}
-\end{figure}
-
+\end{figure}\vspace{-0.2cm}
 Figure~\ref{fig:results} shows the resulting synthetic images for digit $5$ through several epochs and for the batch method, the online SAEM, the incremental SAEM and the various TTS methods.
 We choose Gaussian kernels for both, $\mathbf{K}_{\mathbf{p}}$ and $\mathbf{K}_{\mathbf{g}}$, defined on $\rset^2$ and centered on the landmark points$\{p_k\}_{k=1}^{k_p}$ and $\{g_k\}_{k=1}^{k_g}$ with standard respective standard deviations of $0.12$ and $0.3$. 
 $k_p = 15$  and  $k_g = 6$ equidistributed landmarks points are chosen on the grid for the training. Those hyperparameters are inspired by a relevant study in \citep{allassonniere2010construction}.
 The kernel covariance matrices are important hyperparameters in such study since they have a direct impact on the sharpness of the templates.
 Intuitively, if those variances are large, the kernels centered arounds the equidistributed landmark spread out on too many of its neighbors. Bad choices of such hyperparameters can lead to thicker shapes.
 
+%
+%\begin{figure}[H]
+%\begin{center}
+%\includegraphics[width=0.8\textwidth]{pic_paper/deformabledigit5.eps}\vspace{-.2cm}
+%\caption{Estimation of the template: from top to bottom: batch, online, \ISAEM\ ,\SAEMVR\ and \FISAEM\  . Columns represent 1 to 7 epochs.}\vspace{-.2cm}
+%\label{fig:results}
+%\end{center}
+%\end{figure}
+%
+%\begin{figure}[H]
+%\begin{center}
+%\includegraphics[width=\textwidth]{pic_paper/moreepochs}\vspace{-.2cm}
+%\caption{Estimation of the template: from top to bottom: batch, online, \ISAEM\ ,\SAEMVR\ and \FISAEM\ through 7 epochs. Note that Batch method templates are replicated in-between epochs for a fair comparison with incremental variants. }\vspace{-.2cm}
+%\label{fig:results}
+%\end{center}
+%\end{figure}
+
 
 \begin{figure}[H]
 \begin{center}
-\includegraphics[width=0.8\textwidth]{pic_paper/deformabledigit5.eps}\vspace{-.2cm}
-\caption{Estimation of the template: from top to bottom: batch, online, \ISAEM\ ,\SAEMVR\ and \FISAEM\  . Columns represent 1 to 7 epochs.}\vspace{-.2cm}
-\label{fig:results}
-\end{center}
-\end{figure}
-
-\begin{figure}[H]
-\begin{center}
-\includegraphics[width=\textwidth]{pic_paper/moreepochs}\vspace{-.2cm}
+\includegraphics[width=\textwidth]{pic_paper/deformable2}\vspace{-.2cm}
 \caption{Estimation of the template: from top to bottom: batch, online, \ISAEM\ ,\SAEMVR\ and \FISAEM\ through 7 epochs. Note that Batch method templates are replicated in-between epochs for a fair comparison with incremental variants. }\vspace{-.2cm}
 \label{fig:results}
 \end{center}
 \end{figure}
-
 Figure~\ref{fig:results} displays the virtue of the \SAEMVR\ and \FISAEM\ methods that obtain a more \textit{contrasted} and \textit{accurate} template estimate. The incremental and online version are looking much better on the very first epochs compared to the batch method, which is intuitive given the high computational cost of the batch method. After a few epochs, the batch SAEM seem to estimate similar template as the incremental an online methods due to the high variance of the latter procedures. Our variance reduced and fast incremental come into play in the long run and sharpen the final template estimates contrasting between the background and the regions of interest in the image.
 
-\subsection{PK Model with Absorption Lag Time}
-This numerical example was conducted in order to characterize the pharmacokinetics (PK) of orally administered drug to simulated patients, using a population pharmacokinetic approach. $M = 50$ synthetic datasets were generated for $n = 5000$ patients with $10$ observations (concentration measures) per patient.
-The goal tis to model the evolution of the concentration of the absorbed drug using a nonlinear and latent data model. 
-
-\textbf{The model:}
-We consider a one-compartment PK model for oral administration with an absorption lag-time ($T^{\textrm{lag}}$), assuming first-order absorption and linear elimination processes.
-The final model includes the following variables: $ka$ the absorption rate constant, $V$ the volume of distribution, $k$ the elimination rate constant and $T^{\textrm{lag}}$ the absorption lag-time. 
-We also add several covariates to our model such as $D$ the dose of drug administered, $t$ the time at which measures are taken and the weight of the patient influencing the volume $V$. More precisely, the log-volume $\log(V)$ is a linear function of the log-weight $lw70= \log(wt/70)$.
-Let $ z_i=(T_i^{\textrm{lag}}, ka_i, V_i, k_i)$ be the vector of individual PK parameters, different for each individual $i$.
-The final model reads:
-\begin{equation} \label{eq:pkmodel}
-y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij} \quad \textrm{where} \quad f(t_{ij},z_i) = \frac{D\,ka_i}{V(ka_i - k_i)}(\exponential^{-ka_i\,(t_{ij} - T_i^{\textrm{lag}})}-\exponential^{-k_i\,(t_{ij} - T_i^{\textrm{lag}})})\eqs,
-\end{equation}
-where $y_{ij}$ is the $j$-th concentration measurement of the drug of dosage $D$ injected at time $t_{ij}$ for patient $i$.
-We assume in this example that the residual errors $\varepsilon_{ij}$ are independent and normally distributed with mean 0 and variance $\sigma^2$.
-Lognormal distributions are used for the four PK parameters.
-
-\textbf{Monte Carlo study:}
-We conduct a Monte Carlo study to showcase the benefits of our scheme.
-$M=50$ datasets have been simulated using the following PK parameters values:
-$T^{\textrm{lag}}_{\rm pop} =1$, $ka_{\rm pop} =1$, $V_{\rm pop}= 8$, $k_{\rm pop}=0.1$, $ \omega_{T^{\textrm{lag}}}=0.4$, $\omega_{ka}=0.5$, $\omega_{V}=0.2$, $\omega_{k}=0.3$ and $\sigma^2=0.5$.
-\begin{wrapfigure}[12]{r}{.5\textwidth}
-\begin{minipage}{0.5\textwidth}\vspace{-.5cm}
-\begin{figure}[H]
-\includegraphics[width=\textwidth]{pic_paper/pk500.png}\vspace{-.2cm}
-\caption{Precision $|ka^{(k)} - ka^*|^2$ per epoch}\vspace{-.2cm}
-\label{fig:pk_tts}
-\end{figure}
-\end{minipage}
-\end{wrapfigure}
-We define the mean square distance over the $M$ replicates $E_k(\ell) = \frac{1}{M}\sum_{m=1}^{M}{\left(\theta_k^{(m)}(\ell) - \theta^* \right)^2}$ and plot it against the epochs (passes over the data) Figure~\ref{fig:pk_tts}.	
-Note that the {\sf MC-step} \eqref{eq:mcstep} is performed using a Metropolis Hastings procedure since the posterior distribution under the model $\theta$ noted $p(z_i | y_i, \theta)$ is intractable due to the nonlinearity of the model \eqref{eq:pkmodel}.
-Figure~\ref{fig:pk_tts} shows clear advantage of variance reduced methods (\SAEMVR\ and \FISAEM\ ) avoiding the twists and turns displayed by the incremental and the batch methods.
+\textcolor{red}{Third numerical application on PK Model with Absorption Lag Time is in the appendix for lack of space}.
+%\subsection{PK Model with Absorption Lag Time}
+%This numerical example was conducted in order to characterize the pharmacokinetics (PK) of orally administered drug to simulated patients, using a population pharmacokinetic approach. $M = 50$ synthetic datasets were generated for $n = 5000$ patients with $10$ observations (concentration measures) per patient.
+%The goal tis to model the evolution of the concentration of the absorbed drug using a nonlinear and latent data model. 
+%
+%\textbf{The model:}
+%We consider a one-compartment PK model for oral administration with an absorption lag-time ($T^{\textrm{lag}}$), assuming first-order absorption and linear elimination processes.
+%The final model includes the following variables: $ka$ the absorption rate constant, $V$ the volume of distribution, $k$ the elimination rate constant and $T^{\textrm{lag}}$ the absorption lag-time. 
+%We also add several covariates to our model such as $D$ the dose of drug administered, $t$ the time at which measures are taken and the weight of the patient influencing the volume $V$. More precisely, the log-volume $\log(V)$ is a linear function of the log-weight $lw70= \log(wt/70)$.
+%Let $ z_i=(T_i^{\textrm{lag}}, ka_i, V_i, k_i)$ be the vector of individual PK parameters, different for each individual $i$.
+%The final model reads:
+%\begin{equation} \label{eq:pkmodel}
+%y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij} \quad \textrm{where} \quad f(t_{ij},z_i) = \frac{D\,ka_i}{V(ka_i - k_i)}(\exponential^{-ka_i\,(t_{ij} - T_i^{\textrm{lag}})}-\exponential^{-k_i\,(t_{ij} - T_i^{\textrm{lag}})})\eqs,
+%\end{equation}
+%where $y_{ij}$ is the $j$-th concentration measurement of the drug of dosage $D$ injected at time $t_{ij}$ for patient $i$.
+%We assume in this example that the residual errors $\varepsilon_{ij}$ are independent and normally distributed with mean 0 and variance $\sigma^2$.
+%Lognormal distributions are used for the four PK parameters.
+%
+%\textbf{Monte Carlo study:}
+%We conduct a Monte Carlo study to showcase the benefits of our scheme.
+%$M=50$ datasets have been simulated using the following PK parameters values:
+%$T^{\textrm{lag}}_{\rm pop} =1$, $ka_{\rm pop} =1$, $V_{\rm pop}= 8$, $k_{\rm pop}=0.1$, $ \omega_{T^{\textrm{lag}}}=0.4$, $\omega_{ka}=0.5$, $\omega_{V}=0.2$, $\omega_{k}=0.3$ and $\sigma^2=0.5$.
+%\begin{wrapfigure}[12]{r}{.5\textwidth}
+%\begin{minipage}{0.5\textwidth}\vspace{-.5cm}
+%\begin{figure}[H]
+%\includegraphics[width=\textwidth]{pic_paper/pk500.png}\vspace{-.2cm}
+%\caption{Precision $|ka^{(k)} - ka^*|^2$ per epoch}\vspace{-.2cm}
+%\label{fig:pk_tts}
+%\end{figure}
+%\end{minipage}
+%\end{wrapfigure}
+%We define the mean square distance over the $M$ replicates $E_k(\ell) = \frac{1}{M}\sum_{m=1}^{M}{\left(\theta_k^{(m)}(\ell) - \theta^* \right)^2}$ and plot it against the epochs (passes over the data) Figure~\ref{fig:pk_tts}.	
+%Note that the {\sf MC-step} \eqref{eq:mcstep} is performed using a Metropolis Hastings procedure since the posterior distribution under the model $\theta$ noted $p(z_i | y_i, \theta)$ is intractable due to the nonlinearity of the model \eqref{eq:pkmodel}.
+%Figure~\ref{fig:pk_tts} shows clear advantage of variance reduced methods (\SAEMVR\ and \FISAEM\ ) avoiding the twists and turns displayed by the incremental and the batch methods.
 
 
 
@@ -1539,8 +1535,23 @@ The standard deviation of the measurement errors is set to $0.1$.
 For the simulation part, we use the Carlin and Chib MCMC procedure, see \citep{carlin1995bayesian}.
 Refer to \citep{maire2016online} for more details.
 
-\subsection{Application on PK Model}\label{app:pkmodel}
-\subsubsection{Model and Explicit Updates}
+\section{Additional Experiment: Pharmacokinetics (PK) Model with Absorption Lag Time}
+This numerical example was conducted in order to characterize the pharmacokinetics (PK) of orally administered drug to simulated patients, using a population pharmacokinetic approach. $M = 50$ synthetic datasets were generated for $n = 5000$ patients with $10$ observations (concentration measures) per patient.
+The goal tis to model the evolution of the concentration of the absorbed drug using a nonlinear and latent data model. 
+
+\textbf{Model and Explicit Updates:}
+We consider a one-compartment PK model for oral administration with an absorption lag-time ($T^{\textrm{lag}}$), assuming first-order absorption and linear elimination processes.
+The final model includes the following variables: $ka$ the absorption rate constant, $V$ the volume of distribution, $k$ the elimination rate constant and $T^{\textrm{lag}}$ the absorption lag-time. 
+We also add several covariates to our model such as $D$ the dose of drug administered, $t$ the time at which measures are taken and the weight of the patient influencing the volume $V$. More precisely, the log-volume $\log(V)$ is a linear function of the log-weight $lw70= \log(wt/70)$.
+Let $ z_i=(T_i^{\textrm{lag}}, ka_i, V_i, k_i)$ be the vector of individual PK parameters, different for each individual $i$.
+The final model reads:
+\begin{equation} \label{eq:pkmodel}
+y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij} \quad \textrm{where} \quad f(t_{ij},z_i) = \frac{D\,ka_i}{V(ka_i - k_i)}(\exponential^{-ka_i\,(t_{ij} - T_i^{\textrm{lag}})}-\exponential^{-k_i\,(t_{ij} - T_i^{\textrm{lag}})})\eqs,
+\end{equation}
+where $y_{ij}$ is the $j$-th concentration measurement of the drug of dosage $D$ injected at time $t_{ij}$ for patient $i$.
+We assume in this example that the residual errors $\varepsilon_{ij}$ are independent and normally distributed with mean 0 and variance $\sigma^2$.
+Lognormal distributions are used for the four PK parameters.
+
 Lognormal distributions are used for the four PK parameters:
 \begin{align}
 & \log(T_i^{\textrm{lag}}) \sim \mathcal{N}(\log(T^{\textrm{lag}}_{\rm pop}), \omega^2_{T^{\textrm{lag}}} ) \eqs, \log(ka_i) \sim \mathcal{N}(\log(ka_{\rm pop}), \omega^2_{ka})\eqs,\\
@@ -1554,7 +1565,7 @@ S_1(z)  = \frac{1}{n} \sum_{i=1}^n z_i  ,  \quad S_2(z) =\frac{1}{n} \sum_{i=1}^
 \end{split}
 \eeq
 where we have noted $y_i$ and $t_i$ the vector of observations and time for each patient $i$.
-At iteration $k$, and setting the number of MC samples to $1$ for the sake of clarity, the MC sampling $z_i^{(k)} \sim p(z_i |y_i, \theta^{(k)})$ is performed using a Metropolis-Hastings procedure detailed in algorithm~\ref{alg:mh}. The quantities $\tilde{S}^{(k+1}$ and $\hat{\bss}^{(k+1)}$ are then updated according to the different methods.
+At iteration $k$, and setting the number of MC samples to $1$ for the sake of clarity, the MC sampling $z_i^{(k)} \sim p(z_i |y_i, \theta^{(k)})$ is performed using a Metropolis-Hastings procedure detailed in Algorithm~\ref{alg:mh}. The quantities $\tilde{S}^{(k+1}$ and $\hat{\bss}^{(k+1)}$ are then updated according to the different methods.
 Finally the maximization step yields:
 \beq \label{eq:mstep_pk}
 \overline{\param} ( {\bm s} )
@@ -1575,7 +1586,7 @@ Finally the maximization step yields:
 \eeq
 
 
-\subsubsection{Metropolis Hastings algorithm}
+\textbf{Metropolis Hastings algorithm}
 During the simulation step of the MISSO method, the sampling from the target distribution $\pi(z_{i} , \param) \eqdef p(z_{i}|y_i ,\param)$ is performed using a Metropolis Hastings (MH) algorithm \citep{meyn2012markov} with proposal distribution $q(z_{i}, \delta)$ where $\param = (z_{\rm pop}, \omega_{z})$ and $ \delta$ is the vector of parameters of the proposal distribution. Commonly they parameterize a Gaussian proposal.
 The MH algorithm is summarized in \ref{alg:mh}.
 
@@ -1598,6 +1609,25 @@ The MH algorithm is summarized in \ref{alg:mh}.
 \caption{MH aglorithm}
 \label{alg:mh}
         \end{algorithm}
+        
+
+\textbf{Monte Carlo study:}
+We conduct a Monte Carlo study to showcase the benefits of our scheme.
+$M=50$ datasets have been simulated using the following PK parameters values:
+$T^{\textrm{lag}}_{\rm pop} =1$, $ka_{\rm pop} =1$, $V_{\rm pop}= 8$, $k_{\rm pop}=0.1$, $ \omega_{T^{\textrm{lag}}}=0.4$, $\omega_{ka}=0.5$, $\omega_{V}=0.2$, $\omega_{k}=0.3$ and $\sigma^2=0.5$.
+We define the mean square distance over the $M$ replicates $E_k(\ell) = \frac{1}{M}\sum_{m=1}^{M}{\left(\theta_k^{(m)}(\ell) - \theta^* \right)^2}$ and plot it against the epochs (passes over the data) Figure~\ref{fig:pk_tts}.	
+Note that the {\sf MC-step} \eqref{eq:mcstep} is performed using a Metropolis Hastings procedure since the posterior distribution under the model $\theta$ noted $p(z_i | y_i, \theta)$ is intractable due to the nonlinearity of the model \eqref{eq:pkmodel}.
+Figure~\ref{fig:pk_tts} shows clear advantage of variance reduced methods (\SAEMVR\ and \FISAEM\ ) avoiding the twists and turns displayed by the incremental and the batch methods.
+
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{pic_paper/pk500.png}\vspace{-.2cm}
+\caption{Precision $|ka^{(k)} - ka^*|^2$ per epoch}\vspace{-.2cm}
+\label{fig:pk_tts}
+\end{figure}
+
+
+
 
 
 
