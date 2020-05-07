@@ -1,7 +1,6 @@
 import torch
 from .optimizer import Optimizer, required
 
-
 class SGD_Diagnostic_Nonconvex(Optimizer):
     def __init__(self, params, lr=required, momentum=0, dampening=0,
                  weight_decay=0, nesterov=False,
