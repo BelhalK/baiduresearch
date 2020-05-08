@@ -141,10 +141,10 @@ Set the terminating iteration number, $K \in \{0,\dots,K_{\sf max}-1\}$, as a di
 \eeq
 where $K_{\sf max}$ $\leftarrow$ is the maximum number of iteration.
 The random termination number \eqref{eq:random} is inspired by \citep{ghadimi2013stochastic} which enables one to show non-asymptotic convergence to stationary point for non-convex optimization. 
-Consider constants $(\beta_1, \beta_2) \in [0,1]$, a sequence of decreasing stepsizes $\{\eta_k\}_{k>0}$, Algorithm~\ref{alg:opt-ams} introduces the new optimistic AMSGrad method.
+Consider constants $(\beta_1, \beta_2) \in [0,1]$, a sequence of decreasing stepsizes $\{\eta_k\}_{k>0}$, Algorithm~\ref{alg:optamsgrad} introduces the new optimistic AMSGrad method.
 
 \begin{algorithm}[H]
-\caption{OPTIMISTIC-AMSGRAD}\label{alg:opt-ams}
+\caption{OPTIMISTIC-AMSGRAD}\label{alg:optamsgrad}
   \begin{algorithmic}[1]
   \STATE \textbf{Input:} Parameters $\beta_{1}, \beta_{2}, \epsilon, \eta_{k}$
   \STATE \textbf{Init.:} $w_{1}=w_{-1 / 2} \in \mathcal{K} \subseteq \mathbb{R}^{d} \text { and } v_{0}=\epsilon \mathbf{1} \in \mathbb{R}^{d}$
@@ -205,7 +205,7 @@ $$
 We begin with some auxiliary Lemmas important for the analysis. 
 The first one ensures bounded norms of various quantities of interests (resulting from the classical stochastic gradient boundedness assumption):
 \begin{Lemma}\label{lem:bound}
-Assume assumption H~\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:opt-ams} satisfy for any $w \in \Theta$ and $k>0$:
+Assume assumption H~\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:optamsgrad} satisfy for any $w \in \Theta$ and $k>0$:
 $$ \|\nabla f(w_k)\| < \major ,~~~\|\theta_k \| < \major ,~~~\|\hat{v}_k\| < \major^2 \eqsp.$$
 \end{Lemma}
 See Proof in Appendix~\ref{app:lembound}.
@@ -288,6 +288,126 @@ $$
 See Proof in Appendix~\ref{app:lemdnnh2}
 
 
+\clearpage
+
+\section{Convex Analysis:}
+
+\begin{Theorem} \label{thm:convexmain}
+Let $\beta_{1}=0$. Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
+\textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) 
+has regret 
+\begin{equation} \label{bound:optada}
+\begin{aligned}
+\textstyle
+ \text{Regret}_T &  \leq  \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, w_{1/2})}{\eta_1} + \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 \eqsp,
+\end{aligned}
+\end{equation}
+where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
+The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence $\{ \eta_t \}$.
+\end{Theorem}
+
+
+\begin{proof}
+By regret decomposition, we have that
+\begin{equation} \label{nn1}
+\begin{aligned}
+\textstyle
+ \text{\it Regret}_T  & := \sum_{t=1}^T \ell_t(w_t) - \min_{w \in \Theta} \sum_{t=1}^T \ell_t(w)  \textstyle  \\
+ & \leq \sum_{t=1}^T  \langle w_t - w^*, \nabla \ell_t(w_t) \rangle
+\\ & \textstyle = \sum_{t=1}^T \langle  w_t - w_{t+\frac{1}{2}} , g_t - m_t \rangle + \langle w_t - w_{t+\frac{1}{2}}, m_t \rangle + \langle w_{t+\frac{1}{2}} - w^*, g_t  \rangle,
+\end{aligned}
+\end{equation}
+where we denote $g_t:=\nabla \ell_t(w_t)$.
+
+
+Recall the notation $\psi_t(x)$ and the Bregman divergence $B_{\psi_t}(u,v)$
+we defined in the beginning of this section.
+Now we are going to exploit a useful inequality (which appears in e.g.,~\cite{T08}); for any update of the form $\hat{w} = \arg\min_{w \in \Theta} \langle w, \theta \rangle + B_{\psi}(w, v)$, it holds that
+\begin{equation} \label{ii}
+\textstyle{}
+\langle \hat{w} - u, \theta \rangle \leq B_{\psi}( u, v ) - B_{\psi}( u, \hat{w}) - B_{\psi}( \hat{w}, v),
+\end{equation}
+for any $u \in \Theta$.
+
+For $\beta_1=0$, we can rewrite the update on line 8 of (Algorithm~\ref{alg:optamsgrad}) as
+\begin{equation} \label{nc1}
+\textstyle w_{t+\frac{1}{2}} = \arg\min_{w \in \Theta} \eta_t \langle w, g_t \rangle
++ B_{\psi_t}(w, w_{t} ),
+\end{equation}
+By using (\ref{ii}) for (\ref{nc1}) with $\hat{w} = w_{t+\frac{1}{2}}$ (the output of the minimization problem), $u = w^*$ and $v = w_t$, we have
+\begin{equation} \label{nn2}
+\begin{aligned}
+ \langle w_{t+\frac{1}{2}} - w^*, & g_t \rangle
+\leq \frac{1}{\eta_t}\big[ B_{\psi_t}( w^*, w_{t}) -B_{\psi_t}(w^*,  w_{t+\frac{1}{2}} ) - B_{\psi_t}(w_{t+\frac{1}{2}}, w_{t}) \big].
+\end{aligned}
+\end{equation}
+
+We can also rewrite the update on line 9 of (Algorithm~\ref{alg:optamsgrad}) at time $t$ as
+\begin{equation} \label{nc2}
+\textstyle w_{t} = \arg\min_{w \in \Theta} \eta_{t} \langle w, m_{t} \rangle + B_{\psi_t}(w, w_{t-\frac{1}{2}} ).
+\end{equation}
+and, by using (\ref{ii}) for (\ref{nc2}), with $\hat{w} = w_{t}$ (the output of the minimization problem), $u = w_{t + \frac{1}{2}}$ and $v = w_{t- \frac{1}{2}}$, we have
+\begin{equation} \label{nn3}
+\begin{aligned}
+\langle w_t - w_{t+\frac{1}{2}}, & m_t  \rangle
+\leq \frac{1}{\eta_t}\big[ B_{\psi_{t-1}}( w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) - B_{\psi_{t-1}}(w_{t+\frac{1}{2}}, w_t ) - B_{\psi_{t-1}}(w_{t}, w_{t-\frac{1}{2}}) \big],
+\end{aligned}
+\end{equation}
+By (\ref{nn1}), (\ref{nn2}), and (\ref{nn3}), we obtain
+\begin{equation} \label{nnn}
+\begin{aligned}
+ \text{Regret}_T & \overset{(\ref{nn1})}{\leq} \sum_{t=1}^T \langle  w_t - w_{t+\frac{1}{2}} , g_t - m_t \rangle + \langle w_t - w_{t+\frac{1}{2}}, m_t \rangle + \langle w_{t \frac{1}{2}} - w^*, g_t  \rangle \\
+& \overset{(\ref{nn2}), (\ref{nn3})}{\leq}  \sum_{t=1}^T \| w_t - w_{t+\frac{1}{2} } \|_{\psi_{t-1}} \| g_t - m_t  \|_{\psi_{t-1}^*}
++ \frac{1}{\eta_t} \big[ B_{\psi_{t-1}}( w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) - B_{\psi_{t-1}}(w_{t+\frac{1}{2}}, w_t ) \\
+& - B_{\psi_{t-1}}(w_{t}, w_{t-\frac{1}{2}}) + B_{\psi_t}( w^*, w_{t}) -B_{\psi_t}(w^*,  w_{t+\frac{1}{2}} ) - B_{\psi_t}(w_{t+\frac{1}{2}}, w_{t}) \big],
+\end{aligned}
+\end{equation}
+which is further bounded by
+\begin{equation} \label{nnnn}
+\begin{aligned}
+ \text{Regret}_T &  \overset{(a)}{\leq} \sum_{t=1}^T \Big\{ \frac{1}{2 \eta_t} \| w_t - w_{t+\frac{1}{2} } \|_{\psi_{t-1}}^2 + \frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 + \frac{1}{\eta_t} \big( B_{\psi_{t-1}}( w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) - \frac{1}{2} \| w_{t+\frac{1}{2}} - w_t \|_{\psi_{t-1}}^2\\
+& - B_{\psi_{t-1}}(w_{t}, w_{t-\frac{1}{2}}) +  B_{\psi_t}( w^*, w_{t}) - B_{\psi_t}(w^*,  w_{t+\frac{1}{2}} ) - B_{\psi_t}(w_{t+\frac{1}{2}}, w_{t})  \big) \Big\}\\
+& \leq \sum_{t=1}^T \Big\{ \frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*} \\
+& + dd
+\Big\},
+\end{aligned}
+\end{equation}
+where $(a)$ is because
+$
+\| w_t - w_{t+\frac{1}{2} } \|_{\psi_{t-1}} \| g_t - m_t  \|_{\psi_{t-1}^*} = \inf_{ \beta > 0 }   \frac{1}{2\beta}
+\| w_t - w_{t+\frac{1}{2} } \|_{\psi_{t-1}}^2 +
+ \frac{\beta}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2$ by Young's inequality and the 1-strongly convex of $\psi_{t-1}(\cdot)$ with respect to $\| \cdot \|_{\psi_{t-1}}$.
+
+To proceed,
+notice that
+\begin{equation}  \label{nn4}
+\begin{aligned}
+\textstyle
+ B_{\psi_{t+1}}( w^*, w_{t+\frac{1}{2}}) - B_{\psi_t}( w^*, w_{t+\frac{1}{2}}) &= \langle w^* - w_{t+\frac{1}{2}} , \text{diag}(\hat{v}_{t+1}^{1/2} -\hat{v}_t^{1/2} ) ( w^* - w_{t+\frac{1}{2}} ) \rangle\\
+  & \leq ( \max_i (w^*[i] - w_{t+\frac{1}{2}}[i] )^2  )\cdot ( \sum_{i=1}^d \hat{v}_{t+1}^{1/2}[i] -\hat{v}_t^{1/2}[i] )
+\end{aligned}
+\end{equation}
+and
+\begin{equation} \label{nn5}
+\begin{aligned}
+\textstyle
+ B_{\psi_{t-1}}( w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) - B_{\psi_t}(w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) & = \langle w_{t+\frac{1}{2}} - w_{t-\frac{1}{2}} , \text{diag}(\hat{v}_{t-1}^{1/2} -\hat{v}_t^{1/2} ) ( w_{t+\frac{1}{2}} - w_{t-\frac{1}{2}} ) \rangle\\
+& \leq 0 \eqsp,
+\end{aligned}
+\end{equation}
+as the sequence $\{\hat{v}_t\}$ is non-decreasing.
+Therefore, by (\ref{nnnn}),(\ref{nn4}),(\ref{nn5}), we have
+\begin{equation}\notag
+\begin{aligned}
+\textstyle
+ \text{\it Regret}_T \leq \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, w_{1/2})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 \eqsp.
+\end{aligned}
+\end{equation}
+This completes the proof.
+\end{proof}
+
+
 
 \newpage
 
@@ -299,7 +419,7 @@ See Proof in Appendix~\ref{app:lemdnnh2}
 \section{Proofs of Auxiliary Lemmas}
 \subsection{Proof of Lemma~\ref{lem:bound}}\label{app:lembound}
 \begin{Lemma*}
-Assume assumption H~\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:opt-ams} satisfy for any $w \in \Theta$ and $k>0$:
+Assume assumption H~\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:optamsgrad} satisfy for any $w \in \Theta$ and $k>0$:
 $$ \|\nabla f(w_k)\| < \major ,~~~\|\theta_k \| < \major ,~~~\|\hat{v}_k\| < \major^2 \eqsp.$$
 \end{Lemma*}
 \begin{proof}
@@ -620,7 +740,7 @@ Observe that at the last layer $L$:
 \eeq
 where the last equality is due to mild assumptions \eqref{eq:mildassumptions} and to the fact that the norm of the derivative of the sigmoid function is upperbounded by $1/4$.
 
-From Algorithm~\ref{alg:opt-ams}, with $\beta_1 = 0$ we have for iteration index $k >0$:
+From Algorithm~\ref{alg:optamsgrad}, with $\beta_1 = 0$ we have for iteration index $k >0$:
 \beq
 \begin{split}
 \norm{w_k - w_{k-1}} & = \norm{-\eta_k \hat{v}_k^{-1/2} (\theta_k + h_{k+1})}\\
