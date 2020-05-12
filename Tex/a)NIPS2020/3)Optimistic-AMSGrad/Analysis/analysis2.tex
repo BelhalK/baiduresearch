@@ -294,12 +294,12 @@ See Proof in Appendix~\ref{app:lemdnnh2}
 
 \begin{Theorem} \label{thm:convexmain}
 Let $\beta_{1}=0$. Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
-\textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) 
-has regret 
+Assume there exist a constant $D_{\infty}^2$ such that for any $t >0$, $\|w^* - w_t\| \leq D_{\infty}^2$.
+Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
 \begin{equation} \label{bound:optada}
 \begin{aligned}
-\textstyle
- \text{Regret}_T &  \leq  \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, w_{1/2})}{\eta_1} + \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 \eqsp,
+ \text{\it Regret}_T \leq \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2  \eqsp,
 \end{aligned}
 \end{equation}
 where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
@@ -311,10 +311,9 @@ The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence
 By regret decomposition, we have that
 \begin{equation} \label{nn1}
 \begin{aligned}
-\textstyle
  \text{\it Regret}_T  & := \sum_{t=1}^T \ell_t(w_t) - \min_{w \in \Theta} \sum_{t=1}^T \ell_t(w)  \textstyle  \\
  & \leq \sum_{t=1}^T  \langle w_t - w^*, \nabla \ell_t(w_t) \rangle
-\\ & \textstyle = \sum_{t=1}^T \langle  w_t - w_{t+\frac{1}{2}} , g_t - m_t \rangle + \langle w_t - w_{t+\frac{1}{2}}, m_t \rangle + \langle w_{t+\frac{1}{2}} - w^*, g_t  \rangle,
+\\ & \textstyle = \sum_{t=1}^T \langle  w_t - \tilde{w}_{t+1} , g_t - m_t \rangle + \langle w_t - \tilde{w}_{t+1}, m_t \rangle + \langle \tilde{w}_{t+1} - w^*, g_t  \rangle,
 \end{aligned}
 \end{equation}
 where we denote $g_t:=\nabla \ell_t(w_t)$.
@@ -324,89 +323,189 @@ Recall the notation $\psi_t(x)$ and the Bregman divergence $B_{\psi_t}(u,v)$
 we defined in the beginning of this section.
 Now we are going to exploit a useful inequality (which appears in e.g.,~\cite{T08}); for any update of the form $\hat{w} = \arg\min_{w \in \Theta} \langle w, \theta \rangle + B_{\psi}(w, v)$, it holds that
 \begin{equation} \label{ii}
-\langle \hat{w} - u, \theta \rangle \leq B_{\psi}( u, v ) - B_{\psi}( u, \hat{w}) - B_{\psi}( \hat{w}, v),
+\langle \hat{w} - u, \theta \rangle \leq B_{\psi}( u, v ) - B_{\psi}( u, \hat{w}) - B_{\psi}( \hat{w}, v) \quad \textrm{for any $u \in \Theta$} \eqsp.
 \end{equation}
-for any $u \in \Theta$.
-
 For $\beta_1=0$, we can rewrite the update on line 8 of (Algorithm~\ref{alg:optamsgrad}) as
 \begin{equation} \label{nc1}
-\textstyle w_{t+\frac{1}{2}} = \arg\min_{w \in \Theta} \eta_t \langle w, g_t \rangle
-+ B_{\psi_t}(w, w_{t} ),
+\tilde{w}_{t+1}= \arg\min_{w \in \Theta} \eta_t \langle w, g_t \rangle + B_{\psi_t}(w, \tilde{w}_{t} ) \eqsp,
 \end{equation}
-By using (\ref{ii}) for (\ref{nc1}) with $\hat{w} = w_{t+\frac{1}{2}}$ (the output of the minimization problem), $u = w^*$ and $v = w_t$, we have
+By using (\ref{ii}) for (\ref{nc1}) with $\hat{w} = \tilde{w}_{t+1}$ (the output of the minimization problem), $u = w^*$ and $v = \tilde{w}_{t}$, we have
 \begin{equation} \label{nn2}
 \begin{aligned}
- \langle w_{t+\frac{1}{2}} - w^*, & g_t \rangle
-\leq \frac{1}{\eta_t}\big[ B_{\psi_t}( w^*, w_{t}) -B_{\psi_t}(w^*,  w_{t+\frac{1}{2}} ) - B_{\psi_t}(w_{t+\frac{1}{2}}, w_{t}) \big].
+ \langle \tilde{w}_{t+1} - w^*, & g_t \rangle \leq \frac{1}{\eta_t}\big[ B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} ) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) \big] \eqsp.
 \end{aligned}
 \end{equation}
 
 We can also rewrite the update on line 9 of (Algorithm~\ref{alg:optamsgrad}) at time $t$ as
-%\begin{equation} \label{nc2}
-%\textstyle w_{t} = \arg\min_{w \in \Theta} \eta_{t} \langle w, m_{t} \rangle + B_{\psi_{t-1}}(w, w_{t-\frac{1}{2}} ).
-%\end{equation}
 \begin{equation} \label{nc2}
-\textstyle w_{t+1} = \arg\min_{w \in \Theta} \eta_{t+1} \langle w, m_{t+1} \rangle + B_{\psi_t}(w, w_{t+\frac{1}{2}} ).
+\textstyle w_{t+1} = \arg\min_{w \in \Theta} \eta_{t+1} \langle w, m_{t+1} \rangle + B_{\psi_t}(w, \tilde{w}_{t+1} ).
 \end{equation}
-and, by using (\ref{ii}) for (\ref{nc2}), with $\hat{w} = w_{t}$ (the output of the minimization problem), $u = w_{t + \frac{1}{2}}$ and $v = w_{t- \frac{1}{2}}$, we have
+and, by using \eqref{ii} for \eqref{nc2} (written at iteration $t$), with $\hat{w} = w_{t}$ (the output of the minimization problem), $u = \tilde{w}_{t+1}$ and $v = \tilde{w}_{t}$, we have
 \begin{equation} \label{nn3}
 \begin{aligned}
-\langle w_t - w_{t+\frac{1}{2}}, & m_t  \rangle
-\leq \frac{1}{\eta_t}\big[ B_{\psi_{t-1}}( w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) - B_{\psi_{t-1}}(w_{t+\frac{1}{2}}, w_t ) - B_{\psi_{t-1}}(w_{t}, w_{t-\frac{1}{2}}) \big],
+\langle w_t -\tilde{w}_{t+1}, & m_t  \rangle \leq \frac{1}{\eta_t}\big[ B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t ) - B_{\psi_{t-1}}(w_{t}, \tilde{w}_{t}) \big] \eqsp,
 \end{aligned}
 \end{equation}
 By (\ref{nn1}), (\ref{nn2}), and (\ref{nn3}), we obtain
 \begin{equation} \label{nnn}
 \begin{aligned}
- \text{Regret}_T & \overset{(\ref{nn1})}{\leq} \sum_{t=1}^T \langle  w_t - w_{t+\frac{1}{2}} , g_t - m_t \rangle + \langle w_t - w_{t+\frac{1}{2}}, m_t \rangle + \langle w_{t \frac{1}{2}} - w^*, g_t  \rangle \\
-& \overset{(\ref{nn2}), (\ref{nn3})}{\leq}  \sum_{t=1}^T \| w_t - w_{t+\frac{1}{2} } \|_{\psi_{t-1}} \| g_t - m_t  \|_{\psi_{t-1}^*}
-+ \frac{1}{\eta_t} \big[ B_{\psi_{t-1}}( w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) - B_{\psi_{t-1}}(w_{t+\frac{1}{2}}, w_t ) \\
-& - B_{\psi_{t-1}}(w_{t}, w_{t-\frac{1}{2}}) + B_{\psi_t}( w^*, w_{t}) -B_{\psi_t}(w^*,  w_{t+\frac{1}{2}} ) - B_{\psi_t}(w_{t+\frac{1}{2}}, w_{t}) \big],
+ \text{Regret}_T & \overset{(\ref{nn1})}{\leq} \sum_{t=1}^T \langle  w_t - \tilde{w}_{t+1} , g_t - m_t \rangle + \langle w_t - \tilde{w}_{t+1}, m_t \rangle + \langle \tilde{w}_{t+1} - w^*, g_t  \rangle \\
+& \overset{(\ref{nn2}), (\ref{nn3})}{\leq}  \sum_{t=1}^T \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}} \| g_t - m_t  \|_{\psi_{t-1}^*}
++ \frac{1}{\eta_t} \big[ B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t )  \\
+& - B_{\psi_{t-1}}(w_{t}, \tilde{w}_{t}) +  B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} ) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) \big],
 \end{aligned}
 \end{equation}
 which is further bounded by
 \begin{equation} \label{nnnn}
 \begin{aligned}
- \text{Regret}_T &  \overset{(a)}{\leq} \sum_{t=1}^T \Big\{ \frac{1}{2 \eta_t} \| w_t - w_{t+\frac{1}{2} } \|_{\psi_{t-1}}^2 + \frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 + \frac{1}{\eta_t} \big( B_{\psi_{t-1}}( w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) - \frac{1}{2} \| w_{t+\frac{1}{2}} - w_t \|_{\psi_{t-1}}^2\\
-& - B_{\psi_{t-1}}(w_{t}, w_{t-\frac{1}{2}}) +  B_{\psi_t}( w^*, w_{t}) - B_{\psi_t}(w^*,  w_{t+\frac{1}{2}} ) - B_{\psi_t}(w_{t+\frac{1}{2}}, w_{t})  \big) \Big\}\\
-& \leq \sum_{t=1}^T \Big\{ \frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*} \\
-& + dd
-\Big\},
+ \text{Regret}_T & \leq \sum_{t=1}^T \Big\{ \frac{1}{2 \eta_t} \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}}^2 + \frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2\\
+ &  + \frac{1}{\eta_t} \big(\underbrace{B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) }_{A_1}- \frac{1}{2} \| \tilde{w}_{t+1} - w_t \|_{\psi_{t-1}}^2+\underbrace{B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} )}_{A_2}  \big) \Big\} \eqsp,
 \end{aligned}
 \end{equation}
-where $(a)$ is because
-$
-\| w_t - w_{t+\frac{1}{2} } \|_{\psi_{t-1}} \| g_t - m_t  \|_{\psi_{t-1}^*} = \inf_{ \beta > 0 }   \frac{1}{2\beta}
-\| w_t - w_{t+\frac{1}{2} } \|_{\psi_{t-1}}^2 +
- \frac{\beta}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2$ by Young's inequality and the 1-strongly convex of $\psi_{t-1}(\cdot)$ with respect to $\| \cdot \|_{\psi_{t-1}}$.
-%
-%To proceed,
-%notice that
-%\begin{equation}  \label{nn4}
-%\begin{aligned}
-%\textstyle
-% B_{\psi_{t+1}}( w^*, w_{t+\frac{1}{2}}) - B_{\psi_t}( w^*, w_{t+\frac{1}{2}}) &= \langle w^* - w_{t+\frac{1}{2}} , \text{diag}(\hat{v}_{t+1}^{1/2} -\hat{v}_t^{1/2} ) ( w^* - w_{t+\frac{1}{2}} ) \rangle\\
-%  & \leq ( \max_i (w^*[i] - w_{t+\frac{1}{2}}[i] )^2  )\cdot ( \sum_{i=1}^d \hat{v}_{t+1}^{1/2}[i] -\hat{v}_t^{1/2}[i] )
-%\end{aligned}
-%\end{equation}
-%and
-%\begin{equation} \label{nn5}
-%\begin{aligned}
-%\textstyle
-% B_{\psi_{t-1}}( w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) - B_{\psi_t}(w_{t+\frac{1}{2}}, w_{t-\frac{1}{2}}) & = \langle w_{t+\frac{1}{2}} - w_{t-\frac{1}{2}} , \text{diag}(\hat{v}_{t-1}^{1/2} -\hat{v}_t^{1/2} ) ( w_{t+\frac{1}{2}} - w_{t-\frac{1}{2}} ) \rangle\\
-%& \leq 0 \eqsp,
-%\end{aligned}
-%\end{equation}
-%as the sequence $\{\hat{v}_t\}$ is non-decreasing.
-%Therefore, by (\ref{nnnn}),(\ref{nn4}),(\ref{nn5}), we have
-%\begin{equation}\notag
-%\begin{aligned}
-%\textstyle
-% \text{\it Regret}_T \leq \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, w_{1/2})}{\eta_1}
-%+ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 \eqsp.
-%\end{aligned}
-%\end{equation}
-%This completes the proof.
+where the inequality is due to $ \| w_t - \tilde{w}_{t+1}   \|_{\psi_{t-1}} \| g_t - m_t  \|_{\psi_{t-1}^*} = \inf_{ \beta > 0 }   \frac{1}{2\beta} \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}}^2 +  \frac{\beta}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2$ by Young's inequality and the 1-strongly convex of $\psi_{t-1}(\cdot)$ with respect to $\| \cdot \|_{\psi_{t-1}}$ which yields that $B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t )  \geq \frac{1}{2} \| \tilde{w}_{t+1} -  w_t  \|^2_{\psi_t} \geq 0$. 
+
+To proceed, notice that
+\begin{equation} \label{nn5}
+\begin{aligned}
+A_1 =  B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t})  = \langle \tilde{w}_{t+1} - \tilde{w}_{t} , \text{diag}(\hat{v}_{t-1}^{1/2} -\hat{v}_t^{1/2} ) ( \tilde{w}_{t+1}- \tilde{w}_{t} ) \rangle \leq 0 \eqsp,
+\end{aligned}
+\end{equation}
+as the sequence $\{\hat{v}_t\}$ is non-decreasing. And that
+\begin{equation}  \label{nn4}
+\begin{aligned}
+A_2 = B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} )  &= \langle w^* - \tilde{w}_{t+1}  , \text{diag}(\hat{v}_{t+1}^{1/2} -\hat{v}_t^{1/2} ) ( w^* - \tilde{w}_{t+1}  ) \rangle\\
+  & \leq ( \max_i (w^*[i] -  \tilde{w}_{t+1} [i] )^2  )\cdot ( \sum_{i=1}^d \hat{v}_{t+1}^{1/2}[i] -\hat{v}_t^{1/2}[i] )
+\end{aligned}
+\end{equation}
+Therefore, by (\ref{nnnn}),(\ref{nn4}),(\ref{nn5}), we have
+\begin{equation}\notag
+\begin{aligned}
+ \text{\it Regret}_T \leq \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 \eqsp.
+\end{aligned}
+\end{equation}
+This completes the proof.
+
+\end{proof}
+
+
+
+\newpage
+\section{Convex Analysis (with beta):}
+
+\begin{Theorem} \label{thm:convexmain}
+Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
+Assume there exist a constant $D_{\infty}^2$ such that for any $t >0$, $\|w^* - w_t\| \leq D_{\infty}^2$.
+Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
+\begin{equation} \label{bound:optadabeta}
+\begin{aligned}
+ \text{\it Regret}_T \leq & \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  \\
+& +D_{\infty}^2 \beta_1^2  \sum_{t=1}^T \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}  \eqsp.
+\end{aligned}
+\end{equation}
+where $ \tilde{m}_{t+1}  = \beta_1 \theta_{t-1} +(1-\beta_1) m_{t+1}$, $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
+The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence $\{ \eta_t \}$.
+\end{Theorem}
+
+\begin{Corollary}
+Suppose $\beta_1=0$ and $\{v_t\}_{t>0}$ is an increasing monotone sequence, then we obtain the following regret bound: 
+\begin{equation} 
+\begin{aligned}
+ \text{\it Regret}_T \leq & \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 \\
+& +\frac{D_{\infty}^2}{\eta_{\min}} \sum_{i=1}^d \{ (1-\beta_2) \sum_{s=1}^{T} \beta_2^{T-s} (g_s[i] - m_s[i])^2 \}^{1/2} \eqsp,
+\end{aligned}
+\end{equation}
+where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
+The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence $\{ \eta_t \}$.
+\end{Corollary}
+
+\begin{proof}
+Beforehand, note:
+\beq
+\begin{split}
+& \tilde{g}_t  = \beta_1 \theta_{t-1} +(1 - \beta_1) g_t\\
+& \tilde{m}_{t+1}  = \beta_1 \theta_{t-1} +(1-\beta_1) m_{t+1}
+\end{split}
+\eeq
+where we recall that $g_t$ and $m_{t+1}$ are respectively the gradient $\nabla \ell_t(w_t)$ and the predictable guess.
+By regret decomposition, we have that
+\begin{equation} \label{nn1}
+\begin{aligned}
+ &\text{\it Regret}_T := \sum_{t=1}^T \ell_t(w_t) - \min_{w \in \Theta} \sum_{t=1}^T \ell_t(w)  \textstyle  \\
+  \leq & \sum_{t=1}^T  \langle w_t - w^*, \nabla \ell_t(w_t) \rangle
+\\  = &\sum_{t=1}^T \langle  w_t - \tilde{w}_{t+1} , g_t - \tilde{m}_t \rangle + \langle w_t - \tilde{w}_{t+1}, \tilde{m}_t \rangle + \langle \tilde{w}_{t+1} - w^*, \tilde{g}_t  \rangle+ \langle \tilde{w}_{t+1} - w^*,g_t - \tilde{g}_t  \rangle \eqsp.
+\end{aligned}
+\end{equation}
+
+Recall the notation $\psi_t(x)$ and the Bregman divergence $B_{\psi_t}(u,v)$
+we defined in the beginning of this section.
+Now we are going to exploit a useful inequality (which appears in e.g.,~\cite{T08}); for any update of the form $\hat{w} = \arg\min_{w \in \Theta} \langle w, \theta \rangle + B_{\psi}(w, v)$, it holds that
+\begin{equation} \label{ii}
+\langle \hat{w} - u, \theta \rangle \leq B_{\psi}( u, v ) - B_{\psi}( u, \hat{w}) - B_{\psi}( \hat{w}, v) \quad \textrm{for any $u \in \Theta$} \eqsp.
+\end{equation}
+For $\beta_1=0$, we can rewrite the update on line 8 of (Algorithm~\ref{alg:optamsgrad}) as
+\begin{equation} \label{nc1}
+\tilde{w}_{t+1}= \arg\min_{w \in \Theta} \eta_t \langle w, \tilde{g}_t \rangle + B_{\psi_t}(w, \tilde{w}_{t} ) \eqsp,
+\end{equation}
+By using (\ref{ii}) for (\ref{nc1}) with $\hat{w} = \tilde{w}_{t+1}$ (the output of the minimization problem), $u = w^*$ and $v = \tilde{w}_{t}$, we have
+\begin{equation} \label{nn2}
+\begin{aligned}
+ \langle \tilde{w}_{t+1} - w^*, & \tilde{g}_t \rangle \leq \frac{1}{\eta_t}\big[ B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} ) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) \big] \eqsp.
+\end{aligned}
+\end{equation}
+
+We can also rewrite the update on line 9 of (Algorithm~\ref{alg:optamsgrad}) at time $t$ as
+\begin{equation} \label{nc2}
+\textstyle w_{t+1} = \arg\min_{w \in \Theta} \eta_{t+1} \langle w, \tilde{m}_{t+1} \rangle + B_{\psi_t}(w, \tilde{w}_{t+1} ).
+\end{equation}
+and, by using \eqref{ii} for \eqref{nc2} (written at iteration $t$), with $\hat{w} = w_{t}$ (the output of the minimization problem), $u = \tilde{w}_{t+1}$ and $v = \tilde{w}_{t}$, we have
+\begin{equation} \label{nn3}
+\begin{aligned}
+\langle w_t -\tilde{w}_{t+1}, & \tilde{m}_t  \rangle \leq \frac{1}{\eta_t}\big[ B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t ) - B_{\psi_{t-1}}(w_{t}, \tilde{w}_{t}) \big] \eqsp,
+\end{aligned}
+\end{equation}
+By (\ref{nn1}), (\ref{nn2}), and (\ref{nn3}), we obtain
+\begin{equation} \label{nnn}
+\begin{aligned}
+ \text{Regret}_T & \overset{(\ref{nn1})}{\leq} \sum_{t=1}^T \langle  w_t - \tilde{w}_{t+1} , g_t - \tilde{m}_t \rangle + \langle w_t - \tilde{w}_{t+1}, \tilde{m}_t \rangle + \langle \tilde{w}_{t+1} - w^*, \tilde{g}_t  \rangle+ \langle \tilde{w}_{t+1} - w^*,g_t - \tilde{g}_t  \rangle \\
+& \overset{(\ref{nn2}), (\ref{nn3})}{\leq}  \sum_{t=1}^T \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*} + \|  \tilde{w}_{t+1} - w^* \|_{\psi_{t-1}} \| g_t - \tilde{g}_t  \|_{\psi_{t-1}^*}\\
+&+ \frac{1}{\eta_t} \big[ B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t ) - B_{\psi_{t-1}}(w_{t}, \tilde{w}_{t}) +  B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} ) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) \big],
+\end{aligned}
+\end{equation}
+which is further bounded by
+\begin{equation} \label{nnnn}
+\begin{aligned}
+ \text{Regret}_T & \leq \sum_{t=1}^T \Big\{ \frac{1}{2 \eta_t} \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}}^2 + \frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2+ \|  \tilde{w}_{t+1} - w^* \|_{\psi_{t-1}} \| g_t - \tilde{g}_t  \|_{\psi_{t-1}^*}\\\
+ &  + \frac{1}{\eta_t} \big(\underbrace{B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) }_{A_1}- \frac{1}{2} \| \tilde{w}_{t+1} - w_t \|_{\psi_{t-1}}^2+\underbrace{B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} )}_{A_2}  \big) \Big\} \eqsp,
+\end{aligned}
+\end{equation}
+where the inequality is due to $ \| w_t - \tilde{w}_{t+1}   \|_{\psi_{t-1}} \| g_t - m_t  \|_{\psi_{t-1}^*} = \inf_{ \beta > 0 }   \frac{1}{2\beta} \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}}^2 +  \frac{\beta}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2$ by Young's inequality and the 1-strongly convex of $\psi_{t-1}(\cdot)$ with respect to $\| \cdot \|_{\psi_{t-1}}$ which yields that $B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t )  \geq \frac{1}{2} \| \tilde{w}_{t+1} -  w_t  \|^2_{\psi_t} \geq 0$. 
+
+To proceed, notice that
+\begin{equation} \label{nn5}
+\begin{aligned}
+A_1 =  B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t})  = \langle \tilde{w}_{t+1} - \tilde{w}_{t} , \text{diag}(\hat{v}_{t-1}^{1/2} -\hat{v}_t^{1/2} ) ( \tilde{w}_{t+1}- \tilde{w}_{t} ) \rangle \leq 0 \eqsp,
+\end{aligned}
+\end{equation}
+as the sequence $\{\hat{v}_t\}$ is non-decreasing. And that
+\begin{equation}  \label{nn4}
+\begin{aligned}
+A_2 = B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} )  &= \langle w^* - \tilde{w}_{t+1}  , \text{diag}(\hat{v}_{t+1}^{1/2} -\hat{v}_t^{1/2} ) ( w^* - \tilde{w}_{t+1}  ) \rangle\\
+  & \leq ( \max_i (w^*[i] -  \tilde{w}_{t+1} [i] )^2  )\cdot ( \sum_{i=1}^d \hat{v}_{t+1}^{1/2}[i] -\hat{v}_t^{1/2}[i] )
+\end{aligned}
+\end{equation}
+Therefore, by (\ref{nnnn}),(\ref{nn4}),(\ref{nn5}), we have
+\begin{equation}\notag
+\begin{aligned}
+ \text{\it Regret}_T \leq & \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  \\
+& +D_{\infty}^2 \beta_1^2  \sum_{t=1}^T \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}  \eqsp.
+\end{aligned}
+\end{equation}
+since $  \| g_t - \tilde{g}_t  \|_{\psi_{t-1}^*} =  \| g_t - \beta_1 \theta_{t-1} -(1- \beta_1) g_t \|_{\psi_{t-1}^*} = \beta^2 \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*} $.
+This completes the proof.
 
 \end{proof}
 

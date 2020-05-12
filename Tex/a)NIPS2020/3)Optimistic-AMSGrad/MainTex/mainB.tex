@@ -165,7 +165,7 @@ On the other hand, \textsf{Nesterov's Method} or \textsf{Heavy ball} Method \cit
 State-of-the-art algorithms like \textsf{AMSGrad} \citep{RKK18} and \textsf{ADAM} \citep{KB15} leverage these ideas to accelerate the training process of highly nonconvex objective functions such as deep neural networks losses.
 
 In this paper, we propose an algorithm that goes further than the hybrid of the adaptivity and momentum approach. 
-Our algorithm is inspired by \textsf{Optimistic Online learning} \citep{CJ12,RS13,SALS15,ALLW18}, which assumes that a good \emph{guess} of the loss function in each round of online learning is available, and plays an action by exploiting the guess. 
+Our algorithm is inspired by \textsf{Optimistic Online learning} \citep{CJ12,rakhlin2013online,SALS15,ALLW18,mertikopoulos2018optimistic}, which assumes that a good \emph{guess} of the loss function in each round of online learning is available, and plays an action by exploiting the guess. 
 By exploiting the guess, algorithms in \textsf{Optimistic Online learning} enjoy smaller regret than the ones without exploiting the guess.
 We combine the \textsf{Optimistic Online learning} idea with the adaptivity and the momentum ideas to design a new algorithm --- \textsf{OPT-AMSGrad}. 
 To the best of our knowledge, this is the first work exploring towards this direction. 
@@ -185,7 +185,7 @@ The standard setup of \textsf{Online learning} is that, in each round $t$, an on
 The goal of the learner is to minimize the regret, 
 $$\text{Regret}_{T}( \{ w_t \} ):= \sum_{t=1}^T \ell_{t}(w_t) - \sum_{t=1}^T \ell_{t}(w^*)\eqsp,$$
 which is the cumulative loss of the learner minus the cumulative loss of some benchmark $w^{*} \in \Theta$.
-The idea of \textsf{Optimistic Online learning} (e.g. \citep{CJ12,RS13,SALS15,ALLW18}) is as follows.
+The idea of \textsf{Optimistic Online learning} (e.g. \citep{CJ12,rakhlin2013online,SALS15,ALLW18}) is as follows.
 In each round $t$, the learner exploits a good guess $m_t(\cdot)$ of the gradient $\nabla \ell_t(\cdot)$ of the loss function to choose an action $w_t$. 
 \footnote{Imagine that if the learner would had been known $\nabla \ell_t(\cdot)$ (\ie exact guess) before committing its action, then it would exploit the knowledge to determine its action and consequently minimizes the regret.} 
 Consider the \textsf{Follow-the-Regularized-Leader} (\textsf{FTRL}, \citep{H14}) online learning algorithm which update reads
@@ -266,8 +266,8 @@ We formulate in this section the proposed optimistic acceleration of AMSGrad, no
 \STATE $\theta_t = \beta_{1} \theta_{t-1} + (1 - \beta_{1}) g_t$.
 \STATE $v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^{2}$.
 \STATE $\hat{v}_t = \max( \hat{v}_{t-1} , v_t )$. 
-\STATE $w_{t+\frac{1}{2}} =  w_{t} - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}_t }  } $.
-\STATE $w_{t+1} = w_{t+\frac{1}{2}} - \eta_{t} \frac{h_{t+1}}{ \sqrt{\hat{v}_t } } $,  \\  
+\STATE $\tilde{w}_{t+1} =  \tilde{w}_{t} - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}_t }  } $.
+\STATE $w_{t+1} = \tilde{w}_{t+1} - \eta_{t} \frac{h_{t+1}}{ \sqrt{\hat{v}_t } } $,  \\  
 where $h_{t+1}:= \beta_{1} \theta_{t-1} + (1 - \beta_{1}) m_{t+1}$  and $m_{t+1}$ is the guess of $g_{t+1}$. 
 \ENDFOR 
 \end{algorithmic}
@@ -284,10 +284,17 @@ where $h_{t+1}:= \beta_{1} \theta_{t-1} + (1 - \beta_{1}) m_{t+1}$  and $m_{t+1}
 \end{minipage}\end{wrapfigure}
  It combines the idea of adaptive optimization with optimistic learning. 
 At each iteration, the learner computes a gradient vector $g_{t}:= \nabla \ell_t( w_t)$ at $w_{t}$ (line 4), then it maintains an exponential moving average of $\theta_{t} \in \mathbb R^{d}$ (line 5) and $v_{t} \in \mathbb R^{d}$ (line 6), which is followed by the max operation to get $\hat{v}_{t} \in \mathbb R^{d}$ (line 7). 
-The learner also updates an auxiliary variable $w_{t+\frac{1}{2}} \in \Theta$ (line 8). 
-It uses the auxiliary variable (hidden model) to update and commit $w_{t+1}$ (line 9), which exploits the guess $m_{t+1}$ of $g_{t+1}$ to get $w_{t+1}$.
-%As the learner's action set is $\Theta \subseteq \mathbb R^{d}$, we adopt the notation $\Pi_{\Theta}[\cdot]$ for the projection to $\Theta$ if needed. 
-We summarize the interplay between the auxiliary structure $w_{t+\frac{1}{2}}$ and the model parameter $w_{t+1}$ of \textsf{AMSGrad} in Figure \ref{fig:scheme}.
+The learner also updates an auxiliary variable $\tilde{w}_{t+1} \in \Theta$ (line 8). 
+
+Observe that the proposed algorithm does not reduce to \textsc{AMSGrad} when $m_{t}=0$.
+Furthermore, combining line 8 and line 9 and get a single line as $w_{t+1}= \tilde{w}_{t}  - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}}_t } - \eta_{t} \frac{h_{t+1}}{ \sqrt{\hat{v}}_t }$. 
+
+Compared to \textsc{AMSGrad}, the updates is constructed by a double level update that interlink some auxiliary state and the model parameter state, as initially introduced in \citep{rakhlin2013online}.
+It uses the auxiliary variable (hidden model) to update and commit $w_{t+1}$ (line 9), which exploits the guess $m_{t+1}$ of $g_{t+1}$, see Figure \ref{fig:scheme} for a schematic illustration.
+In the following analysis, we show that the interleaving actually leads to some cancellation in the regret bound.
+
+Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citep{chiang2012online}.
+The gradient prediction procedure plays naturally an important role and will be tackled Section~\ref{sec:numerical}.
 
 
 The proposed \textsf{OPT-AMSGrad} inherits three properties:
@@ -295,7 +302,7 @@ The proposed \textsf{OPT-AMSGrad} inherits three properties:
 \item Adaptive learning rate of each dimension as \textsf{AdaGrad} \cite{DHS11}. (line 6, line 8 and line 9)
 \item Exponential moving average of the past gradients as \textsf{Nesterov's method} \cite{N04} and the \textsf{Heavy-Ball} method \cite{P64}. (line 5)
 \item Optimistic update that exploits a good guess of the next gradient vector
-as optimistic online learning algorithms \cite{CJ12,RS13,SALS15}. (line 9)
+as optimistic online learning algorithms \cite{CJ12,rakhlin2013online,SALS15}. (line 9)
 \end{itemize}
 The first property helps for acceleration when the gradient has a sparse structure.
 The second one is from the well-recognized idea of momentum which can also help for acceleration. 
@@ -305,6 +312,51 @@ Observe that the proposed algorithm does not reduce to \textsf{AMSGrad} when $m_
 %w_{t} - \eta_t \frac{\theta_t + h_{t+1}}{ \sqrt{\hat{v}}_t }$.
 
 \section{Global Convergence of \textsf{OPT-AMSGrad}}\label{sec:analysis}
+For conciseness, we place all the proofs of the following results in the supplementary material.
+\subsection{Convex Analysis: Regret Analysis}
+\textbf{Notations.}\hspace{0.1in}To begin with, let us introduce some notations first.
+We denote the Mahalanobis norm $\|\cdot\|_H := \sqrt{ \langle \cdot, H \cdot \rangle }$ for some PSD matrix $H$.
+We let $\psi_t(x) := \langle x, \text{diag}\{\hat{v}_t\}^{1/2} x \rangle$ for a PSD matrix $H_t^{1/2}:= \text{diag}\{\hat{v}_t\}^{1/2}$, 
+%Denote the PSD matrix $H_t := \text{diag}\{\hat{v}_t\}$, 
+where $\text{diag}\{\hat{v}_t\}$ represents the diagonal matrix whose $i_{th}$ diagonal element is $\hat{v}_t[i]$ in Algorithm~\ref{alg:optamsgrad}.
+We define its corresponding Mahalanobis norm $\| \cdot \|_{\psi_t}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$,
+where we abuse the notation $\psi_t$ to represent the PSD matrix $H_t^{1/2}:=\text{diag}\{\hat{v}_t\}^{1/2}$.
+Consequently, $\psi_t(\cdot)$ is 1-strongly convex with respect to the norm $\| \cdot \|_{\psi_t}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$.
+Namely, $\psi_t(\cdot)$ satisfies $\psi_t(u) \geq \psi_t(v) + \langle \psi_t(v), u - v \rangle + \frac{1}{2} \| u - v\|^2_{\psi_t}$ for any point $u,v$.
+A consequence of 1-strongly convexity of $\psi_t(\cdot)$ is that $B_{\psi_t}(u,v) \geq \frac{1}{2} \| u - v \|^2_{\psi_t}$, where the Bregman divergence $B_{\psi_t}(u,v)$ is defined as $B_{\psi_t}(u,v) := \psi_t(u) - \psi_t(v) - \langle \psi_t(v), u - v \rangle$ with $\psi_t(\cdot)$ as the distance generating function.
+We can also define the corresponding dual norm $\| \cdot \|_{\psi_t^*}:= \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{-1/2} \cdot \rangle }$.
+
+\textbf{Regret analysis.}\hspace{0.1in}We prove the following result regarding the regret in the convex optimization setting. That is, we assume that the loss functions $\{\ell_t\}_{t>0}$ are convex. We also assume that $\Theta$ has bounded diameter $D_{\infty}$, which is a standard assumption in previous works \cite{RKK18,KB15} on adaptive methods. It is necessary in regret analysis since if the boundedness assumption is lifted, one might construct a scenario such that the benchmark is $w^* = \infty$ and the learner's regret is infinite. 
+
+\begin{Theorem} \label{thm:mainconvex}
+Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
+Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
+\begin{equation} \label{bound:optadabeta}
+\begin{aligned}
+ \text{\it Regret}_T \leq & \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  \\
+& +D_{\infty}^2 \beta_1^2  \sum_{t=1}^T \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}  \eqsp.
+\end{aligned}
+\end{equation}
+where $ \tilde{m}_{t+1}  = \beta_1 \theta_{t-1} +(1-\beta_1) m_{t+1}$, $g_{t}:= \nabla \ell_{t}(w_t)$, $\eta_{{\min}} := \min_{{t}} \eta_{t}$ and $D_{\infty}^2$ is the diameter of the bounded set $\Theta$.
+The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence $\{ \eta_t \}$.
+\end{Theorem}
+
+\begin{Corollary}
+Suppose $\beta_1=0$ and $\{v_t\}_{t>0}$ is an increasing monotone sequence, then we obtain the following regret bound: 
+\begin{equation} 
+\begin{aligned}
+ \text{\it Regret}_T \leq & \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 \\
+& +\frac{D_{\infty}^2}{\eta_{\min}} \sum_{i=1}^d \{ (1-\beta_2) \sum_{s=1}^{T} \beta_2^{T-s} (g_s[i] - m_s[i])^2 \}^{1/2} \eqsp,
+\end{aligned}
+\end{equation}
+where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
+The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence $\{ \eta_t \}$.
+\end{Corollary}
+
+
+
 \subsection{Nonconvex Analysis: Finite-Time Upper Bound}
 In this section, we discuss the offline and stochastic non-convex optimization properties of our online framework.
 In the stochastic optimization literature, the problem we are tackling reads as follows:
@@ -357,7 +409,7 @@ $$ \|\nabla f(w_t)\| < \major ,~~~\|\theta_t \| < \major ,~~~\|\hat{v}_t\| < \ma
 \end{Lemma}
 Then, following \citep{yan2018unified} and their study of the SGD with Momentum (not AMSGrad but simple momentum) we denote for any $t >0$:
 \beq\label{eq:deftilde}
-\overline{w}_t = w_t + \frac{\beta_1}{1 - \beta_1} (w_t - w_{t-1}) = \frac{1}{1 - \beta_1} w_t -  \frac{\beta_1}{1 - \beta_1} w_{t-1} \eqsp,
+\overline{w}_t = w_t + \frac{\beta_1}{1 - \beta_1} (w_t - \tilde{w}_{t-1}) = \frac{1}{1 - \beta_1} w_t -  \frac{\beta_1}{1 - \beta_1} \tilde{w}_{t-1} \eqsp,
 \eeq
 and derive an important Lemma:
 \begin{Lemma}\label{lem:momentum}
@@ -407,10 +459,10 @@ The stochastic objective function \eqref{eq:minproblem} reads:
 f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2
 \eeq
 where $\mathcal{L}(\cdot, y)$ is the loss function (can be Huber loss or cross entropy), $y$ are the true labels and $\lambda >0$ is the regularization parameter.
-For any layer index $\ell \in [1, L]$ we denote the output of layer $\ell$ by $h^{(\ell)}(w,\xi)$:
-$$
-h^{(\ell)}(w,\xi) = \sigma\left(w^{(\ell)} \sigma\left(w^{(\ell-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)
-$$
+For any layer index $\ell \in [1, L]$ we denote the output of layer $\ell$ by $h^{(\ell)}(w,\xi)= \sigma\left(w^{(\ell)} \sigma\left(w^{(\ell-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)$.
+%$$
+%h^{(\ell)}(w,\xi) = \sigma\left(w^{(\ell)} \sigma\left(w^{(\ell-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)
+%$$
 
 The following Lemma proves that assumption H\ref{ass:boundedparam} is satisfied with a feed forward neural net \eqref{eq:dnnmodel}:
 \begin{Lemma}\label{lem:dnnh2} 
@@ -440,11 +492,12 @@ Given the multilayer model \eqref{eq:dnnmodel}, assume the boundedness of the in
 \caption{Training loss vs. Number of iterations. The first row are results with fully-connected NN.}
 \label{fig:train_loss}
 \end{figure}
+\vspace{-0.2cm}
 \section{Numerical Experiments}\label{sec:numerical}
 \subsection{Gradient Estimation}
 From the analysis in the previous section, we know that whether \textsf{OPT-AMSGrad} converges faster than its counterpart depends on how $m_{t}$ is chosen.
 In \textsf{Optimistic-Online learning}, $m_{t}$ is usually set to $m_{t}= g_{t-1}$, which means that it uses the previous gradient as a guess of the next one.
-The choice can accelerate the convergence to equilibrium in some two-player zero-sum games \cite{RS13,SALS15,DISZ18}, in which each player uses an optimistic online learning algorithm against its opponent.
+The choice can accelerate the convergence to equilibrium in some two-player zero-sum games \cite{rakhlin2013online,SALS15,DISZ18}, in which each player uses an optimistic online learning algorithm against its opponent.
 
 However, this paper is about solving optimization problems, as in \eqref{eq:minproblem}, instead of solving zero-sum games.  
 In most classical deep learning tasks, as we will develop in the numerical section, \eqref{eq:minproblem} even reads $\min \limits_{w \in \Theta} f(w) = \sum_{i=1}^n  f(w, \xi_i) $ for a fixed batch of $n$ samples $\{ \xi_i \}_{i=1}^n$.
@@ -459,7 +512,6 @@ x_t - x^* = A( x_{t-1} - x^* ) + e_t,
 where $e_t$ is a second order term satisfying $\| e_t \|_2  = O( \| x_{t-1} - x^* \|_2^2)$ and $A \in \mathbb R^{d \times d}$ is an unknown matrix.
 The extrapolation algorithm we used is shown in Algorithm~\ref{algex}.
 Some theoretical guarantees regarding the distance between the output and $x^*$ are provided in \cite{SAB16}.
-\vspace{-0.2cm}
 \begin{algorithm}[h]
 \begin{algorithmic}[1] 
 \small
@@ -598,7 +650,111 @@ accelerate the process of training, in particular for deep neural networks. With
 
 
 \appendix
+\section{Proof of Theorem~\ref{thm:mainconvex}}\label{app:thmmainconvex}
+\begin{Theorem*}
+Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
+Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
+\begin{equation} \label{bound:optadabeta}
+\begin{aligned}
+ \text{\it Regret}_T \leq & \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  \\
+& +D_{\infty}^2 \beta_1^2  \sum_{t=1}^T \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}  \eqsp.
+\end{aligned}
+\end{equation}
+where $ \tilde{m}_{t+1}  = \beta_1 \theta_{t-1} +(1-\beta_1) m_{t+1}$, $g_{t}:= \nabla \ell_{t}(w_t)$, $\eta_{{\min}} := \min_{{t}} \eta_{t}$ and $D_{\infty}^2$ is the diameter of the bounded set $\Theta$.
+The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence $\{ \eta_t \}$.
+\end{Theorem*}
 
+\begin{proof}
+Beforehand, note:
+\beq
+\begin{split}
+& \tilde{g}_t  = \beta_1 \theta_{t-1} +(1 - \beta_1) g_t\\
+& \tilde{m}_{t+1}  = \beta_1 \theta_{t-1} +(1-\beta_1) m_{t+1}
+\end{split}
+\eeq
+where we recall that $g_t$ and $m_{t+1}$ are respectively the gradient $\nabla \ell_t(w_t)$ and the predictable guess.
+By regret decomposition, we have that
+\begin{equation} \label{nn1}
+\begin{aligned}
+ &\text{\it Regret}_T := \sum_{t=1}^T \ell_t(w_t) - \min_{w \in \Theta} \sum_{t=1}^T \ell_t(w)  \textstyle  \\
+  \leq & \sum_{t=1}^T  \langle w_t - w^*, \nabla \ell_t(w_t) \rangle
+\\  = &\sum_{t=1}^T \langle  w_t - \tilde{w}_{t+1} , g_t - \tilde{m}_t \rangle + \langle w_t - \tilde{w}_{t+1}, \tilde{m}_t \rangle + \langle \tilde{w}_{t+1} - w^*, \tilde{g}_t  \rangle+ \langle \tilde{w}_{t+1} - w^*,g_t - \tilde{g}_t  \rangle \eqsp.
+\end{aligned}
+\end{equation}
+
+Recall the notation $\psi_t(x)$ and the Bregman divergence $B_{\psi_t}(u,v)$
+we defined in the beginning of this section.
+Now we are going to exploit a useful inequality (which appears in e.g.,~\cite{T08}); for any update of the form $\hat{w} = \arg\min_{w \in \Theta} \langle w, \theta \rangle + B_{\psi}(w, v)$, it holds that
+\begin{equation} \label{ii}
+\langle \hat{w} - u, \theta \rangle \leq B_{\psi}( u, v ) - B_{\psi}( u, \hat{w}) - B_{\psi}( \hat{w}, v) \quad \textrm{for any $u \in \Theta$} \eqsp.
+\end{equation}
+For $\beta_1=0$, we can rewrite the update on line 8 of (Algorithm~\ref{alg:optamsgrad}) as
+\begin{equation} \label{nc1}
+\tilde{w}_{t+1}= \arg\min_{w \in \Theta} \eta_t \langle w, \tilde{g}_t \rangle + B_{\psi_t}(w, \tilde{w}_{t} ) \eqsp,
+\end{equation}
+By using (\ref{ii}) for (\ref{nc1}) with $\hat{w} = \tilde{w}_{t+1}$ (the output of the minimization problem), $u = w^*$ and $v = \tilde{w}_{t}$, we have
+\begin{equation} \label{nn2}
+\begin{aligned}
+ \langle \tilde{w}_{t+1} - w^*, & \tilde{g}_t \rangle \leq \frac{1}{\eta_t}\big[ B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} ) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) \big] \eqsp.
+\end{aligned}
+\end{equation}
+
+We can also rewrite the update on line 9 of (Algorithm~\ref{alg:optamsgrad}) at time $t$ as
+\begin{equation} \label{nc2}
+\textstyle w_{t+1} = \arg\min_{w \in \Theta} \eta_{t+1} \langle w, \tilde{m}_{t+1} \rangle + B_{\psi_t}(w, \tilde{w}_{t+1} ).
+\end{equation}
+and, by using \eqref{ii} for \eqref{nc2} (written at iteration $t$), with $\hat{w} = w_{t}$ (the output of the minimization problem), $u = \tilde{w}_{t+1}$ and $v = \tilde{w}_{t}$, we have
+\begin{equation} \label{nn3}
+\begin{aligned}
+\langle w_t -\tilde{w}_{t+1}, & \tilde{m}_t  \rangle \leq \frac{1}{\eta_t}\big[ B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t ) - B_{\psi_{t-1}}(w_{t}, \tilde{w}_{t}) \big] \eqsp,
+\end{aligned}
+\end{equation}
+By (\ref{nn1}), (\ref{nn2}), and (\ref{nn3}), we obtain
+\begin{equation} \label{nnn}
+\begin{aligned}
+ \text{Regret}_T & \overset{(\ref{nn1})}{\leq} \sum_{t=1}^T \langle  w_t - \tilde{w}_{t+1} , g_t - \tilde{m}_t \rangle + \langle w_t - \tilde{w}_{t+1}, \tilde{m}_t \rangle + \langle \tilde{w}_{t+1} - w^*, \tilde{g}_t  \rangle+ \langle \tilde{w}_{t+1} - w^*,g_t - \tilde{g}_t  \rangle \\
+& \overset{(\ref{nn2}), (\ref{nn3})}{\leq}  \sum_{t=1}^T \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*} + \|  \tilde{w}_{t+1} - w^* \|_{\psi_{t-1}} \| g_t - \tilde{g}_t  \|_{\psi_{t-1}^*}\\
+&+ \frac{1}{\eta_t} \big[ B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t ) - B_{\psi_{t-1}}(w_{t}, \tilde{w}_{t}) +  B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} ) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) \big],
+\end{aligned}
+\end{equation}
+which is further bounded by
+\begin{equation} \label{nnnn}
+\begin{aligned}
+ \text{Regret}_T & \leq \sum_{t=1}^T \Big\{ \frac{1}{2 \eta_t} \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}}^2 + \frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2+ \|  \tilde{w}_{t+1} - w^* \|_{\psi_{t-1}} \| g_t - \tilde{g}_t  \|_{\psi_{t-1}^*}\\\
+ &  + \frac{1}{\eta_t} \big(\underbrace{B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t}) }_{A_1}- \frac{1}{2} \| \tilde{w}_{t+1} - w_t \|_{\psi_{t-1}}^2+\underbrace{B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} )}_{A_2}  \big) \Big\} \eqsp,
+\end{aligned}
+\end{equation}
+where the inequality is due to $ \| w_t - \tilde{w}_{t+1}   \|_{\psi_{t-1}} \| g_t - m_t  \|_{\psi_{t-1}^*} = \inf_{ \beta > 0 }   \frac{1}{2\beta} \| w_t - \tilde{w}_{t+1} \|_{\psi_{t-1}}^2 +  \frac{\beta}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2$ by Young's inequality and the 1-strongly convex of $\psi_{t-1}(\cdot)$ with respect to $\| \cdot \|_{\psi_{t-1}}$ which yields that $B_{\psi_{t-1}}(\tilde{w}_{t+1}, w_t )  \geq \frac{1}{2} \| \tilde{w}_{t+1} -  w_t  \|^2_{\psi_t} \geq 0$. 
+
+To proceed, notice that
+\begin{equation} \label{nn5}
+\begin{aligned}
+A_1 =  B_{\psi_{t-1}}(\tilde{w}_{t+1}, \tilde{w}_{t}) - B_{\psi_t}(\tilde{w}_{t+1}, \tilde{w}_{t})  = \langle \tilde{w}_{t+1} - \tilde{w}_{t} , \text{diag}(\hat{v}_{t-1}^{1/2} -\hat{v}_t^{1/2} ) ( \tilde{w}_{t+1}- \tilde{w}_{t} ) \rangle \leq 0 \eqsp,
+\end{aligned}
+\end{equation}
+as the sequence $\{\hat{v}_t\}$ is non-decreasing. And that
+\begin{equation}  \label{nn4}
+\begin{aligned}
+A_2 = B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} )  &= \langle w^* - \tilde{w}_{t+1}  , \text{diag}(\hat{v}_{t+1}^{1/2} -\hat{v}_t^{1/2} ) ( w^* - \tilde{w}_{t+1}  ) \rangle\\
+  & \leq ( \max_i (w^*[i] -  \tilde{w}_{t+1} [i] )^2  )\cdot ( \sum_{i=1}^d \hat{v}_{t+1}^{1/2}[i] -\hat{v}_t^{1/2}[i] )
+\end{aligned}
+\end{equation}
+Therefore, by (\ref{nnnn}),(\ref{nn4}),(\ref{nn5}), we have
+\begin{equation}\notag
+\begin{aligned}
+ \text{\it Regret}_T \leq & \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  \\
+& +D_{\infty}^2 \beta_1^2  \sum_{t=1}^T \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}  \eqsp.
+\end{aligned}
+\end{equation}
+since $  \| g_t - \tilde{g}_t  \|_{\psi_{t-1}^*} =  \| g_t - \beta_1 \theta_{t-1} -(1- \beta_1) g_t \|_{\psi_{t-1}^*} = \beta^2 \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*} $.
+This completes the proof.
+
+\end{proof}
+
+
+\clearpage
 \section{Proofs of Auxiliary Lemmas}
 \subsection{Proof of Lemma~\ref{lem:bound}}\label{app:lembound}
 \begin{Lemma*}
@@ -636,7 +792,7 @@ where $\tilde{\theta}_t = \theta_t + \beta_1 \theta_{t-1}$ and $\tilde{g}_t = g_
 By definition \eqref{eq:deftilde} and using the Algorithm updates, we have:
 \beq
 \begin{split}
-\overline{w}_{t+1} - \overline{w}_t  &= \frac{1}{1 - \beta_1} ( w_{t+1} - w_t)  -  \frac{\beta_1}{1 - \beta_1}( w_{t} - w_{t-1})\\
+\overline{w}_{t+1} - \overline{w}_t  &= \frac{1}{1 - \beta_1} ( w_{t+1} - \tilde{w}_t)  -  \frac{\beta_1}{1 - \beta_1}( w_{t} - \tilde{w}_{t-1})\\
 & = - \frac{1}{1 - \beta_1} \eta_{t} \hat{v}_{t}^{-1/2} (\theta_t + h_{t+1})  +  \frac{\beta_1}{1 - \beta_1}\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + h_{t})\\
 & = - \frac{1}{1 - \beta_1}  \eta_{t} \hat{v}_{t}^{-1/2} (\theta_t + \beta_1 \theta_{t-1}) -\frac{1}{1 - \beta_1}  \eta_{t} \hat{v}_{t}^{-1/2} (1- \beta_1) m_{t+1}\\
 & + \frac{\beta_1}{1 - \beta_1} \eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + \beta_1 \theta_{t-2}) + \frac{\beta_1}{1 - \beta_1}  \eta_{t-1} \hat{v}_{t-1}^{-1/2} (1- \beta_1) m_{t}
@@ -690,9 +846,7 @@ Summing from  $t =1$ to $t = T_{\sf max}$ on both sides yields:
 where the last inequality is due to $\sum_{r=1}^t   \gamma^{t-r} \leq \frac{1}{1 - \gamma}$ by definition of $\gamma$.
 \end{proof}
 
-
-
-\section{Proofs of Theorem~\ref{thm:boundopt}}\label{app:thmboundopt}
+\section{Proof of Theorem~\ref{thm:boundopt}}\label{app:thmboundopt}
 \begin{Theorem*}
 Assume H\ref{ass:smooth}-H\ref{ass:bounded}, $(\beta_1, \beta_2) \in [0,1]$ and a sequence of decreasing stepsizes $\{\eta_t\}_{t>0}$, then the following result holds:
 \beq
@@ -763,7 +917,7 @@ By Cauchy-Schwarz (CS) inequality we have:
 \beq\label{eq:termB2}
  \begin{split}
   \norm{ \nabla f(\overline{w}_t) -  \nabla f(w_t)} & \leq L \norm{ \overline{w}_t - w_t}\\
-  & \leq L \frac{\beta_1}{1 - \beta_1} \norm{w_t - w_{t-1}}
+  & \leq L \frac{\beta_1}{1 - \beta_1} \norm{w_t - \tilde{w}_{t-1}}
  \end{split}
  \eeq
 By Lemma~\ref{lem:momentum} we also have:
@@ -771,14 +925,14 @@ By Lemma~\ref{lem:momentum} we also have:
  \begin{split}
 \overline{w}_{t+1} - \overline{w}_t & = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1} \left[ \eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2}\right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \\
 & = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1}\eta_{t-1} \hat{v}_{t-1}^{-1/2} \left[ I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1} \right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \\
-& = \frac{\beta_1}{1 - \beta_1} \left[ I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1} \right] (w_{t-1} - w_t) - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t
+& = \frac{\beta_1}{1 - \beta_1} \left[ I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1} \right] (\tilde{w}_{t-1} - w_t) - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t
  \end{split}
  \eeq
- where the last equality is due to $ \tilde{\theta}_{t-1}\eta_{t-1} \hat{v}_{t-1}^{-1/2} = w_{t-1} - w_t$ by construction of $\tilde{\theta}_t$.
+ where the last equality is due to $ \tilde{\theta}_{t-1}\eta_{t-1} \hat{v}_{t-1}^{-1/2} = \tilde{w}_{t-1} - w_t$ by construction of $\tilde{\theta}_t$.
  Taking the norms on both sides, observing $\norm{ I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1}} \leq 1$ due to the decreasing stepsize and the construction of $\hat{v}_t$ and using CS inequality yield:
 \beq\label{eq:termB3}
  \begin{split}
-\norm{\overline{w}_{t+1} - \overline{w}_t} & \leq \frac{\beta_1}{1 - \beta_1} \norm{w_{t-1} - w_t} + \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}
+\norm{\overline{w}_{t+1} - \overline{w}_t} & \leq \frac{\beta_1}{1 - \beta_1} \norm{\tilde{w}_{t-1} - w_t} + \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}
  \end{split}
  \eeq 
  We recall Young's inequality with a constant $\delta \in (0,1)$ as follows:
@@ -789,21 +943,21 @@ $$
  Plugging \eqref{eq:termB2} and \eqref{eq:termB3} into \eqref{eq:termB1} returns:
  \beq
  \begin{split}
- \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq & L \frac{\beta_1}{1 - \beta_1} \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}  \norm{w_t - w_{t-1}}\\
- & +  L\left(\frac{\beta_1}{1 - \beta_1} \right)^2 \norm{w_{t-1} - w_t}^2
+ \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq & L \frac{\beta_1}{1 - \beta_1} \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}  \norm{w_t - \tilde{w}_{t-1}}\\
+ & +  L\left(\frac{\beta_1}{1 - \beta_1} \right)^2 \norm{\tilde{w}_{t-1} - w_t}^2
   \end{split}
  \eeq
  
-Applying Young's inequality with $\delta \to \frac{\beta_1}{1 - \beta_1}$ on the product $ \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}  \norm{w_t - w_{t-1}}$ yields:
+Applying Young's inequality with $\delta \to \frac{\beta_1}{1 - \beta_1}$ on the product $ \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}  \norm{w_t - \tilde{w}_{t-1}}$ yields:
  \beq\label{eq:termB}
- \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq  L \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 +  2L\left(\frac{\beta_1}{1 - \beta_1} \right)^2 \norm{w_{t-1} - w_t}^2
+ \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq  L \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 +  2L\left(\frac{\beta_1}{1 - \beta_1} \right)^2 \norm{\tilde{w}_{t-1} - w_t}^2
  \eeq
  
  The last term $ \frac{L}{2} \norm{\overline{w}_{t+1} - \overline{w}_t}$ can be upper bounded using \eqref{eq:termB3}:
 \beq\label{eq:term3} 
 \begin{split}
- \frac{L}{2} \norm{\overline{w}_{t+1} - \overline{w}_t}^2 & \leq  \frac{L}{2} \left[ \frac{\beta_1}{1 - \beta_1} \norm{w_{t-1} - w_t} + \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}\right]\\
- &  \leq L \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 + 2L  \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \norm{w_{t-1} - w_t}^2 
+ \frac{L}{2} \norm{\overline{w}_{t+1} - \overline{w}_t}^2 & \leq  \frac{L}{2} \left[ \frac{\beta_1}{1 - \beta_1} \norm{\tilde{w}_{t-1} - w_t} + \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}\right]\\
+ &  \leq L \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 + 2L  \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \norm{\tilde{w}_{t-1} - w_t}^2 
 \end{split}
 \eeq
 
@@ -813,7 +967,7 @@ Plugging \eqref{eq:termA}, \eqref{eq:termB} and \eqref{eq:term3} into \eqref{eq:
 \begin{split}
 & \EE\left[f(\overline{w}_{t+1})  +   \frac{1}{1 - \beta_1}\tilde{\major}^2  \norm{\eta_{t} \hat{v}_{t}^{-1/2} }  - \left( f(\overline{w}_{t}) + \frac{1}{1 - \beta_1}\tilde{\major}^2 \norm{\eta_{t-1} \hat{v}_{t-1}^{-1/2}} \right)        \right] \\
 & \leq \EE \left[ - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t  - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} ( \beta_1 g_{t-1} +m_{t+1})   \right]\\
-& + \EE \left[ 2L \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 + 4L  \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \norm{w_{t-1} - w_t}^2  \right]
+& + \EE \left[ 2L \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 + 4L  \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \norm{\tilde{w}_{t-1} - w_t}^2  \right]
 \end{split}
 \eeq
 where $ \tilde{\major}^2 = (a\beta_1^2 -2 a \beta_1 + \beta 1)\major^2$.
@@ -829,15 +983,15 @@ Summing from $t=1$ to $t=T$ leads to
 \begin{split}
 & \frac{1}{\major} \sum_{t=1}^{T_{\sf max}} \left( (1 - a\beta_1)   \eta_{t-1} + (\beta_1 + a)   \eta_{t} \right) \norm{\nabla f(w_t)}^2 \leq\\
 &  \EE\left[  f(\overline{w}_{1}) + \frac{1}{1 - \beta_1}\tilde{\major}^2 \norm{\eta_{0} \hat{v}_{0}^{-1/2}}    - \left(f(\overline{w}_{T_{\sf max}+1})  +   \frac{1}{1 - \beta_1}\tilde{\major}^2  \norm{\eta_{T_{\sf max}} \hat{v}_{T_{\sf max}}^{-1/2} } \right)      \right]\\
-& +2L  \sum_{t=1}^{T_{\sf max}}  \EE \left[  \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 \right] + 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \sum_{t=1}^{T_{\sf max}}  \EE \left[  \norm{w_{t-1} - w_t}^2  \right]\\
-& \leq  \EE\left[  \Delta f  + \frac{1}{1 - \beta_1}\tilde{\major}^2 \norm{\eta_{0} \hat{v}_{0}^{-1/2}}    \right] +2L  \sum_{t=1}^{T_{\sf max}}  \EE \left[  \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 \right] + 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \sum_{t=1}^{T_{\sf max}}  \EE \left[  \norm{w_{t-1} - w_t}^2  \right]\\
+& +2L  \sum_{t=1}^{T_{\sf max}}  \EE \left[  \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 \right] + 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \sum_{t=1}^{T_{\sf max}}  \EE \left[  \norm{\tilde{w}_{t-1} - w_t}^2  \right]\\
+& \leq  \EE\left[  \Delta f  + \frac{1}{1 - \beta_1}\tilde{\major}^2 \norm{\eta_{0} \hat{v}_{0}^{-1/2}}    \right] +2L  \sum_{t=1}^{T_{\sf max}}  \EE \left[  \norm{\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t}^2 \right] + 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \sum_{t=1}^{T_{\sf max}}  \EE \left[  \norm{\tilde{w}_{t-1} - w_t}^2  \right]\\
 \end{split}
 \eeq
 where $ \Delta f = f(\overline{w}_{1}) - f(\overline{w}_{T_{\sf max}+1})$.
 We note that by definition of $\hat{v}_t$, and a constant learning rate $\eta_t$, we have
 \beq
 \begin{split}
-\norm{w_{t-1} - w_t}^2 & =\norm{\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + h_{t})}^2 \\
+\norm{\tilde{w}_{t-1} - w_t}^2 & =\norm{\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + h_{t})}^2 \\
 & =\norm{\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + \beta_{1} \theta_{t-2} + (1-\beta_{1}) m_{t})}^2\\
 & \leq \norm{\eta_{t-1} \hat{v}_{t-1}^{-1/2}\theta_{t-1}}^2 + \norm{\eta_{t-2} \hat{v}_{t-2}^{-1/2} \beta_{1} \theta_{t-2}}^2 + (1-\beta_{1})^2 \norm{\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}}^2
 \end{split}
@@ -845,7 +999,7 @@ We note that by definition of $\hat{v}_t$, and a constant learning rate $\eta_t$
 Using Lemma~\ref{lem:squarev} we have
 \beq
 \begin{split}
-& \sum_{t=1}^{T_{\sf max}} \EE \left[  \norm{w_{t-1} - w_t}^2  \right]\\ 
+& \sum_{t=1}^{T_{\sf max}} \EE \left[  \norm{\tilde{w}_{t-1} - w_t}^2  \right]\\ 
 & \leq (1 + \beta_1^2) \frac{\eta^{2} d T_{\sf max} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} + (1 - \beta_1)^2 \sum_{t=1}^{T_{\sf max}} \EE \left[ \norm{\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}}^2\right]
 \end{split}
 \eeq
@@ -926,7 +1080,7 @@ where the last equality is due to mild assumptions \eqref{eq:mildassumptions} an
 From Algorithm~\ref{alg:optamsgrad}, with $\beta_1 = 0$ we have for iteration index $t >0$:
 \beq
 \begin{split}
-\norm{w_t - w_{t-1}} & = \norm{-\eta_t \hat{v}_t^{-1/2} (\theta_t + h_{t+1})}\\
+\norm{w_t - \tilde{w}_{t-1}} & = \norm{-\eta_t \hat{v}_t^{-1/2} (\theta_t + h_{t+1})}\\
 &  = \norm{\eta_t \hat{v}_t^{-1/2} (g_t + m_{t+1})}\\
 & \leq \hat{\eta} \norm{\hat{v}_t^{-1/2} g_t} + \hat{\eta} a \norm{\hat{v}_t^{-1/2} g_{t+1}}
 \end{split}
@@ -937,11 +1091,11 @@ $$\sqrt{\hat{v}_{t,p}} \geq \sqrt{1-\beta_2} g_{t,p} \quad \textrm{and} \quad m_
 Thus:
 \beq
 \begin{split}
-\norm{w_t - w_{t-1}} & \leq \hat{\eta} \left( \norm{\hat{v}_t^{-1/2} g_t} +  a \norm{\hat{v}_t^{-1/2} g_{t+1}} \right) \\
+\norm{w_t - \tilde{w}_{t-1}} & \leq \hat{\eta} \left( \norm{\hat{v}_t^{-1/2} g_t} +  a \norm{\hat{v}_t^{-1/2} g_{t+1}} \right) \\
 & \leq \hat{\eta} \frac{a +1}{\sqrt{1 - \beta_2}} 
 \end{split}
 \eeq
-In short there exist a constant $B$ such that $\norm{w_t - w_{t-1}} \leq B$.
+In short there exist a constant $B$ such that $\norm{w_t - \tilde{w}_{t-1}} \leq B$.
 
 \textbf{Proof by induction:} As in \citep{defossez2020convergence}, we will prove the containment of the weights by induction.
 Suppose an iteration index $T$ and a coordinate $i$ of the last layer $L$ such that $w^{(L)}_{T, i} \geq \frac{T}{4\lambda} + B$.
@@ -950,7 +1104,7 @@ $$
 \nabla_i f(w^{(L)}_t\geq - \frac{T}{4} + \lambda \frac{T}{\lambda4} \geq 0
 $$
 where $f(\cdot)$ is defined by \eqref{eq:lossmln} and is the loss of our MLN.
-This last equation yields $\theta^{(L)}_{T,i} \geq 0$ (given the algorithm and $\beta_1 = 0$) and using the fact that $\norm{w_t - w_{t-1}} \leq B$ we have
+This last equation yields $\theta^{(L)}_{T,i} \geq 0$ (given the algorithm and $\beta_1 = 0$) and using the fact that $\norm{w_t - \tilde{w}_{t-1}} \leq B$ we have
 \beq\label{eq:decrease}
 0 \leq w^{(L)}_{T-1,i} - B \leq w^{(L)}_{T,i} \leq w^{(L)}_{T-1,i}
 \eeq
@@ -959,7 +1113,7 @@ So if the first assumption of that induction reasoning holds, \ie $w^{(L)}_{T-1,
 $$
 w^{(L)}_{T, i} \leq \frac{T}{4\lambda} + 2B
 $$
-since $B$ is the biggest jump an iterate can do since $\norm{w_t - w_{t-1}} \leq B$.
+since $B$ is the biggest jump an iterate can do since $\norm{w_t - \tilde{w}_{t-1}} \leq B$.
 Likewise we can end up showing that 
 $$
 |w^{(L)}_{T, i}| \leq \frac{T}{4\lambda} + 2B
