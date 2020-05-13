@@ -145,13 +145,13 @@ We illustrate the practical speedup on several deep learning models through nume
 
 Deep learning models have been successful in several applications, from robotics (e.g. \citep{LFDA17}), computer vision (e.g \citep{Rnet16,goodfellow2014generative}), reinforcement learning (e.g. \citep{Atari13}), to natural language processing (e.g. \citep{GMH13}).
 With the sheer size of modern data sets and the dimension of neural networks, speeding up training is of utmost importance.
-To do so, several algorithms have been proposed in recent years, such as  \textsc{AMSGrad} \citep{RKK18}, \textsc{AdAM} \citep{KB15}, \textsc{RMSPROP} \citep{TH12}, \textsc{AdADELTA} \citep{Z12}, and \textsc{NADAM} \citep{D16}.
+To do so, several algorithms have been proposed in recent years, such as  \textsc{AMSGrad} \citep{RKK18}, \textsc{Adam} \citep{KB15}, \textsc{RMSPROP} \citep{TH12}, \textsc{AdADELTA} \citep{Z12}, and \textsc{NADAM} \citep{D16}.
 
 All the prevalent algorithms for training deep networks mentioned above combine two ideas: the idea of adaptivity from \textsc{AdaGrad} \citep{DHS11,MS10} and the idea of momentum from \textsc{Nesterov's  Method} \citep{N04} or \textsc{Heavy ball} method \citep{P64}.
 \textsc{AdaGrad} is an online learning algorithm that works well compared to the standard online gradient descent when the gradient is sparse.
 Its update has a notable feature: it leverages an anisotropic learning rate depending on the magnitude of gradient in each dimension which helps in exploiting the geometry of data. 
-On the other hand, \textsc{Nesterov's Method} or \textsc{Heavy ball} Method \citep{P64} is an accelerated optimization algorithm whose update not only depends on the current iterate and current gradient but also depends on the past gradients (i.e. momentum). 
-State-of-the-art algorithms like \textsc{AMSGrad} \citep{RKK18} and \textsc{AdAM} \citep{KB15} leverage these ideas to accelerate the training process of highly nonconvex objective functions such as deep neural networks losses.
+On the other hand, \textsc{Nesterov's Method} or \textsc{Heavy ball} Method \citep{P64} is an accelerated optimization algorithm which update not only depends on the current iterate and current gradient but also depends on the past gradients (i.e. momentum). 
+State-of-the-art algorithms like \textsc{AMSGrad} \citep{RKK18} and \textsc{Adam} \citep{KB15} leverage these ideas to accelerate the training of nonconvex objective functions such as deep neural networks losses.
 
 In this paper, we propose an algorithm that goes further than the hybrid of the adaptivity and momentum approach. 
 Our algorithm is inspired by \textsc{Optimistic Online learning} \citep{CJ12,rakhlin2013online,SALS15,ALLW18,mertikopoulos2018optimistic}, which assumes that a good \emph{predictable process} of the gradient of the loss function in each round of online learning is available, and plays an action by exploiting these predictors. 
@@ -162,22 +162,19 @@ A single work along that direction stands out. \citep{DISZ18} develops \textsc{O
 Yet, \textsc{Optimistic-Adam} is specifically designed to optimize two-player games (e.g. GANs \citep{goodfellow2014generative}).
 GANs is a two-player zero-sum game. There have been some related works in \textsc{Optimistic Online learning} like \citep{CJ12,RS13b,SALS15}) showing that if both players use some kinds of $\textsc{Optimistic}$-update, then accelerating the convergence to the equilibrium of the game is possible.
 \citep{DISZ18} was inspired by these related works and showed that \textsc{Optimistic-Mirror-Descent} can avoid the cycle behavior in a bilinear zero-sum game, which accelerates the convergence. 
-
 In contrast, in this paper, the proposed algorithm is designed to accelerate nonconvex optimization (e.g. empirical risk minimization).
 To the best of our knowledge, this is the first work exploring towards this direction and bridging the unfilled \emph{theoretical} gap at the crossroads of online learning and stochastic optimization.
-
 The contributions of this paper are as follows:
 \begin{itemize}
 \item We derive an optimistic variant of \textsc{AMSGrad} borrowing techniques from online learning procedures. Our method relies on \textsf{(I)} the addition of \emph{prior knowledge} in the sequence of the model parameter estimations alleviating a predictable process able to provide good guesses of gradients of the loss functions through the iterations and \textsf{(II)} the construction of a \emph{double update} algorithm done sequentially. We interpret this two-projection step as the learning of both an underlying scheme which makes the gradients sequentially predictable and the global parameter learning.
 \item We focus on the  \emph{theoretical} justifications of our method by establishing novel \emph{non-asymptotic} and \emph{global} convergence rates in both the convex and nonconvex case.  Based on both \emph{convex regret minimization} and \emph{nonconvex stochastic optimization} views, we prove, respectively, that our algorithm suffers regret of $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t  \|^2_{\psi_{t-1}}})$ and achieves a rate of convergence $\mathcal{O}\left(\sqrt{d/T} +d/T \right)$.
 \end{itemize}
-
 The proposed algorithm not only adapts to the informative dimensions, exhibits momentum, but also exploits a good guess of the next gradient to facilitate acceleration. 
 Besides the global analysis of \textsc{OPT-AMSGrad}, we conduct experiments and show that the proposed algorithm not only accelerates convergence of loss function, but also leads to better empirical generalization performance.
 
 Section~\ref{sec:prelim} is devoted to introductory notions on online learning for regret minimization and adaptive learning methods for nonconvex stochastic optimization. We introduce in Section~\ref{sec:opt} our new algorithm called \textsc{OPT-AMSGrad} and provide a comprehensive global analysis in both \emph{convex}/\emph{online}  and \emph{nonconvex}/\emph{offline} settings in Section~\ref{sec:analysis}.
 We illustrate the benefits of our method on several finite-sum nonconvex optimization problem in Section~\ref{sec:numerical}.
-The Supplementary Material of this paper is devoted to the proofs of our theoretical results.
+The supplementary material of this paper is devoted to the proofs of our theoretical results.
 
 \textbf{Notations:} We follow the notations in related adaptive optimization papers \citep{KB15,RKK18}. For any vector $u$, $v \in \mathbb R^{d}$,  $u/v$ represents element-wise division,
 $u^{2}$ represents element-wise square, $\sqrt{u}$ represents element-wise square-root.
@@ -207,7 +204,7 @@ Under the assumption that loss functions are convex, the regret of \textsc{Optim
 
 \textit{Remark:} Note that the usual worst-case bound is preserved even when the predictors $\{m_{t}\}_{t>0}$ do not predict well the gradients. Indeed, if we take the example of \textsc{Optimistic-FTRL}, the bound reads $\sqrt{\sum_{t=1}^T \| g_t - m_t \|_*^2 } \leq 2 \max \limits_{w \in \Theta} \| \nabla \ell_t(w) \| \sqrt{T}$ which is equal to the usual bounds up to a factor $2$. Yet, when the predictions are well constructed, the regret will be lower. We will have a similar argument when we compare \textsc{OPT-AMSGrad} and \textsc{AMSGrad}.
 
-We emphasize in Section~\ref{sec:opt} the importance of leveraging a good guess $m_t$ for updating $w_t$ in order to get a fast convergence rate (or equivalently, small regret) and present Section~\ref{sec:numerical} a simple yet effective predictable process $\{m_{t}\}_{t>0}$ leading to an empirical evidence of acceleration.
+We emphasize in Section~\ref{sec:opt} the importance of leveraging a good guess $m_t$ for updating $w_t$ in order to get a fast convergence rate (or equivalently, small regret) and present Section~\ref{sec:numerical} a simple, yet effective, predictable process $\{m_{t}\}_{t>0}$ leading to empirical acceleration.
 
 \textbf{Adaptive optimization methods.}\hspace{0.1cm}
 Recently, adaptive optimization has been popular in various deep learning applications due to their superior empirical performance. \textsc{Adam} \citep{KB15} is a very popular adaptive algorithm for training deep neural networks.
@@ -245,7 +242,7 @@ The difference between \textsc{Adam} and \textsc{AMSGrad} lies in line 7 of Algo
 We formulate in this section the proposed optimistic acceleration of AMSGrad, noted \textsc{OPT-AMSGrad}, and detailed in Algorithm~\ref{alg:optamsgrad}.  
 It combines the idea of adaptive optimization with optimistic learning. 
 At each iteration, the learner computes a gradient vector $g_{t}:= \nabla \ell_t( w_t)$ at $w_{t}$ (line 4), then it maintains an exponential moving average of $\theta_{t} \in \mathbb R^{d}$ (line 5) and $v_{t} \in \mathbb R^{d}$ (line 6), which is followed by the max operation to get $\hat{v}_{t} \in \mathbb R^{d}$ (line 7). 
-The learner also updates an auxiliary variable $\tilde{w}_{t+1} \in \Theta$ (line 8) and finally updates the current model parameter (line 9).
+The learner first updates an auxiliary variable $\tilde{w}_{t+1} \in \Theta$ (line 8) and then computes the next model parameter (line 9).
 
 \vspace{-0.15in}
 \begin{minipage}{0.54\linewidth}
@@ -281,43 +278,40 @@ where $h_{t+1}:= \beta_{1} \theta_{t-1} + (1 - \beta_{1}) m_{t+1}$  and $m_{t+1}
 
 
 Observe that the proposed algorithm does not reduce to \textsc{AMSGrad} when $m_{t}=0$, contrary to the optimistic variant of \textsc{FTRL}.
-Furthermore, combining line 8 and line 9 and get a single update as $w_{t+1}= \tilde{w}_{t}  - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}}_t } - \eta_{t} \frac{h_{t+1}}{ \sqrt{\hat{v}}_t }$. 
-Compared to \textsc{AMSGrad}, the algorithm is characterized by a two-level update that interlink some auxiliary state $\tilde{w}_{t}$ and the model parameter state, $w_t$, similarly to the \textsc{Optimistic Mirror Descent} algorithm developed in \citep{rakhlin2013online}.
-It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}$, which exploits the guess $m_{t+1}$ of $g_{t+1}$, see Figure \ref{fig:scheme} for a schematic illustration.
+Furthermore, combining line 8 and line 9 yields the following single update $w_{t+1}= \tilde{w}_{t}  - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}}_t } - \eta_{t} \frac{h_{t+1}}{ \sqrt{\hat{v}}_t }$. 
+
+Compared to \textsc{AMSGrad}, the algorithm is characterized by a \emph{two-level} update that interlinks some \emph{auxiliary state} $\tilde{w}_{t}$ and the model parameter state, $w_t$, similarly to the \textsc{Optimistic Mirror Descent} algorithm developed in \citep{rakhlin2013online}.
+It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}$, which exploits the guess $m_{t+1}$, see Figure \ref{fig:scheme} for a schematic illustration.
 In the following analysis, we show that the interleaving actually leads to some cancellation in the regret bound.
 Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citep{CJ12}.
 The gradient prediction procedure plays naturally an important role and will be tackled Section~\ref{sec:numerical}.
-
 The proposed \textsc{OPT-AMSGrad} inherits three properties:
 \begin{itemize}
 \item Adaptive learning rate of each dimension as \textsc{AdaGrad} \citep{DHS11}. (line 6, line 8 and line 9)
 \item Exponential moving average of the past gradients as \textsc{Nesterov's method} \citep{N04} and the \textsc{Heavy-Ball} method \citep{P64}. (line 5)
-\item Optimistic update that exploits a good guess of the next gradient vector
-as optimistic online learning algorithms \citep{CJ12,rakhlin2013online,SALS15}. (line 9)
+\item Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as optimistic online learning algorithms \citep{CJ12,rakhlin2013online,SALS15}. (line 9)
 \end{itemize}
 The first property helps for acceleration when the gradient has a sparse structure.
 The second one is from the well-recognized idea of momentum which can also help for acceleration. 
-The last one, perhaps less known outside the \textsc{Online learning} community, can actually lead to acceleration when the prediction of the next gradient is good. This property will be elaborated in the following subsection in which we provide the theoretical analysis of \textsc{OPT-AMSGrad}.
+The last one can actually lead to an acceleration when the prediction of the next gradient is good as mentioned above when introducing the regret bound for the \textsc{Optimistic-FTRL} algorithm.
+The latter property will be elaborated in the following subsection in which we provide the theoretical analysis of \textsc{OPT-AMSGrad}.
 Observe that the proposed algorithm does not reduce to \textsc{AMSGrad} when $m_{t}=0$.
 
+\vspace{-0.1in}
 \section{Global Convergence of \textsc{OPT-AMSGrad}}\label{sec:analysis}
 For conciseness, we place all the proofs of the following results in the supplementary material.
 
-\textbf{Notations.}\hspace{0.1in}To begin with, let us introduce some notations first.
-We denote the Mahalanobis norm $\|\cdot\|_H := \sqrt{ \langle \cdot, H \cdot \rangle }$ for some PSD matrix $H$.
-We let $\psi_t(x) := \langle x, \text{diag}\{\hat{v}_t\}^{1/2} x \rangle$ for a PSD matrix $H_t^{1/2}:= \text{diag}\{\hat{v}_t\}^{1/2}$, 
-%Denote the PSD matrix $H_t := \text{diag}\{\hat{v}_t\}$, 
-where $\text{diag}\{\hat{v}_t\}$ represents the diagonal matrix whose $i_{th}$ diagonal element is $\hat{v}_t[i]$ in Algorithm~\ref{alg:optamsgrad}.
+\textbf{Notations.}\hspace{0.1in}
+We denote the Mahalanobis norm $\|\cdot\|_H := \sqrt{ \langle \cdot, H \cdot \rangle }$ for some positive semidefinite (PSD) matrix $H$.
+We let $\psi_t(x) := \langle x, \text{diag}\{\hat{v}_t\}^{1/2} x \rangle$ for a PSD matrix $H_t^{1/2}:= \text{diag}\{\hat{v}_t\}^{1/2}$, where $\text{diag}\{\hat{v}_t\}$ represents the diagonal matrix which $i_{th}$ diagonal element is $\hat{v}_t[i]$ defined in Algorithm~\ref{alg:optamsgrad}.
 We define its corresponding Mahalanobis norm $\| \cdot \|_{\psi_t}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$,
 where we abuse the notation $\psi_t$ to represent the PSD matrix $H_t^{1/2}:=\text{diag}\{\hat{v}_t\}^{1/2}$.
-Consequently, $\psi_t(\cdot)$ is 1-strongly convex with respect to the norm $\| \cdot \|_{\psi_t}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$.
-Namely, $\psi_t(\cdot)$ satisfies $\psi_t(u) \geq \psi_t(v) + \langle \psi_t(v), u - v \rangle + \frac{1}{2} \| u - v\|^2_{\psi_t}$ for any point $u,v$.
+Note that $\psi_t(\cdot)$ is 1-strongly convex with respect to the norm $\| \cdot \|_{\psi_t}$.
+Namely, $\psi_t(\cdot)$ satisfies $\psi_t(u) \geq \psi_t(v) + \langle \psi_t(v), u - v \rangle + \frac{1}{2} \| u - v\|^2_{\psi_t}$ for any point $(u,v) \in \Theta^2$.
 A consequence of 1-strongly convexity of $\psi_t(\cdot)$ is that $B_{\psi_t}(u,v) \geq \frac{1}{2} \| u - v \|^2_{\psi_t}$, where the Bregman divergence $B_{\psi_t}(u,v)$ is defined as $B_{\psi_t}(u,v) := \psi_t(u) - \psi_t(v) - \langle \psi_t(v), u - v \rangle$ with $\psi_t(\cdot)$ as the distance generating function.
 We can also define the corresponding dual norm $\| \cdot \|_{\psi_t^*}:= \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{-1/2} \cdot \rangle }$.
-
 \subsection{Convex Regret Analysis}
 We prove the following result regarding the regret in the convex optimization setting. That is, we assume that the loss functions $\{\ell_t\}_{t>0}$ are convex. We also assume that $\Theta$ has bounded diameter $D_{\infty}$, which is a standard assumption in previous works \citep{RKK18,KB15} on adaptive methods. It is necessary in regret analysis since if the boundedness assumption is lifted, one might construct a scenario such that the benchmark is $w^* = \infty$ and the learner's regret is infinite. 
-
 \begin{Theorem} \label{thm:mainconvex}
 Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
 Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
@@ -341,15 +335,11 @@ Suppose $\beta_1=0$ and $\{v_t\}_{t>0}$ is an increasing monotone sequence, then
 \end{equation}
 where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
 \end{Corollary}
-
-
-For convex regret minimization, the resutls above yields that the learner suffers regret of $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t  \|^2_{\psi_{t-1}}})$ with an access to an arbitrary predictable process $\{m_t\}_{t>0}$ of the mini-batch gradient. The better the predictors, the lower the regret will be.
+For convex regret minimization, the results above yields that the learner suffers regret of $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t  \|^2_{\psi_{t-1}}})$ with an access to an arbitrary predictable process $\{m_t\}_{t>0}$ of the mini-batch gradient. The better the predictors, the lower the regret.
 One can thus wonder how the learner can build those good gradients predictions $\{m_t\}_{t>0}$.
-Is this process can be learnt through the iterations?
-
+Is this process can be learned through the iterations?
 Those questions are interesting research questions and will not be dealt in this paper for the sake of page limit.
-Though, for implementation purposes, we derive a simple, yet effective, gradient prediction algorithm, see Algorithm~\ref{alg:algex} in Section~\ref{sec:numerical} to embed to our new \textsc{OPT-AMSGrad} method.
-
+Though, for implementation purposes, we derive a simple, yet effective, gradient prediction algorithm, see Algorithm~\ref{alg:algex} in Section~\ref{sec:numerical} to embed to our new \textsc{OPT-AMSGrad}.
 \subsection{Nonconvex Analysis (Finite-Time Upper Bound)}
 In this section, we discuss the offline and stochastic non-convex optimization properties of our online framework.
 In the stochastic optimization literature, the problem we are tackling reads as follows:
@@ -364,8 +354,7 @@ Set the terminating iteration number, $T \in \{0,\dots,T_{\sf max}-1\}$, as a di
    P( T = \ell ) = \frac{ \eta_{\ell} }{\sum_{j=0}^{T_{\sf max}-1} \eta_j} \eqsp,
 \eeq
 where $T_{\sf max}$ is the maximum number of iteration.
-The random termination number \eqref{eq:random} is inspired by \citep{ghadimi2013stochastic} which enables one to show non-asymptotic convergence to stationary point for non-convex optimization. 
-
+The random termination number \eqref{eq:random} is inspired by \citep{ghadimi2013stochastic} which enables to derive novel non-asymptotic convergence results to stationary point for non-convex optimization. 
 We make the following mild assumptions necessary to our analysis:
 %\begin{assumption}\label{ass:nonconv}
 %The loss function $f(w)$ is nonconvex \wrt the parameter $w$.
@@ -373,7 +362,6 @@ We make the following mild assumptions necessary to our analysis:
 \begin{assumption}\label{ass:boundedparam}
 For any $t >0$, the estimated weight $w_t$ stays within a $\ell_{\infty}-$ball. There exists a constant $W >0$ such that $\norm{w_t} \leq W$ almost surely.
 \end{assumption}
-
 \begin{assumption}\label{ass:smooth}
 The function $f(w)$ is $L$-smooth (has $L$-Lipschitz gradients) w.r.t. the parameter w.
 There exist some constant $L > 0$ such that for $(w, \vartheta) \in \Theta^2$:
@@ -389,34 +377,32 @@ Classically in nonconvex optimization \citep{ghadimi2013stochastic} we make an a
 \begin{assumption}\label{ass:bounded}
 There exists a constant $\major >0$ such that for any $w$ and $\xi$, it holds $\norm{\nabla f(w, \xi)} < \major$.
 \end{assumption}
-
 We begin with some auxiliary Lemmas important for the analysis. 
 The first one ensures bounded norms of various quantities of interests (resulting from the classical stochastic gradient boundedness assumption):
 \begin{Lemma}\label{lem:bound}
-Assume assumption H\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:optamsgrad} satisfy for any $w \in \Theta$ and $t>0$:
-$$ \|\nabla f(w_t)\| < \major ,~~~\|\theta_t \| < \major ,~~~\|\hat{v}_t\| < \major^2 \eqsp.$$
+Assume assumption H\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:optamsgrad} satisfy for any $w \in \Theta$ and $t>0$, $ \|\nabla f(w_t)\| < \major ,~~~\|\theta_t \| < \major$ and $\|\hat{v}_t\| < \major^2$.
 \end{Lemma}
-Then, following \citep{yan2018unified} and their study of the SGD with Momentum (not AMSGrad but simple momentum) we denote for any $t >0$:
+Then, following \citep{yan2018unified} and their study of the SGD with Momentum we denote for any $t >0$:
 \beq\label{eq:deftilde}
 \overline{w}_t = w_t + \frac{\beta_1}{1 - \beta_1} (w_t - \tilde{w}_{t-1}) = \frac{1}{1 - \beta_1} w_t -  \frac{\beta_1}{1 - \beta_1} \tilde{w}_{t-1} \eqsp,
 \eeq
 and derive an important Lemma:
 \begin{Lemma}\label{lem:momentum}
-Assume a strictly positive and non increasing sequence of stepsizes $\{\eta_t \}_{t>0}$, $\beta_ \in [0,1]$, then the following holds:
+Assume a strictly positive and non increasing sequence of stepsizes $\{\eta_t \}_{t>0}$,$\beta_1 < \beta_2 \in [0,1)$, then the following holds:
 \beq\notag
 \overline{w}_{t+1} - \overline{w}_t \leq \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1} \left[ \eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2}\right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \eqsp,
 \eeq
 where $\tilde{\theta}_t = \theta_t + \beta_1 \theta_{t-1}$ and $\tilde{g}_t = g_t - \beta_1 m_t + \beta_1 g_{t-1} + m_{t+1} $.
 \end{Lemma}
 \begin{Lemma}\label{lem:squarev}
-Assume H\ref{ass:bounded}, a strictly positive and a sequence of constant stepsizes $\{\eta_t \}_{t>0}$, $\beta_ \in [0,1]$, then the following holds:
+Assume H\ref{ass:bounded}, a strictly positive and a sequence of constant stepsizes $\{\eta_t \}_{t>0}$, $\beta_1 < \beta_2 \in [0,1)$, denote $\gamma = \beta_1/\beta_2$, then the following holds:
 \beq\notag
 \sum_{k=1}^{T_{\sf max}} \eta_{t}^{2} \EE \left[\left\|\hat{v}_{t}^{-1/2} \theta_{t}\right\|_{2}^{2}\right] \leq  \frac{\eta^{2} d T_{\sf max} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} \eqsp.
 \eeq
 \end{Lemma}
 We now formulate the main result of our paper giving a finite-time upper bound of the quantity $\EE\left[\|\nabla f(w_T)\|^2\right]$ where $T$ is a random termination number distributed according to \ref{eq:random}, see \citep{ghadimi2013stochastic}.
 \begin{Theorem}\label{thm:boundopt}
-Assume H\ref{ass:boundedparam}-H\ref{ass:bounded}, $(\beta_1, \beta_2) \in [0,1]$ and a sequence of decreasing stepsizes $\{\eta_t\}_{t>0}$, then the following result holds:
+Assume H\ref{ass:boundedparam}-H\ref{ass:bounded}, $\beta_1 < \beta_2 \in [0,1)$ and a sequence of decreasing stepsizes $\{\eta_t\}_{t>0}$, then the following result holds:
 \beq
 \begin{split}
 \EE\left[\|\nabla f(w_T)\|^2\right] \leq \tilde{C}_1 \sqrt{\frac{d}{T_{\sf max}}} + \tilde{C}_2 \frac{1}{T_{\sf max}} \eqsp,
@@ -438,7 +424,6 @@ We remark that the bound for our OPT-AMSGrad method matches the complexity bound
 We show in this section that the weights satisfy assumption H\ref{ass:boundedparam} and stay in a bounded set when the model we are fitting, using our method, is a fully connected feed forward neural network. 
 The activation function for this section will be sigmoid function and we add a $\ell_2$ regularization. 
 
-For the sake of notation, we assume $\beta_1 = 0$.
 We consider a fully connected feed forward neural network with $L$ layers modeled by the function $\textsf{MLN}(w, \xi): \rset^l \to \rset$:
 \beq\label{eq:dnnmodel}
 \textsf{MLN}( w, \xi) = \sigma\left(w^{(L)} \sigma\left(w^{(L-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)
@@ -450,10 +435,6 @@ f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2
 \eeq
 where $\mathcal{L}(\cdot, y)$ is the loss function (can be Huber loss or cross entropy), $y$ are the true labels and $\lambda >0$ is the regularization parameter.
 For any layer index $\ell \in [1, L]$ we denote the output of layer $\ell$ by $h^{(\ell)}(w,\xi)= \sigma\left(w^{(\ell)} \sigma\left(w^{(\ell-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)$.
-%$$
-%h^{(\ell)}(w,\xi) = \sigma\left(w^{(\ell)} \sigma\left(w^{(\ell-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right)
-%$$
-
 The following Lemma proves that assumption H\ref{ass:boundedparam} is satisfied with a feed forward neural net \eqref{eq:dnnmodel}:
 \begin{Lemma}\label{lem:dnnh2} 
 Given the multilayer model \eqref{eq:dnnmodel}, assume the boundedness of the input data and of the loss function, \ie for any $\xi \in \rset^l$ and $y \in \rset$ there is a constant $T >0$ such that $\norm{\xi} \leq 1 \quad \textrm{a.s.}$ and $|\mathcal{L}'(\cdot, y)| \leq T$ where $\mathcal{L}'(\cdot, y)$ denotes its derivative \wrt the parameter. Then for each layer $\ell \in [1,L]$, there exist a constant $A_{(\ell)}$ such that $\norm{w^{(\ell)}} \leq A_{(\ell)}$
@@ -1067,7 +1048,7 @@ Observe that at the last layer $L$:
 \eeq
 where the last equality is due to mild assumptions \eqref{eq:mildassumptions} and to the fact that the norm of the derivative of the sigmoid function is upperbounded by $1/4$.
 
-From Algorithm~\ref{alg:optamsgrad}, with $\beta_1 = 0$ we have for iteration index $t >0$:
+From Algorithm~\ref{alg:optamsgrad}, and with $\beta_1 = 0$ for the sake of notation, we have for iteration index $t >0$:
 \beq
 \begin{split}
 \norm{w_t - \tilde{w}_{t-1}} & = \norm{-\eta_t \hat{v}_t^{-1/2} (\theta_t + h_{t+1})}\\
