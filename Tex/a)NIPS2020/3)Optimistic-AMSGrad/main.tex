@@ -47,6 +47,7 @@ citecolor=blue]{hyperref}
 \newtheorem{Remark}{Remark}
 \newtheorem*{Lemma*}{Lemma}
 \newtheorem*{Theorem*}{Theorem}
+\newtheorem*{Corollary*}{Corollary}
  \makeatletter
 \renewenvironment{proof}[1][\proofname]{%
    \par\pushQED{\qed}\normalfont%
@@ -318,24 +319,28 @@ Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret
 \begin{equation} \label{bound:optadabeta}
 \begin{aligned}
 \mathcal{R}_T \leq &   \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
-+ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  + D_{\infty}^2   \sum_{t=1}^T \left[\beta_1^2 \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}+ \frac{1}{\eta_{\min}}\hat{v}_{T}^{1/2}[i] \right] \eqsp,
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  + \frac{D_{\infty}^2}{\eta_{\min}}  \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + D_{\infty}^2\beta_1^2   \sum_{t=1}^T  \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}\eqsp,
 \end{aligned}
 \end{equation}
 where $ \tilde{m}_{t+1}  = \beta_1 \theta_{t-1} +(1-\beta_1) m_{t+1}$, $g_{t}:= \nabla \ell_{t}(w_t)$, $\eta_{{\min}} := \min_{{t}} \eta_{t}$ and $D_{\infty}^2$ is the diameter of the bounded set $\Theta$.
 The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence $\{ \eta_t \}_{t>0}$.
 \end{Theorem}
 
-\begin{Corollary}
-Suppose $\beta_1=0$ and $\{v_t\}_{t>0}$ is an increasing monotone sequence, then we obtain the following regret bound for any $w^{*} \in \Theta$ and sequence $\{ \eta_t \}_{t>0}$: 
-\begin{equation} 
+\begin{Corollary}\label{cor:corollary}
+Suppose $\beta_1=0$ and $\{v_t\}_{t>0}$ is an increasing monotone sequence, then we obtain the following regret bound for any $w^{*} \in \Theta$ and sequence $\{ \eta_t = \eta/\sqrt{t}\}_{t>0}$: 
+\begin{equation}\notag
 \begin{aligned}
 \mathcal{R}_T \leq & \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
-+ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - m_t  \|_{\psi_{t-1}^*}^2 +\frac{D_{\infty}^2}{\eta_{\min}} \sum_{i=1}^d \left[ (1-\beta_2) \sum_{s=1}^{T} \beta_2^{T-s} (g_s[i] - m_s[i])^2 \right]^{1/2} \hspace{-0.3cm},
++ \frac{\eta \sqrt{1 + \log T}}{\sqrt{1 - \beta_2}} \sum_{i=1}^d \| (g-m)_{1:T}[i] \|_2 +\frac{D_{\infty}^2}{\eta_{\min}} \sum_{i=1}^d \left[ (1-\beta_2) \sum_{s=1}^{T} \beta_2^{T-s} g_s[i]^2 \right]^{1/2} \hspace{-0.3cm},
 \end{aligned}
 \end{equation}
 where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
 \end{Corollary}
-For convex regret minimization, the results above yields that the learner suffers regret of $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t  \|^2_{\psi_{t-1}}})$ with an access to an arbitrary predictable process $\{m_t\}_{t>0}$ of the mini-batch gradient. The better the predictors, the lower the regret.
+We can compare the bound of Corollary~\ref{cor:corollary} with that of \textsc{AMSGrad} \citep{RKK18} with $\eta_t = \eta/\sqrt{t}$:
+\beq\label{eq:boundAMS}
+\mathcal{R}_T \leq \frac{ \eta \sqrt{ 1 + \log T}    }{ \sqrt{1 - \beta_2}  } \sum_{i=1}^d \| g_{1:T}[i]  \|_2 +\frac{\sqrt{T}}{2 \eta} D^2_{\infty} \sum_{i=1}^d \hat{v}_T[i]^2 \eqsp.
+\eeq
+For convex regret minimization, the results above yields that the learner suffers regret of $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t  \|^2_{\psi_{t-1}}})$ with an access to an arbitrary predictable process $\{m_t\}_{t>0}$ of the mini-batch gradient. The better the predictors, the lower the regret, see the second term in Corollary~\ref{cor:corollary} compared to the first term in {eq:boundAMS}.
 One can thus wonder how the learner can build those good gradients predictions $\{m_t\}_{t>0}$.
 Is this process can be learned through the iterations?
 Those questions are interesting research questions and will not be dealt in this paper for the sake of page limit.
@@ -627,9 +632,8 @@ Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdo
 Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
 \begin{equation} \label{bound:optadabeta}
 \begin{aligned}
-\mathcal{R}_T \leq & \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
-+ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  \\
-& +D_{\infty}^2 \beta_1^2  \sum_{t=1}^T \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}  \eqsp.
+\mathcal{R}_T \leq &   \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  + \frac{D_{\infty}^2}{\eta_{\min}}  \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + D_{\infty}^2\beta_1^2   \sum_{t=1}^T  \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}\eqsp,
 \end{aligned}
 \end{equation}
 where $ \tilde{m}_{t+1}  = \beta_1 \theta_{t-1} +(1-\beta_1) m_{t+1}$, $g_{t}:= \nabla \ell_{t}(w_t)$, $\eta_{{\min}} := \min_{{t}} \eta_{t}$ and $D_{\infty}^2$ is the diameter of the bounded set $\Theta$.
@@ -714,7 +718,7 @@ A_2 = B_{\psi_t}( w^*, \tilde{w}_{t}) -B_{\psi_t}(w^*,  \tilde{w}_{t+1} )  &= \l
 Therefore, by (\ref{nnnn}),(\ref{nn4}),(\ref{nn5}), we have
 \begin{equation}\notag
 \begin{aligned}
-\mathcal{R}_T \leq & \frac{1}{\eta_{\min}} D_{\infty}^2 \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
+\mathcal{R}_T \leq & \frac{D_{\infty}^2}{\eta_{\min}}  \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
 + \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  \\
 & +D_{\infty}^2 \beta_1^2  \sum_{t=1}^T \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}  \eqsp.
 \end{aligned}
@@ -724,6 +728,44 @@ This completes the proof.
 
 \end{proof}
 
+\section{Proof of Corollary~\ref{cor:corollary}}
+\begin{Corollary*}
+Suppose $\beta_1=0$ and $\{v_t\}_{t>0}$ is an increasing monotone sequence, then we obtain the following regret bound for any $w^{*} \in \Theta$ and sequence $\{ \eta_t = \eta/\sqrt{t}\}_{t>0}$: 
+\begin{equation}\notag
+\begin{aligned}
+\mathcal{R}_T \leq & \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \frac{\eta \sqrt{1 + \log T}}{\sqrt{1 - \beta_2}} \sum_{i=1}^d \| (g-m)_{1:T}[i] \|_2 +\frac{D_{\infty}^2}{\eta_{\min}} \sum_{i=1}^d \left[ (1-\beta_2) \sum_{s=1}^{T} \beta_2^{T-s} g_s[i]^2 \right]^{1/2} \hspace{-0.3cm},
+\end{aligned}
+\end{equation}
+where $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
+\end{Corollary*}
+
+\begin{proof}
+Recall the bound in Theorem~\ref{thm:mainconvex}:
+\begin{equation}\notag
+\begin{aligned}
+\mathcal{R}_T \leq &   \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
++ \sum_{t=1}^T\frac{\eta_t}{2} \| g_t - \tilde{m}_t  \|_{\psi_{t-1}^*}^2  + \frac{D_{\infty}^2}{\eta_{\min}}  \sum_{i=1}^d \hat{v}_{T}^{1/2}[i] + D_{\infty}^2\beta_1^2   \sum_{t=1}^T  \| g_t - \theta_{t-1}  \|_{\psi_{t-1}^*}\eqsp,
+\end{aligned}
+\end{equation}
+
+The second term reads:
+\begin{align*}
+     \sum_{t=1}^T \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2 & =\sum_{t=1}^{T-1} \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2   + \eta_T \sum_{i=1}^d \frac{ (g_{T}[i] - m_{T}[i])^2 }{ \sqrt{ v_{T-1}[i]} }\\
+    &=\sum_{t=1}^{T-1} \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2 + \eta \sum_{i=1}^d \frac{ (g_{T}[i] - m_{T}[i])^2 }{ \sqrt{ T \big( (1-\beta_2) \sum_{s=1}^{T-1} \beta_2^{T-1-s} (g_{s}[i] - m_{s}[i])^2 } \big) }\\
+    &\leq   \eta \sum_{i=1}^d \sum_{t=1}^T \frac{ (g_{t}[i] - m_{t}[i])^2 }{ \sqrt{ t \big( (1-\beta_2) \sum_{s=1}^{t-1} \beta_2^{t-1-s} (g_{s}[i] - m_{s}[i])^2 } \big) }.
+\end{align*}
+To interpret the bound, let us make a rough approximation such that
+$\sum_{s=1}^{t-1} \beta_2^{t-1-s} (g_{s}[i] - m_{s}[i])^2  \simeq (g_{t}[i] - m_t[i])^2 $.
+Then, we can further get an upper-bound as 
+\begin{align*}
+    \sum_{t=1}^T \frac{\eta_t}{2} \|g_t - m_t  \|_{\psi_{t-1}^*}^2 \leq
+    \frac{\eta}{\sqrt{1 - \beta_2}} \sum_{i=1}^d \sum_{t=1}^{T} \frac{ | g_{t}[i] - m_{t}[i] | }{ \sqrt{t} }\leq \frac{\eta \sqrt{1 + \log T}}{\sqrt{1 - \beta_2}} \sum_{i=1}^d \| (g-m)_{1:T}[i] \|_2 ,
+\end{align*}
+where the last inequality is due to Cauchy-Schwarz.
+
+
+\end{proof}
 
 \clearpage
 \section{Proofs of Auxiliary Lemmas}
