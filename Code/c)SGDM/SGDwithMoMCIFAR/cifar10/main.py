@@ -152,7 +152,7 @@ criterion = nn.CrossEntropyLoss()
 if args.optimizer =='signSGD':
     optimizer = optim_local.sign_SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay, sim=args.sim)
 elif args.optimizer == 'SGDM':
-    optimizer = optim_local.SGD_Diagnostic(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay, sim=args.sim)
+    optimizer = optim_local.SGD_Diagnostic_Nonconvex(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay, sim=args.sim)
 elif args.optimizer == 'ADAM':
     optimizer = optim_local.Adam_Diagnostic(net.parameters(), lr=1e-3, betas=(args.momentum, args.beta2), eps=1e-8, weight_decay=0, amsgrad=False)
 if 'plateau' in args.schedule:

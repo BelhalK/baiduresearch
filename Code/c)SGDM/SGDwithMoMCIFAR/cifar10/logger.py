@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import os
 import sys
 import numpy as np
+import os
+print(os.getcwd())
 
 __all__ = ['Logger', 'LoggerMonitor', 'savefig']
 
@@ -118,32 +120,32 @@ class LoggerMonitor(object):
         plt.ylabel("accuracy")
                     
 if __name__ == '__main__':
-    # # Example
-    # logger = Logger('test.txt')
-    # logger.set_names(['Train loss', 'Valid loss','Test loss'])
-    #
-    # length = 100
-    # t = np.arange(length)
-    # train_loss = np.exp(-t / 10.0) + np.random.rand(length) * 0.1
-    # valid_loss = np.exp(-t / 10.0) + np.random.rand(length) * 0.1
-    # test_loss = np.exp(-t / 10.0) + np.random.rand(length) * 0.1
-    #
-    # for i in range(0, length):
-    #     logger.append([train_loss[i], valid_loss[i], test_loss[i]])
-    # logger.plot()
+    # Test Logger
+        # logger = Logger('checkpoint/test/test.txt')
+        # logger.set_names(['Train loss', 'Valid loss','Test loss'])
+        
+        # length = 100
+        # t = np.arange(length)
+        # train_loss = np.exp(-t / 10.0) + np.random.rand(length) * 0.1
+        # valid_loss = np.exp(-t / 10.0) + np.random.rand(length) * 0.1
+        # test_loss = np.exp(-t / 10.0) + np.random.rand(length) * 0.1
+        
+        # for i in range(0, length):
+        #     logger.append([train_loss[i], valid_loss[i], test_loss[i]])
+        # logger.plot()
+        # savefig('checkpoint/test/test.eps')
 
     # Example: logger monitor
-    paths = {
-        'ResNet18': '/Users/jerry/Documents/SGD-Diagnostic/code/pytorch-cifar/checkpoint/logResNet18_v2.txt',
-        'ShuffleNetV2': '/Users/jerry/Documents/SGD-Diagnostic/code/pytorch-cifar/checkpoint/logShuffleNetV2_v2.txt',
-        'ResNeXt29':'/Users/jerry/Documents/SGD-Diagnostic/code/pytorch-cifar/checkpoint/logResNeXt29.txt'
-    # 'resadvnet20':'/home/wyang/code/pytorch-classification/checkpoint/cifar10/resadvnet20/log.txt',
-    # 'resadvnet32':'/home/wyang/code/pytorch-classification/checkpoint/cifar10/resadvnet32/log.txt',
-    # 'resadvnet44':'/home/wyang/code/pytorch-classification/checkpoint/cifar10/resadvnet44/log.txt',
-    }
+        # paths = {
+        #     'ResNet18': 'checkpoint/checkpoint_cifar10/logResNet18_v2.txt',
+        #     'ShuffleNetV2': 'checkpoint/checkpoint_cifar10/logShuffleNetV2_v2.txt',
+        #     'ResNeXt29':'checkpoint/checkpoint_cifar10/logResNeXt29.txt'
+        # }
 
-    field = ['Valid Acc.']
-
-    monitor = LoggerMonitor(paths)
-    monitor.plot(names=field)
-    savefig('test.eps')
+        paths = {
+            'ResNet18': 'checkpoint/checkpoint_cifar10/logcifar.resnet.sign5_mom9.momSwitch.072319.txt'
+        }
+        field = ['Valid Loss']
+        monitor = LoggerMonitor(paths)
+        monitor.plot(names=field)
+        savefig('checkpoint/checkpoint_cifar10/resnet.eps')
