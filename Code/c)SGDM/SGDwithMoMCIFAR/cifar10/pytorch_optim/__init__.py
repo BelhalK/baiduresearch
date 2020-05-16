@@ -19,9 +19,9 @@ from .lbfgs import LBFGS  # noqa: F401
 '''
 from . import lr_scheduler  # noqa: F401
 
-from .sgd_diagnostic import SGD_Diagnostic
+from .sgd_diagnostic_nonconvex import SGD_Diagnostic_Nonconvex
 from .adam_diagnostic import Adam_Diagnostic
-from .sign_sgd import sign_SGD
+# from .sign_sgd import sign_SGD
 
 '''
 del adadelta
@@ -38,6 +38,6 @@ del lbfgs
 '''
 del optimizer
 
-del sgd_diagnostic
+del sgd_diagnostic_nonconvex
 del adam_diagnostic
-del sign_sgd
+# del sign_sgd

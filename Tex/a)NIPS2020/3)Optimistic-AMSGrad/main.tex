@@ -179,9 +179,8 @@ The supplementary material of this paper is devoted to the proofs of our theoret
 
 \textbf{Notations:} We follow the notations in related adaptive optimization papers \citep{KB15,RKK18}. For any vector $u$, $v \in \mathbb R^{d}$,  $u/v$ represents element-wise division,
 $u^{2}$ represents element-wise square, $\sqrt{u}$ represents element-wise square-root.
-We denote $g_{1:T}[i]$ as the sum of the $i_{th}$ element of $T$ vectors $g_{1}, g_{2},
+We denote $g_{1:T}[i]$ as the sum of the $i_{th}$ element of $g_{1}, g_{2},
 \dots, g_{T} \in \mathbb R^{d}$.
-
 \section{Preliminaries}\label{sec:prelim}
 %We begin by providing some background on both online learning and adaptive methods.
 \textbf{Optimistic Online learning.}\hspace{0.1cm}
@@ -236,7 +235,6 @@ Therefore, \citep{KB15} proposes \textsc{Adam} that uses a moving average of gra
 A variant, called \textsc{AMSGrad} and detailed in Algorithm~\ref{alg:amsgrad}, has been developed in \citep{RKK18} to fix \textsc{Adam} failures at some online convex optimization problems.
 The difference between \textsc{Adam} and \textsc{AMSGrad} lies in line 7 of Algorithm~\ref{alg:amsgrad}.
 \textsc{AMSGrad} \citep{RKK18} adds the $\texttt{max}$ operation to guarantee a non-increasing learning rate,$\frac{\eta_t }{ \sqrt{\hat{v}}_t }$, which helps for the convergence (i.e. average regret $\mathcal{R}_T/T \rightarrow 0$).
-%For the hyper-parameters of \textsc{AMSGrad}, it is suggested in~\citep{RKK18} that $\beta_1=0.9$ and $\beta_2=0.99$.
 \vspace{-0.1in}
 \section{\textsc{OPT-AMSGrad} Algorithm}\label{sec:opt}
 \vspace{-0.1in}
@@ -244,6 +242,14 @@ We formulate in this section the proposed optimistic acceleration of AMSGrad, no
 It combines the idea of adaptive optimization with optimistic learning. 
 At each iteration, the learner computes a gradient vector $g_{t}:= \nabla \ell_t( w_t)$ at $w_{t}$ (line 4), then it maintains an exponential moving average of $\theta_{t} \in \mathbb R^{d}$ (line 5) and $v_{t} \in \mathbb R^{d}$ (line 6), which is followed by the max operation to get $\hat{v}_{t} \in \mathbb R^{d}$ (line 7). 
 The learner first updates an auxiliary variable $\tilde{w}_{t+1} \in \Theta$ (line 8) and then computes the next model parameter (line 9).
+Observe that the proposed algorithm does not reduce to \textsc{AMSGrad} when $m_{t}=0$, contrary to the optimistic variant of \textsc{FTRL}.
+Furthermore, combining line 8 and line 9 yields the following single update $w_{t+1}= \tilde{w}_{t}  - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}}_t } - \eta_{t} \frac{h_{t+1}}{ \sqrt{\hat{v}}_t }$. 
+
+Compared to \textsc{AMSGrad}, the algorithm is characterized by a \emph{two-level} update that interlinks some \emph{auxiliary state} $\tilde{w}_{t}$ and the model parameter state, $w_t$, similarly to the \textsc{Optimistic Mirror Descent} algorithm developed in \citep{rakhlin2013online}.
+It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}$, which exploits the guess $m_{t+1}$, see Figure \ref{fig:scheme} for a schematic illustration.
+In the following analysis, we show that the interleaving actually leads to some cancellation in the regret bound.
+Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citep{CJ12}.
+The gradient prediction plays an important role as discussed Section~\ref{sec:numerical}.
 
 \vspace{-0.15in}
 \begin{minipage}{0.54\linewidth}
@@ -277,15 +283,6 @@ where $h_{t+1}:= \beta_{1} \theta_{t-1} + (1 - \beta_{1}) m_{t+1}$  and $m_{t+1}
 \end{figure}
 \end{minipage}
 
-
-Observe that the proposed algorithm does not reduce to \textsc{AMSGrad} when $m_{t}=0$, contrary to the optimistic variant of \textsc{FTRL}.
-Furthermore, combining line 8 and line 9 yields the following single update $w_{t+1}= \tilde{w}_{t}  - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}}_t } - \eta_{t} \frac{h_{t+1}}{ \sqrt{\hat{v}}_t }$. 
-
-Compared to \textsc{AMSGrad}, the algorithm is characterized by a \emph{two-level} update that interlinks some \emph{auxiliary state} $\tilde{w}_{t}$ and the model parameter state, $w_t$, similarly to the \textsc{Optimistic Mirror Descent} algorithm developed in \citep{rakhlin2013online}.
-It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}$, which exploits the guess $m_{t+1}$, see Figure \ref{fig:scheme} for a schematic illustration.
-In the following analysis, we show that the interleaving actually leads to some cancellation in the regret bound.
-Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citep{CJ12}.
-The gradient prediction procedure plays naturally an important role and will be tackled Section~\ref{sec:numerical}.
 The proposed \textsc{OPT-AMSGrad} inherits three properties:
 \begin{itemize}
 \item Adaptive learning rate of each dimension as \textsc{AdaGrad} \citep{DHS11}. (line 6, line 8 and line 9)
@@ -315,7 +312,7 @@ We can also define the corresponding dual norm $\| \cdot \|_{\psi_t^*}:= \sqrt{ 
 We prove the following result regarding the regret in the convex optimization setting. That is, we assume that the loss functions $\{\ell_t\}_{t>0}$ are convex. We also assume that $\Theta$ has bounded diameter $D_{\infty}$, which is a standard assumption in previous works \citep{RKK18,KB15} on adaptive methods. It is necessary in regret analysis since if the boundedness assumption is lifted, one might construct a scenario such that the benchmark is $w^* = \infty$ and the learner's regret is infinite. 
 \begin{Theorem} \label{thm:mainconvex}
 Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
-Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
+Then,  \textsc{OPT-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
 \begin{equation} \label{bound:optadabeta}
 \begin{aligned}
 \mathcal{R}_T \leq &   \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
@@ -345,21 +342,21 @@ The construction of the predictable process $\{m_t\}_{t>0}$ is thus of utmost im
 We will not deal with the latter in this paper for the sake of page limit.
 Though, for implementation purposes, we derive a simple, yet effective, gradient prediction algorithm, see Algorithm~\ref{alg:algex} in Section~\ref{sec:numerical}, embedded in our \textsc{OPT-AMSGrad} algorithm.
 \subsection{Nonconvex Analysis (Finite-Time Upper Bound)}
-In this section, we discuss the offline and stochastic non-convex optimization properties of our online framework.
-In the stochastic optimization literature, the problem we are tackling reads as follows:
+We discuss the offline and stochastic nonconvex optimization properties of our online framework.
+As stated in the Introduction, this paper is about solving optimization problems instead of solving zero-sum games.  
+Classically, the problem we are tackling reads:
 \beq\label{eq:minproblem}
-\min \limits_{w \in \Theta} f(w) \eqdef \EE[ f(w, \xi)] \eqsp,
+\min \limits_{w \in \Theta} f(w) \eqdef  \EE[ f(w, \xi)] = n^{-1} \sum_{i=1}^n  \EE[f(w, \xi_i)] \eqsp,
 \eeq
-where $\xi$ is some random noise and only noisy versions of the objective function are accessible in this work.
+for a fixed batch of $n$ samples $\{ \xi_i \}_{i=1}^n$
 The objective function $f(w)$ is (potentially) nonconvex and has Lipschitz gradients.
-
-Set the terminating iteration number, $T \in \{0,\dots,T_{\sf max}-1\}$, as a discrete r.v.~with:
+Set the terminating number, $T \in \{0,\dots,T_{\sf max}-1\}$, as a discrete r.v.~with:
 \beq \label{eq:random}
    P( T = \ell ) = \frac{ \eta_{\ell} }{\sum_{j=0}^{T_{\sf max}-1} \eta_j} \eqsp,
 \eeq
 where $T_{\sf max}$ is the maximum number of iteration.
-The random termination number \eqref{eq:random} is inspired by \citep{ghadimi2013stochastic} which enables to derive novel non-asymptotic convergence results to stationary point for non-convex optimization. 
-We make the following mild assumptions necessary to our analysis:
+The random termination number \eqref{eq:random} is inspired by \citep{ghadimi2013stochastic} and is widely used for nonconvex optimization. 
+Assume:
 %\begin{assumption}\label{ass:nonconv}
 %The loss function $f(w)$ is nonconvex \wrt the parameter $w$.
 %\end{assumption}
@@ -412,14 +409,14 @@ Assume H\ref{ass:boundedparam}-H\ref{ass:bounded}, $\beta_1 < \beta_2 \in [0,1)$
 \end{split}
 \eeq
 where $K$ is a random termination number distributed according \eqref{eq:random}.
-%The constants are defined as follows:
-%\beq\notag
-%\begin{split}
-%&\tilde{C}_1 = C_1 +  \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)} \left[ \frac{a(1 - \beta_1)^2}{1-\beta_2} + 2L \frac{1}{1-\beta_2}  \right]\\
-%&C_1 = \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)}  \Delta f + \frac{ 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \major}{(1 - a\beta_1) + (\beta_1 + a)} \frac{(1 + \beta_1^2) (1- \beta_1)}{(1 - \beta_2)(1-\gamma)}\\
-%&\tilde{C}_2 = \frac{\major}{(1 - \beta_1) \left((1 - a\beta_1) + (\beta_1 + a)\right)} \tilde{\major}^2   \EE\left[ \norm{\hat{v}_{0}^{-1/2}}    \right]
-%\end{split}
-%\eeq
+The constants are defined as:
+\beq\notag
+\begin{split}
+&\tilde{C}_1 = C_1 +  \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)} \left[ \frac{a(1 - \beta_1)^2}{1-\beta_2} + 2L \frac{1}{1-\beta_2}  \right]\\
+&C_1 = \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)}  \Delta f + \frac{ 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \major}{(1 - a\beta_1) + (\beta_1 + a)} \frac{(1 + \beta_1^2) (1- \beta_1)}{(1 - \beta_2)(1-\gamma)}\\
+&\tilde{C}_2 = \frac{\major}{(1 - \beta_1) \left((1 - a\beta_1) + (\beta_1 + a)\right)} \tilde{\major}^2   \EE\left[ \norm{\hat{v}_{0}^{-1/2}}    \right]
+\end{split}
+\eeq
 \end{Theorem}
 We remark that the bound for our OPT-AMSGrad method matches the complexity bound of $\mathcal{O}\left( \sqrt{d/T_{\sf max}} + 1/T_{\sf max} \right)$ of \citep{ghadimi2013stochastic} for SGD and \citep{zhou2018convergence} for AMSGrad method.
 
@@ -442,7 +439,85 @@ The following Lemma proves that assumption H\ref{ass:boundedparam} is satisfied 
 \begin{Lemma}\label{lem:dnnh2} 
 Given the multilayer model \eqref{eq:dnnmodel}, assume the boundedness of the input data and of the loss function, \ie for any $\xi \in \rset^p$ and $y \in \rset$ there is a constant $T >0$ such that $\norm{\xi} \leq 1 \quad \textrm{a.s.}$ and $|\mathcal{L}'(\cdot, y)| \leq T$ where $\mathcal{L}'(\cdot, y)$ denotes its derivative \wrt the parameter. Then for each layer $\ell \in [1,L]$, there exist a constant $A_{(\ell)}$ such that $\norm{w^{(\ell)}} \leq A_{(\ell)}$
 \end{Lemma}
-\begin{figure}[t]
+\section{Numerical Experiments}\label{sec:numerical}
+\subsection{Gradient Estimation}
+%From the analysis in the previous section, we know that whether \textsc{OPT-AMSGrad} converges faster than its counterpart depends on how $m_{t}$ is chosen.
+In \textsc{Optimistic-Online learning}, $m_{t}$ is usually set to $m_{t}= g_{t-1}$ \citep{CJ12}, \ie using the previous gradient as a guess of the next one.
+The choice can accelerate the convergence to equilibrium in some two-player zero-sum games \citep{rakhlin2013online,SALS15,DISZ18}, in which each player uses an optimistic update.
+We propose to use the extrapolation algorithm of \citep{SAB16} based on estimating the limit of a sequence using the last iterates \citep{BZ13}. 
+Some classical works include \textsc{Anderson} acceleration \citep{WN11}, \textsc{Minimal Polynomial Extrapolation} \citep{CJ76},  \textsc{Reduced Rank Extrapolation} \citep{E79}.
+%These methods assume that the sequence $\{g_t\} \in \mathbb R^d$ has a linear relation $g_t = A( g_{t-1} - g^* ) + g^*$ where $A \in \mathbb R^{d \times d}$ is unknown and finds the fixed point $g^{*}$. 
+%\citep{SAB16} relaxes the assumption to certain degrees. 
+These methods aims at finding a fixed point $g^{*}$ and assumes that the sequence $\{g_t\} \in \mathbb R^d$ has a linear relation as follows:
+\begin{equation} \label{nox}
+g_t - g^* = A( g_{t-1} - g^* ) + e_t,
+\end{equation}
+where $e_t$ is a second order term satisfying $\| e_t \|_2  = O( \| g_{t-1} - g^* \|_2^2)$ and $A \in \mathbb R^{d \times d}$ is an unknown matrix, see \citep{SAB16} for details and results.
+For our numerical experiments, we run \textsc{OPT-AMSGrad} using Algorithm~\ref{alg:algex} to construct the sequence $\{m_t\}_{t>0}$. 
+\begin{algorithm}[h]
+\begin{algorithmic}[1] 
+\small
+\caption{\textsc{Regularized Approximate Minimal Polynomial Extrapolation}
+\citep{SAB16} } \label{alg:algex}
+\STATE \textbf{Input:} sequence $\{ g_s \in \mathbb R^d \}_{s=0}^{s=r-1}$, parameter $\lambda > 0$.
+\STATE Compute matrix  $U = [ g_1 - g_0, \dots, g_{r} - g_{r-1}] \in \mathbb R^{d \times r}$.
+\STATE Obtain $z$ by solving $(U^\top U + \lambda I ) z = \mathbf{1}$.
+\STATE Get $c= z / (z^\top \mathbf{1})$.
+\STATE \textbf{Output:} $\Sigma_{i=0}^{r-1} c_i g_i$, the approximation of the fixed point $g^*$.
+\end{algorithmic}
+\end{algorithm}
+Specifically, at iteration $t$, $m_t$ is obtained by \textsf{(a)} calling Algorithm~\ref{alg:algex} with input being a sequence of past $r$ gradients, $\{ g_{t-1},g_{t-2}, \dots, g_{t-r} \}$ and \textsf{(b)} setting $m_t:= \Sigma_{i=0}^{r-1} c_i g_{t-r+i}$ where $c = [c_0, \dots, c_{r-1}] $ is obtained by Algorithm~\ref{alg:algex}.
+To see why the output from the extrapolation method may be a reasonable estimation, assume that the update converges to a stationary point (i.e. $g^*:=\nabla f(w^*) = 0$ for the underlying function $f$). Then, we might rewrite (\ref{nox}) as $g_t = A g_{t-1}  + O( \| g_{t-1} \|_2^2 ) u_{t-1}$, for some unit vector $u_{t-1}$.
+The equation suggests that the next gradient vector $g_{t}$ is a linear transform of $g_{{t-1}}$ plus an error vector that may not be in the span of $A$.If the algorithm is guaranteed to converge to a stationary point, the magnitude of the error component will eventually go to zero.
+%We remark that the choice of algorithm for gradient prediction is surely not unique. We propose to use the recent result among various related works. 
+%Indeed, one can use any method that can provide reasonable guess of gradient in next iteration.
+
+\textbf{Computational cost.} This extrapolation step consists in: \textsf{(a)} Constructing the linear system $(U^\top U)$ which cost can be optimized to $\mathcal O(d)$, since the matrix $U$ only changes one column at a time. \textsf{(b)} Solving the linear system which cost is $O(r^3)$, and is negligible for a small $r$ used in practice.\textsf{ (c)} Outputting a weighted average of previous gradients which cost is $\mathcal O(r \times d)$ yielding a computational overhead of $\mathcal O\left((r+1)d+r^3\right)$.
+Yet, steps (a) and (c) are parallelizable in the final implementation.
+\subsection{Classification Experiments}
+In this section, we provide experiments on classification tasks with various neural network architectures and datasets to demonstrate the effectiveness of \textsc{OPT-AMSGrad}.
+
+\textbf{Methods.}
+We consider two baselines. The first one is the original \textsc{AMSGrad}. 
+The hyper-parameters are set to be $\beta_1 = 0.9$ and $\beta_2 = 0.999$, see \citep{RKK18}. 
+The other benchmark method is the \textsc{Optimistic-Adam$+\hat{v}_t$} \citep{DISZ18}, which details are reported to the Supplementary Material. 
+We use cross-entropy loss, a mini-batch size of $128$ and tune the learning rates over a fine grid and report the best result for all methods.
+For \textsc{OPT-AMSGrad}, we use $\beta_1 = 0.9$ and $\beta_2 = 0.999$ and the best step size $\eta$ of \textsc{AMSGrad} for a fair evaluation of the optimistic step. 
+\textsc{OPT-AMSGrad} has an additional parameter $r$ that controls the number of previous gradients used for gradient prediction. 
+%Fortunately, we observe similar performance of \textsc{OPT-AMSGrad} with different values of $r$. 
+%Hence, we report the result of $r=5$. Comparison among different $r$ can be found in the Supplemental Material.
+In the sequel, we use $r=5$ past gradient for empirical reasons, see Section~\ref{sec:choicer}.
+In all experiments, the algorithms are initialized at the same point and the results are averaged over 5 repetitions.
+
+\textbf{Datasets.}
+We compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
+\textit{CIFAR100}, and \textit{IMDB} datasets. 
+For \textit{MNIST}, we use two noisy variants named as \textit{MNIST-back-rand} and \textit{MNIST-back-image} from \citep{MNIST07} ($n=12\,000$), \textit{CIFAR10} and \textit{CIFAR100} ($n=50\,000$) and \textit{IMDB} ($n=25\,000$). 
+%They both have 12000 training samples and 50000 test samples, where random background is inserted to the original \textit{MNIST} hand written digit images. 
+% For \textit{MNIST-back-rand}, each image is inserted with a random background, whose pixel values generated uniformly from 0 to 255, while \textit{MNIST-back-image} takes random patches from a black and white as noisy background.
+%The input dimension is 784 ($28\times 28$) and the number of classes is $10$.
+% \textit{CIFAR10} and \textit{CIFAR100} are popular computer-vision datasets consisting of 50000 training images and 10000 test images, of size $32\times 32$. 
+% The number of classes are 10 and 100, respectively. 
+% The \textit{IMDB} movie review dataset is a binary classification dataset with 25000 training and testing samples respectively. It is a popular datasets for text classification.
+
+%\textbf{Network architecture.}
+%We adopt a multi-layer fully connected neural network with input layer followed by a hidden layer with $200$ neurons, which is connected to another layer with $100$ neurons before the output layer. 
+%The activation function is ReLU, and softmax for the output layer.
+%For CIFAR datasets, we adopt ALL-CNN network proposed by \citep{CNN15}, which is constructed with several convolutional blocks and dropout layers. In addition, we also apply residual networks, Resnet-18 and Resnet-50~\citep{Rnet16}, which have achieved many state-of-the-art results. For the texture \textit{IMDB} dataset, we consider training a Long-Short Term Memory (LSTM) network. The network includes a word embedding layer with 5000 input entries representing most frequent words in the dataset, and each word is embedded into a 32 dimensional space. The output of the embedding layer is passed to 100 LSTM units, which is then connected to 100 fully connected ReLu's before the output layer. For all the models, we use cross-entropy loss. A mini-batch size of $128$ is used to compute the stochastic gradients.
+
+\textbf{Results.}
+Firstly, to illustrate the acceleration effect of \textsc{OPT-AMSGrad} at early stage, we provide the training loss against number of iterations in Figure~\ref{fig:train_loss} where a multi-layer fully connected neural network with hidden layers of $200$ then $100$ neurons (using \textrm{ReLU} activations) before the \textrm{Softmax} output layer. 
+We clearly observe that on all datasets, the proposed \textsc{OPT-AMSGrad} converges faster than the other competing methods. 
+In other words, we need fewer iterations (samples) to achieve the same training loss validating one of the main edges of \textsc{OPT-AMSGrad}.
+We are also curious about the long-term performance and generalization of the proposed method in test phase.
+For CIFAR datasets, we adopt ALL-CNN network proposed by \citep{CNN15}, built with convolutional blocks and dropout layers.
+In addition, we train Resnet-18 and Resnet-50~\citep{Rnet16} achieving SOTA. 
+For the texture \textit{IMDB} dataset, we consider a Long-Short Term Memory (LSTM) network \citep{gers1999learning} including a word embedding layer with $5\,000$ input entries representing most frequent words embedded into a $32$ dimensional space. 
+The output of the embedding layer is passed to $100$ LSTM units then connected to $100$ fully connected \textrm{ReLU} layers. 
+In Figure~\ref{fig:testandtrain}, we plot the results when the model is trained until the test accuracy stabilize. 
+We observe: \textsf{(1)} In the long term, \textsc{OPT-AMSGrad} algorithm may converge to a better point with smaller objective function value, and \textsf{(2)} In this three applications, the proposed \textsc{OPT-AMSGrad} also outperforms the competing methods in terms of test accuracy. 
+\vspace{-0.4cm}
+\begin{figure}[H]
 \mbox{
 \subfigure{
 \includegraphics[width=0.94in]{simulation/fig2/M_rand_train_loss_no1.eps}\hspace{-0.15in}
@@ -463,57 +538,11 @@ Given the multilayer model \eqref{eq:dnnmodel}, assume the boundedness of the in
 \includegraphics[width=0.94in]{simulation/fig2/cifar100_resnet_train_loss.eps}\hspace{-0.15in}
 }
 }
-\caption{Training loss vs. Number of iterations. The first row are results with fully-connected NN.}
+\caption{Training loss vs. Number of iterations. The first row are results with fully connected NN.}
 \label{fig:train_loss}
 \end{figure}
-\vspace{-0.2cm}
-\section{Numerical Experiments}\label{sec:numerical}
-\subsection{Gradient Estimation}
-From the analysis in the previous section, we know that whether \textsc{OPT-AMSGrad} converges faster than its counterpart depends on how $m_{t}$ is chosen.
-In \textsc{Optimistic-Online learning}, $m_{t}$ is usually set to $m_{t}= g_{t-1}$, which means that it uses the previous gradient as a guess of the next one.
-The choice can accelerate the convergence to equilibrium in some two-player zero-sum games \citep{rakhlin2013online,SALS15,DISZ18}, in which each player uses an optimistic online learning algorithm against its opponent.
-
-However, this paper is about solving optimization problems, as in \eqref{eq:minproblem}, instead of solving zero-sum games.  
-In most classical deep learning tasks, as we will develop in the numerical section, \eqref{eq:minproblem} even reads $\min \limits_{w \in \Theta} f(w) = \sum_{i=1}^n  f(w, \xi_i) $ for a fixed batch of $n$ samples $\{ \xi_i \}_{i=1}^n$.
-We propose to use the extrapolation algorithm of \citep{SAB16}.
-Extrapolation studies estimating the limit of sequence using the last few iterates \citep{BZ13}. 
-Some classical works include Anderson acceleration \citep{WN11}, minimal polynomial extrapolation \citep{CJ76}, reduced rank extrapolation \citep{E79}.
-These methods typically assume that the sequence $\{x_t\} \in \mathbb R^d$ has a linear relation $x_t = A( x_{t-1} - x^* ) + x^*$ and $A \in \mathbb R^{d \times d}$ is an unknown, not necessarily symmetric, matrix. 
-The goal is to find the fixed point of $x^{*}$. \citep{SAB16} relaxes the assumption to certain degrees. It assumes that the sequence $\{x_t\} \in \mathbb R^d$ satisfies
-\begin{equation} \label{nox}
-x_t - x^* = A( x_{t-1} - x^* ) + e_t,
-\end{equation}
-where $e_t$ is a second order term satisfying $\| e_t \|_2  = O( \| x_{t-1} - x^* \|_2^2)$ and $A \in \mathbb R^{d \times d}$ is an unknown matrix.
-The extrapolation algorithm we used is shown in Algorithm~\ref{alg:algex}.
-Some theoretical guarantees regarding the distance between the output and $x^*$ are provided in \citep{SAB16}.
-\begin{algorithm}[h]
-\begin{algorithmic}[1] 
-\small
-\caption{\textsc{Regularized Approximate Minimal Polynomial Extrapolation} (RMPE)
-\citep{SAB16} } \label{alg:algex}
-\STATE \textbf{Input:} sequence $\{ x_s \in \mathbb R^d \}_{s=0}^{s=r}$, parameter $\lambda > 0$.
-\STATE Compute matrix  $U = [ x_1 - x_0, \dots, x_{r} - x_{r-1}] \in \mathbb R^{d \times r}$.
-\STATE Obtain $z$ by solving $(U^\top U + \lambda I ) z = \mathbf{1}$.
-\STATE Get $c= z / (z^\top \mathbf{1})$.
-\STATE \textbf{Output:} $\Sigma_{i=0}^{r-1} c_i x_i$, the approximation of the fixed point $x^*$.
-\end{algorithmic}
-\end{algorithm}
-For our numerical experiments in the next section, we run \textsc{OPT-AMSGrad} using Algorithm~\ref{alg:algex} to get $m_t$. 
-Specifically, $m_t$ is obtained by \textsf{(a)} calling Algorithm~\ref{alg:algex} with input being a sequence of some past $r+1$ gradients, $\{ g_t, g_{t-1},g_{t-2}, \dots, g_{t-r} \}$, %to obtain $m_t$,
-where $r$ is a parameter and \textsf{(b)} setting $m_t:= \Sigma_{i=0}^{r-1} c_i g_{t-r+i}$ from the output of Algorithm~\ref{alg:algex}.
-To see why the output from the extrapolation method may be a reasonable estimation, assume that the update converges to
-a stationary point (i.e. $g^*:=\nabla f(w^*) = 0$ for the underlying function $f$).
-Then, we might rewrite (\ref{nox}) as
-\begin{equation} \label{key_to_comp}
-g_t = A g_{t-1}  + O( \| g_{t-1} \|_2^2 ) u_{t-1},
-\end{equation}
-for some vector $u_{t-1}$ with a unit norm.
-The equation suggests that the next gradient vector $g_{t}$ is a linear transform of $g_{{t-1}}$
-plus an error vector that may not be in the span of $A$ whose length is $O( \| g_{t-1} \|_2^2 )$.
-If the algorithm is guaranteed to converge to a stationary point, the magnitude of the error component will eventually go to zero.
-We remark that the choice of algorithm for gradient prediction is surely not unique. We propose to use the recent result among various related works. 
-Indeed, one can use any method that can provide reasonable guess of gradient in next iteration.
-\begin{figure}[t]
+\vspace{-0.6cm}
+\begin{figure}[H]
 \mbox{
 \subfigure{
 \includegraphics[width=0.94in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_disz_2.eps}\hspace{-0.15in}
@@ -556,61 +585,26 @@ Indeed, one can use any method that can provide reasonable guess of gradient in 
 }
 \caption{\textit{MNIST-back-image} + CNN, \textit{CIFAR10} + Res-18 and \textit{CIFAR100} + Res-50 . We compare three methods in terms of training (cross-entropy) loss and accuracy, testing loss and accuracy.} \label{fig:testandtrain}
 \end{figure}
-
-\subsection{Classification Experiments}
-In this section, we provide experiments on classification tasks with various neural network architectures and datasets to demonstrate the effectiveness of \textsc{Optimistic-AMSGrad}.
-
-\textbf{Methods.}\hspace{0.1in}We consider two baselines. The first one is the original \textsc{AMSGrad}. 
-The hyper-parameters are set to be $\beta_1$ and $\beta_2$ to be $0.9$ and $0.999$ respectively, as recommended by \citep{RKK18}. We tune the learning rate $\eta$ over a fine grid and report the best result. 
-The other competing method is the aforementioned \textsc{Optimistic-Adam$+\hat{v}_t$} method, see \citep{DISZ18}. The key difference is that it uses previous gradient as the gradient prediction of the next iteration. We also report the best result achieved by tuning the step size $\eta$ for \textsc{Optimistic-Adam$+\hat{v}_t$}.
-For \textsc{Optimistic-AMSGrad}, we use the same $\beta_1$, $\beta_2$ and 
-the best step size $\eta$ of \textsc{AMSGrad} for a fair evaluation of the improvement brought by the extra optimistic step. Yet,
-\textsc{Optimistic-AMSGrad} has an additional parameter $r$ that controls the number of previous gradients used for gradient prediction. Fortunately, we observe similar performance of \textsc{Optimistic-AMSGrad} with different values of $r$. Hence, we report $r=5$ for now when comparing with other baselines. We will address on the choice of $r$ at the end of this section.
-In all experiments, all the optimization algorithms are initialized at the same point. We report the results averaged over 5 repetitions.
-
-\textbf{Datasets.}\hspace{0.1in}Following \citep{RKK18} and \citep{KB15}, we compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
-\textit{CIFAR100}, and \textit{IMDB} datasets. 
-For \textit{MNIST}, we use two noisy variants named as 1.65\textit{MNIST-back-rand} and 1.65\textit{MNIST-back-image} from \citep{MNIST07}. They both have 12000 training samples and 50000 test samples, where random background is inserted to the original \textit{MNIST} hand written 
-digit images. For \textit{MNIST-back-rand}, each image is inserted with a random background, whose pixel values generated uniformly from 0 to 255, while \textit{MNIST-back-image} takes random patches from a black and white as noisy background.
-The input dimension is 784 ($28\times 28$) and the number of classes is $10$. \textit{CIFAR10} and \textit{CIFAR100} are popular computer-vision datasets consisting of 50000 training images and 10000 test images, of size $32\times 32$. The number of classes are 10 and 100, respectively. The \textit{IMDB} movie review dataset is a binary classification dataset with 25000 training and testing samples respectively. It is a popular datasets for text classification.
-
-\textbf{Network architecture.}\hspace{0.1in}We adopt a multi-layer fully-connected neural network with input layer followed by a hidden layer with $200$ nodes, which is connected to another layer with $100$ nodes before the output layer. The activation function is ReLU for hidden layers, and softmax for the output layer. This network is tested on \textit{MNIST} variants. Since convolutional networks are popular for image classification tasks, we consider an ALL-CNN architecture proposed by \citep{CNN15}, which is constructed with several convolutional blocks and dropout layers. In addition, we also apply residual networks, Resnet-18 and Resnet-50~\citep{Rnet16}, which have achieved many state-of-the-art results. For the texture \textit{IMDB} dataset, we consider training a Long-Short Term Memory (LSTM) network. The network includes a word embedding layer with 5000 input entries representing most frequent words in the dataset, and each word is embedded into a 32 dimensional space. The output of the embedding layer is passed to 100 LSTM units, which is then connected to 100 fully connected ReLu's before the output layer. For all the models, we use cross-entropy loss. A mini-batch size of $128$ is used to compute the stochastic gradients.
-
-\textbf{Results.}\hspace{0.1in}Firstly, to illustrate the acceleration effect of \textsc{Optimistic-AMSGrad} at early stage, we provide the training loss against number of iterations in Figure~\ref{fig:train_loss}. We clearly observe that on all datasets, the proposed \textsc{Optimistic-AMSGrad} converges faster than the other competing methods, right after the training begins. In other words, we need fewer iterations (samples) to achieve the same training loss. This validates one of the main advantages of \textsc{Optimistic-AMSGrad}, which is a higher sample efficiency.
-We are also curious about the long-term performance and generalization of the proposed method in test phase. In Figure~\ref{fig:testandtrain}, we plot the corresponding results when the model is trained to the state with stable test accuracy. We observe: 1) In the long term, \textsc{Optimistic-AMSGrad} algorithm may converge to a better point with smaller objective function value, and 2) In this three applications, the proposed \textsc{Optimistic-AMSGrad} also outperforms the competing methods in terms of test accuracy. These are also important benefits of \textsc{Optimistic-AMSGrad}.
-
-\subsection{Choice of parameter $r$}
-\begin{wrapfigure}[13]{r}{1.5in}\vspace{-0.5in}
+\subsection{Choice of parameter $r$}\label{sec:choicer}
+\begin{wrapfigure}[12]{r}{1.7in}\vspace{-0.4in}
 \begin{center}
 \mbox{
-\includegraphics[width=1.35in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_r3510_2.eps}\hspace{-0.1in}
+\includegraphics[width=1.35in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_r3510_2.eps}\vspace{-0.5in}
 }
 \mbox{
 \includegraphics[width=1.35in]{new_figure/cifar10_train_loss_r3510.eps}
 }
 \end{center}
-\caption{Training loss with different $r$.}\label{fig:compare}
+\caption{Training loss w.r.t. $r$.}\label{fig:compare}
 \end{wrapfigure}
 \vspace{-0.1in}
-Recall that our proposed algorithm has the parameter $r$ that governs the use of past information.
-Figure~\ref{fig:compare} compares the performance under different values of $r=3,5,10$ on two datasets. From the result we see that the choice of $r$ does not have significant impact on learning performance. Taking into consideration both quality of gradient prediction and computational cost, it appears that $r=5$ is a good choice. We remark that empirically, the performance comparison among $r=3,5,10$ is not absolutely consistent (i.e. more means better) in all cases. One possible reason is that for deep neural nets (with highly non-convex loss), using gradient information from too long ago may not be helpful in accurate gradient prediction. Nevertheless, $r=5$ seems to be good for most applications.
-
-\subsection{Some Remarks on the Experiments}
-\textbf{Discussion on the iteration cost:}
-We observe that the iteration cost (i.e., actual running time per iteration) of our implementation of \textsc{Optimistic-AMSGrad} with $r=5$ is roughly two times larger than the standard \textsc{AMSGrad}. When $r=3$, the cost is roughly 0.7 times longer. Nevertheless, \textsc{Optimistic-AMSGrad} may still be beneficial in terms of training efficiency, since fewer iterations are typically needed. For example, in Figure \ref{fig:testandtrain}, to reach the training loss of \textsc{AMSGrad} at 100 epochs, the proposed method only needs roughly 20 and 40 epochs, respectively. That said, \textsc{Optimistic-AMSGrad} needs 40\% and 80\% time to achieve same training loss as \textsc{AMSGrad}, in this two problems.
-
-The computational overhead mostly comes from the gradient extrapolation step. More specifically, recall that the extrapolation step consists of:
-(a) The step of constructing the linear system $(U^\top U)$.
-The cost of this step can be optimized and reduced to $\mathcal O(d)$, since the matrix $U$ only changes one column at a time.
-(b) The step of solving the linear system.
-The cost of this step is $O(r^3)$, which is negligible as the linear system is very small ($5$-by-$5$ if $r=5$).
-(c) The step that outputs an estimated gradient as a weighted average of previous gradients.
-The cost of this step is $\mathcal O(r \times d)$. Thus, the computational overhead is $\mathcal O\left((r+1)d+r^3\right)$.
-Yet, we notice that step (a) and (c) is parallelizable, so they can be accelerated in practice.
-
-\noindent \textbf{Memory usage:} Our algorithm needs a storage of past $r$ gradients for each coordinate, in addition to the estimated second moments and the moving average. Though it seems demanding compared to the standard AMSGrad, it is relatively cheap compared to Natural gradient method (e.g.,~\citep{MG15}), as Natural gradient method needs to store some matrix inverse.
+Since the number of past gradients $r$ is important in our algorithm we compare Figure~\ref{fig:compare} the performance under different values $r=3,5,10$ on two datasets. 
+From the result we see that the choice of $r$ does not have significant impact on the training loss.
+Taking into consideration both quality of gradient prediction and computational cost, $r=5$ is a good choice for most applications here. 
+We remark that empirically, the performance comparison among $r=3,5,10$ is not absolutely consistent (i.e. more means better) in all cases. 
+One possible reason is that for deep neural networks, the high diversity of gradients computed through the iterations, due to the nonconvexity of the loss, makes most of them inefficient for the predictable process $\{m_t\}_{t>0}$. Only recent ones ($r \leq 5$) are useful.
 \section{Conclusion}
-In this paper, we propose \textsc{Optimistic-AMSGrad}, which combines optimistic learning and \textsc{AMSGrad} to improve sampling efficiency and
+In this paper, we propose \textsc{OPT-AMSGrad}, which combines optimistic learning and \textsc{AMSGrad} to improve sampling efficiency and
 accelerate the process of training, in particular for deep neural networks. With a good gradient prediction, the regret can be smaller than that of standard \textsc{AMSGrad}. Experiments on various deep learning problems demonstrate the effectiveness of the proposed method in improving the training efficiency. 
 
 
@@ -627,7 +621,7 @@ accelerate the process of training, in particular for deep neural networks. With
 \section{Proof of Theorem~\ref{thm:mainconvex}}\label{app:thmmainconvex}
 \begin{Theorem*}
 Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
-Then,  \textsc{Optimistic-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
+Then,  \textsc{OPT-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret 
 \begin{equation} \label{bound:optadabeta}
 \begin{aligned}
 \mathcal{R}_T \leq &   \frac{ B_{\psi_1}(w^*, \tilde{w}_{1})}{\eta_1}
@@ -1157,12 +1151,12 @@ which is $\min_{t \in [T]} \mathbb{E}[\| \nabla f(w_t) \|^2 ] = O(\log T / \sqrt
 Yet, this data independent bound does not show any advantage over standard stochastic gradient descent. Similar concerns appear in other papers.
 
 To get some adaptive data dependent bound that are in terms of the gradient norms observed along the trajectory) when applying 
-\textsc{Optimistic-AMSGrad} to nonconvex optimization,
+\textsc{OPT-AMSGrad} to nonconvex optimization,
 one can follow the approach of \citep{Princeton18} or \citep{CYYZC19}.
 They provide ways to convert algorithms with adaptive data dependent regret bound
-for convex loss functions (e.g. \textsc{AdaGrad}) to the ones that can find an approximate stationary point of non-convex loss functions. 
-Their approaches are modular so that simply using \textsc{Optimistic-AMSGrad}
-as the base algorithm in their methods will immediately lead to a variant of \textsc{Optimistic-AMSGrad} that enjoys some guarantee on nonconvex optimization.
+for convex loss functions (e.g. \textsc{AdaGrad}) to the ones that can find an approximate stationary point of nonconvex loss functions. 
+Their approaches are modular so that simply using \textsc{OPT-AMSGrad}
+as the base algorithm in their methods will immediately lead to a variant of \textsc{OPT-AMSGrad} that enjoys some guarantee on nonconvex optimization.
 The variant can outperform the ones instantiated by other \textsc{Adam}-type algorithms when
 the gradient prediction $m_t$ is close to $g_t$.
 The details are omitted since this is a straightforward application.
@@ -1206,13 +1200,11 @@ can avoid the cycle behavior in a bilinear zero-sum game, which accelerates the 
 
 
 \section{Additional Remarks and Runs on the Gradient Prediction Process}
-\textbf{Two illustrative examples.}\hspace{0.1in}We provide two toy examples to demonstrate how \textsc{Optimistic-AMSGrad} works with the chosen extrapolation method. First, consider minimizing a quadratic function $H(w) := \frac{b}{2} w^2 $  
+\textbf{Two illustrative examples.}\hspace{0.1in}We provide two toy examples to demonstrate how \textsc{OPT-AMSGrad} works with the chosen extrapolation method. First, consider minimizing a quadratic function $H(w) := \frac{b}{2} w^2 $  
 %The eigenvalue of matrix $B \in \mathbb R^{d \times d}$ can be negative.
 with vanilla gradient descent method $w_{t+1} = w_t - \eta_t \nabla H(w_t)$. 
-The gradient $g_{t}:= \nabla H(w_{t})$ has a recursive description as 
-$g_{t+1} = b w_{t+1} = b ( w_t  - \eta_t g_t ) = g_t - b \eta_t g_t  $.
-So, the update can be written in the form of (\ref{key_to_comp}) 
-with $A = (1 - b \eta)$ and $u_{t-1}=0$ by setting $\eta_t=\eta$ (constant step size).
+The gradient $g_{t}:= \nabla H(w_{t})$ has a recursive description as  $g_{t+1} = b w_{t+1} = b ( w_t  - \eta_t g_t ) = g_t - b \eta_t g_t  $.
+So, the update can be written in the form of $g_t = A g_{t-1}  + O( \| g_{t-1} \|_2^2 ) u_{t-1}$, with $A = (1 - b \eta)$ and $u_{t-1}=0$ by setting $\eta_t=\eta$ (constant step size).
 Therefore, the extrapolation method should predict well.
 
 
@@ -1220,11 +1212,11 @@ Therefore, the extrapolation method should predict well.
 \begin{figure}[H]
 \centering
     \mbox{
-    \includegraphics[width=0.25\textwidth]{./simulation/fig/fig1_left.eps}
+    \includegraphics[width=0.25\textwidth]{simulation/fig/fig1_left.eps}
     \includegraphics[width=0.25\textwidth]{simulation/fig/fig1_right.eps}
     }
     \mbox{
-    \includegraphics[width=0.25\textwidth]{./simulation/fig/fig2_left.eps}
+    \includegraphics[width=0.25\textwidth]{simulation/fig/fig2_left.eps}
     \includegraphics[width=0.25\textwidth]{simulation/fig/fig2_right.eps}
     }
      \caption{\small (a): The iterate $w_t$; the closer to the optimal point $0$ the better. (b): A scaled and clipped version of $m_t$: $w_t - w_{t-1/2}$, which measures how the prediction of $m_t$ drives the update towards the optimal point. In this scenario, the more negative the better.
@@ -1239,7 +1231,7 @@ Specifically, consider optimizing $H(w) := w^2/2 $
 by the following three algorithms with the same step size.
 One is Gradient Descent (GD): $w_{t+1} = w_t - \eta_t g_t$,
 while the other two are
-\textsc{Optimistic-AMSGrad} with $\beta_1=0$ and the second moment term $\hat{v}_t$ being dropped: 
+\textsc{OPT-AMSGrad} with $\beta_1=0$ and the second moment term $\hat{v}_t$ being dropped: 
 $w_{t+\frac{1}{2}} = \Pi_{\Theta}\big[ w_{t-\frac{1}{2}} - \eta_t g_t \big]$,
 $w_{t+1} = \Pi_{\Theta}\big[ w_{t+\frac{1}{2}} - \eta_{t+1} m_{t+1} \big]$.
 We denote the algorithm that sets $m_{t+1}= g_t$ as Opt-1,
