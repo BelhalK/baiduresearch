@@ -272,7 +272,7 @@ Particularly, only one out of the $n$ surrogate functions is updated at each ite
 Moreover, under S\ref{ass:sur}, S\ref{ass:diff}, it was shown that the MISO method converges almost surely to a stationary point of \eqref{eq:opt} \citep[Prop. 3.1]{mairal2015miso}.
 
 We now consider the case when the surrogate functions $\sur{i}{\param}{\op}$ are intractable. 
-Let $\Zset$ be a measurable set, $p_i : \Zset \times \Param \rightarrow \rset_+$ be a probability density function, $r_i : \Param \times \Param \times \Zset \rightarrow \rset$ be a measurable function and $\mu_i$ be a $\sigma$-finite measure, we consider surrogate functions which satisfy S\ref{ass:sur}, S\ref{ass:diff} and that can be expressed as an expectation:
+Let $\Zset$ be a measurable set, $p_i : \Zset \times \Param \rightarrow \rset_+$ a probability density function, $r_i : \Param \times \Param \times \Zset \rightarrow \rset$ a measurable function and $\mu_i$ a $\sigma$-finite measure. We consider surrogate functions which satisfy S\ref{ass:sur}, S\ref{ass:diff} and that can be expressed as an expectation, \textit{i.e.}:
 \begin{equation}\label{eq:integralsurrogate}
 \sur{i}{\param}{\op} \eqdef \int_{\Zset}{\rsur{i}{\param}{\op}{z_i}  p_i(z_i ; \op)\mu_i(dz_i)}\quad \forall~(\param,\op) \in \Param \times \Param \eqsp.
 \end{equation}
@@ -282,12 +282,14 @@ Several motivating examples of \eqref{eq:opt} are given in Section~\ref{sec:fram
 We propose the \emph{Minimization by Incremental Stochastic Surrogate Optimization} (MISSO) method  which replaces the expectation in \eqref{eq:integralsurrogate} by \emph{Monte Carlo} integration and then optimizes the objective function \eqref{eq:opt} in an incremental manner.
 Denote by $M \in \NN$ the Monte Carlo batch size and let $\{z_m \in \Zset\}_{m=1}^M$ be a set of samples. These samples can be drawn
 {\sf (Case 1)} i.i.d. from the distribution $p_i( \cdot ; \op )$ or {\sf (Case 2)}  from a Markov chain with stationary distribution $p_{i}(\cdot; \op)$; see Section \ref{sec:analysis} for illustrations.
-To this end, we define
+To this end, we define the stochastic surrogate as follows:
 \beq \label{eq:ssur}  
 \ssur{i}{\param}{\op}{ \{ z_m \}_{m=1}^{M}} \eqdef \frac{1}{M} \sum_{m=1}^{M} \rsur{i}{\param}{\op}{z_m}\eqsp,
 \eeq
 and we summarize the proposed MISSO method in \Cref{alg:misso}.
-As seen, the procedure is similar to the MISO method but it involves two types of randomness. The first randomness comes from the selection of $i_k$ in Line \ref{line:unif}. The second randomness is that a set of Monte-Carlo approximated functions $\tafct{i}{k}{\param}$ is used in lieu of $\tafctdet{i}{k}{\param}$ when optimizing for the next iterate $\param^{(k)}$.
+As seen, the procedure is similar to the MISO method but it involves two types of randomness. 
+The first level of randomness comes from the selection of $i_k$ in Line \ref{line:unif}. 
+The second level of randomness stems from the set of Monte-Carlo approximated functions $\tafct{i}{k}{\param}$ used in lieu of $\tafctdet{i}{k}{\param}$ in Line \ref{line:mcsample} when optimizing for the next iterate $\param^{(k)}$.
 \begin{algorithm}[t]
 \algsetup{indent=1em}
 \begin{algorithmic}[1]
@@ -299,7 +301,7 @@ As seen, the procedure is similar to the MISO method but it involves two types o
 \eeq
 \FOR {$k=0,1,...$}
 \STATE \label{line:unif}Pick a function index $i_k$ uniformly on $\inter$.
-\STATE Draw $\Bsize{k}$ Monte-Carlo samples with the stationary distribution $p_i(\cdot; \hp{k})$.
+\STATE \label{line:mcsample} Draw $\Bsize{k}$ Monte-Carlo samples with the stationary distribution $p_i(\cdot; \hp{k})$.
 \STATE \label{line:ssur} Update the individual surrogate functions recursively as:
 \beq\notag
 \tafct{i}{k+1}{\param} = \begin{cases}
@@ -316,87 +318,75 @@ As seen, the procedure is similar to the MISO method but it involves two types o
 We now discuss two applications of the MISSO method.
 
 \textbf{Example 1: Maximum Likelihood Estimation for Latent Variable Model.}
-%The EM algorithm is the reference method to
-%We consider the Maximum Likelihood (ML) estimation problem latent variable model.
 Latent variable models \citep{bishop2006pattern} are constructed by introducing unobserved (latent) variables which help explain the observed data.
 We consider $n$ independent observations $((y_i, z_i), i \in \inter[n])$ where $y_i$ is observed and $z_i$ is latent.
-In this incomplete data framework, define $ \{f_i(z_i, \param), \param \in \Param \}$ to be the complete data likelihood models, \ie joint likelihood of the observations and latent variables. Let 
+In this incomplete data framework, define $ \{f_i(z_i, \param), \param \in \Param \}$ to be the complete data likelihood models, \ie the joint likelihood of the observations and latent variables. Let 
 \beq \notag
-g_i(\param) \eqdef \int_{\Zset}{f_i(z_i,\param) \mu_i(\dz_i)},~i \in \inter
+g_i(\param) \eqdef \int_{\Zset}{f_i(z_i,\param) \mu_i(\dz_i)},~i \in \inter, ~\param \in\Param
 \eeq 
-denote the incomplete data likelihood, \ie the marginal likelihood of the observations.
+denote the incomplete data likelihood, \ie the marginal likelihood of the observations $y_i$.
 For ease of notations, the dependence on the observations is made implicit.
-The maximum likelihood (ML) estimation problem takes ${\cal L}_i(\param)$ to be the $i$th negated incomplete data log-likelihood ${\cal L}_i(\param) \eqdef - \log g_i(\param)$. 
+The maximum likelihood (ML) estimation problem sets the individual objective function ${\cal L}_i(\param)$ to be the $i$-th negated incomplete data log-likelihood ${\cal L}_i(\param) \eqdef - \log g_i(\param)$. 
 
-Assume without loss of generality  that $g_i(\param) \neq 0$ for all $\param \in \Param$, we define by $p_i(z_i, \param) \eqdef f_i(z_i,\param)/g_i(\param)$ the conditional distribution of the latent variable $z_i$ given the observation $y_i$.
+Assume, without loss of generality, that $g_i(\param) \neq 0$ for all $\param \in \Param$.
+We define by $p_i(z_i, \param) \eqdef f_i(z_i,\param)/g_i(\param)$ the conditional distribution of the latent variable $z_i$ given the observations $y_i$.
 A surrogate function $\sur{i}{\param}{\op}$ satisfying S\ref{ass:sur} can be obtained through writing
 $f_i(z_i,\param) = \frac{f_i(z_i,\param)}{p_i(z_i, \op)} p_i(z_i,\op)$ and applying the Jensen inequality:
 \beq\label{pairmcem}
-\sur{i}{\param}{\op} = \int_{\Zset} \underbrace{\log \left(p_i(z_{i},\op)/f_i(z_{i},\param)\right)}_{=  \rsur{i}{\param}{\op}{z_i}} \!~ p_i( z_i, \op ) \mu_i ( \dz_i ) \eqsp,
+\sur{i}{\param}{\op} = \int_{\Zset} \underbrace{\log \left(p_i(z_{i},\op)/f_i(z_{i},\param)\right)}_{=  \rsur{i}{\param}{\op}{z_i}} \!~ p_i( z_i, \op ) \mu_i ( \dz_i ) \eqsp.
 \eeq
 We note that S\ref{ass:diff} can also be verified for common distribution models.
-We can apply the MISSO method following the above specification of $\rsur{i}{\param}{\op}{z_i}, p_i( z_i, \op )$.
+We can apply the MISSO method following the above specification of $\rsur{i}{\param}{\op}{z_i}$ and $p_i( z_i, \op )$.
 
-%We remark that surrogate optimization has been used in the development of EM methods \citep{mclachlan}.
-%For example, the incremental EM method \citep{neal} can be derived as a special case of the MISO method. The latter requires the stochastic surrogate function \eqref{eq:integralsurrogate} to be exactly evaluated for each $\op \in \Param$ (corresponding to the `expectation' step), which may be infeasible for general distributions.
-%In this sense, the MISSO method is similar to an incremental version of the Monte-Carlo EM method \citep{wei}.
 
-\textbf{Example 2: Variational Inference.} Let $((x_i,y_i),  i \in \inter)$ be i.i.d.~input-output pairs and $w \in \Wset[] \subseteq \rset^{d}$ be a latent variable. When conditioned on the input $x = (x_i, i \in \inter)$, the joint distribution of $y = (y_i, i \in \inter)$ and $w$ is given by:
+\textbf{Example 2: Variational Inference.} Let $((x_i,y_i),  i \in \inter)$ be i.i.d.~input-output pairs and $w \in \Wset[] \subseteq \rset^{d}$ be a latent variable. When conditioned on the input data $x = (x_i, i \in \inter)$, the joint distribution of $y = (y_i, i \in \inter)$ and $w$ is given by:
 \begin{equation}\label{eq:vi} \textstyle
     p(y,w | x) = \prior(w)\prod_{i=1}^{n}{p(y_i | x_i, w)} \eqsp.
 \end{equation}
 Our goal is to compute the posterior distribution $p(w|y,x)$.
-In most cases, the posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. The variational inference (VI) problem \citep{blei2017vi} boils down to minimizing the KL divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$, as follows:
+In most cases, the posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. The variational inference (VI) problem \citep{blei2017vi} boils down to minimizing the Kullback-Leibler (KL) divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$, as follows:
 \begin{equation} \label{eq:VI}  
 \min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp.
 \end{equation}
 Using \eqref{eq:vi}, we decompose ${\cal L}(\param) = n^{-1} \sum_{i=1}^{n}{{\cal L}_i(\param)} + {\rm const}.$ where:
 \begin{equation}\label{eq:variationalobjective}
-{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big] = r_i(\param) + d(\param) \eqsp.
+{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big] \eqdef r_i(\param) + d(\param) \eqsp.
 \end{equation}
 Directly optimizing the finite sum objective function in \eqref{eq:VI} can be difficult.
 First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
 Second, for some complex models, the expectations in \eqref{eq:variationalobjective} can be intractable even if we assume a simple parametric model for $q(w; \param)$.
 Assume that ${\cal L}_i$ is $\rm L$-smooth, \ie ${\cal L}_i$ is differentiable on $\Param$ and its gradient $\nabla {\cal L}_i$ is $\rm L$-Lipschitz. We apply the MISSO method with a quadratic surrogate function defined as:
 \begin{equation} \label{eq:quad_sur}
-\sur{i}{\param}{\op} \eqdef {\cal L}_i(\op) + \pscal{ \nabla_{\param} {\cal L}_i(\op)} { \param - \op} +\frac{\rm L}{2}\|\op -\param \|^2 \eqsp.
+\sur{i}{\param}{\op} \eqdef {\cal L}_i(\op) + \pscal{ \nabla_{\param} {\cal L}_i(\op)} { \param - \op} +\frac{\rm L}{2}\|\op -\param \|^2 , ~~(\param, \op) \in \Param^2 \eqsp.
 \end{equation}
-It is easily checked that $\sur{i}{\param}{\op}$ satisfies S\ref{ass:sur}, S\ref{ass:diff}.
+It is easily checked that the quadratic function $\sur{i}{\param}{\op}$ satisfies S\ref{ass:sur}, S\ref{ass:diff}.
 To compute the gradient $\nabla {\cal L}_i(\op)$, we apply the re-parametrization technique suggested in \citep{paisley2013,kingma, blundell2015weight}.
-Let $t: \rset^d \times \Param \mapsto \rset^d$ be a differentiable function \wrt $\param \in \Param$ which is designed such that the law of $w = t( z, \op )$, where $z \sim \mathcal{N}_d(0,\Id)$, is $q(\cdot, \op )$.
+Let $t: \rset^d \times \Param \mapsto \rset^d$ be a differentiable function \wrt $\param \in \Param$ which is designed such that the law of $w = t( z, \op )$ is $q(\cdot, \op )$, where $z \sim \mathcal{N}_d(0,\Id)$.
 By \citep[Proposition~1]{blundell2015weight}, the gradient of $-r_i(\cdot)$ in \eqref{eq:variationalobjective} is:
 \beq \label{eq:vi_grad}
 \nabla_{\param} \EE_{ q( w; \op )} \big[\log p(y_i| x_i, w)\big] =  \EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] \eqsp,
 \eeq
 where for each $z \in \mathbb{R}^d$, $\jacob{\param}{t}{ z, \op }$ is the Jacobian of the function $t(z, \cdot)$ with respect to $\param$ evaluated at $\op$.
-%Consequently, we have the identity:
-%\beq\label{eq:gradvi}
-%\nabla {\cal L}_i(\op) = -\EE_{ z \sim \mathcal{N}_d(0,\Id) } \big[\jacob{\param}{t}{  z, \op}  \nabla_{w} \log p(y_i | x_i, w ) \big|_{w = t( z, \op )}\big] + \grd d( \op )
-%\eeq
-In addition, for most cases, the term $\grd d( \op )$ can be evaluated in closed form.
-% --- e.g., if we take $q(w; \param ) \sim {\cal N}_d( \mu, \sigma^2 \Id)$ such that $\param = (\mu , \sigma^2) \in \Param \eqdef \mathbb{R}^d \times \mathbb{R}^{*}_{+}$ and $\prior(w) \sim {\cal N}_d( {\bm 0}, \Id)$, then we have
-%$\grd d( \op ) = \frac{1}{n} (\bar{\mu},  \frac{d}{2}-\frac{1}{\overline{\sigma^2}} )$.
+In addition, for most cases, the term $\grd d( \op )$ can be evaluated in closed form as the gradient of the KL between the prior distribution $\pi(\cdot)$ and the variational candidate $q(\cdot, \param )$.
 \begin{align}\label{pairvi}
 \rsur{i}{\param}{\op}{z} \eqdef & \pscal{ \grd_{\param} d(\op) - \jacob{\param}{t}{ z,\op}\nabla_w \log p(y_i | x_i, w)\big|_{w = t( z, \op )} } { \param - \op} +\frac{L}{2}\| \param - \op\|^2 \eqsp.
 \end{align}
 Finally, using \eqref{eq:quad_sur} and \eqref{pairvi}, the surrogate function \eqref{eq:ssur} is given by $\ssur{i}{\param}{\op}{ \{ z_m \}_{m=1}^{M}} \eqdef M^{-1} \sum_{m=1}^{M} \rsur{i}{\param}{\op}{z_m}$
-where $\{z_m\}_{m=1}^M$ is an i.i.d sample from $\mathcal{N}(0,\Id)$.
+where $\{z_m\}_{m=1}^M$ are i.i.d samples drawn from $\mathcal{N}(0,\Id)$.
 
 
 
 \vspace{-0.05in}
 \section{Convergence Analysis}\label{sec:analysis}
 \vspace{-0.05in}
-
-We provide non-asymptotic convergence bound for the MISSO method.
+We now provide asymptotic and non-asymptotic convergence results for the MISSO method
 \begin{assumption} \label{ass:lips}
 For all $i \in \inter$, $\op \in \Param$, $z_i \in \Zset$, the measurable function $\rsur{i}{\param}{\op}{z_i}$ is convex in $\param$ and is lower bounded.
 \end{assumption}
 We are particularly interested in the \emph{constrained optimization} setting where $\Param$ is a bounded set.
-To this end, we control the supremum norm of the  of the above approximation as:
+To this end, we control the supremum norm of the MC approximation, introduced in \eqref{eq:ssur}, as:
 
 \begin{assumption}\label{controlapprox}
-%For all $i \in \inter$, $\op \in \Param$, t
 For the samples $\{z_{i,m}\}_{m=1}^{M}$,
 there exists finite constants $C_{\sf r}$ and $C_{\sf gr}$ such that
 \beq\notag
@@ -407,8 +397,6 @@ C_{\sf gr} \eqdef \sup \limits_{\op \in \Param} \sup \limits_{M >0} \sqrt{M} \EE
  \widehat{\cal L}_i'( \param , \param - \op; \op ) - r_i' (\param, \param - \op ; \op,  z_{i,m} ) }{\| \op - \param\|} }\right|^2 \right]
 \eeq
 for all $i \in \inter$,  and
-%scalars satisfy $C_i( r_i ( \cdot ; \op ) ) \leq C_{\sf r}$ and
-%$C_i( \grd r_i( \cdot; \op ) ) \leq C_{\sf gr}$.
 we denoted by $\mathbb{E}_{\op} [\cdot]$ the expectation \wrt a Markov chain $\{z_{i,m}\}_{m=1}^{M}$ with  initial distribution $\xi_{i} (\cdot; \op)$, transition kernel $P_{i,\op}$, and stationary distribution $p_{i}(\cdot; \op)$.
 \end{assumption}
 %\begin{assumption}\label{controlapprox}
@@ -429,9 +417,9 @@ we denoted by $\mathbb{E}_{\op} [\cdot]$ the expectation \wrt a Markov chain $\{
 %\end{split}
 %\eeq
 %\end{assumption}
-\textbf{Some intuitions behind the controlling terms:} It is actually common in statistical and optimization problems, to deal with the manipulation and the control of random variables indexed by sets with an infinite number of elements. Here, the controlled random variable is an image of a continuous function defined as $r_i (\param ; \op, z_{i,m})  - \sur{i}{\param}{\op}$ for all $z \in \Zset$ and for fixed $(\theta, \hat{\theta}) \in \Theta^2$.
+\textbf{Some intuitions behind the controlling terms:} It is actually common in statistical and optimization problems, to deal with the manipulation and the control of random variables indexed by sets with an infinite number of elements. Here, the controlled random variable is an image of a continuous function defined as $r_i (\param ; \op, z_{i,m})  - \sur{i}{\param}{\op}$ for all $z \in \Zset$ and for fixed $(\param, \op) \in \Param^2$.
 To characterize such control, we will have recourse to the notion of metric entropy (or bracketing number) as developed in \citep{van2000asymptotic, vershynin2018high, wainwright2019high}.
-A collection of results from those books gives intuition behind our assumption H~\ref{controlapprox}, which is classical in empirical processes.
+A collection of results from those references gives intuition behind our assumption H\ref{controlapprox}, which is classical in empirical processes.
 In \citep[Theorem 8.2.3]{vershynin2018high}, the authors recall the uniform law of large numbers for a class of $L$-Lipschitz functions:
 \beq\notag
 \EE \left[\underset{f \in \mathcal{F}}{ \sup } \left|\frac{1}{M} \sum_{i=1}^{M} f\left(z_{i,m}\right)-\EE[f(z_i)]\right| \right] \leq \frac{C L}{\sqrt{M}} \quad \textrm{for all} \quad z_{i,m}, i \in \llbracket 1, M \rrbracket\eqsp.
@@ -440,11 +428,10 @@ Moreover, in \citep[Theorem 8.1.3 ]{vershynin2018high} and \citep[Theorem 5.22]{
 \beq\notag
 \EE \left[ \underset{f \in \mathcal{F}}{\sup}\left|X_{f}-X_{0}\right|\right] \leq \frac{1}{\sqrt{M}} \int_{0}^{1} \sqrt{\log \mathcal{N}\left(\mathcal{F},\|\cdot\|_{\infty}, \varepsilon\right)} d \varepsilon\eqsp,
 \eeq
-where $\mathcal{N}\left(\mathcal{F},\|\cdot\|_{\infty}, \varepsilon\right)$ is the bracketing number and $\epsilon$ denotes the level of approximation (the bracketing number goes to infinity when $\epsilon  \to 0$). Finally, in \citep[p.271, Example]{van2000asymptotic}, $\mathcal{N}\left(\mathcal{F},\|\cdot\|_{\infty}, \varepsilon\right)$ is bounded from above for a class of parametric functions $ \mathcal{F}= {f_{\theta}: \theta \in \Theta}$ on a bounded set $\Theta \subset \rset$ :
+where $\mathcal{N}\left(\mathcal{F},\|\cdot\|_{\infty}, \varepsilon\right)$ is the bracketing number and $\epsilon$ denotes the level of approximation (the bracketing number goes to infinity when $\epsilon  \to 0$). Finally, in \citep[p.271, Example]{van2000asymptotic}, $\mathcal{N}\left(\mathcal{F},\|\cdot\|_{\infty}, \varepsilon\right)$ is bounded from above for a class of parametric functions $ \mathcal{F}= {f_{\param}: \param \in \Param}$ on a bounded set $\Theta \subset \rset$ :
 \beq\notag
 \mathcal{N}\left(\mathcal{F},\|\cdot\|_{\infty}, \varepsilon\right) \leq K\left(\frac{\operatorname{diam} \Theta}{\varepsilon}\right)^{d}, \quad \textrm{every} \quad 0<\varepsilon<\operatorname{diam} \Theta\eqsp.
 \eeq
-%It is worth contrasting the exponential dependence of this metric entropy on the dimension $d$. 
 The authors acknowledge that those bounds are a dramatic manifestation of the curse of dimensionality happening when sampling is needed.
 Nevertheless, the dependence on the dimension highly depends on the class of surrogate functions $\mathcal{F}$ used in our scheme, as smaller bounds on these controlling terms can be derived for simpler class of functions, such as quadratic functions.
 
@@ -557,7 +544,7 @@ The variational posterior parameters are thus $\param = (\mu, \sigma) $ where $\
 \textbf{Bayesian ResNet-18 \citep{he2016deep} on CIFAR-10 \citep{krizhevsky2012imagenet}:}
 We train here the Bayesian variant of the ResNet-18 neural network (see Appendix~\ref{appendix:resnet}) introduced in \citep{he2016deep} on CIFAR-10. 
 The latter dataset is composed of $n=60\,000$ handwritten digits, $32 \times 32$ colour images in $10$ classes, with $6\,000$ images per class.
-As in the previous example, the weights are assumed  independent and identically distributed according to ${\cal N}(0,1)$.
+As in the previous example, the weights are assumed  independent and identically distributed according to ${\cal N}(0,\Id)$.
 The source code used as a backbone here can be found in the TensorFlow Probability Github repo where the default hyperparameters, such as the annealing constant or the number of MC samples, were used for the benchmark methods. For better efficiency and lower variance, the Flipout estimator \citep{wen2018flipout} is used.
 
 \textbf{Experiment Results:}
@@ -575,15 +562,15 @@ We use the following hyperparameters for all runs --- the learning rate is $10^{
 \end{figure}
 \vspace{-.3cm}
 Figure~\ref{fig:lenetopt}(a) shows the convergence of the negated evidence lower bound against the number of passes over data (one pass represents an epoch). As observed, the proposed MISSO method outperforms \textit{Bayes by Backprop} and Momentum, while similar convergence rates are observed with the MISSO, ADAM and SAG methods for our experiment on MNIST dataset using a Bayesian variant of LeNet-5. 
-On the other hand, the experiment conducted on CIFAR-10 (Figure~\ref{fig:lenetopt}(b)) using a much larger network, \ie\ a Bayesian variant of ResNet-18 (see Table~\ref{table:resnet}) showcases the need of a well-tuned adaptive methods to reach better training loss (and also faster). Our MISSO method is similar to the Monte Carlo variant of ADAM but slower than built-in TF optimizer Adagrad. Recall that the purpose of this paper is to provide a common class of optimizers, such as VI, in order to study their convergence behaviors, and not to introduce a novel method outperforming the baselines methods.
+On the other hand, the experiment conducted on CIFAR-10 (Figure~\ref{fig:lenetopt}(b)) using a much larger network, \ie a Bayesian variant of ResNet-18 showcases the need of a well-tuned adaptive methods to reach better training loss (and also faster). Our MISSO method is similar to the Monte Carlo variant of ADAM but slower than built-in TF optimizer Adagrad. Recall that the purpose of this paper is to provide a common class of optimizers, such as VI, in order to study their convergence behaviors, and not to introduce a novel method outperforming the baselines methods.
 %Figure~\ref{fig:lenetopt}(b) also highlights high variance of the MISSO estimator which would then benefit from variance reduction methods, being for now just an incremental one. 
 %We leave that research direction open for the sake of clarity of our paper.
 \vspace{-0.05in}
 \section{Conclusion}
 \vspace{-0.05in}
-We present a unifying framework for minimizing a nonconvex finite-sum objective function using incremental surrogates when the latter functions are expressed as an expectation and are intractable.
+We present a unifying framework for minimizing a nonconvex and nonsmooth finite-sum objective function using incremental surrogates when the latter functions are expressed as an expectation and are intractable.
 Our approach covers a large class of nonconvex applications in machine learning such as logistic regression with missing values and variational inference.
-We provide both finite-time and asymptotic guarantees of our incremental stochastic surrogate optimization technique and illustrate our findings training a binary logistic regression with missing covariates to predict hemorrhagic shock and Bayesian variants of two CNNs on benchmark datasets.
+We provide both finite-time and asymptotic guarantees of our incremental stochastic surrogate optimization technique and illustrate our findings training a binary logistic regression with missing covariates to predict hemorrhagic shock and Bayesian variants of two Convolutional Neural Networks on benchmark datasets.
 
 \newpage
 
