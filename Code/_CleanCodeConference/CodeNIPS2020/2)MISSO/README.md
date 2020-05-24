@@ -1,14 +1,14 @@
 # MISSO Scheme
 ====
 
-Code for the paper [A Doubly Stochastic Surrogate Optimization Scheme for Non-convex Finite-sum Problems].
+Code for the paper [ MISSO: Minimization by Incremental Stochastic Surrogate Optimization for Large Scale Nonconvex and Nonsmooth Problems].
 
 
 Get the repository
 ====
 
 ```
-git clone --recursive https://gitlab.labos.polytechnique.fr/cmap.xpop.lab
+git clone --recursive https://github.com/belhal/misso
 ```
 
 
@@ -16,7 +16,8 @@ Contents
 ====
 Code to reproduce experiments for 
 - Binary Logistic Regression: R code
-- Bayesian Neural Network: python code (TensorFlow), LeNET-5 on MNIST and ResNet18 on CIFAR-10
+- Bayesian Neural Network: python code (TensorFlow), LeNET-5 on MNIST 
+- Bayesian Neural Network: python code (TensorFlow), ResNet18 on CIFAR-10
 
 License
 ====
@@ -30,7 +31,7 @@ Please cite our paper if you find this code useful.
 
 ```
 @inproceedings{karimi2020misso,
-  title={A Doubly Stochastic Surrogate Optimization Scheme for Non-convex Finite-sum Problems},
+  title={MISSO: Minimization by Incremental Stochastic Surrogate Optimization for Large Scale Nonconvex and Nonsmooth Problems},
   author={Karimi, Belhal and Wai, Hoi-To and Moulines, Eric and Li, Ping},
   booktitle={},
   pages={},

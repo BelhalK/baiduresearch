@@ -1,22 +1,23 @@
 # MISSO Scheme
 ====
 
-Code for the paper [Fast Two-Time-Scale EM Methods].
+Code for the paper [ Fast Two-Timescale Stochastic EM Algorithms].
 
 
 Get the repository
 ====
 
 ```
-git clone --recursive https://gitlab.labos.polytechnique.fr/cmap.xpop.lab
+git clone --recursive https://github.com/belhal/ttsem
 ```
 
 
 Contents
 ====
 Code to reproduce experiments for 
-- Binary Logistic Regression: R code
-- Bayesian Neural Network: python code (TensorFlow)
+- Gaussian Mixture Models: R Code
+- Deformable Template Analysis: Matlab Code
+- PK Modeling: R Code
 
 License
 ====
@@ -29,8 +30,8 @@ Citation
 Please cite our paper if you find this code useful. 
 
 ```
-@inproceedings{karimi2020twotime,
-  title={Fast Two-Time-Scale EM Methods},
+@inproceedings{karimi2020ttsem,
+  title={Fast Two-Timescale Stochastic EM Algorithms},
   author={Karimi, Belhal and Li, Ping},
   booktitle={},
   pages={},
