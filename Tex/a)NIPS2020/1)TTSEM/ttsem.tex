@@ -142,7 +142,7 @@ In this paper, we make the assumption of a complete model belonging to the curve
 f(z_i,y_i; \param) = h  (z_i,y_i) \exp \big( \pscal{S(z_i,y_i)}{\phi(\param)} - \psi(\param) \big)\eqs,
 \eeq
 where $\psi(\param)$, $h(z_i,y_i)$ are scalar functions, $\phi(\param) \in \rset^k$ is a vector function, and $\{S(z_i,y_i) \in \rset^k\}_{i=1}^n$ is the vector of sufficient statistics of the complete model.
-Full batch EM~\citep{dempster1977Maximum} is the method of reference for that type of task and is a two steps procedure. The \textsf{ E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, \vspace{-0.1in}
+Full batch EM~\citep{dempster1977Maximum, wu1983convergence} is the method of reference for that type of task and is a two steps procedure. The \textsf{ E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, \vspace{-0.1in}
 
 
 \begin{align}\label{eq:definition-overline-bss}
@@ -163,7 +163,7 @@ So far, and to the best of our knowledge, both challenges have been addressed se
 \textbf{Prior Work:} Inspired by stochastic optimization procedures,~\citep{neal1998view} and~\citep{cappe2009line} develop respectively an incremental and an online variant of the \textsf{E-step} in models where the expectation is computable, and were then extensively used and studied in~\citep{nguyen2020mini, liang2009online,cappe2011online}.
 Some improvements of those methods have been provided and analyzed, globally and in finite-time, in~\citep{karimi2019global} where variance reduction techniques taken from the optimization literature have been efficiently applied to scale the EM algorithm to large datasets.
 Regarding the computation of the expectation under the posterior distribution, the Monte Carlo EM (MCEM) has been introduced in the seminal paper~\citep{wei1990monte} where an MC approximation for this expectation is computed. A variant of that algorithm is the Stochastic Approximation of the EM (SAEM) in~\citep{delyon1999} leveraging the power of Robbins-Monro update~\citep{robbins1951stochastic} to ensure pointwise convergence of the vector of estimated parameters using a decreasing stepsize rather than increasing the number of MC samples.
-The MCEM and the SAEM have been successfully applied in mixed effects models~\citep{mcculloch1997maximum,hughes1999mixed,baey2016nonlinear} or to do inference for joint modeling of time to event data coming from clinical trials in~\citep{das2010Inferences}, among other applications.
+The MCEM and the SAEM have been successfully applied in mixed effects models~\citep{mcculloch1997maximum,hughes1999mixed,baey2016nonlinear} or to do inference for joint modeling of time to event data coming from clinical trials in~\citep{das2010Inferences}, unsupervised clustering in~\citep{ngChoice2003}, variational inference of graphical models in~\citep{BleiVariational2017} among other applications.
 Recently, an incremental variant of the SAEM was proposed in~\citep{kuhn2019properties} showing positive empirical results but its analysis is limited to asymptotic consideration. 
 Gradient-based methods have been developed and analyzed in~\citep{zhu2017high} but they remain out of the scope of this paper as they tackle the high-dimensionality issue.
 
@@ -226,7 +226,7 @@ In the next section, we derive variants of this algorithm to adapt to the sheer 
 \subsection{Incremental and Two-Stage Stochastic EM Methods} \label{sec:sEM}
 \vspace{-0.05in}
 
-Efficient strategies to scale to large datasets include incremental~\citep{neal1998view} and variance reduced~\citep{chen2018stochastic} methods.
+Efficient strategies to scale to large datasets include incremental~\citep{neal1998view} and variance reduced~\citep{chen2018stochastic, johnson:zhang:2013} methods.
 We will explicit a general update that covers those latter variants and that represents the \textit{second level} of our algorithm, namely the incremental update of the noisy statistics $\tilde{S}^{(k+1)}$ in the \textsf{SA-Step}:
 \beq \label{eq:sestep}
 \textsf{Incremental-step}:~\tilde{S}^{(k+1)} = \tilde{S}^{(k)} + \rho_{k+1} \big( \StocEstep^{(k+1)}- \tilde{S}^{(k)}  \big)\eqs.
@@ -247,25 +247,25 @@ For all methods, we define a random index drawn at iteration $k$, noted $i_k \in
 % \vspace{-0.3in}
 % \end{wrapfigure}
 The proposed \FISAEM\ method draws \emph{two} indices \emph{independently} and uniformly as $i_k, j_k \in \inter$. 
-Thus, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$ in addition to $\tau_i^k$ which was defined \wrt $i_k$.
-% \begin{table}[H]
-% \centering
-% \rule{\textwidth}{\heavyrulewidth}
-% \begin{flalign}
-% &\textsf{\ISAEM\ }& \StocEstep^{(k+1)} &= \StocEstep^{(k)} + n^{-1} \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(\tau_{i_k}^k)} \big)
-% &&& \label{eq:isaem}\\
-% &\textsf{\SAEMVR\ }&\StocEstep^{(k+1)} &= \tilde{S}^{(\ell(k))} +  \big( \tilde{S}_{i_k}^{(k)}  -\tilde{S}_{i_k}^{(\ell(k))}   \big) 
-% &&& \label{eq:vrsaem}\\
-% &\textsf{\FISAEM\ }& \StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(t_{i_k}^k)} \big) , \quad  \overline{\StocEstep}^{(k+1)} = \overline{\StocEstep}^{(k)} + n^{-1} \big( \tilde{S}_{j_k}^{(k)}  - \tilde{S}_{j_k}^{(t_{j_k}^k)} \big)
-% &&&  \label{eq:fisaem}
-% \end{flalign}
-% \rule{\textwidth}{\heavyrulewidth}
-% \end{table}
-\boxalign{\begin{align}
-&\textsf{\ISAEM\ } & \StocEstep^{(k+1)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:isaem} \\
-&\textsf{\SAEMVR\  } &\StocEstep^{(k+1)} &= \tilde{S}^{(\ell(k))} +  \big( \tilde{S}_{i_k}^{(k)}  -\tilde{S}_{i_k}^{(\ell(k))}   \big) \label{eq:vrsaem}\\
-&\textsf{\FISAEM\  } &\StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(t_{i_k}^k)} \big) \label{eq:fisaem} , \quad  \overline{\StocEstep}^{(k+1)} = \overline{\StocEstep}^{(k)} + n^{-1} \big( \tilde{S}_{j_k}^{(k)}  - \tilde{S}_{j_k}^{(t_{j_k}^k)} \big)
-\end{align}}
+Thus, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$ in addition to $\tau_i^k$ which was defined \wrt $i_k$.\vspace{-.1cm}
+ \begin{table}[H]
+ \centering
+ \rule{\textwidth}{\heavyrulewidth}\vspace{-.1cm}
+ \begin{flalign}
+ &\textsf{\ISAEM\ }& \StocEstep^{(k+1)} &= \StocEstep^{(k)} + n^{-1} \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(\tau_{i_k}^k)} \big)
+ &&& \label{eq:isaem}\\
+ &\textsf{\SAEMVR\ }&\StocEstep^{(k+1)} &= \tilde{S}^{(\ell(k))} +  \big( \tilde{S}_{i_k}^{(k)}  -\tilde{S}_{i_k}^{(\ell(k))}   \big) 
+ &&& \label{eq:vrsaem}\\
+ &\textsf{\FISAEM\ }& \StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(t_{i_k}^k)} \big) , \quad  \overline{\StocEstep}^{(k+1)} = \overline{\StocEstep}^{(k)} + n^{-1} \big( \tilde{S}_{j_k}^{(k)}  - \tilde{S}_{j_k}^{(t_{j_k}^k)} \big)
+ &&&  \label{eq:fisaem}
+ \end{flalign}\vspace{-.5cm}
+ \rule{\textwidth}{\heavyrulewidth}\vspace{-.2cm}
+ \end{table}\vspace{-.2cm}
+%\boxalign{\begin{align}
+%&\textsf{\ISAEM\ } & \StocEstep^{(k+1)} &= \StocEstep^{(k)} + {\textstyle \frac{1}{n}}\big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(\tau_{i_k}^k)} \big) \label{eq:isaem} \\
+%&\textsf{\SAEMVR\  } &\StocEstep^{(k+1)} &= \tilde{S}^{(\ell(k))} +  \big( \tilde{S}_{i_k}^{(k)}  -\tilde{S}_{i_k}^{(\ell(k))}   \big) \label{eq:vrsaem}\\
+%&\textsf{\FISAEM\  } &\StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(t_{i_k}^k)} \big) \label{eq:fisaem} , \quad  \overline{\StocEstep}^{(k+1)} = \overline{\StocEstep}^{(k)} + n^{-1} \big( \tilde{S}_{j_k}^{(k)}  - \tilde{S}_{j_k}^{(t_{j_k}^k)} \big)
+%\end{align}}
 Recall $\tilde{S}_{i_k}^{(k)}=  \frac{1}{M_k} \sum_{m=1}^{M_k} S(z_{i_k,m}^{(k)}, y_{i_k})$ and $z_{i_k,m}^{(k)}, \sim p(z_{i_k}|y_{i_k};\theta^{(k)})$.
 The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method and we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \rho$ is  constant for the \SAEMVR\ and \FISAEM\ methods. Note that we initialize as follows $\overline{\StocEstep}^{(0)} = \tilde{S}^{(0)}$ for the \FISAEM\ which can be seen as a slightly modified version of SAGA inspired by~\citep{reddi2016fast}.
 For \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in.
@@ -276,7 +276,7 @@ Algorithm~\ref{alg:ttsem} leverages both levels \eqref{eq:rmstep} and \eqref{eq:
 \begin{algorithm}[H]
 \caption{Two-Timescale Stochastic EM methods.}\label{alg:ttsem}
   \begin{algorithmic}[1]
-  \STATE \textbf{Input:} Initializations $\hat{\param}^{(0)} \leftarrow 0$, $\hat{\bss}^{(0)} \leftarrow \tilde{S}^{(0)}$, $\gamma_k, \rho_k$ $\leftarrow$ Stepsizes. 
+  \STATE \textbf{Input:} $\hat{\param}^{(0)} \leftarrow 0$, $\hat{\bss}^{(0)} \leftarrow \tilde{S}^{(0)}$, $\{\gamma_k\}_{k>0}$, $\{\rho_k\}_{k>0}$ and $ {\sf K}_{\sf m }\in \mathbb{N}$.
 %  \STATE Set the terminating iteration number, $K \in \{0,\dots,{\sf K}_{\sf m }-1\}$, as a discrete r.v.~with:\vspace{-.1cm}
 %  \beq \label{eq:random}
 %   P( K = k ) = \frac{ \gamma_{k} }{\sum_{\ell=0}^{{\sf K}_{\sf m }-1} \gamma_\ell} = \frac{\gamma_k}{{\sf P}_{\sf m}}\eqs.\vspace{-.2cm} 
@@ -375,7 +375,6 @@ We present in this section a finite-time and global (independent of the initiali
 
 The following result for the \ISAEM\ algorithm is derived under the control of the Monte Carlo fluctuations as described by Assumption A\ref{ass:mcerror} and is built upon an intermediary Lemma, detailed in the supplementary material, characterizing the quantity of interest $( \hat{S}^{(k+1)} - \hat{\bss}^{(k)} )$.
 Typically, the controls exhibited above are of interest when the number of MC samples $M_k$ increase~with~$k$.
-
 \begin{Theorem}\label{thm:isaem}
 Assume A\ref{ass:compact}-A\ref{ass:mcerror}.
 Let ${\sf K}_{\sf m }$ be a positive integer. 
@@ -385,8 +384,6 @@ Assume that $ \hat{\bss}^{(k)} \in \mathcal{S}$ for any $k \leq {\sf K}_{\sf m }
 \upsilon_{\max}^{-2}\sum_{k=0}^{{\sf K}_{\sf m }} \tilde{\alpha}_k \EE [\|\grd V( \hs{k} )\|^2]  \leq   \EE  [V( \hs{0} ) - V( \hs{K} ) ] + \sum_{k=0}^{{\sf K}_{\sf m }-1} \tilde{\Gamma}_k         \EE [\| \eta_{i_k}^{(k)}\|^2] \eqs.
 \eeq
 \end{Theorem} 
-
-
 Two important intermediate Lemmas are needed in order to establish finite-time bounds for the \SAEMVR\ and the \FISAEM\ methods.
 We first derive an identity for the drift term of the \SAEMVR\ :
 \begin{Lemma}\label{lem:auxvrsaem}
@@ -399,7 +396,6 @@ Consider the \SAEMVR\ update in \eqref{eq:vrsaem} with $\rho_k = \rho$, it holds
 \eeq
 where we recall that $\ell(k)$ is the first iteration number in the epoch that iteration $k$ is in.
 \end{Lemma}
-
 The second one derives an identity for the quantity $\EE[ \| \hs{k} - \tilde{S}^{(k+1)}   \|^2 ]$ using the \FISAEM\ update:
 \begin{Lemma}\label{lem:aux1}
 Consider the \FISAEM\ update in \eqref{eq:fisaem} with $\rho_k = \rho$. It holds for all $k>0$ that
@@ -411,13 +407,11 @@ Consider the \FISAEM\ update in \eqref{eq:fisaem} with $\rho_k = \rho$. It holds
 \end{split}
 \eeq
 \end{Lemma}
-
 Recalling that $K$ is an independent discrete r.v.~drawn from $\{1,\dots,{\sf K}_{\sf m }\}$ with distribution $\{ \gamma_k/ {\sf P}_{\sf m},0 \leq k \leq {\sf K}_{\sf m } - 1 \}$, then the convergence criterion used in our study reads
 \beq\notag
 \EE[ \| \grd V( \hs{K} ) \|^2 ]  = \frac{1}{{\sf P}_{\sf m}} \sum_{k=0}^{{\sf K}_{\sf m }-1} \gamma_{k+1} \EE[ \| \grd V( \hs{k} ) \|^2 ] \eqs,
 \eeq 
 where the expectation is over the stochasticity of the algorithm and ${\sf P}_{\sf m} = \sum_{\ell=0}^{{\sf K}_{\sf m }-1} \gamma_\ell$.
-
 Denote $\Delta V = V( \hs{0} ) - V( \hs{{\sf K}_{\sf m }})$. We now state the main result regarding the \SAEMVR\ method:
 \begin{Theorem}\label{thm:vrsaem}
 Assume A\ref{ass:compact}-A\ref{ass:mcerror}.
@@ -429,9 +423,7 @@ Setting $\overline{L} = \max \{\Lip{\bss}, \Lip{V} \}$, $\rho = \mu/( c_1 \overl
 \EE[ \| \grd V( \hs{K} ) \|^2 ] \leq  \frac{2 n^{2/3} \overline{L}}{\mu {\sf P}_{\sf m} \upsilon_{\min}^2\upsilon_{\max}^2}\left( \EE[ \Delta V ]+  \sum_{k=0}^{{\sf K}_{\sf m }-1}  \tilde{\eta}^{(k+1)}\hspace{-0.1cm} + \chi^{(k+1)} \EE[\| \hs{k} - \tilde{S}^{(k)}\|^2]\right)  \eqsp.
 \eeq
 \end{Theorem}  
-
 Furthermore, the \FISAEM\ method has the following convergence rate:
-
 \begin{Theorem}\label{thm:fisaem}
 Assume A\ref{ass:compact}-A\ref{ass:mcerror}.
 Let ${\sf K}_{\sf m }$ be a positive integer. 
@@ -440,13 +432,14 @@ Assume that $ \hat{\bss}^{(k)} \in \mathcal{S}$ for any $k \leq {\sf K}_{\sf m }
 \beq\notag
  \EE[ \| \grd V( \hs{K} ) \|^2 ] \leq \frac{4\alpha  \overline{L} n^{2/3}}{{\sf P}_{\sf m}\upsilon_{\min}^2\upsilon_{\max}^2} \left( \EE \big[ \Delta V \big]   + \sum_{k=0}^{{\sf K}_{\sf m }-1}  \Xi^{(k+1)}  +\Gamma^{(k+1)} \EE [\| \hs{k} - \tilde{S}^{(k)}\|^2 ]\right)\eqs.
 \eeq
-\end{Theorem} \vspace{0.1cm}
+\end{Theorem}
 %Proof of this Theorem can be found in Appendix~\ref{app:theoremfisaem}.
 Note that in those two bounds, the quantities $\tilde{\eta}^{(k+1)} $ and $ \Xi^{(k+1)} $ depend only on the MC fluctuations $\EE [\| \eta_{i_k}^{(k)}\|^2 ]$ and some constants.
 While Theorem~\ref{thm:isaem} suffers only from the MC noise created by the latent data sampling step, Theorem~\ref{thm:vrsaem} and Theorem~\ref{thm:fisaem} exhibit in their convergence bounds \emph{two different phases}. 
 The upper bounds display a \emph{bias term} due to the initial conditions, \ie the term $ \Delta V$, and a \emph{double dynamic} burden exemplified by the term $\EE [\| \hs{k} -  \tilde{S}^{(k)} \|^2] $. 
 
-Indeed, the following remarks are worth doing on this quantity. \textsf{(i)} This term is the price we pay for the two-timescale dynamic and corresponds to the gap between the two \emph{asynchronous} updates (one on  $\hs{k}$ and the other on $ \tilde{S}^{(k)}$).  \textsf{(ii)} It is readily understood that if $\rho = 1$, \ie\ there is no variance reduction, then for any $k >0$
+Indeed, the following remarks are worth doing on this quantity: \textsf{(i)} This term is the price we pay for the two-timescale dynamic and corresponds to the gap between the two \emph{asynchronous} updates (one on  $\hs{k}$ and the other on $ \tilde{S}^{(k)}$).  
+\textsf{(ii)} It is readily understood that if $\rho = 1$, \ie\ there is no variance reduction, then for any $k >0$
 \beq\notag
 \EE [\| \hs{k}  - \tilde{S}^{(k)}   \|^2] = \EE [\| \StocEstep^{(k+1)} - \tilde{S}^{(k+1)} \|^2]= 0 \quad \textrm{with} \quad \hs{0} = \tilde{S}^{(0)}=0 \eqsp,
 \eeq
