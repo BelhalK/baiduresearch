@@ -13,10 +13,7 @@
 \usepackage{neurips_2020}
 
 \usepackage{lipsum}
-\usepackage[colorlinks=true,
-linkcolor=red,
-urlcolor=blue,
-citecolor=blue]{hyperref}
+\usepackage[colorlinks=true,linkcolor=red,urlcolor=blue,citecolor=blue]{hyperref}
 \usepackage{xargs}
 \usepackage{stmaryrd}
 
@@ -99,7 +96,7 @@ $(\theequation)$%
 }
 
 \begin{document}
-\title{\vspace{-0.1in}Fast Two-Timescale Stochastic EM Algorithms\vspace{-0.1in}}
+\title{\vspace{-0.1in}Fast Two-Timescale Stochastic EM Algorithms\vspace{-0.15in}}
 \author{
   Belhal Karimi \\
   Cognitive And Computing Lab\\
@@ -117,53 +114,53 @@ $(\theequation)$%
 \maketitle
 
 \begin{abstract}\vspace{-0.1in}
-Using the Expectation-Maximization (EM) algorithm is a popular choice for learning latent variable models. 
-Variants of the EM have been initially introduced by \citep{neal1998view}, using incremental updates to scale to large datasets, and by \citep{wei1990monte, delyon1999}, using Monte Carlo (MC) approximations to bypass the intractable conditional expectation of the latent data for most nonconvex models.
+The Expectation-Maximization (EM) algorithm is a popular choice for learning latent variable models. 
+Variants of the EM have been initially introduced by~\citep{neal1998view}, using incremental updates to scale to large datasets, and by~\citep{wei1990monte, delyon1999}, using Monte Carlo (MC) approximations to bypass the intractable conditional expectation of the latent data for most nonconvex models.
 In this paper, we propose a general class of methods called Two-Timescale EM Methods based on a two-stage approach of stochastic updates to tackle an essential nonconvex optimization task for latent variable models.
 We motivate the choice of a double dynamic by invoking the variance reduction virtue of each stage of the method on both sources of noise: the index sampling for the incremental update and the MC approximation.
 We establish finite-time and global convergence bounds for nonconvex objective functions.
 Numerical applications are also presented to illustrate~our~findings.
 \end{abstract}
 
-\vspace{-0.15in}
+\vspace{-0.2in}
 \section{Introduction}
 \vspace{-0.1in}
 
-Learning latent variable models is critical for modern machine learning problems, see \citep{mclachlan2007algorithm} for references.
+Learning latent variable models is critical for modern machine learning problems, see (e.g.,)~\citep{mclachlan2007algorithm} for references.
 We formulate the training of such model as an empirical risk minimization problem:
-\beq \label{eq:em_motivate}
+\begin{align} \label{eq:em_motivate}
 \min_{ \param \in \Param }~ \overline{\calL} ( \param ) \eqdef  \calL ( \param ) + \Pen (\param)~~\text{with}~~\calL ( \param ) = \frac{1}{n} \sum_{i=1}^n \calL_i( \param) \eqdef  \frac{1}{n} \sum_{i=1}^n \big\{ - \log g( y_i ; \param ) \big\}\eqs,
-\eeq
+\end{align}
 We denote the observations by $\{y_i\}_{i=1}^n$, $\Param \subset \rset^d$ is the convex parameters set.
 We consider a smooth convex regularization noted $\Pen : \Param \rightarrow \rset$ and $g(y;\param)$ is the (incomplete) likelihood of each observation.
 The objective function $ \overline{\calL} ( \param )$ is possibly \emph{nonconvex} and is assumed to be lower bounded.
 
 %We assume that $ \overline{\calL} ( \param ) > - \infty$ for all $\param \in \Param$.
 In the latent variable model,  $g(y_i ; \param)$, is the marginal of the
-complete data likelihood defined as $f(z_i,y_i; \param)$, i.e. $g(y_i; \param) = \int_{\Zset} f (z_i,y_i;\param) \mu(\rmd z_i)$, where $\{ z_i \}_{i=1}^n$ are the latent variables.  
-In this paper, we make the assumption of a complete model belonging to the curved exponential family:
+complete data likelihood defined as $f(z_i,y_i; \param)$, i.e., $g(y_i; \param) = \int_{\Zset} f (z_i,y_i;\param) \mu(\rmd z_i)$, where $\{ z_i \}_{i=1}^n$ are the latent variables.  
+In this paper, we make the assumption of a complete model belonging to the curved exponential family~\citep{efron1975defining}:
 \beq \label{eq:exp}
 f(z_i,y_i; \param) = h  (z_i,y_i) \exp \big( \pscal{S(z_i,y_i)}{\phi(\param)} - \psi(\param) \big)\eqs,
 \eeq
 where $\psi(\param)$, $h(z_i,y_i)$ are scalar functions, $\phi(\param) \in \rset^k$ is a vector function, and $\{S(z_i,y_i) \in \rset^k\}_{i=1}^n$ is the vector of sufficient statistics of the complete model.
-Full batch EM \citep{dempster1977Maximum} is the method of reference for that type of task and is a two steps procedure. The {\sf E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, 
-\begin{equation}
+Full batch EM~\citep{dempster1977Maximum} is the method of reference for that type of task and is a two steps procedure. The {\sf E-step} amounts to computing the conditional expectation of the complete data sufficient statistics, 
+\begin{align}
 \label{eq:definition-overline-bss}
 \textsf{E-step:}~~\overline{\bss}(\param)= \frac{1}{n} \sum_{i=1}^n \overline{\bss}_i(\param) \quad  \text{where}  \quad \overline{\bss}_i(\param)= \int_{\Zset} S(z_i,y_i) p(z_i|y_i;\param) \mu(\rmd z_i) \eqsp,
-\end{equation}
+\end{align}
 and the {\sf M-step} is given by
-\beq \label{eq:mstep}
+\begin{align}\label{eq:mstep}
 \textsf{M-step:}~~\hat{\param} = \overline{\param}( \overline{\bss}(\param) ) \eqdef \argmin_{ \vartheta \in \Param } ~\big\{ \Pen( \vartheta ) + \psi( \vartheta) - \pscal{ \overline{\bss}(\param)}{ \phi ( \vartheta) } \big\} \eqsp.
-\eeq
-Two caveats of this method are the following: \textsf{(a)} with the explosion of data, the first step of the EM is computationally inefficient as it requires, at each iteration, a full pass over the dataset and \textsf{(b)} the complexity of modern models makes the expectation in \eqref{eq:definition-overline-bss} intractable. 
+\end{align}
+Two caveats of this method are the following: \textsf{(a)} with the explosion of data, the first step of the EM is computationally inefficient as it requires, at each iteration, a full pass over the dataset; and \textsf{(b)} the complexity of modern models makes the expectation in \eqref{eq:definition-overline-bss} intractable. 
 So far, and to the best of our knowledge, both challenges have been addressed separately, as detailed in the sequel.
 
-\textbf{Prior Work:} Inspired by stochastic optimization procedures, \citep{neal1998view} and \citep{cappe2009line} develop respectively an incremental and an online variant of the \textsf{E-step} in models where the expectation is computable, and were then extensively used and studied in \citep{nguyen2020mini, liang2009online,cappe2011online}.
-Some improvements of those methods have been provided and analyzed, globally and in finite-time, in \citep{karimi2019global} where variance reduction techniques taken from the optimization literature have been efficiently applied to scale the EM algorithm to large datasets.
-Regarding the computation of the expectation under the posterior distribution, the Monte Carlo EM (MCEM) has been introduced in the seminal paper \citep{wei1990monte} where a MC approximation for this expectation is computed. A variant of that algorithm is the Stochastic Approximation of the EM (SAEM) in \citep{delyon1999} leveraging the power of Robbins-Monro update \citep{robbins1951stochastic} to ensure pointwise convergence of the vector of estimated parameters using a decreasing stepsize rather than increasing the number of MC samples.
-The MCEM and the SAEM have been successfully applied in mixed effects models \citep{mcculloch1997maximum,hughes1999mixed,baey2016nonlinear} or to do inference for joint modeling of time to event data coming from clinical trials in \citep{das2010Inferences}, among other applications.
-Recently, an incremental variant of the SAEM was proposed in \citep{kuhn2019properties} showing positive empirical results but its analysis is limited to asymptotic consideration. 
-Gradient-based methods have been developed and analyzed in \citep{zhu2017high} but they remain out of the scope of this paper as they tackle the high-dimensionality issue.
+\textbf{Prior Work:} Inspired by stochastic optimization procedures,~\citep{neal1998view} and~\citep{cappe2009line} develop respectively an incremental and an online variant of the \textsf{E-step} in models where the expectation is computable, and were then extensively used and studied in~\citep{nguyen2020mini, liang2009online,cappe2011online}.
+Some improvements of those methods have been provided and analyzed, globally and in finite-time, in~\citep{karimi2019global} where variance reduction techniques taken from the optimization literature have been efficiently applied to scale the EM algorithm to large datasets.
+Regarding the computation of the expectation under the posterior distribution, the Monte Carlo EM (MCEM) has been introduced in the seminal paper~\citep{wei1990monte} where a MC approximation for this expectation is computed. A variant of that algorithm is the Stochastic Approximation of the EM (SAEM) in~\citep{delyon1999} leveraging the power of Robbins-Monro update~\citep{robbins1951stochastic} to ensure pointwise convergence of the vector of estimated parameters using a decreasing stepsize rather than increasing the number of MC samples.
+The MCEM and the SAEM have been successfully applied in mixed effects models~\citep{mcculloch1997maximum,hughes1999mixed,baey2016nonlinear} or to do inference for joint modeling of time to event data coming from clinical trials in~\citep{das2010Inferences}, among other applications.
+Recently, an incremental variant of the SAEM was proposed in~\citep{kuhn2019properties} showing positive empirical results but its analysis is limited to asymptotic consideration. 
+Gradient-based methods have been developed and analyzed in~\citep{zhu2017high} but they remain out of the scope of this paper as they tackle the high-dimensionality issue.
 
 \textbf{Contributions:} This paper \textit{introduces} and \textit{analyzes} a new class of methods which purpose is to update two proxies for the target expected quantities in a two-timescale manner. 
 Those approximated quantities are then used to optimize the objective function \eqref{eq:em_motivate} for modern examples and settings using the \textsf{M-step} of the EM algorithm.
@@ -205,7 +202,7 @@ Then, the RM update of the sufficient statistics $\hat{\bss}^{(k+1)}$ reads:
 \textsf{SA-step}:~ \hat{\bss}^{(k+1)} =  \hat{\bss}^{(k)}  + \gamma_{k+1}(\tilde{S}^{(k+1)} - \hat{\bss}^{(k)} )\eqs,
 \eeq
 where $\{ \gamma_{k} \}_{k>1} \in (0,1)$ is a sequence of decreasing step sizes to ensure asymptotic convergence.
-This is called the Stochastic Approximation of the EM (SAEM) and has been shown to converge to a maximum likelihood of the observations under very general conditions \citep{delyon1999}.
+This is called the Stochastic Approximation of the EM (SAEM) and has been shown to converge to a maximum likelihood of the observations under very general conditions~\citep{delyon1999}.
 In simple scenarios, the samples $\{z_{i,m}\}_{m=0}^{M-1}$ are conditionally independent and identically distributed with distribution $p(z_i,\theta)$.
 Nevertheless, in most cases, since the loss function between the observed data $y_i$ and the latent variable $z_i$ can be nonconvex, sampling exactly from this distribution is not an option and the MC batch is sampled by Markov Chain Monte Carlo (MCMC) algorithm.
 %\citep{kuhn2004coupling} proved almost sure convergence of the sequence of parameters obtained by this algorithm coupled with an MCMC procedure during the simulation step. 
@@ -220,14 +217,14 @@ This Robbins-Monro type of update constitutes the \textit{first level} of our al
 In the next section, we derive variants of this algorithm to adapt to the sheer size of data of today's applications and formalize the \textit{second level} of our class of two-timescale EM methods.
 
 \subsection{Incremental and Two-Stage Stochastic EM Methods} \label{sec:sEM}
-Efficient strategies to scale to large datasets include incremental \citep{neal1998view} and variance reduced \citep{chen2018stochastic} methods.
+Efficient strategies to scale to large datasets include incremental~\citep{neal1998view} and variance reduced~\citep{chen2018stochastic} methods.
 We will explicit a general update that covers those latter variants and that represents the \textit{second level} of our algorithm, namely the incremental update of the noisy statistics $\tilde{S}^{(k+1)}$ in the \textsf{SA-Step}:
 \beq \label{eq:sestep}
 \textsf{Incremental-step}:~\tilde{S}^{(k+1)} = \tilde{S}^{(k)} + \rho_{k+1} \big( \StocEstep^{(k+1)}- \tilde{S}^{(k)}  \big)\eqs.
 \eeq
 Note that $\{ \rho_{k} \}_{k>1} \in (0,1)$ is a sequence of step sizes, $\StocEstep^{(k)}$ is a proxy for $\tilde{S}^{(k)}$.
 If the stepsize is equal to one and the proxy $\StocEstep^{(k)} = \tilde{S}^{(k)}$, i.e., computed in a full batch manner as in \eqref{eq:stats}, then we recover the SAEM algorithm.
-Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, then we recover the MCEM \citep{wei1990monte}.
+Also if $\rho_{k}=1$, $\gamma_{k}=1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, then we recover the MCEM~\citep{wei1990monte}.
 For all methods, we define a random index drawn at iteration $k$, noted $i_k \in \inter$, and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ as the iteration index where $i \in \inter$ is last drawn prior to iteration $k$.
 The proposed \FISAEM\ method draws \emph{two} indices \emph{independently} and uniformly as $i_k, j_k \in \inter$. 
 Thus, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$ in addition to $\tau_i^k$ which was defined \wrt $i_k$.
@@ -250,7 +247,7 @@ Thus, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration ind
 %&\textsf{\FISAEM\  } &\StocEstep^{(k+1)} &= \overline{\StocEstep}^{(k)} + \big( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(t_{i_k}^k)} \big) \label{eq:fisaem} , \quad  \overline{\StocEstep}^{(k+1)} = \overline{\StocEstep}^{(k)} + n^{-1} \big( \tilde{S}_{j_k}^{(k)}  - \tilde{S}_{j_k}^{(t_{j_k}^k)} \big)
 %\end{align}}
 where $\tilde{S}_{i_k}^{(k)}=  \frac{1}{M_k} \sum_{m=1}^{M_k} S(z_{i_k,m}^{(k)}, y_{i_k})$ and $z_{i_k,m}^{(k)}, \sim p(z_{i_k}|y_{i_k};\theta^{(k)})$.
-The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method and we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \rho$ is  constant for the \SAEMVR\ and \FISAEM\ methods. Note that we initialize as follows $\overline{\StocEstep}^{(0)} = \tilde{S}^{(0)}$ for the \FISAEM\ which can be seen as a slightly modified version of SAGA inspired by \citep{reddi2016fast}.
+The stepsize is set to $\rho_{k+1} = 1$ for the \ISAEM\ method and we initialize with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \rho$ is  constant for the \SAEMVR\ and \FISAEM\ methods. Note that we initialize as follows $\overline{\StocEstep}^{(0)} = \tilde{S}^{(0)}$ for the \FISAEM\ which can be seen as a slightly modified version of SAGA inspired by~\citep{reddi2016fast}.
 For \SAEMVR\, we set an epoch size of $m$ and define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in.
 
 \textbf{Two-Timescale Stochastic EM methods:}
@@ -285,7 +282,7 @@ The update in \eqref{eq:twolevels} is said to have two-timescale property as the
 The next section introduces the main results of this paper and establishes global and finite-time bounds for the three different updates of our scheme.
 
 \section{Finite Time Analysis of the Two-Timescale Scheme} \label{sec:mainanalysis}
-Following \citep{cappe2009line}, it can be shown that stationary points of the objective function \eqref{eq:em_motivate} corresponds to the stationary points of the following \textit{nonconvex} Lyapunov function:
+Following~\citep{cappe2009line}, it can be shown that stationary points of the objective function \eqref{eq:em_motivate} corresponds to the stationary points of the following \textit{nonconvex} Lyapunov function:
 \beq\label{eq:em_sspace}
 \min_{ {\bss} \in \Sset }~  V ( {\bss} ) \eqdef \overline\calL( \op(\bss) ) =  \frac{1}{n} \sum_{i=1}^n {\cal L}_i (  \op(\bss) )+ \Pen (  \op(\bss) ) \eqs,
 \eeq
@@ -314,7 +311,7 @@ It holds that $ \upsilon_{\max} \eqdef \sup_{\bss \in \Sset} \| \operatorname{B}
 There exists a constant $\Lip{B}$ such that for all $\bss, \bss' \in \Sset^2$, we have $ \| \operatorname{B}( \bss ) - \operatorname{B}( \bss' )  \| \leq \Lip{B} \| {\bss} - {\bss}' \|$.
 \end{assumption}
 
-The class of algorithms we develop in this paper is composed of two levels where the second stage corresponds to the variance reduction trick used in \citep{karimi2019global} in order to accelerate incremental methods and reduce the variance introduced by the index sampling. 
+The class of algorithms we develop in this paper is composed of two levels where the second stage corresponds to the variance reduction trick used in~\citep{karimi2019global} in order to accelerate incremental methods and reduce the variance introduced by the index sampling. 
 The first stage is the Robbins-Monro type of update that aims at reducing the Monte Carlo noise of the quantity $ \overline{\bss}_i(\hat{\param}(\hat{\bss}^{(r)}))$ at iteration $r$. We denote those latter MC fluctuations terms as follows:
 \beq\label{eq:mcerror}
 \eta_{i}^{(r)} \eqdef \tilde{S}_{i}^{(r)} -  \overline{\bss}_i(\vartheta^{(r)})\quad  \textrm{for all} \quad  i \in \inter, \, r > 0 \quad \textrm{and} \quad  \vartheta \in \Theta\eqs.
@@ -437,7 +434,7 @@ where $\StocEstep^{(k)}  $ is defined either by \eqref{eq:vrsaem} (\SAEMVR\ ) or
 
 \section{Numerical Examples}\label{sec:numerical}
 
-This section presents several numerical applications for our proposed class of algorithms \ref{alg:ttsem}.
+This section presents several numerical applications for our proposed class of Algorithms~\ref{alg:ttsem}.
 
 
 \subsection{Gaussian Mixture Models}
@@ -461,7 +458,7 @@ where $\param \eqdef (\bomega, \bmu)$ with $\bomega= \{\omega_{m}\}_{m=1}^{M-1}$
 The constraint set is given by $\Param = \{ \omega_m,~m=1,...,M-1 : \omega_m \geq 0,~\sum_{m=1}^{M-1} \omega_m \leq 1\} \times \{ \mu_m \in \rset ,~m=1,...,M \}.$ In the following experiments on synthetic data, we generate $30$ synthetic datasets of size $n = 10^5$ from a GMM model with $M=2$ components with two mixtures with means $\mu_1 = - \mu_2 = 0.5$.
 We run the EM method until convergence (to double precision) to obtain the ML estimate $\mu^\star$ averaged on $50$ datasets. We compare the EM, iEM, SAEM, \ISAEM, \SAEMVR\ and \FISAEM\ methods in terms of their precision measured by $| \mu - \mu^\star |^2$. 
 We set the stepsize of the \textsf{SA-step} of all method as $\gamma_k = 1/k^{\alpha}$ with $\alpha = 0.5$, and the stepsizes $\rho_k$ for \SAEMVR\ and the \FISAEM\ to a constant stepsize equal to $1/n^{2/3}$. The number of MC samples is fixed to $M=10$ chains.
-Figure \ref{fig:gmm_tts} shows the precision $|\mu - \mu^*|^2$ for the different methods against the epoch(s) elapsed (one epoch equals $n$ iterations). 
+Figure~\ref{fig:gmm_tts} shows the precision $|\mu - \mu^*|^2$ for the different methods against the epoch(s) elapsed (one epoch equals $n$ iterations). 
 \SAEMVR\ and \FISAEM\ methods outperform the other stochastic methods, supporting the benefits of our scheme.
 
 \subsection{Deformable Template Model for Image Analysis}
@@ -483,7 +480,7 @@ Given a set of landmarks $\{g_k\}_{k=1}^{k_g}$ and a fixed kernel $\mathbf{K}_{\
 where we put a Gaussian prior on the latent variables, $z_i \sim \mathcal{N}(0,\Gamma)$ and $z_i \in \left( \rset^{k_g}\right)^2$.
 The vector of parameters we estimate is thus $\param = \big( \beta, \Gamma, \sigma  \big)$.
 
-\textbf{Numerical Experiment:} We apply model \eqref{eq:deformablemodel} and our algorithms \ref{alg:ttsem} to a collection of handwritten digits, called the US postal database \citep{hull1994database}, featuring $n = 1\, 000$ $(16 \times 16)$-pixel images for each class of digits from $0$ to $9$.
+\textbf{Numerical Experiment:} We apply model \eqref{eq:deformablemodel} and our algorithms~\ref{alg:ttsem} to a collection of handwritten digits, called the US postal database~\citep{hull1994database}, featuring $n = 1\, 000$ $(16 \times 16)$-pixel images for each class of digits from $0$ to $9$.
 The main difficulty with these data comes from the geometric dispersion within each class of digit as shown Figure~\ref{fig:variancedigit} for digit $5$.
 We thus ought to use our deformable template model \eqref{eq:deformablemodel} in order to account for both sources of variability: the intrinsic template to each class of digit and the small and local deformation in each observed image.
 \begin{figure}[H]
@@ -496,7 +493,7 @@ Figure~\ref{fig:results} shows the resulting synthetic images for digit $5$ thro
 For all methods, the initialization of the template \eqref{eq:template} is the mean of the gray level images.
 In our experiments, we have chosen Gaussian kernels for both, $\mathbf{K}_{\mathbf{p}}$ and $\mathbf{K}_{\mathbf{g}}$, defined on $\rset^2$ and centered on the landmark points$\{p_k\}_{k=1}^{k_p}$ and $\{g_k\}_{k=1}^{k_g}$ with standard respective standard deviations of $0.12$ and $0.3$. 
 We set $k_p = 15$  and  $k_g = 6$ equidistributed landmarks points on the grid for the training procedure. 
-Those hyperparameters are inspired by a relevant study in \citep{allassonniere2010construction}.
+Those hyperparameters are inspired by a relevant study in~\citep{allassonniere2010construction}.
 In particular, the choice of the geometric covariance, indexed by $g$, in such study is critical since it has a direct impact on the \emph{sharpness} of the templates.
 As for the photometric hyperparameter, indexed by $p$, both the template and the geometry are impacted, in the sense that with a large photometric variance, the kernel centered on one landmark \emph{spreads out} to many of its neighbors.
 
@@ -1418,7 +1415,7 @@ Finally, the $k$-th update reads $\hp{k+1} = \overline{\param} (\hat{\bss}^{(k+1
 
 \subsection{Deformable Template Model for Image Analysis}\label{app:deformable}
 \subsubsection{Model and Updates}
-The complete model belongs to the curved exponential family, see \citep{allassonniere2007towards}, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
+The complete model belongs to the curved exponential family, see~\citep{allassonniere2007towards}, which vector of sufficient statistics $S = \big(S_1(z),S_2(z),S_3(z) \big)$ read:
 \beq \label{eq:suffstat_deformable2}
 \begin{split}
 & S_1(z) = \frac{1}{n} \sum_{i=1}^nS_1(y_i, z_i)  = \frac{1}{n} \sum_{i=1}^n \left(\mathbf{K}_{p}^{z_{i}}\right)^\top y_{i}\\
@@ -1445,13 +1442,13 @@ where $\hat{s} = (\hat{s}_1(z),\hat{s}_2(z),\hat{s}_3(z))$ is the vector of stat
 
 
 \subsubsection{Numerical Applications}
-For the inference of the template, we use the Matlab code (online SAEM) used in \citep{maire2016online} and implement our own batch, incremental, Variance reduced and Fast Incremental variants.
+For the inference of the template, we use the Matlab code (online SAEM) used in~\citep{maire2016online} and implement our own batch, incremental, Variance reduced and Fast Incremental variants.
 The hyperparameters are kept the same and reads as follows $M = 400$, $ \gamma_k = 1/k^{0.6}$ and $ p = 16$.
 The number of landmarks for the template is $k_p = 15$ points and for the deformation $k_g = 6$ points. Both have Gaussian kernels with respectively standard deviation of $0.08$ and $0.16$.
 The standard deviation of the measurement errors is set to $0.1$.
 
-For the simulation part, we use the Carlin and Chib MCMC procedure, see \citep{carlin1995bayesian}.
-Refer to \citep{maire2016online} for more details.
+For the simulation part, we use the Carlin and Chib MCMC procedure, see~\citep{carlin1995bayesian}.
+Refer to~\citep{maire2016online} for more details.
 
 \section{Additional Experiment: Pharmacokinetics (PK) Model with Absorption Lag Time}
 This numerical example was conducted in order to characterize the pharmacokinetics (PK) of orally administered drug to simulated patients, using a population pharmacokinetics approach. $M = 50$ synthetic datasets were generated for $n = 5000$ patients with $10$ observations (concentration measures) per patient.
@@ -1505,8 +1502,8 @@ Finally the maximization step yields:
 
 
 \textbf{Metropolis Hastings algorithm}
-During the simulation step of the MISSO method, the sampling from the target distribution $\pi(z_{i} , \param) \eqdef p(z_{i}|y_i ,\param)$ is performed using a Metropolis Hastings (MH) algorithm \citep{meyn2012markov} with proposal distribution $q(z_{i}, \delta)$ where $\param = (z_{\rm pop}, \omega_{z})$ and $ \delta$ is the vector of parameters of the proposal distribution. Commonly they parameterize a Gaussian proposal.
-The MH algorithm is summarized in \ref{alg:mh}.
+During the simulation step of the MISSO method, the sampling from the target distribution $\pi(z_{i} , \param) \eqdef p(z_{i}|y_i ,\param)$ is performed using a Metropolis Hastings (MH) algorithm~\citep{meyn2012markov} with proposal distribution $q(z_{i}, \delta)$ where $\param = (z_{\rm pop}, \omega_{z})$ and $ \delta$ is the vector of parameters of the proposal distribution. Commonly they parameterize a Gaussian proposal.
+The MH algorithm is summarized in~\ref{alg:mh}.
 
 \begin{algorithm}[H]
 \algsetup{indent=1em}
