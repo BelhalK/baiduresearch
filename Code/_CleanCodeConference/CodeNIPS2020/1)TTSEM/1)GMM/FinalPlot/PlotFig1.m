@@ -24,6 +24,8 @@ set(gca,'fontsize',20);
 xlabel('Epoch');
 ylabel('|\mu - \mu^*|^2');
 %legend('isaem','isamesaga','isaemvr','IEM','EM','saem');
-legend('iSAEM','vrSAEM','fiSAEM','iEM','EM','SAEM')
+h = legend('iSAEM','vrTTEM','fiTTEM','iEM','EM','SAEM')
+rect = [0.25, 0.25, .25, .25];
+set(h, 'Position', rect)
 set(gca,'yminorgrid','off');
 set(gca,'xtick',[0:0.2:1]);
