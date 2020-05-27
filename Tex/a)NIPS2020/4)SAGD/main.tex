@@ -96,8 +96,9 @@ We prove that the reused data points in \textsc{SAGD} nearly possesses the stati
 Our  contributions  can be summarized as follows:
 \begin{itemize}
 \item We derive a novel adaptive gradient method, namely \textsc{SAGD}, leveraging ideas of differential privacy and adaptive data analysis aiming at improving the generalization of current baseline methods. A mini-batch variant is also introduced for large-scale learning tasks.
-\item Our differentially private mechanism, embedded in the \textsc{SAGD}, explores the idea of Laplace Mechanism (adding Laplace noises to gradients) and Thresholdout~\citep{dwro2014} leading to DPG-Lap and \textsc{DPG-Sparse} methods which potentially saves privacy cost. In particular, we show that differentially private gradients stay close to the population gradients with high probability. 
-\item We establish various theoretical guarantees for our algorithm. We first show that the $\ell_2$-norm of the \emph{population gradient}, \ie $\|\nabla f(\w)\|$ obtained by the \textsc{SAGD} converges with high probability. Then, we present a generalization analysis of the proposed algorithms, showing that the norm of the population gradient converges with high probability.
+\item Our differentially private mechanism, embedded in the \textsc{SAGD}, explores the idea of Laplace Mechanism (adding Laplace noises to gradients) and \textsc{Thresholdout}~\citep{dwro2014} leading to \textsc{DPG-Lap} and \textsc{DPG-Sparse} methods saving privacy cost. 
+In particular, we show that differentially private gradients stay close to the population gradients with high probability. 
+\item We establish various theoretical guarantees for our algorithm. We derive a concentration bound on the generalization error and show that the $\ell_2$-norm of the \emph{population gradient}, \ie $\|\nabla f(\w)\|$ obtained by the \textsc{SAGD} converges in $\mathcal{O}(1/n^{2/3})$ with high probability. 
 \item We conduct several experimental applications based on training neural networks for image classification and language modeling indicating that \textsc{SAGD} outperforms existing adaptive gradient methods in terms of the generalization performance.
 \end{itemize}
 The remainder of the paper is organized as follows.
@@ -115,9 +116,9 @@ denotes the $n$ available training samples. $\hat \g_t$ denotes the sample gradi
 \vspace{-0.05in}
 
 {\bf Adaptive Gradient Methods:} 
-In the nonconvex setting, existing work on SGD~\citep{ghla2013} and adaptive gradient methods~\citep{zare18, wawu19, zosh2019, cheli2019} show convergence to a stationary point with a rate of  $O(1/\sqrt{T})$ where $T$ is the number of stochastic gradient computations. Given $n$ samples, a stochastic oracle can obtain at most $n$ stochastic gradients, which implies convergence to the population stationarity with a rate of $O(1/\sqrt{n})$.
+In the nonconvex setting, existing work on SGD~\citep{ghla2013} and adaptive gradient methods~\citep{zare18, wawu19, zosh2019, cheli2019} show convergence to a stationary point with a rate of  $\mathcal{O}(1/\sqrt{T})$ where $T$ is the number of stochastic gradient computations. Given $n$ samples, a stochastic oracle can obtain at most $n$ stochastic gradients, which implies convergence to the population stationarity with a rate of $\mathcal{O}(1/\sqrt{n})$.
 In addition, ~\citet{kula2018, rara2017, hare2016,mowa2018, pejo2018, cheli2019, lilu2019} study the generalization of gradient-based optimization algorithms using the generalization property of stable algorithms~\cite{boel02}. 
-In particular,~\citet{rara2017, mowa2018, lilu2019, pejo2018} focus on noisy gradient algorithms, e.g., \textsc{SGLD}, and provide a generalization bound as $O(\sqrt{T}/n)$. 
+In particular,~\citet{rara2017, mowa2018, lilu2019, pejo2018} focus on noisy gradient algorithms, e.g., \textsc{SGLD}, and provide a generalization bound as $\mathcal{O}(\sqrt{T}/n)$. 
 This type of bounds usually has a dependence on the training data and has polynomial dependence on $T$.  
 
 \noindent{\bf Differential Privacy and Adaptive Data Analysis:} 
@@ -130,7 +131,6 @@ It has been shown that reusing the holdout set via a differentially private mech
 In other words, the differentially private reused dataset maintains the statistical nature of fresh samples and improve generalization~\citep{zhch2018}. 
 %\citet{dwfe2015a, dwfe2015b, dwfe2015c} designed a practical method named \textsc{Thresholdout}, which can be used to test a large number of hypotheses. 
 
-
 \vspace{-0.05in}
 \section{Stable Adaptive Gradient Descent Algorithm}\label{algorithm}
 \vspace{-0.05in}
@@ -142,9 +142,11 @@ holds for all $\mathcal{Y}\subseteq Range(\mathcal{M})$ and all pairs of adjacen
 \end{defn}
 The general approach for achieving  $(\epsilon, \delta)$-differential privacy when estimating a deterministic real-valued function $q: \cZ^n \rightarrow \mathbb{R}^d$ is Laplace Mechanism~\citep{dwro2014}, which adds Laplace noise calibrated to the function $q$, \ie $\mathcal{M}(\cD)= q(\cD)+ \b$, where for all $i \in [d]$, $\b^i \sim \textrm{Laplace}(0, \sigma^2)$.
 We present \textsc{SAGD} with two different \textbf{D}ifferential \textbf{P}rivate\textbf{ G}radient (DPG) computing methods to provide an estimate of the gradient $\nabla f(\w)$, namely \textsc{DPG-Lap} based on the \emph{Laplace Mechanism}~\citep{dwro2014}, see Section~\ref{subsec: SAGD_lap} and an improvment named \textsc{DPG-Sparse} motivated by sparse vector technique~\citep{dwro2014} in Section~\ref{subsec: SAGD-sparse}.
+
 \vspace{-0.05in}
 \subsection{\textsc{SAGD} with DPG-LAP} \label{subsec: SAGD_lap}
 \vspace{-0.05in}
+
 \begin{algorithm}[t] 
 \caption{\textsc{SAGD}}
 \begin{algorithmic}[1] \label{algo: StAda}
@@ -161,7 +163,7 @@ $\m_t = \tilde \g_t$ and $\v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{
 In most deep learning applications, a training set $S$ of size $n$ is observed.
 Then, at each iteration $t \in [T]$, \textsc{SAGD}, Algorithm~\ref{algo: StAda}, calls DPG($S$,  $\ell(\cdot)$, $\w_t$, $\sigma$, that computes the empirical gradient noted $\tilde \g_t$ and updates the model parameter $\w_{t+1}$ using adaptive stepsize.
 Note that thenoise variance $\sigma^2$, step-size $\eta_t$, and iteration number $T$, $~ \beta_2,~\nu$ are parameters and play an important role for our theoretical study presented in the sequel. 
-We first consider \textsc{DPG-Lap} (Algorithm~\ref{algo: lap}) which adds Laplace noise $\b_t \in \mathbb{R}^d$ to the empirical gradient $\hat \g_t = \frac{1}{n} \sum_{j=1}^n\nabla \ell(\w_t, \z_j)$ and returns a noisy gradient $\tilde \g_t = \hat \g_t + \b_t$ to the optimization oracle Algorithm~\ref{algo: StAda}. \vspace{-0.05in}
+We first consider \textsc{DPG-Lap} (Algorithm~\ref{algo: lap}) which adds Laplace noise $\b_t \in \mathbb{R}^d$ to the empirical gradient $\hat \g_t = \frac{1}{n} \sum_{j=1}^n\nabla \ell(\w_t, \z_j)$ and returns a noisy gradient $\tilde \g_t = \hat \g_t + \b_t$ to the optimization oracle Algorithm~\ref{algo: StAda}.
 \begin{algorithm}[H]
 \caption{DPG-Lap}
 \begin{algorithmic}[1]
@@ -187,32 +189,31 @@ We first show that the noisy gradient $\tilde \g_t$ approximates the population 
 A general approach for analyzing such estimation error $\| \tilde \g_t - \g_t\|$ is the Hoeffding's bound. 
 Indeed, given training set $S \in \mathcal{Z}^n$ and a fixed $\w_0$ chosen to be independent of the dataset $S$, denote the empirical gradient $\hat \g_0= \mathbb{E}_{z \in S}\nabla \ell(\w_0,z)$ and population gradient $\g_0 = \mathbb{E}_{z\sim \mathcal{P}}[\nabla l(\w_0,z)]$ then, Hoeffding's bound implies generalization of fresh samples, \ie for every coordinate $i \in [d]$ and $\mu > 0$:
 \begin{equation} \label{hoeffding}
-P\{|\hat \g^i_0 - \g_0^i | \geq \mu \} \leq2 \exp \left(\frac{-2n\mu^2}{4G_\infty^2} \right),
+P\{|\hat \g^i_0 - \g_0^i | \geq \mu \} \leq2 \exp \left(\frac{-2n\mu^2}{4G_\infty^2} \right)~,
 \end{equation}
  where $G_\infty$ is the maximal value of the $\ell_\infty$-norm of the gradient $ \g_0$. 
 Generally, if $\w_1$ is updated using the gradient computed on training set $S$, \ie $\w_1 = \w_0 - \eta \hat \g_0$, the above concentration inequality \emph{will not} hold for $\hat \g_1 = \mathbb{E}_{z \in S}\nabla_i \ell(\w_1,z)$, because $\w_1$ is no longer independent of $S$. 
 For any differentially private algorithm, Lemma~\ref{lem: gen_adv} provides the following high probability bound:  
 \begin{restatable}{lemm}{lemgenadv}
 \label{lem: gen_adv}
-	Let $\cA$ be an $(\epsilon, \delta)$-differentially private gradient descent algorithm with access to training set $S$ of size $n$. Let $\w_t = \cA(S)$ be the parameter generated at iteration $t \in [T]$ and $\hat \g_t$ the empirical gradient on $S$. For any $\sigma >0$, $\beta > 0$, if the privacy cost of $\cA$ satisfies $\epsilon \leq \frac{\sigma}{13}$, $\delta \leq \frac{\sigma \beta}{26 \ln(26/\sigma)}$, and sample size $n \geq \frac{2\ln(8/\delta)}{\epsilon^2}$, we then have
+	Let $\cA$ be an $(\epsilon, \delta)$-differentially private gradient descent algorithm with access to training set $S$ of size $n$. Let $\w_t = \cA(S)$ be the parameter generated at iteration $t \in [T]$ and $\hat \g_t$ the empirical gradient on $S$. For any $\sigma >0$, $\beta > 0$, if the privacy cost of $\cA$ satisfies $\epsilon \leq \sigma/13$, $\delta \leq \sigma \beta/(26 \ln(26/\sigma))$, and sample size $n \geq 2\ln(8/\delta)/\epsilon^2$, we then have
 	\begin{equation*}
-	\mathbb{P}\left\{ |\hat \g_t^i - \g_t^i| \geq  \sigma \right\} \leq \beta \quad \textrm{for every $ i\in [d]$ and every $t \in [T]$} .
+	\mathbb{P}\left\{ |\hat \g_t^i - \g_t^i| \geq  \sigma \right\} \leq \beta \quad \textrm{for every $ i\in [d]$ and every $t \in [T]$} ~.
 	\end{equation*} 
 \end{restatable}
 Lemma~\ref{lem: gen_adv} is an instance of Theorem 8 from~\cite{dwfe15} and illustrates that, if the privacy cost $\epsilon$ is bounded by the estimation error, the differential privacy enables the reused training set to maintain statistical guarantees as if they were fresh samples. 
 Then Lemma~\ref{lemma dpp} establishes the differentially private nature of \textsc{SAGD} and analyzes its privacy cost:
 \begin{restatable}{lemm}{lemdpp}
 \label{lemma dpp}
-	\textsc{SAGD} with DPG-Lap is 
-	$(\frac{\sqrt{T \ln(1/\delta)} G_1}{n\sigma}, \delta)$-differentially private. 
+\textsc{SAGD} with DPG-Lap is $(\sqrt{T \ln(1/\delta)} G_1/(n\sigma), \delta)$-differentially private. 
 \end{restatable}  
-In order to achieve a gradient concentration bound for \textsc{SAGD} with DPG-Lap as described in Lemma~\ref{lem: gen_adv}, we need to set $\frac{\sqrt{T \ln(1/\delta)} G_1}{n\sigma} \leq \frac{\sigma}{13}$, $\delta \leq \frac{\sigma \beta}{26 \ln(26/\sigma)}$, and  sample size $n \geq \frac{2\ln(8/\delta)}{\epsilon^2}$. 
+In order to achieve a gradient concentration bound for \textsc{SAGD} with DPG-Lap as described in Lemma~\ref{lem: gen_adv}, we need to set $\sqrt{T \ln(1/\delta)} G_1/(n\sigma)\leq \sigma/13$, $\delta \leq \sigma \beta/(26 \ln(26/\sigma))$, and  sample size $n \geq 2\ln(8/\delta)/\epsilon^2$. 
 Then, the following result shows that across all iterations, gradients produced by \textsc{SAGD} with DPG-Lap maintain high probability concentration bounds.
 \begin{restatable}{theo}{theoaccbasic}
 \label{thm: acc_basic}
 Given $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be the gradients computed by DPG-Lap in \textsc{SAGD}. Set the total number of iterations $ \frac{2n\sigma^2}{G_1^2}\leq T \leq \frac{n^2 \sigma^4}{169 \ln(1/(\sigma \beta))G_1^2}$, then for all $t \in [T]$, $\beta >0$ and $\mu > 0$:
     \begin{equation*}
-    \mathbb{P}\left\{\|\tilde \g_t - \g_t\| \geq \sqrt{d}\sigma(1+\mu)\right\} \leq d\beta + d\exp(-\mu).
+    \mathbb{P}\left\{\|\tilde \g_t - \g_t\| \geq \sqrt{d}\sigma(1+\mu)\right\} \leq d\beta + d\exp(-\mu)~.
     \end{equation*}
 \end{restatable}
 Note that given the concentration error bound of $\sqrt{d}\sigma(1+\mu)$, Theorem~\ref{thm: acc_basic} indicates that a higher noise level $\sigma$, implying a better privacy guarantee and a larger number of iterations $T$,would meanwhile incur a larger concentration error.
@@ -224,30 +225,30 @@ We optimize the choice of $\beta$ and $\mu$ when analyzing the convergence to th
 
 \textcolor{purple}{\textit{Non-asymptotic convergence rate:}}
 We derive the optimal values of $\sigma$ and $T$ to optimize the trade-off between statistical rate and optimization rate and obtain a novel finite-time bound in Theorem~\ref{thm: main_rmsprop}. 
-Denote $\rho_{n,d} \triangleq O \left(\ln n + \ln d\right)$.
+Denote $\rho_{n,d} \triangleq\mathcal{O} \left(\ln n + \ln d\right)$.
 We prove that \textsc{SAGD} converges to a population stationary point with high probability with the following rate:
 \begin{restatable}{theo}{theomainrmsprop}
 \label{thm: main_rmsprop}
- Given training set $S$ of size $n$, for $\nu >0$, if $\eta_t = \eta$ which are chosen with $\eta \leq \frac{\nu}{2L}$,  $\sigma = 1/n^{1/3}$, and iteration number $T = n^{2/3}/\left(169G_1^2(\ln d + \frac{7}{3}\ln n)\right)$, then \textsc{SAGD} with DPG-Lap converges to a stationary point of the population risk, \ie 
+ Given training set $S$ of size $n$, for $\nu >0$, if $\eta_t = \eta$ which are chosen with $\eta \leq \nu/(2L)$,  $\sigma = 1/n^{1/3}$, and iteration number $T = n^{2/3}/\left(169G_1^2(\ln d +7\ln n/3)\right)$, then \textsc{SAGD} with DPG-Lap converges to a stationary point of the population risk, \ie 
  \begin{small}
 \begin{equation*}
  \min_{1\leq t \leq T}\|\nabla f(\w_t)\|^2 \leq
- O \left( \frac{\rho_{n,d} \left(f(\w_1) - f^\star \right)}{n^{2/3}} \right) + O \left( \frac{d \rho_{n,d}^2}{n^{2/3}}\right),
+\mathcal{O} \left( \frac{\rho_{n,d} \left(f(\w_1) - f^\star \right)}{n^{2/3}} \right) + \mathcal{O} \left( \frac{d \rho_{n,d}^2}{n^{2/3}}\right)~,
 \end{equation*}
 \end{small}
-with probability at least $1-O\left(\frac{1}{\rho_{n,d} n}\right)$.
+with probability at least $1-\mathcal{O}\left(\frac{1}{\rho_{n,d} n}\right)$.
 \end{restatable} 
-Theorem~\ref{thm: main_rmsprop} shows that, given $n$ samples, \textsc{SAGD} converges to a stationary point at a rate of $O(1/n^{2/3})$ where we used the $\ell_2$ norm of the gradient of the objective function as a convergence criterion.
-Particularly, the first term of the bound corresponds to the optimization error $O(1/T)$ with $T = O(n^{2/3})$, while the second is the statistical error depending on available sample size $n$ and dimension $d$. 
-%In terms of computation complexity, \textsc{SAGD} requires $O(n^{5/2})$ stochastic gradient computations for $O(n^{3/2})$ passes over $n$ samples. 
-The current optimization analyses~\citep{zare18, wawu19, zosh2019, cheli2019} show that adaptive gradient descent algorithms converges to the stationary point of the objective function with a rate of $O(1/\sqrt{T})$ with $T$ stochastic gradient computations. 
-Given $n$ samples, their analyses give a rate of  $O(1/\sqrt{n})$. 
+Theorem~\ref{thm: main_rmsprop} shows that, given $n$ samples, \textsc{SAGD} converges to a stationary point at a rate of $\mathcal{O}(1/n^{2/3})$ where we used the $\ell_2$ norm of the gradient of the objective function as a convergence criterion.
+Particularly, the first term of the bound corresponds to the optimization error $\mathcal{O}(1/T)$ with $T = \mathcal{O}(n^{2/3})$, while the second is the statistical error depending on available sample size $n$ and dimension $d$. 
+%In terms of computation complexity, \textsc{SAGD} requires $\mathcal{O}(n^{5/2})$ stochastic gradient computations for $\mathcal{O}(n^{3/2})$ passes over $n$ samples. 
+The current optimization analyses~\citep{zare18, wawu19, zosh2019, cheli2019} show that adaptive gradient descent algorithms converges to the stationary point of the objective function with a rate of $\mathcal{O}(1/\sqrt{T})$ with $T$ stochastic gradient computations. 
+Given $n$ samples, their analyses give a rate of  $\mathcal{O}(1/\sqrt{n})$. 
 Thus, the \textsc{SAGD} achieves a sharper bound compared to the previous analyses.  
 \vspace{-0.05in}
 \subsection{\textsc{SAGD} with \textsc{DPG-Sparse}} \label{subsec: SAGD-sparse}
 \vspace{-0.05in}
 In this section, we consider the \textsc{SAGD} with an advanced version of DPG named \textsc{DPG-Sparse} motivated by sparse vector technique~\citep{dwro2014} aiming to provide a sharper result on the privacy cost $\epsilon$ and $\delta$.
-Lemma~\ref{lemma dpp} shows that the privacy cost of \textsc{SAGD} with \textsc{DPG-Lap} scales with $O(\sqrt{T})$. In order to guarantee the generalization of \textsc{SAGD} as stated in Theorem~\ref{thm: acc_basic}, we need to control the privacy cost below a certain threshold \ie $\sqrt{T \ln(1/\delta)} G_1/(n\sigma) \leq \frac{\sigma}{13}$. However, it limits the iteration number $T$ of \textsc{SAGD}, leading to a compromised optimization term in Theorem~\ref{thm: main_rmsprop}.  
+Lemma~\ref{lemma dpp} shows that the privacy cost of \textsc{SAGD} with \textsc{DPG-Lap} scales with $\mathcal{O}(\sqrt{T})$. In order to guarantee the generalization of \textsc{SAGD} as stated in Theorem~\ref{thm: acc_basic}, we need to control the privacy cost below a certain threshold \ie $\sqrt{T \ln(1/\delta)} G_1/(n\sigma) \leq \frac{\sigma}{13}$. However, it limits the iteration number $T$ of \textsc{SAGD}, leading to a compromised optimization term in Theorem~\ref{thm: main_rmsprop}.  
 In order to relax the upper bound on $T$, we propose the \textsc{SAGD} with \textsc{DPG-Sparse}, see Algorithm~\ref{algo: sparse}.
 Given $n$ samples, Algorithm~\ref{algo: sparse} splits the dataset evenly into two parts $S_1$ and $S_2$. 
 At each iteration $t$, Algorithm~\ref{algo: sparse} computes gradients on both datasets:
@@ -288,36 +289,36 @@ To analyze the privacy cost of \textsc{DPG-Sparse}, let $C_{s}$ be the number of
 \textsc{SAGD} with \textsc{DPG-Sparse}  (Algorithm 3) is  
 $(\frac{\sqrt{C_{s} \ln(2/\delta)} 2G_1}{n\sigma}, \delta)$-differentially private. 
 \end{restatable}
-Lemma~\ref{lemma: dpp-sparse} shows that the privacy cost of  \textsc{SAGD} with \textsc{DPG-Sparse} scales with $O(\sqrt{C_{s}})$ where $C_{s} \leq T$. In other words, \textsc{DPG-Sparse} saves the privacy cost of \textsc{SAGD}. In order to achieve the generalization guarantee of \textsc{SAGD} with \textsc{DPG-Sparse} as stated in Lemma~\ref{lem: gen_adv},  by considering the guarantee of Lemma~\ref{lemma: dpp-sparse},  we only need to set $\frac{\sqrt{C_{s} \ln(1/\delta)} G_1}{n\sigma} \leq \frac{\sigma}{13}$, which potentially improves the upper bound of $T$. 
+Lemma~\ref{lemma: dpp-sparse} shows that the privacy cost of  \textsc{SAGD} with \textsc{DPG-Sparse} scales with $\mathcal{O}(\sqrt{C_{s}})$ where $C_{s} \leq T$. In other words, \textsc{DPG-Sparse} saves the privacy cost of \textsc{SAGD}. In order to achieve the generalization guarantee of \textsc{SAGD} with \textsc{DPG-Sparse} as stated in Lemma~\ref{lem: gen_adv},  by considering the guarantee of Lemma~\ref{lemma: dpp-sparse},  we only need to set $\sqrt{C_{s} \ln(1/\delta)} G_1/(n\sigma) \leq \sigma/13$, which potentially improves the upper bound of $T$. 
 The following theorem shows the generalization guarantee of $\tilde \g_t$ generated by \textsc{SAGD} with \textsc{DPG-Sparse}.
 \begin{restatable}{theo}{theoaccsparse}
 \label{thm: acc_sparse}
-Given parameter $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be the gradients computed by \textsc{DPG-Sparse} over $T$ iterations. With a budget $ \frac{n\sigma^2}{2G_1^2} \leq C_{s} \leq\frac{n^2 \sigma^4}{676 \ln(1/(\sigma \beta))G_1^2}$, for $\forall\, t \in [T]$, any $\beta > 0$, and any $\mu > 0$ we have 
+Given parameter $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be the gradients computed by \textsc{DPG-Sparse} over $T$ iterations. With a budget $ n\sigma^2/(2G_1^2) \leq C_{s} \leq n^2 \sigma^4/(676 \ln(1/(\sigma \beta))G_1^2)$, for $\forall\, t \in [T]$, any $\beta > 0$, and any $\mu > 0$ we have 
         \begin{equation*}
-    \mathbb{P}\left\{\|\tilde \g_t - \g_t\| \geq \sqrt{d}\sigma(1+\mu)\right\} \leq d\beta + d\exp(-\mu).
+    \mathbb{P}\left\{\|\tilde \g_t - \g_t\| \geq \sqrt{d}\sigma(1+\mu)\right\} \leq d\beta + d\exp(-\mu)~.
     \end{equation*}
 \end{restatable}
-In the worst case $C_{s} = T$, we recover the upper bound of $T \leq \frac{n^2 \sigma^4}{676 \ln(1/(\sigma \beta))G_1^2}$ of \textsc{DPG-Lap}.
+In the worst case $C_{s} = T$, we recover the bound of $T \leq n^2 \sigma^4/(676 \ln(1/(\sigma \beta))G_1^2)$ of \textsc{DPG-Lap}.
 
 \textcolor{purple}{\textit{Non-asymptotic convergence rate:}}
 The finite-time upper bound on the convergence criterion of \textsc{SAGD} with \textsc{DPG-Sparse} reads:
 %Next we consider \textsc{SAGD} with updating rule of RMSprop: $\phi_t(\tilde \g_1,...,\tilde \g_t) = \tilde \g_t$ and $ \v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{2}^{t-i} \tilde \g_{i}^{2}$. For this case, we present the best vaule of $\sigma$, $T$ for the trade-off between statistical rate and optimization rate which depends on number
 %of iterations in order to achieve the optimal
-%risk bound.   To simplify the results, we use $\rho_{n,d} = O \left(\ln n + \ln d\right)$.
+%risk bound.   To simplify the results, we use $\rho_{n,d} =\mathcal{O} \left(\ln n + \ln d\right)$.
 \begin{restatable}{theo}{theormspropsparse}
 \label{thm: main_rmsprop_sparse}
  Given training set $S$ of size $n$, for $\nu >0$, if $\eta_t = \eta$ which are chosen with $\eta \leq \frac{\nu}{2L}$, noise level $\sigma = 1/n^{1/3}$, and iteration number $T = n^{2/3}/\left(676G_1^2(\ln d + \frac{7}{3}\ln n)\right)$, then \textsc{SAGD} with \textsc{DPG-Sparse}  guarantees convergence to a stationary point of the population risk:
   \begin{small}
 \begin{equation*}
  \min_{1\leq t\leq T}\|\nabla f(\w_t)\|^2 \leq
- O \left( \frac{\rho_{n,d} \left(f(\w_1) - f^\star \right)}{n^{2/3}} \right) + O \left( \frac{d \rho_{n,d}^2}{n^{2/3}}\right),
+\mathcal{O} \left( \frac{\rho_{n,d} \left(f(\w_1) - f^\star \right)}{n^{2/3}} \right) +\mathcal{O} \left( \frac{d \rho_{n,d}^2}{n^{2/3}}\right)~,
 \end{equation*}
 \end{small}
-with probability at least $1-O\left(\frac{1}{\rho_{n,d} n}\right)$.
+with probability at least $1-\mathcal{O} \left(\frac{1}{\rho_{n,d} n}\right)$.
 \end{restatable} 
-Theorem~\ref{thm: main_rmsprop_sparse} shows that the worst case of \textsc{SAGD} with DGP-Sparse converges to a stationary point at a rate of $O(1/n^{2/3})$ which is the same as that of \textsc{SAGD} with DGP-Lap. 
+Theorem~\ref{thm: main_rmsprop_sparse} shows that the worst case of \textsc{SAGD} with DGP-Sparse converges to a stationary point at a rate of $\mathcal{O}(1/n^{2/3})$ which is the same as that of \textsc{SAGD} with DGP-Lap. 
 A sharper bound can be achieved when the number of validation failures $C_{s}$ is smaller than $T$. 
-For example, if $C_{s} = O(\sqrt{T})$, the upper bound of $T$ can be improved from $T \leq O(n^2)$ to $T \leq O(n^4)$.
+For example, if $C_{s} = \mathcal{O}(\sqrt{T})$, the upper bound of $T$ can be improved from $T \leq \mathcal{O}(n^2)$ to $T \leq \mathcal{O}(n^4)$.
 %, beyond trading off between statistical rate and optimization rate. 
 \vspace{-0.05in}
 \subsection{Mini-batch Stable Adaptive Gradient Descent Algorithm}
@@ -372,22 +373,22 @@ Given parameter $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be the gradien
 \begin{restatable}{theo}{theomini}
 \label{thm: main_rmsprop_mini}
 Consider the mini-batch \textsc{SAGD} with \textsc{DPG-Lap}. 
-Given $S$ of size $n$, with $\nu >0$, $\eta_t = \eta \leq \frac{\nu}{2L}$, noise level $\sigma = 1/n^{1/3}$, and epoch $T = m^{4/3}/\left(n169G_1^2(\ln d + \frac{7}{3}\ln n)\right)$, then:
+Given $S$ of size $n$, with $\nu >0$, $\eta_t = \eta \leq \nu/(2L)$, noise level $\sigma = 1/n^{1/3}$, and epoch $T = m^{4/3}/\left(n169G_1^2(\ln d + \frac{7}{3}\ln n)\right)$, then:
  \begin{small}
 \begin{equation*}
 \begin{split}
  \min_{t = 1,..., T}\|\nabla f(\w_t)\|^2 
- \leq O\left( \frac{\rho_{n,d} \left(f(\w_1) - f^\star \right)}{(mn)^{1/3}} \right)+ O \left( \frac{d \rho_{n,d}^2}{(mn)^{1/3}}\right),
+ \leq\mathcal{O} \left( \frac{\rho_{n,d} \left(f(\w_1) - f^\star \right)}{(mn)^{1/3}} \right)+\mathcal{O} \left( \frac{d \rho_{n,d}^2}{(mn)^{1/3}}\right)~,
  \end{split}
 \end{equation*}
 \end{small}
-with probability at least $1-O\left(\frac{1}{\rho_{n,d} n}\right)$.
+with probability at least $1-\mathcal{O} \left(\frac{1}{\rho_{n,d} n}\right)$.
 \end{restatable}
 
 Theorem~\ref{thm: main_rmsprop_mini} 
-describes the convergence rate of the mini-batch \textsc{SAGD} in terms of batch size $m$ and sample size $n$, \ie $O(1/(mn)^{1/3})$. 
-When $m = \sqrt{n}$, mini-batch \textsc{SAGD} achieves the convergence of rate $O(1/\sqrt{n})$. When $m=n$, \ie in the full batch setting, Theorem~\ref{thm: main_rmsprop_mini} recovers \textsc{SAGD}'s convergence rate  $O(1/n^{2/3})$. 
-In terms of computational complexity, the mini-batch \textsc{SAGD} requires $O(m^{7/3}/n)$ stochastic gradient computations for $O(m^{4/3}/n)$ passes over $m$ samples, while \textsc{SAGD} requires $O(n^{5/3})$ stochastic gradient computations. Thus, the mini-batch \textsc{SAGD} has advantages in saving computation complexity, but displays a slower convergence than \textsc{SAGD}.
+describes the convergence rate of the mini-batch \textsc{SAGD} in terms of batch size $m$ and sample size $n$, \ie $\mathcal{O}(1/(mn)^{1/3})$. 
+When $m = \sqrt{n}$, mini-batch \textsc{SAGD} achieves the convergence of rate $\mathcal{O}(1/\sqrt{n})$. When $m=n$, \ie in the full batch setting, Theorem~\ref{thm: main_rmsprop_mini} recovers \textsc{SAGD}'s convergence rate  $\mathcal{O}(1/n^{2/3})$. 
+In terms of computational complexity, the mini-batch \textsc{SAGD} requires $\mathcal{O}(m^{7/3}/n)$ stochastic gradient computations for $\mathcal{O}(m^{4/3}/n)$ passes over $m$ samples, while \textsc{SAGD} requires $\mathcal{O}(n^{5/3})$ stochastic gradient computations. Thus, the mini-batch \textsc{SAGD} has advantages in saving computation complexity, but displays a slower convergence than \textsc{SAGD}.
 \vspace{-0.05in}
 \section{Numerical Experiments} \label{sec: experiment}
 \vspace{-0.05in}
@@ -397,7 +398,6 @@ learning models and compare them with popular optimization methods, including SG
 We consider three tasks: the MNIST image classification task~\citep{lebo1998}, the CIFAR-10 image
 classification task~\citep{krhi2009}, and the language modeling task on Penn Treebank
 \citep{mama1993}. The setup of each task is given in Table~\ref{tab::network_setup}. 
-After describing the experimental setup, we discuss the results on three tasks in Section~\ref{subsec:results}.\vspace{-0.05in}
 \begin{table}[H]
 	\centering
 		\caption{Neural network architecture setup.}
@@ -475,10 +475,10 @@ Figure~\ref{fig:mnist} (b) presents the results on Sigmoid neural network. \text
 \begin{figure}[H]
 \mbox{
 \subfigure[MNIST, 2-layer ReLU]{
-\includegraphics[width = 0.50 \textwidth,trim={2cm 0 2cm 2cm},clip ]{figure/mnist_relu.png}
+\includegraphics[width = 0.50 \textwidth ]{figure/mnist_relu.png}
 }\hspace{-0.2in}
 \subfigure[MNIST, 2-layer Sigmoid]{
-\includegraphics[width = 0.50 \textwidth, trim={2cm 0 2cm 2cm}, clip]{figure/mnist_sigmoid.png}
+\includegraphics[width = 0.50 \textwidth]{figure/mnist_sigmoid.png}
  }
  }
  \caption[]{Test loss and accuracy of ReLU neural network and Sigmoid neural network on MNIST. The X-axis is the number of train samples, and the Y-axis is the loss/accuracy. In both cases, \textsc{SAGD} obtains the best test accuracy among all the methods.} 
@@ -499,10 +499,10 @@ When $n= 50000$, SGD has the best test accuracy $91.36 \pm 0.04\%$. \textsc{SAGD
 \begin{figure}[H]
 \mbox{
 \subfigure[CIFAR10, ResNet-18]{
-\includegraphics[width = 0.52 \textwidth,trim={2cm 0 2cm 2cm},clip ]{figure/cifar10_resnet.png}
-}\hspace{-0.1in}
+\includegraphics[width = 0.52 \textwidth]{figure/cifar10_resnet.png}
+}\hspace{-0.5in}
 \subfigure[CIFAR10, VGG-19]{
-\includegraphics[width = 0.52 \textwidth, trim={2cm 0 2cm 2cm}, clip]{figure/cifar10_vgg.png}
+\includegraphics[width = 0.52 \textwidth]{figure/cifar10_vgg.png}
  }
  }
  %\vspace{-0.15in}
@@ -526,10 +526,10 @@ Table~\ref{tab:ppl} shows the best test perplexity of 2-layer LSTM and 3-layer L
 \begin{figure}[H]
 \mbox{
 \subfigure[Penn Treebank, 2-Layer LSTM]{
-\includegraphics[width = 0.52 \textwidth,trim={2cm 0 2cm 2cm},clip ]{figure/ptb_2lstm.png}
-}\hspace{-0.1in}
+\includegraphics[width = 0.52 \textwidth]{figure/ptb_2lstm.png}
+}\hspace{-0.5in}
 \subfigure[Penn Treebank, 3-Layer LSTM]{
-\includegraphics[width = 0.52 \textwidth, trim={2cm 0 2cm 2cm}, clip]{figure/ptb_3lstm.png}
+\includegraphics[width = 0.52 \textwidth]{figure/ptb_3lstm.png}
  }
 }
 \vspace{-0.1in}
@@ -556,10 +556,11 @@ Table~\ref{tab:ppl} shows the best test perplexity of 2-layer LSTM and 3-layer L
 \section{Conclusion}\label{sec: conclusion}
 \vspace{-0.05in}
 
-In this paper, we focus on the generalization ability of adaptive gradient methods. Concerned with the 
-observation that adaptive gradient methods generalize worse than SGD for over-parameterized neural networks and the theoretical understanding of the generalization of those methods is limited,
-we propose stable adaptive gradient descent methods (\textsc{SAGD}), which boost the generalization performance in both theory and practice through a novel use of differential privacy. The proposed algorithms generalize well with provable high-probability convergence bounds of the population gradient. Experimental studies demonstrate the proposed algorithms are competitive and often better than baseline algorithms for training deep neural networks. 
-In future work, we will consider improving our analysis in several ways, e.g.,  improvement of the dependence on dimension and sharper bounds of \textsc{SAGD} with \textsc{DPG-Sparse}.
+In this paper, we focus on the generalization ability of adaptive gradient methods. 
+Concerned with the observation that adaptive gradient methods generalize worse than SGD for over-parameterized neural networks and given the limited theoretical understanding of the generalization of those methods,
+we propose stable adaptive gradient descent methods (\textsc{SAGD}), which boosts the generalization performance in both theory and practice through a novel use of differential privacy. 
+The proposed algorithms generalize well with provable high-probability convergence bounds of the population gradient. Experimental studies demonstrate that the proposed algorithms are competitive and often better than baseline algorithms for training deep neural networks. 
+% In future work, we will consider improving our analysis in several ways, e.g.,  improvement of the dependence on dimension and sharper bounds of \textsc{SAGD} with \textsc{DPG-Sparse}.
 
 
 
