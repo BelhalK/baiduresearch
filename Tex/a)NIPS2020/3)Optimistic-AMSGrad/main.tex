@@ -7,8 +7,7 @@
 % ready for submission
 \usepackage{neurips_2020}
 
-\usepackage[colorlinks=true,linkcolor=black,citecolor=magenta]{hyperref}
-\usepackage{hyperref}
+\usepackage[colorlinks=true,linkcolor=magenta,citecolor=orange]{hyperref}
 \usepackage{cleveref}
 \usepackage{subfigure}
 \setlength{\parskip}{.2cm}
@@ -198,14 +197,14 @@ We emphasize, in Section~\ref{sec:opt}, the importance of leveraging a good gues
 Adaptive optimization has been popular in various deep learning applications due to their superior empirical performance.
 \textsc{Adam} \citep{KB15}, a popular adaptive algorithm, combines momentum \citep{P64} and anisotropic learning rate of \textsc{AdaGrad} \citep{DHS11}.
 More specifically, the learning rate of \textsc{AdaGrad} at time $t$ for dimension $j$ is proportional to the inverse of $\sqrt{ \Sigma_{s=1}^t g_s[j]^2 }$, where $g_s[j]$ is the $j$-th element of the gradient vector $g_s$ at time $s$.
-\begin{wrapfigure}[11]{r}{.5\linewidth}\vspace{-0.7cm}
+\begin{wrapfigure}[11]{r}{.5\linewidth}\vspace{-0.8cm}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
 \caption{\textsc{AMSGrad} \citep{RKK18}} \label{alg:amsgrad}
 \begin{algorithmic}[1]
 \small
-\STATE Required: parameter $\beta_1$, $\beta_2$, and $\eta_t$. 
+\STATE \textbf{Required}: parameter $\beta_1$, $\beta_2$, and $\eta_t$. 
 \STATE Init: $w_{1} \in \Theta \subseteq \mathbb R^d $ and $v_{0} = \epsilon 1 \in \mathbb R^{d}$.
 \FOR{$t=1$ to $T$}
 \STATE Get mini-batch stochastic gradient $g_t$ at $w_t$.
@@ -238,6 +237,16 @@ It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}
 In the following analysis, we show that the interleaving actually leads to some cancellation in the regret bound.
 Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citep{CJ12}.
 The gradient prediction process plays an important role as discussed in Section~\ref{sec:numerical}.
+The proposed \textsc{OPT-AMSGrad} inherits three properties:\vspace{-0.05in}
+\begin{itemize}
+\item Adaptive learning rate of each dimension as \textsc{AdaGrad} \citep{DHS11}. (line 6, line 8 and line 9)
+\item Exponential moving average of the past gradients as \textsc{Nesterov's method} \citep{N04} and the \textsc{Heavy-Ball} method \citep{P64}. (line 5)
+\item Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as in optimistic online learning algorithms \citep{CJ12,rakhlin2013online,SALS15}. (line 9)
+\end{itemize}\vspace{-0.05in}
+The first property helps for acceleration when the gradient has a sparse structure.
+The second one is from the long-established idea of momentum which can also help for acceleration. 
+The last one can lead to an acceleration when the prediction of the next gradient is good as mentioned above when introducing the regret bound for the \textsc{Optimistic-FTRL} algorithm.
+This property will be elaborated whilst establishing the theoretical analysis of \textsc{OPT-AMSGrad}.
 
 \vspace{-0.15in}
 \begin{minipage}{0.54\linewidth}
@@ -246,7 +255,7 @@ The gradient prediction process plays an important role as discussed in Section~
 \begin{algorithmic}[1] 
 \small
 \caption{\textsc{OPT-AMSGrad}} \label{alg:optamsgrad}
-\STATE Required: parameter $\beta_1$, $\beta_2$, $\epsilon$, and $\eta_t$. 
+\STATE \textbf{Required}: parameter $\beta_1$, $\beta_2$, $\epsilon$, and $\eta_t$. 
 \STATE Init: $w_1 = w_{-1/2} \in \Theta \subseteq \mathbb R^d $ and $v_{0} = \epsilon 1 \in \mathbb R^{d}$.
 \FOR{$t=1$ to $T$}
 \STATE Get mini-batch stochastic gradient $g_t$ at $w_t$.
@@ -265,25 +274,13 @@ where $h_{t+1}:= \beta_{1} \theta_{t-1} + (1 - \beta_{1}) m_{t+1}$ with $m_{t+1}
 \begin{figure}[H]
 \captionsetup{justification=centering}
     \hspace{-0.15in}
-    \includegraphics[width=2.7in]{plot.pdf}
-    \caption{\textsc{OPT-AMSGRAD Underlying Structure}.}
+    \includegraphics[width=2.5in]{plot.pdf}
+    \caption{\textsc{OPT-AMSGRAD} Underlying Structure.}
      \label{fig:scheme}
 \end{figure}
 \end{minipage}
-
-The proposed \textsc{OPT-AMSGrad} inherits three properties:
-\begin{itemize}
-\item Adaptive learning rate of each dimension as \textsc{AdaGrad} \citep{DHS11}. (line 6, line 8 and line 9)
-\item Exponential moving average of the past gradients as \textsc{Nesterov's method} \citep{N04} and the \textsc{Heavy-Ball} method \citep{P64}. (line 5)
-\item Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as in optimistic online learning algorithms \citep{CJ12,rakhlin2013online,SALS15}. (line 9)
-\end{itemize}
-The first property helps for acceleration when the gradient has a sparse structure.
-The second one is from the long-established idea of momentum which can also help for acceleration. 
-The last one can lead to an acceleration when the prediction of the next gradient is good as mentioned above when introducing the regret bound for the \textsc{Optimistic-FTRL} algorithm.
-This property will be elaborated whilst establishing the theoretical analysis of \textsc{OPT-AMSGrad}.
-
 \vspace{-0.1in}
-\section{Global Convergence of \textsc{OPT-AMSGrad}}\label{sec:analysis}
+\section{Global Convergence Analysis of \textsc{OPT-AMSGrad}}\label{sec:analysis}
 For conciseness, we place all the proofs of the following results in the supplementary material.\vspace{-0.05in}
 
 \textbf{Notations.}\hspace{0.1in}
@@ -491,7 +488,7 @@ In this section, we provide experiments on classification tasks with various neu
 \textbf{Methods.}
 We consider two baselines. The first one is the original \textsc{AMSGrad}. 
 The hyper-parameters are set to be $\beta_1 = 0.9$ and $\beta_2 = 0.999$, see \citep{RKK18}. 
-The other benchmark method is the \textsc{Optimistic-Adam$+\hat{v}_t$} \citep{DISZ18}, which details are reported to the Supplementary Material. 
+The other benchmark method is the \textsc{Optimistic-Adam$+\hat{v}_t$} \citep{DISZ18}, which details are reported to the supplementary material. 
 We use cross-entropy loss, a mini-batch size of $128$ and tune the learning rates over a fine grid and report the best result for all methods.
 For \textsc{OPT-AMSGrad}, we use $\beta_1 = 0.9$ and $\beta_2 = 0.999$ and the best step size $\eta$ of \textsc{AMSGrad} for a fair evaluation of the optimistic step. 
 \textsc{OPT-AMSGrad} has an additional parameter $r$ that controls the number of previous gradients used for gradient prediction. 
