@@ -73,13 +73,6 @@
 \def\lav{lavander!90}
 \def\oran{orange!30}
 
-\definecolor{asuorange}{rgb}{1,0.699,0.0625}
-\definecolor{asured}{rgb}{0.598,0,0.199}
-\definecolor{asuborder}{rgb}{0.953,0.484,0}
-\definecolor{asugrey}{rgb}{0.309,0.332,0.340}
-\definecolor{asublue}{rgb}{0,0.555,0.836}
-\definecolor{asugold}{rgb}{1,0.777,0.008}
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -229,7 +222,7 @@ This adaptive learning rate helps accelerating the convergence when the gradient
 Therefore, \citep{KB15} proposes \textsc{Adam} that uses a moving average of gradients divided by the square root of the second moment of the moving average (element-wise multiplication), for updating the model parameter $w$.
 A variant, called \textsc{AMSGrad} and detailed in Algorithm~\ref{alg:amsgrad}, has been developed in \citep{RKK18} to fix \textsc{Adam} failures.
 The difference between \textsc{Adam} and \textsc{AMSGrad} lies in line 7 of Algorithm~\ref{alg:amsgrad}.
-\textsc{AMSGrad} \citep{RKK18} adds the $\texttt{max}$ operation to guarantee a non-increasing learning rate $\frac{\eta_t }{ \sqrt{\hat{v}}_t }$, which helps for the convergence (i.e. average regret $\mathcal{R}_T/T \rightarrow 0$).
+\textsc{AMSGrad} \citep{RKK18} adds the $\texttt{max}$ operation to guarantee a non-increasing learning rate $\eta_t / \sqrt{\hat{v}}_t $, which helps for the convergence (i.e. average regret $\mathcal{R}_T/T \rightarrow 0$).
 \vspace{-0.1in}
 \section{\textsc{OPT-AMSGrad} Algorithm}\label{sec:opt}
 \vspace{-0.1in}
@@ -430,8 +423,36 @@ The following Lemma proves that assumption H\ref{ass:boundedparam} is satisfied 
 \begin{Lemma}\label{lem:dnnh2} 
 Given the multilayer model \eqref{eq:dnnmodel}, assume the boundedness of the input data and of the loss function, \ie for any $\xi \in \rset^p$ and $y \in \rset$ there is a constant $T >0$ such that $\norm{\xi} \leq 1 \quad \textrm{a.s.}$ and $|\mathcal{L}'(\cdot, y)| \leq T$ where $\mathcal{L}'(\cdot, y)$ denotes its derivative \wrt the parameter. Then for each layer $\ell \in [1,L]$, there exist a constant $A_{(\ell)}$ such that $\norm{w^{(\ell)}} \leq A_{(\ell)}$
 \end{Lemma}
+\begin{figure}[H]
+\centering
+\mbox{
+\subfigure{
+\includegraphics[width=0.25\textwidth]{simulation/fig2/M_rand_train_loss_no1.eps}\hspace{-0.15in}
+}
+%\subfigure{
+%\includegraphics[width=1.4in]{simulation/fig2/M_image_train_loss_no1.eps}\hspace{-0.15in}
+%}
+\subfigure{
+\includegraphics[width=0.25\textwidth]{simulation/fig2/cifar_cnn_train_loss_no1.eps}\hspace{-0.15in}
+}
+\subfigure{
+\includegraphics[width=0.25\textwidth]{simulation/fig2/imdb_lstm_train_loss_no1.eps}\hspace{-0.15in}
+}
+%\subfigure{
+%\includegraphics[width=1.2in]{simulation/fig2/cifar10_resnet_train_loss.eps}\hspace{-0.15in}
+%}
+\subfigure{
+\includegraphics[width=0.25\textwidth]{simulation/fig2/cifar100_resnet_train_loss.eps}\hspace{-0.15in}
+}
+}
+\caption{Training loss vs. Number of iterations for fully connected NN, LSTM, CNN and ResNet.}
+\label{fig:train_loss}
+\end{figure}\vspace{-0.2in}
 \section{Numerical Experiments}\label{sec:numerical}
 \subsection{Gradient Estimation}
+From the analysis in the previous section, we understand that the choice of the prediction $m_t$ plays an important role in the convergence of \textsc{Optimistic-AMSGrad}.
+%In \textsc{Optimistic-Online learning}, $m_{t}$ is usually set to $m_{t}= g_{t-1}$, which means that it uses the previous gradient as a guess of the next one.
+%The choice can accelerate the convergence to equilibrium in some two-player zero-sum games \cite{RS13,SALS15,DISZ18}, in which each player uses an optimistic online learning algorithm against its opponent.
 %We propose to use the extrapolation algorithm of \citep{SAB16} based on estimating the limit of a sequence using the last iterates \citep{BZ13}. 
 Some classical works in gradient prediction methods include \textsc{Anderson} acceleration \citep{WN11}, \textsc{Minimal Polynomial Extrapolation} \citep{CJ76},  \textsc{Reduced Rank Extrapolation} \citep{E79}.
 %These methods assume that the sequence $\{g_t\} \in \mathbb R^d$ has a linear relation $g_t = A( g_{t-1} - g^* ) + g^*$ where $A \in \mathbb R^{d \times d}$ is unknown and finds the fixed point $g^{*}$. 
@@ -459,34 +480,12 @@ To see why the output from the extrapolation method may be a reasonable estimati
 This equation suggests that the next gradient vector $g_{t}$ is a linear transform of $g_{{t-1}}$ plus an error vector that may not be in the span of $A$.
 If the algorithm is converges to a stationary point, the magnitude of the error will converge to zero.
 
-\textbf{Computational cost.} This extrapolation step consists in: \textsf{(a)} Constructing the linear system $(U^\top U)$ which cost can be optimized to $\mathcal{O}(d)$, since the matrix $U$ only changes one column at a time. \textsf{(b)} Solving the linear system which cost is $\mathcal{O}(r^3)$, and is negligible for a small $r$ used in practice.\textsf{ (c)} Outputting a weighted average of previous gradients which cost is $\mathcal{O}(r \times d)$ yielding a computational overhead of $\mathcal O\left((r+1)d+r^3\right)$.
+\textbf{Computational cost:}
+ This extrapolation step consists in: \textsf{(a)} Constructing the linear system $(U^\top U)$ which cost can be optimized to $\mathcal{O}(d)$, since the matrix $U$ only changes one column at a time. \textsf{(b)} Solving the linear system which cost is $\mathcal{O}(r^3)$, and is negligible for a small $r$ used in practice.\textsf{ (c)} Outputting a weighted average of previous gradients which cost is $\mathcal{O}(r \times d)$ yielding a computational overhead of $\mathcal O\left((r+1)d+r^3\right)$.
 Yet, steps (a) and (c) are parallelizable in the final implementation.
-
-\begin{figure}[t]
-\mbox{
-\subfigure{
-\includegraphics[width=0.94in]{simulation/fig2/M_rand_train_loss_no1.eps}\hspace{-0.15in}
-}
-\subfigure{
-\includegraphics[width=0.94in]{simulation/fig2/M_image_train_loss_no1.eps}\hspace{-0.15in}
-}
-\subfigure{
-\includegraphics[width=0.94in]{simulation/fig2/cifar_cnn_train_loss_no1.eps}\hspace{-0.15in}
-}
-\subfigure{
-\includegraphics[width=0.94in]{simulation/fig2/imdb_lstm_train_loss_no1.eps}\hspace{-0.15in}
-}
-\subfigure{
-\includegraphics[width=0.94in]{simulation/fig2/cifar10_resnet_train_loss.eps}\hspace{-0.15in}
-}
-\subfigure{
-\includegraphics[width=0.94in]{simulation/fig2/cifar100_resnet_train_loss.eps}\hspace{-0.15in}
-}
-}
-\caption{Training loss vs. Number of iterations for fully connected NN, LSTM, CNN and ResNet.}
-\label{fig:train_loss}
-\end{figure}
+\vspace{-0.2in}
 \subsection{Classification Experiments}
+\vspace{-0.01in}
 In this section, we provide experiments on classification tasks with various neural network architectures and datasets to demonstrate the effectiveness of \textsc{OPT-AMSGrad}.
 
 \textbf{Methods.}
@@ -498,8 +497,9 @@ For \textsc{OPT-AMSGrad}, we use $\beta_1 = 0.9$ and $\beta_2 = 0.999$ and the b
 \textsc{OPT-AMSGrad} has an additional parameter $r$ that controls the number of previous gradients used for gradient prediction. 
 %Fortunately, we observe similar performance of \textsc{OPT-AMSGrad} with different values of $r$. 
 %Hence, we report the result of $r=5$. Comparison among different $r$ can be found in the Supplemental Material.
-In the sequel, we use $r=5$ past gradient for empirical reasons, see Section~\ref{sec:choicer}.
-In all experiments, the algorithms are initialized at the same point and the results are averaged over 5 repetitions.
+%In the sequel, we use $r=5$ past gradient for empirical reasons, see Section~\ref{sec:choicer}.
+We use $r=5$ past gradient for empirical reasons (see experiments in the supplementary material).
+The algorithms are initialized at the same point and the results are averaged over 5 repetitions.
 
 \textbf{Datasets.}
 We compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
@@ -523,69 +523,52 @@ Firstly, to illustrate the acceleration effect of \textsc{OPT-AMSGrad} at early 
 We clearly observe that on all datasets, the proposed \textsc{OPT-AMSGrad} converges faster than the other competing methods since fewer iterations are required to achieve the same precision validating one of the main edges of \textsc{OPT-AMSGrad}.
 We are also curious about the long-term performance and generalization of the proposed method in test phase.
 In Figure~\ref{fig:testandtrain}, we plot the results when the model is trained until the test accuracy stabilizes. 
-We observe: \textsf{(1)} in the long term, \textsc{OPT-AMSGrad} algorithm may converge to a better point with smaller objective function value, and \textsf{(2)} in these three applications, the proposed \textsc{OPT-AMSGrad} also outperforms the competing methods in terms of test accuracy. 
-
-\begin{figure}[t]
+We observe: \textsf{(1)} in the long term, \textsc{OPT-AMSGrad} algorithm may converge to a better point with smaller objective function value, and \textsf{(2)} in these three applications, the proposed \textsc{OPT-AMSGrad} also outperforms the competing methods in terms of test accuracy. \vspace{-0.1in}
+\begin{figure}[H]
 \mbox{
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_disz_2.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_disz_2.eps}\hspace{-0.15in}
 }
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/new_mnist_img_figure/mnist_img_train_acc_disz_2.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/new_mnist_img_figure/mnist_img_train_acc_disz_2.eps}\hspace{-0.15in}
 }
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/mnist_img_test_loss_disz.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/mnist_img_test_loss_disz.eps}\hspace{-0.15in}
 }
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/mnist_img_test_acc_disz.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/mnist_img_test_acc_disz.eps}\hspace{-0.15in}
 }
-\subfigure{
-\includegraphics[width=0.94in]{new_figure/cifar10_train_loss_disz.eps}\hspace{-0.15in}
-}
-\subfigure{
-\includegraphics[width=0.94in]{new_figure/cifar10_train_acc_disz.eps}\hspace{-0.15in}
-}
-}
+}\vspace{-0.15in}
 \mbox{
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/cifar10_test_loss_disz.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/cifar10_train_loss_disz.eps}\hspace{-0.15in}
 }
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/cifar10_test_acc_disz.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/cifar10_train_acc_disz.eps}\hspace{-0.15in}
 }
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/cifar100_train_loss_disz.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/cifar10_test_loss_disz.eps}\hspace{-0.15in}
 }
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/cifar100_train_acc_disz.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/cifar10_test_acc_disz.eps}\hspace{-0.15in}
+}
+}\vspace{-0.15in}
+\mbox{
+\subfigure{
+\includegraphics[width=1.4in]{new_figure/cifar100_train_loss_disz.eps}\hspace{-0.15in}
 }
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/cifar100_train_acc_disz.eps}\hspace{-0.15in}
+\includegraphics[width=1.4in]{new_figure/cifar100_train_acc_disz.eps}\hspace{-0.15in}
 }
 \subfigure{
-\includegraphics[width=0.94in]{new_figure/cifar100_test_acc_disz.eps}
+\includegraphics[width=1.4in]{new_figure/cifar100_train_acc_disz.eps}\hspace{-0.15in}
+}
+\subfigure{
+\includegraphics[width=1.4in]{new_figure/cifar100_test_acc_disz.eps}
 }
 }
 \caption{\textit{MNIST-back-image} + CNN, \textit{CIFAR10} + Res-18 and \textit{CIFAR100} + Res-50 . We compare three methods in terms of training (cross-entropy) loss and accuracy, testing loss and accuracy.} \label{fig:testandtrain}
-\end{figure}
-\subsection{Choice of parameter r}\label{sec:choicer}
-\begin{wrapfigure}[12]{r}{1.7in}\vspace{-0.3in}
-\begin{center}
-\mbox{
-\includegraphics[width=1.15in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_r3510_2.eps}\vspace{-0.5in}
-}
-\mbox{
-\includegraphics[width=1.15in]{new_figure/cifar10_train_loss_r3510.eps}
-}
-\end{center}\vspace{-0.1in}
-\caption{Training loss w.r.t. $r$.}\label{fig:compare}
-\end{wrapfigure}
-\vspace{-0.1in}
-Since the number of past gradients $r$ is important in our algorithm, we compare Figure~\ref{fig:compare} the performance under different values $r=3,5,10$ on two datasets. 
-From the result we see that the choice of $r$ does not have significant impact on the training loss.
-Taking into consideration both quality of gradient prediction and computational cost, $r=5$ is a good choice for most applications here. 
-We remark that empirically, the performance comparison among $r=3,5,10$ is not absolutely consistent (i.e. more means better) in all cases. 
-One possible reason is that for deep neural networks, the high diversity of gradients computed through the iterations, due to the nonconvexity of the loss, makes most of them inefficient for the predictable process $\{m_t\}_{t>0}$. Only recent ones ($r \leq 5$) are useful.\vspace{-0.1in}
+\end{figure}\vspace{-0.1in}
 \section{Conclusion}
 In this paper, we propose \textsc{OPT-AMSGrad}, which combines optimistic online learning and \textsc{AMSGrad} to improve sample efficiency and
 accelerate the process of training, in particular for deep neural networks. 
@@ -602,6 +585,8 @@ Experiments on various deep learning problems demonstrate the effectiveness of t
 
 
 \appendix
+
+
 \section{Proof of Theorem~\ref{thm:mainconvex}}\label{app:thmmainconvex}
 \begin{Theorem*}
 Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
@@ -1182,7 +1167,7 @@ then accelerating the convergence to the equilibrium of the game is possible.
 can avoid the cycle behavior in a bilinear zero-sum game, which accelerates the convergence. Furthermore, \citep{DISZ18} did not provide theoretical analysis of \textsc{Optimistic-Adam}.
 
 
-
+\clearpage
 \section{Additional Remarks and Runs on the Gradient Prediction Process}
 \textbf{Two illustrative examples.}\hspace{0.1in}We provide two toy examples to demonstrate how \textsc{OPT-AMSGrad} works with the chosen extrapolation method. First, consider minimizing a quadratic function $H(w) := \frac{b}{2} w^2 $  
 %The eigenvalue of matrix $B \in \mathbb R^{d \times d}$ can be negative.
@@ -1198,8 +1183,6 @@ Therefore, the extrapolation method should predict well.
     \mbox{
     \includegraphics[width=0.25\textwidth]{simulation/fig/fig1_left.eps}
     \includegraphics[width=0.25\textwidth]{simulation/fig/fig1_right.eps}
-    }
-    \mbox{
     \includegraphics[width=0.25\textwidth]{simulation/fig/fig2_left.eps}
     \includegraphics[width=0.25\textwidth]{simulation/fig/fig2_right.eps}
     }
@@ -1230,8 +1213,9 @@ Furthermore, sub-figure (b) shows that the prediction by the extrapolation
 method is better than the prediction by simply using the previous gradient. The sub-figure shows that
 $-m_t$ from both methods all point to $0$ in all iterations and the magnitude is larger for the one produced by the extrapolation method after iteration $2$. \footnote{
 The extrapolation method needs at least two gradients for prediction.
-This is why in the first two iterations, $m_t$ is $0$.
-}
+This is why in the first two iterations, $m_t$ is $0$.}
+
+
 
 
 Now let us consider another problem: an online learning problem proposed in \citep{RKK18}
@@ -1251,6 +1235,60 @@ Consequently, using the current gradient as the guess for the next clearly is no
 since the next gradient is in the opposite direction of the current one.
 Sub-figure (d) shows that $-m_t$ by the extrapolation method always points to
 $w^*=-1$, while the one by using the previous negative direction points to the opposite direction in two thirds of rounds. It shows that the extrapolation method is much less affected by the gradient oscillation and always makes the prediction in the right direction, which suggests that the method can capture the aggregate effect.
+
+\subsection{Choice of parameter r}\label{sec:choicer}
+
+Since the number of past gradients $r$ is important in our algorithm, we compare Figure~\ref{fig:compare} the performance under different values $r=3,5,10$ on two datasets. 
+From the result we see that the choice of $r$ does not have significant impact on the training loss.
+Taking into consideration both quality of gradient prediction and computational cost, $r=5$ is a good choice for most applications here. 
+We remark that empirically, the performance comparison among $r=3,5,10$ is not absolutely consistent (i.e. more means better) in all cases. 
+One possible reason is that for deep neural networks, the high diversity of gradients computed through the iterations, due to the nonconvexity of the loss, makes most of them inefficient for the predictable process $\{m_t\}_{t>0}$. Only recent ones ($r \leq 5$) are useful.\vspace{-0.1in}
+
+\begin{figure}[H]
+\centering
+\mbox{
+\subfigure{
+\includegraphics[width=1.8in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_r3510_2.eps}\hspace{-0.15in}
+}
+\subfigure{
+\includegraphics[width=1.8in]{new_figure/cifar10_train_loss_r3510.eps}\hspace{-0.15in}
+}
+}
+\caption{Training loss w.r.t. $r$.}\label{fig:compare}
+\end{figure}
+
+
+
+\section{Additional Numerical Experiments}
+Additional experiments are presented Figure~\ref{fig:train_loss_app} to highlight the acceleration effect of \textsc{OPT-AMSGrad} at early stage.
+\begin{figure}[H]
+\centering
+\mbox{
+\subfigure{
+\includegraphics[width=1.8in]{simulation/fig2/M_rand_train_loss_no1.eps}\hspace{-0.15in}
+}
+\subfigure{
+\includegraphics[width=1.8in]{simulation/fig2/M_image_train_loss_no1.eps}\hspace{-0.15in}
+}
+\subfigure{
+\includegraphics[width=1.8in]{simulation/fig2/cifar_cnn_train_loss_no1.eps}\hspace{-0.15in}
+}
+}
+\mbox{
+\subfigure{
+\includegraphics[width=1.8in]{simulation/fig2/imdb_lstm_train_loss_no1.eps}\hspace{-0.15in}
+}
+\subfigure{
+\includegraphics[width=1.8in]{simulation/fig2/cifar10_resnet_train_loss.eps}\hspace{-0.15in}
+}
+\subfigure{
+\includegraphics[width=1.8in]{simulation/fig2/cifar100_resnet_train_loss.eps}\hspace{-0.15in}
+}
+}
+\caption{Training loss vs. Number of iterations for fully connected NN, LSTM, CNN and ResNet.}
+\label{fig:train_loss_app}
+\end{figure}
+
 
 
 
