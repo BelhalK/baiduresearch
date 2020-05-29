@@ -76,7 +76,8 @@ where the \emph{population loss} $f$ is a (possibly) nonconvex objective functio
 We assume that we have access to an oracle that, given $n $ i.i.d. samples $(\z_{1}, \dots, \z_{n})$, returns the stochastic objectives $(\ell(\w,\z_{1}), \dots, \ell(\w,\z_{n}))$.
 Our goal is to find critical points of the population loss function.
 Given the unknown data distribution, a natural approach towards solving \eqref{eq: problem} is empirical risk minimization (ERM)~\citep{shbe14}, which minimizes the \emph{empirical loss} $\hat f(\w)$ as follows: $\min_{\w \in \cW}     \hat f(\w)  \triangleq \frac{1}{n}\sum_{j =1}^{n} \ell(\w, \z_j)$, when $n$ samples $\z_{1}, \dots, \z_{n}$ are observed.
-Stochastic gradient descent (SGD)~\citep{romo51} which iteratively updates the parameter of a model by descending along the negative gradient computed on a single sample or a mini-batch of samples has been most dominant algorithms for solving the ERM problem, e.g., training deep neural networks. To automatically tune the learning-rate decay in SGD, adaptive gradient methods, such as AdaGrad~\citep{duha11}, RMSprop~\citep{tige12}, and Adam~\citep{kiba15}, have emerged leveraging adaptive coordinate-wise learning rates for faster convergence.
+Stochastic gradient descent (SGD)~\citep{romo51} which iteratively updates the parameter of a model by descending in the direction of the negative gradient, computed on a single sample or a mini-batch of samples, has been the most dominant algorithm for solving the ERM problem, e.g., training deep neural networks. 
+To automatically tune the learning-rate decay in SGD, adaptive gradient methods, such as AdaGrad~\citep{duha11}, RMSprop~\citep{tige12}, and Adam~\citep{kiba15}, have emerged leveraging the curvature of the objective function resulting in adaptive coordinate-wise learning rates for faster convergence.
 
 However, the generalization ability of these adaptive methods is often worse than that of SGD for over-parameterized neural networks, e.g., convolutional neural network (CNN) for image classification and recurrent neural network (RNN) for language modeling~\citep{wiro17}. 
 To mitigate this issue, several recent algorithms were proposed to combine adaptive methods with SGD.
@@ -99,15 +100,17 @@ In particular, we show that differentially private gradients stay close to the p
 \item We establish various theoretical guarantees for our algorithm. We derive a concentration bound on the generalization error and show that the $\ell_2$-norm of the \emph{population gradient}, \ie $\|\nabla f(\w)\|$ obtained by the \textsc{SAGD} converges in $\mathcal{O}(1/n^{2/3})$ with high probability. 
 \item We conduct several experimental applications based on training neural networks for image classification and language modeling indicating that \textsc{SAGD} outperforms existing adaptive gradient methods in terms of the generalization performance.
 \end{itemize}
-The remainder of the paper is organized as follows.
+\textbf{Roadmap:} \ 
 The \textsc{SAGD} algorithm, including the differentially private mechanisms, and its mini-batch variant are described in Section~\ref{algorithm}. 
 Numerical experiments are presented Section~\ref{sec: experiment}. 
 Section~\ref{sec: conclusion} concludes our work. 
-Due to space limit, most of the proofs are deferred to the supplementary material.
+Due to space limit, most of the proofs are deferred to Supplementary Material.
 
 \textbf{Notations:} 
-We use $\g_t$ and $\nabla f(\w)$ interchangeably to denote the \emph{population gradient} such that $\g_t = \nabla f(\w_t) = \mathbb{E}_{\z \in \cP} [\nabla \ell(\w_t, \z)]$. $S = \left\{\z_{1}, \dots, \z_{n}\right\}$
-denotes the $n$ available training samples. $\hat \g_t$ denotes the sample gradient evaluated on $S$ such that $\hat \g_t = \nabla \hat f(\w) = \frac{1}{n}\sum_{j=1}^n \nabla \ell(\w_t, \z_j)$. For a vector $\v$, $\v^2$ represents that $\v$ is element-wise squared.  We use $\v^i$ or $[\v]_i$ to denote the $i$-th coordinate of $\v$ and $\|\v\|_2$ is the $\ell_2$-norm of $\v$. We denote $[d]=\{1,\dots,d\}$.
+We use $\g_t$ and $\nabla f(\w)$ interchangeably to denote the \emph{population gradient} such that $\g_t = \nabla f(\w_t) = \mathbb{E}_{\z \in \cP} [\nabla \ell(\w_t, \z)]$. 
+$S = \left\{\z_{1}, \dots, \z_{n}\right\}$ denotes the $n$ available training samples. 
+$\hat \g_t$ denotes the sample gradient evaluated on $S$ such that $\hat \g_t = \nabla \hat f(\w) = \frac{1}{n}\sum_{j=1}^n \nabla \ell(\w_t, \z_j)$. For a vector $\v$, $\v^2$ represents that $\v$ is element-wise squared.  
+We use $\v^i$ or $[\v]_i$ to denote the $i$-th coordinate of $\v$ and $\|\v\|_2$ is the $\ell_2$-norm of $\v$ and denote $[d]=\{1,\dots,d\}$.
 
 \vspace{-0.05in}
 \section{Preliminaries}
@@ -127,7 +130,6 @@ The popular differentially private algorithms includes the gradient perturbation
 Moreover, in Adaptive Data Analysis \textsc{ADA}~\citep{dwfe2015a,dwfe2015b,dwfe2015c}, a holdout set is reused for multiple times to test the hypotheses which are generated based previous test result.  
 It has been shown that reusing the holdout set via a differentially private mechanism ensures the validity of the test. 
 In other words, the differentially private reused dataset maintains the statistical nature of fresh samples and improve generalization~\citep{zhch2018}. 
-%\citet{dwfe2015a, dwfe2015b, dwfe2015c} designed a practical method named \textsc{Thresholdout}, which can be used to test a large number of hypotheses. 
 
 \vspace{-0.05in}
 \section{Stable Adaptive Gradient Descent Algorithm}\label{algorithm}
@@ -145,19 +147,6 @@ We present \textsc{SAGD} with two different \textbf{D}ifferential \textbf{P}riva
 \subsection{\textsc{SAGD} with \textsc{DGP-Lap}} \label{subsec: SAGD_lap}
 \vspace{-0.05in}
 
-%\begin{algorithm}[t] 
-%\caption{\textsc{SAGD}}
-%\begin{algorithmic}[1] \label{algo: StAda}
-%\STATE \textbf{Input}: Dataset $S$,  certain loss $\ell(\cdot)$, initial point $\w_0$.
-%\STATE Set  noise level $\sigma$, iteration number $T$,  and stepsize $\eta_t$.
-%\FOR{$t = 0,...,T-1$}
-%\STATE \label{line:dpg} Call DPG($S$,  $\ell(\cdot)$, $\w_t$, $\sigma$) to compute gradient $\tilde \g_t$.
-%\STATE  \label{line:adap1}
-%$\m_t = \tilde \g_t$ and $\v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{2}^{t-i} \tilde \g_{i}^{2}$.
-%\STATE  \label{line:adap2} $\w_{t+1}=\w_{t}-\eta_t \m_t /(\sqrt{\v_t}+\nu)$.
-%\ENDFOR 
-%\end{algorithmic}
-%\end{algorithm}
 \begin{algorithm}[t] 
 \caption{\textsc{SAGD} with \textsc{DGP-Lap}}
 \begin{algorithmic}[1] \label{algo: StAda}
@@ -166,7 +155,7 @@ We present \textsc{SAGD} with two different \textbf{D}ifferential \textbf{P}riva
 \FOR{$t = 0,...,T-1$}
 	\STATE  \textsc{DPG-Lap:} Compute full batch gradient on $S$: \\
 	\centerline{ $\hat \g_t = \frac{1}{n} \sum_{j=1}^n\nabla \ell(\w_t, z_j)$.}	
-	\STATE \label{line:dpg} Set $\tilde \g_t = \hat \g_t + \b_t$, where $\b_t^i$ is drawn i.i.d from Lap$(\sigma), \forall\, i \in [d]$.
+	\STATE \label{line:dpg} Set $\tilde \g_t = \hat \g_t + \b_t$, where $\b_t^i$ is drawn i.i.d from Lap$(\sigma)$ for all $i \in [d]$.
 \STATE  \label{line:adap1}
 $\m_t = \tilde \g_t$ and $\v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{2}^{t-i} \tilde \g_{i}^{2}$.
 \STATE  \label{line:adap2} $\w_{t+1}=\w_{t}-\eta_t \m_t /(\sqrt{\v_t}+\nu)$.
@@ -190,10 +179,10 @@ We first consider \textsc{DPG-Lap} (Line~\ref{line:dpg} in Algorithm~\ref{algo: 
 %\end{algorithm}\vspace{-0.1in}
 In the sequel, assume:
 \begin{assumption}
-The objective function $ f: \mathbb{R}^d \rightarrow \mathbb{R}$ is bounded from below by $f^\star$ and is $L$-smooth ($L$-Lipschitz gradients), \ie$\nr \|\nabla f(\w) -\nabla f(\w^\prime) \|\leq L \|\w-\w^\prime \|, ~ \forall\, \w, \w^\prime \in \cW$.
+The objective function $ f: \mathbb{R}^d \rightarrow \mathbb{R}$ is bounded from below by $f^\star$ and is $L$-smooth ($L$-Lipschitz gradients), \ie$\nr \|\nabla f(\w) -\nabla f(\w^\prime) \|\leq L \|\w-\w^\prime \|$, for all $\w, \w^\prime \in \cW$.
 \end{assumption}
 \begin{assumption}
-The gradient of $\ell$ and its noisy approximation are bounded: $\|\nabla \ell (\w, z) \|_1 \leq G_1, \ \forall\,\w \in \cW, \  \z \in \cZ$ and $\|\tilde \g_t\|_2 \leq G, \forall t \in [T]$.
+The gradient of $\ell$ and its noisy approximation are bounded: For all $\w \in \cW, \  \z \in \cZ$ $\|\nabla \ell (\w, z) \|_1 \leq G_1$ and for all $t \in [T]$, $\|\tilde \g_t\|_2 \leq G$.
 \end{assumption}
 
 %The analysis of the \textsc{SAGD} with DPG-Lap is two-fold.
@@ -215,17 +204,18 @@ For any differentially private algorithm, Lemma~\ref{lem: gen_adv} provides the 
 	\mathbb{P}\left\{ |\hat \g_t^i - \g_t^i| \geq  \sigma \right\} \leq \beta \quad \textrm{for every $ i\in [d]$ and every $t \in [T]$} ~.
 	\end{equation*} 
 \end{restatable}
-Lemma~\ref{lem: gen_adv} is an instance of Theorem 8 from~\cite{dwfe15} and illustrates that, if the privacy cost $\epsilon$ is bounded by the estimation error, the differential privacy enables the reused training set to maintain statistical guarantees as if they were fresh samples. 
-Then Lemma~\ref{lemma dpp} establishes the differentially private nature of \textsc{SAGD} and analyzes its privacy cost:
+Lemma~\ref{lem: gen_adv} is an instance of Theorem 8 from~\cite{dwfe15} and illustrates that, if the privacy cost $\epsilon$ is bounded by the estimation error, the differential privacy mechanism enables the reused training samples set to maintain statistical guarantees as if they were fresh samples. 
+Then, we establish in Lemma~\ref{lemma dpp}, that \textsc{SAGD} with \textsc{DPG-Lap} is a differentially private algorithm with the following privacy cost:
 \begin{restatable}{lemm}{lemdpp}
 \label{lemma dpp}
-\textsc{SAGD} with DPG-Lap is $(\sqrt{T \ln(1/\delta)} G_1/(n\sigma), \delta)$-differentially private. 
+\textsc{SAGD} with \textsc{DPG-Lap} is $(\frac{\sqrt{T \ln(1/\delta)} G_1}{n\sigma}, \delta)$-differentially private. 
 \end{restatable}  
-In order to achieve a gradient concentration bound for \textsc{SAGD} with DPG-Lap as described in Lemma~\ref{lem: gen_adv}, we need to set $\sqrt{T \ln(1/\delta)} G_1/(n\sigma)\leq \sigma/13$, $\delta \leq \sigma \beta/(26 \ln(26/\sigma))$, and  sample size $n \geq 2\ln(8/\delta)/\epsilon^2$. 
-Then, the following result shows that across all iterations, gradients produced by \textsc{SAGD} with DPG-Lap maintain high probability concentration bounds.
+In order to achieve a gradient concentration bound for \textsc{SAGD} with \textsc{DPG-Lap} as described in Lemma~\ref{lem: gen_adv}, we need to set $\sqrt{T \ln(1/\delta)} G_1/(n\sigma)\leq \sigma/13$, $\delta \leq \sigma \beta/(26 \ln(26/\sigma))$, and  sample size $n \geq 2\ln(8/\delta)/\epsilon^2$. 
+Then, the following result shows that across all iterations, gradients produced by \textsc{SAGD} with \textsc{DPG-Lap} maintain high probability concentration bounds.
+
 \begin{restatable}{theo}{theoaccbasic}
 \label{thm: acc_basic}
-Given $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be the gradients computed by DPG-Lap in \textsc{SAGD}. Set the total number of iterations $ \frac{2n\sigma^2}{G_1^2}\leq T \leq \frac{n^2 \sigma^4}{169 \ln(1/(\sigma \beta))G_1^2}$, then for all $t \in [T]$, $\beta >0$ and $\mu > 0$:
+Given $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be gradients computed \textsc{DPG-Lap} in \textsc{SAGD}. Set the number of iterations $ 2n\sigma^2/G_1^2\leq T \leq n^2 \sigma^4/(169 \ln(1/(\sigma \beta))G_1^2)$, then for $t \in [T]$, $\beta >0$, $\mu > 0$:
     \begin{equation*}
     \mathbb{P}\left\{\|\tilde \g_t - \g_t\| \geq \sqrt{d}\sigma(1+\mu)\right\} \leq d\beta + d\exp(-\mu)~.
     \end{equation*}
@@ -238,19 +228,19 @@ A larger $\beta$ implies a larger upper bound on $T$, yet also a larger probabil
 We optimize the choice of $\beta$ and $\mu$ when analyzing the convergence to the stationary point.
 
 \textcolor{purple}{\textit{Non-asymptotic convergence rate:}}
-We derive the optimal values of $\sigma$ and $T$ to optimize the trade-off between statistical rate and optimization rate and obtain a novel finite-time bound in Theorem~\ref{thm: main_rmsprop}. 
-Denote $\rho_{n,d} \triangleq\mathcal{O} \left(\ln n + \ln d\right)$.
-We prove that \textsc{SAGD} converges to a population stationary point with high probability with the following rate:
+We derive the optimal values of $\sigma$ and $T$ to improve the trade-off between the statistical rate and the optimization rate and we obtain a novel finite-time bound in Theorem~\ref{thm: main_rmsprop}. 
+Denote $\rho_{n,d} \triangleq\mathcal{O} \left(\ln n + \ln d\right)$, we prove that \textsc{SAGD} with \textsc{DPG-Lap} converges to a population stationary point with high probability at the following rate:
+
 \begin{restatable}{theo}{theomainrmsprop}
 \label{thm: main_rmsprop}
- Given training set $S$ of size $n$, for $\nu >0$, if $\eta_t = \eta$ which are chosen with $\eta \leq \nu/(2L)$,  $\sigma = 1/n^{1/3}$, and iteration number $T = n^{2/3}/\left(169G_1^2(\ln d +7\ln n/3)\right)$, then \textsc{SAGD} with DPG-Lap converges to a stationary point of the population risk, \ie 
+ Given training set $S$ of size $n$, for $\nu >0$, if $\eta_t = \eta$ which are chosen with $\eta \leq \nu/(2L)$,  $\sigma = 1/n^{1/3}$, and iteration number $T = n^{2/3}/\left(169G_1^2(\ln d +7\ln n/3)\right)$, then \textsc{SAGD} with \textsc{DPG-Lap} converges to a stationary point of the population risk, \ie 
  \begin{small}
 \begin{equation*}
  \min_{1\leq t \leq T}\|\nabla f(\w_t)\|^2 \leq
 \mathcal{O} \left( \frac{\rho_{n,d} \left(f(\w_1) - f^\star \right)}{n^{2/3}} \right) + \mathcal{O} \left( \frac{d \rho_{n,d}^2}{n^{2/3}}\right)~,
 \end{equation*}
 \end{small}
-with probability at least $1-\mathcal{O}\left(\frac{1}{\rho_{n,d} n}\right)$.
+with probability at least $1-\mathcal{O} \left(1/(\rho_{n,d} n)\right)$.
 \end{restatable} 
 Theorem~\ref{thm: main_rmsprop} shows that, given $n$ samples, \textsc{SAGD} converges to a stationary point at a rate of $\mathcal{O}(1/n^{2/3})$ where we used the $\ell_2$ norm of the gradient of the objective function as a convergence criterion.
 Particularly, the first term of the bound corresponds to the optimization error $\mathcal{O}(1/T)$ with $T = \mathcal{O}(n^{2/3})$, while the second is the statistical error depending on available sample size $n$ and dimension $d$. 
@@ -258,16 +248,19 @@ Particularly, the first term of the bound corresponds to the optimization error 
 The current optimization analyses~\citep{zare18, wawu19, zosh2019, cheli2019} show that adaptive gradient descent algorithms converges to the stationary point of the objective function with a rate of $\mathcal{O}(1/\sqrt{T})$ with $T$ stochastic gradient computations. 
 Given $n$ samples, their analyses give a rate of  $\mathcal{O}(1/\sqrt{n})$. 
 Thus, the \textsc{SAGD} achieves a sharper bound compared to the previous analyses.  
+
 \vspace{-0.05in}
 \subsection{\textsc{SAGD} with \textsc{DPG-Sparse}} \label{subsec: SAGD-sparse}
 \vspace{-0.05in}
-In this section, we consider the \textsc{SAGD} with an advanced version of DPG named \textsc{DPG-Sparse} motivated by sparse vector technique~\citep{dwro2014} aiming to provide a sharper result on the privacy cost $\epsilon$ and $\delta$.
-Lemma~\ref{lemma dpp} shows that the privacy cost of \textsc{SAGD} with \textsc{DPG-Lap} scales with $\mathcal{O}(\sqrt{T})$. In order to guarantee the generalization of \textsc{SAGD} as stated in Theorem~\ref{thm: acc_basic}, we need to control the privacy cost below a certain threshold \ie $\sqrt{T \ln(1/\delta)} G_1/(n\sigma) \leq \frac{\sigma}{13}$. However, it limits the iteration number $T$ of \textsc{SAGD}, leading to a compromised optimization term in Theorem~\ref{thm: main_rmsprop}.  
+
+In this section, we consider the \textsc{SAGD} with an advanced version of \textsc{DPG} named \textsc{DPG-Sparse} motivated by sparse vector technique~\citep{dwro2014} aiming to provide a sharper result on the privacy cost $\epsilon$ and $\delta$.
+Lemma~\ref{lemma dpp} shows that the privacy cost of \textsc{SAGD} with \textsc{DPG-Lap} scales with $\mathcal{O}(\sqrt{T})$. In order to guarantee the generalization of \textsc{SAGD} as stated in Theorem~\ref{thm: acc_basic}, we need to control the privacy cost below a certain threshold \ie $\sqrt{T \ln(1/\delta)} G_1/(n\sigma) \leq \sigma/13$. However, it limits the iteration number $T$ of \textsc{SAGD}, leading to a compromised optimization term in Theorem~\ref{thm: main_rmsprop}.  
 In order to relax the upper bound on $T$, we propose the \textsc{SAGD} with \textsc{DPG-Sparse}, see Algorithm~\ref{algo: sparse}.
 Given $n$ samples, Algorithm~\ref{algo: sparse} splits the dataset evenly into two parts $S_1$ and $S_2$. 
 At each iteration $t$, Algorithm~\ref{algo: sparse} computes gradients on both datasets:
 $\hat \g_{S_1,t} = \frac{1}{|S_1|} \sum_{\z_j \in S_1}\nabla \ell(\w_t, \z_j)$ and $\hat \g_{S_2,t} = \frac{1}{|S_2|} \sum_{\z_j \in S_2}\nabla \ell(\w_t, \z_j)$.
-It then validates $\hat \g_{S_1,t} $ with $\hat \g_{S_2,t}$, \ie\ if the norm of their difference is greater than a random threshold $\tau-\gamma$, it returns $\tilde \g_t = \hat \g_{S_1,t} + \b_t$, otherwise $\tilde \g_t = \hat \g_{S_2,t}$.
+It then validates $\hat \g_{S_1,t} $ with $\hat \g_{S_2,t}$, \ie\ if the norm of their difference is greater than a random threshold $\tau-\gamma$, it returns $\tilde \g_t = \hat \g_{S_1,t} + \b_t$, otherwise $\tilde \g_t = \hat \g_{S_2,t}$.%\vspace{-0.05in}
+
 \begin{algorithm}[H]
 \caption{\textsc{SAGD} with \textsc{DPG-Sparse}}
 \begin{algorithmic}[1]
@@ -278,11 +271,13 @@ It then validates $\hat \g_{S_1,t} $ with $\hat \g_{S_2,t}$, \ie\ if the norm of
 \STATE Split $S$ randomly into $S_1$ and $S_2$. 
 \FOR{$t = 0,...,T-1$}
 \STATE   \textsc{DPG-Sparse:} Compute full batch gradient on $S_1$ and $S_2$:\\
-\centerline{$\hat \g_{S_1,t} = \frac{1}{|S_1|} \sum_{\z_j \in S_1}\nabla \ell(\w_t, \z_j)$,}
-\centerline{$\hat \g_{S_2,t} = \frac{1}{|S_2|} \sum_{\z_j \in S_2}\nabla \ell(\w_t, \z_j)$.}
+\centerline{$\hat \g_{S_1,t} = \frac{1}{|S_1|} \sum_{\z_j \in S_1}\nabla \ell(\w_t, \z_j)$,%}
+%\centerline{
+\hspace{0.2in}
+$\hat \g_{S_2,t} = \frac{1}{|S_2|} \sum_{\z_j \in S_2}\nabla \ell(\w_t, \z_j)$.}
 \STATE Sample $\gamma \sim \text{Lap}(2\sigma)$, $\tau \sim \text{Lap}(4\sigma)$.
 \IF{$\| \hat \g_{S_1,t} - \hat \g_{S_2,t}\| + \gamma >  \tau$}
-\STATE  $\tilde \g_t = \hat \g_{S_1,t} + \b_t$, where $\b_t^i$ is drawn i.i.d from Lap$(\sigma), \forall\, i \in [d]$.
+\STATE  $\tilde \g_t = \hat \g_{S_1,t} + \b_t$, where $\b_t^i$ is drawn i.i.d from Lap$(\sigma)$, for all $ i \in [d]$.
 \ELSE \STATE $\tilde \g_t = \hat \g_{S_2,t}$
 \ENDIF
 \STATE 
@@ -292,22 +287,25 @@ $\m_t = \tilde \g_t$ and $\v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{
 \ENDFOR 
 \STATE \textbf{Return}: $\tilde \g_t$.
 \end{algorithmic}
-\end{algorithm}
-Following \textsc{Thresholdout},~\citet{zhch2018} propose stable gradient descent algorithms which use a similar framework as \textsc{DPG-Sparse} to compute an estimated gradient by validating each coordinate of $\hat \g_{S_1,t}$ and $\hat \g_{S_2,t}$. 
-However, their method is computationally expensive in high-dimensional settings such as deep neural networks. 
+\end{algorithm}\vspace{-0.1in}
+
+
+Following \textsc{Thresholdout},~\citet{zhch2018} propose a stable gradient descent algorithms which use a similar framework as \textsc{DPG-Sparse} to compute an estimated gradient by validating coordinates of $\hat \g_{S_1,t}$ and $\hat \g_{S_2,t}$. 
+However, their method is computationally expensive in high-dimensional settings such as deep neural networks. Ours are particularly suited for those deep models, see Section~\ref{sec: experiment}.
 
 \textcolor{purple}{\textit{High-probability bound:}}
 To analyze the privacy cost of \textsc{DPG-Sparse}, let $C_{s}$ be the number of times the validation fails, \ie $\| \hat \g_{S_1,t} - \hat \g_{S_2,t}\| + \gamma >  \tau$ is true, over $T$ iterations in \textsc{SAGD}. The following Lemma presents the privacy cost of \textsc{SAGD} with \textsc{DPG-Sparse}.
 \begin{restatable}{lemm}{lemdppsparse}
 \label{lemma: dpp-sparse}
-\textsc{SAGD} with \textsc{DPG-Sparse}  (Algorithm~\ref{algo: sparse}) is  
+\textsc{SAGD} with \textsc{DPG-Sparse}  (Alg.~\ref{algo: sparse}) is  
 $(\frac{\sqrt{C_{s} \ln(2/\delta)} 2G_1}{n\sigma}, \delta)$-differentially private. 
 \end{restatable}
-Lemma~\ref{lemma: dpp-sparse} shows that the privacy cost of  \textsc{SAGD} with \textsc{DPG-Sparse} scales with $\mathcal{O}(\sqrt{C_{s}})$ where $C_{s} \leq T$. In other words, \textsc{DPG-Sparse} saves the privacy cost of \textsc{SAGD}. In order to achieve the generalization guarantee of \textsc{SAGD} with \textsc{DPG-Sparse} as stated in Lemma~\ref{lem: gen_adv},  by considering the guarantee of Lemma~\ref{lemma: dpp-sparse},  we only need to set $\sqrt{C_{s} \ln(1/\delta)} G_1/(n\sigma) \leq \sigma/13$, which potentially improves the upper bound of $T$. 
-The following theorem shows the generalization guarantee of $\tilde \g_t$ generated by \textsc{SAGD} with \textsc{DPG-Sparse}.
+Lemma~\ref{lemma: dpp-sparse} shows that the privacy cost of  \textsc{SAGD} with \textsc{DPG-Sparse} scales with $\mathcal{O}(\sqrt{C_{s}})$ where $C_{s} \leq T$. 
+In other words, \textsc{DPG-Sparse} procedure saves the privacy cost of the \textsc{SAGD} algorithm. Indeed, in order to achieve the generalization guarantee of \textsc{SAGD} with \textsc{DPG-Sparse}, as stated in Lemma~\ref{lem: gen_adv} and  by considering the guarantee of Lemma~\ref{lemma: dpp-sparse},  we only need to set $\sqrt{C_{s} \ln(1/\delta)} G_1/(n\sigma) \leq \sigma/13$, which potentially improves the upper bound of $T$. 
+The following result establishes the generalization guarantee of $\tilde \g_t$ generated by \textsc{SAGD} with \textsc{DPG-Sparse}.
 \begin{restatable}{theo}{theoaccsparse}
 \label{thm: acc_sparse}
-Given parameter $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be the gradients computed by \textsc{DPG-Sparse} over $T$ iterations. With a budget $ n\sigma^2/(2G_1^2) \leq C_{s} \leq n^2 \sigma^4/(676 \ln(1/(\sigma \beta))G_1^2)$, for $\forall\, t \in [T]$, any $\beta > 0$, and any $\mu > 0$ we have 
+Given parameter $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be the gradients computed by \textsc{DPG-Sparse} over $T$ iterations. With a budget $ n\sigma^2/(2G_1^2) \leq C_{s} \leq n^2 \sigma^4/(676 \ln(1/(\sigma \beta))G_1^2)$, for $t \in [T]$, any $\beta > 0$, and any $\mu > 0$ we have 
         \begin{equation*}
     \mathbb{P}\left\{\|\tilde \g_t - \g_t\| \geq \sqrt{d}\sigma(1+\mu)\right\} \leq d\beta + d\exp(-\mu)~.
     \end{equation*}
@@ -315,10 +313,7 @@ Given parameter $\sigma > 0$, let $\tilde \g_1,...,  \tilde \g_T$ be the gradien
 In the worst case $C_{s} = T$, we recover the bound of $T \leq n^2 \sigma^4/(676 \ln(1/(\sigma \beta))G_1^2)$ of \textsc{DPG-Lap}.
 
 \textcolor{purple}{\textit{Non-asymptotic convergence rate:}}
-The finite-time upper bound on the convergence criterion of \textsc{SAGD} with \textsc{DPG-Sparse} reads:
-%Next we consider \textsc{SAGD} with updating rule of RMSprop: $\phi_t(\tilde \g_1,...,\tilde \g_t) = \tilde \g_t$ and $ \v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{2}^{t-i} \tilde \g_{i}^{2}$. For this case, we present the best vaule of $\sigma$, $T$ for the trade-off between statistical rate and optimization rate which depends on number
-%of iterations in order to achieve the optimal
-%risk bound.   To simplify the results, we use $\rho_{n,d} =\mathcal{O} \left(\ln n + \ln d\right)$.
+The finite-time upper bound on the convergence criterion of \textsc{SAGD} with \textsc{DPG-Sparse}, see Algorithm~\ref{algo: sparse}, is stated as follows:
 \begin{restatable}{theo}{theormspropsparse}
 \label{thm: main_rmsprop_sparse}
  Given training set $S$ of size $n$, for $\nu >0$, if $\eta_t = \eta$ which are chosen with $\eta \leq \frac{\nu}{2L}$, noise level $\sigma = 1/n^{1/3}$, and iteration number $T = n^{2/3}/\left(676G_1^2(\ln d + \frac{7}{3}\ln n)\right)$, then \textsc{SAGD} with \textsc{DPG-Sparse}  guarantees convergence to a stationary point of the population risk:
@@ -328,19 +323,21 @@ The finite-time upper bound on the convergence criterion of \textsc{SAGD} with \
 \mathcal{O} \left( \frac{\rho_{n,d} \left(f(\w_1) - f^\star \right)}{n^{2/3}} \right) +\mathcal{O} \left( \frac{d \rho_{n,d}^2}{n^{2/3}}\right)~,
 \end{equation*}
 \end{small}
-with probability at least $1-\mathcal{O} \left(\frac{1}{\rho_{n,d} n}\right)$.
+with probability at least $1-\mathcal{O} \left(1/(\rho_{n,d} n)\right)$.
 \end{restatable} 
-Theorem~\ref{thm: main_rmsprop_sparse} shows that the worst case of \textsc{SAGD} with DGP-Sparse converges to a stationary point at a rate of $\mathcal{O}(1/n^{2/3})$ which is the same as that of \textsc{SAGD} with DGP-Lap. 
+Theorem~\ref{thm: main_rmsprop_sparse} displays a similar rate of $\mathcal{O}(1/n^{2/3})$ for the \textsc{SAGD} with \textsc{DGP-Sparse} as Theorem~\ref{thm: main_rmsprop}. 
 A sharper bound can be achieved when the number of validation failures $C_{s}$ is smaller than $T$. 
 For example, if $C_{s} = \mathcal{O}(\sqrt{T})$, the upper bound of $T$ can be improved from $T \leq \mathcal{O}(n^2)$ to $T \leq \mathcal{O}(n^4)$.
-%, beyond trading off between statistical rate and optimization rate. 
+
+
 \vspace{-0.05in}
 \subsection{Mini-batch Stable Adaptive Gradient Descent Algorithm}
 \label{mini-batch algorithm}
 \vspace{-0.05in}
+
 For large-scale learning we derive the mini-batch variant of \textsc{SAGD} in Algorithm~\ref{algo: mini-StAda}. 
 The training set $S$ is first partitioned into $B$ batches with $m$ samples for each batch. 
-At each iteration $t$, Algorithm~\ref{algo: mini-StAda} uses any DPG procedure to compute a differential private gradient $\tilde \g_t$ on each batch and update $\w_t$. 
+At each iteration $t$, Algorithm~\ref{algo: mini-StAda} uses any \textsc{DPG} procedure to compute a differential private gradient $\tilde \g_t$ on each batch and update $\w_t$. \vspace{-0.05in}
 \begin{algorithm}[H] 
 \caption{Mini-Batch \textsc{SAGD}}
 \begin{algorithmic}[1] \label{algo: mini-StAda}
@@ -358,7 +355,7 @@ At each iteration $t$, Algorithm~\ref{algo: mini-StAda} uses any DPG procedure t
 \ENDFOR
 \ENDFOR 
 \end{algorithmic}
-\end{algorithm} 
+\end{algorithm} \vspace{-0.05in}
 
 \begin{comment}
 \begin{theo}
@@ -396,7 +393,7 @@ Given $S$ of size $n$, with $\nu >0$, $\eta_t = \eta \leq \nu/(2L)$, noise level
  \end{split}
 \end{equation*}
 \end{small}
-with probability at least $1-\mathcal{O} \left(\frac{1}{\rho_{n,d} n}\right)$.
+with probability at least $1-\mathcal{O} \left(1/(\rho_{n,d} n)\right)$.
 \end{restatable}
 
 Theorem~\ref{thm: main_rmsprop_mini} 
@@ -411,43 +408,26 @@ for training various modern deep
 learning models and compare them with popular optimization methods, including SGD (with momentum), Adam, Padam,  AdaGrad,  RMSprop, and Adabound. 
 We consider three tasks: the MNIST image classification task~\citep{lebo1998}, the CIFAR-10 image
 classification task~\citep{krhi2009}, and the language modeling task on Penn Treebank
-\citep{mama1993}. The setup of each task is given in Table~\ref{tab::network_setup}. 
-\begin{table}[H]
-	\centering
-		\caption{Neural network architecture setup.}
-	\label{tab::network_setup}
-%	\resizebox{\columnwidth}{!}{%
-	\begin{tabular}{ccc}	
-	\toprule[2pt]
-	\textbf{Dataset} & \textbf{Network Type}    & \textbf{Architectures} \\ 	
-	\toprule[1pt]
-		MNIST            & Feedforward     & 2-Layer with ReLU  and 2-Layer with Sigmoid  \\
-		CIFAR-10         & Deep Convolutional       & VGG-19 and ResNet-18                \\
-		Penn Treebank    & Recurrent                & 2-Layer LSTM and 3-Layer LSTM      \\
-		\toprule[1pt]
-	\end{tabular}
-%	}
-\end{table}
-%\begin{table}[H]
-%	\centering
-%		\caption{Neural network architecture setup.}
-%	\label{tab::network_setup}
-%%	\resizebox{\columnwidth}{!}{%
-%	\begin{tabular}{ccc}	
-%	\toprule[2pt]
-%	\textbf{Dataset} & \textbf{Network Type}    & \textbf{Architecture} \\ 	
-%	\toprule[1pt]
-%		MNIST            & Feedforward     & 2-Layer with ReLU    \\
-%		MNIST            & Feedforward  & 2-Layer with Sigmoid   \\
-%		CIFAR-10         & Deep Convolutional       & VGG-19                \\
-%		CIFAR-10         & Deep Convolutional       & ResNet-18             \\
-%		Penn Treebank    & Recurrent                & 2-Layer LSTM          \\
-%		Penn Treebank    & Recurrent                & 3-Layer LSTM          \\ 
-%		\toprule[1pt]
-%	\end{tabular}
-%%	}
-%\end{table}
-\vspace{-0.15in}
+\citep{mama1993}. 
+% The setup of each task is given in Table~\ref{tab::network_setup}. 
+% \begin{table}[H]
+% 	\centering
+% 		\caption{Neural network architecture setup.}
+% 	\label{tab::network_setup}
+% %	\resizebox{\columnwidth}{!}{%
+% 	\begin{tabular}{ccc}	
+% 	\toprule[2pt]
+% 	\textbf{Dataset} & \textbf{Network Type}    & \textbf{Architectures} \\ 	
+% 	\toprule[1pt]
+% 		MNIST            & Feedforward     & 2-Layer with ReLU  and 2-Layer with Sigmoid  \\
+% 		CIFAR-10         & Deep Convolutional       & VGG-19 and ResNet-18                \\
+% 		Penn Treebank    & Recurrent                & 2-Layer LSTM and 3-Layer LSTM      \\
+% 		\toprule[1pt]
+% 	\end{tabular}
+% %	}
+% \end{table}
+
+\vspace{-0.05in}
 \subsection{Environmental Settings}
 \vspace{-0.05in}
 
@@ -458,7 +438,7 @@ To better understand the generalization ability of each optimization algorithm w
 For each $n$, we train the model and report the loss and accuracy on the test set.  
 For Penn Treebank, all training samples are used to train the model and we report the training perplexity and the test perplexity across~epochs. 
 %We choose the settings achieving the lowest final training loss.
-Cross-entropy is used as our loss function throughout experiments. The mini-batch size is set to be 128 for CIFAR10 and MNIST, 20 for Penn Treebank. 
+Cross-entropy is used as the loss function throughout experiments. The mini-batch size is set to be 128 for CIFAR10 and MNIST, 20 for Penn Treebank. 
 We repeat each experiment 5 times and report the mean and standard deviation of the results.
 \begin{figure}[t]
 \mbox{
@@ -469,8 +449,9 @@ We repeat each experiment 5 times and report the mean and standard deviation of 
 \includegraphics[width = 0.50 \textwidth]{figure/mnist_sigmoid.png}
  }
  }
+ \vspace{-0.1in}
  \caption[]{Test loss and accuracy of ReLU neural network and Sigmoid neural network on MNIST. The X-axis is the number of train samples, and the Y-axis is the loss/accuracy. In both cases, \textsc{SAGD} obtains the best test accuracy among all the methods.} 
- \label{fig:mnist}
+ \label{fig:mnist}\vspace{-0.05in}
 \end{figure}
 
 \textbf{Hyper-parameter setting:} 
@@ -499,7 +480,7 @@ Figure~\ref{fig:mnist} (a) shows that, for ReLU neural network,
 %SGD performs slightly better than adaptive methods in terms of test loss. Regarding the test accuracy, \textsc{SAGD} display slight improvement over the other algorithms. 
 Figure~\ref{fig:mnist} (b) presents the results on Sigmoid neural network. \textsc{SAGD} achieves the best test accuracy among all the algorithms. When $n =50000$, \textsc{SAGD} reaches the highest test accuracy of $98.14 \pm 0.11 \%$, outperforming other adaptive algorithms.
 
-\vspace{-0.05in}
+
 \textbf{Convolutional Neural Network.}
 We use ResNet-18~\citep{hezh2016} and VGG-19~\citep{sizi2014} for the CIFAR-10 image classification task. We run 100 epochs and decay the learning rate by 0.1 every 30 epochs. 
 The results are presented in Figure~\ref{fig:cifar10}. Figure~\ref{fig:cifar10} (a) shows that \textsc{SAGD} has higher test accuracy than the 
@@ -520,6 +501,9 @@ When $n= 50000$, SGD has the best test accuracy $91.36 \pm 0.04\%$. \textsc{SAGD
 \includegraphics[width = 0.52 \textwidth]{figure/cifar10_vgg.png}
  }
  }
+ 
+\vspace{-0.15in} 
+ 
  \mbox{
 \subfigure[Penn Treebank, 2-Layer LSTM]{
 \includegraphics[width = 0.52 \textwidth]{figure/ptb_2lstm.png}
@@ -528,13 +512,13 @@ When $n= 50000$, SGD has the best test accuracy $91.36 \pm 0.04\%$. \textsc{SAGD
 \includegraphics[width = 0.52 \textwidth]{figure/ptb_3lstm.png}
  }
 }
- %\vspace{-0.15in}
+ \vspace{-0.1in}
  \caption[]{Top row: Test loss and accuracy of ResNet-18 andVGG-19 on CIFAR10. 
 % For ResNet-18, \textsc{SAGD} achieves the lowest test loss. For VGG-19, \textsc{SAGD} achieves the best test accuracy among all the methods.
  Bottom row:  Train and test perplexity of 2-layer LSTM and 3-layer LSTM. 
 % Although adaptive methods such as AdGrad, Padam, Adam, and RMsprop achieves better training performance than \textsc{SAGD}, \textsc{SAGD} performs the best in terms of the test perplexity among all the methods.
 } 
- \label{fig:cifar10}
+ \label{fig:cifar10}\vspace{-0.05in}
 \end{figure}
 %The SGD perform similarly to 
 %loss, \textsc{SAGD} perform similarly to SGD. \textsc{SAGD}, SGD and AdaBound achieve the lowest test loss when $n \in [20000, 50000]$. 
@@ -574,7 +558,7 @@ Table~\ref{tab:ppl} shows the best test perplexity of 2-layer LSTM and 3-layer L
 3-layer LSTM & 63.97 $\pm$ 018  & 63.23 $\pm$ 004  & 66.25 $\pm$ 0.31 & 66.45 $\pm$ 0.28 & 62.33 $\pm$0.07 & 62.51 $\pm$0.11  & \textbf{59.43 $\pm$ 0.24} \\
 \toprule[1pt]
 \end{tabular}
-}
+}\vspace{-0.1in}
 \end{table}
 
 
@@ -584,8 +568,9 @@ Table~\ref{tab:ppl} shows the best test perplexity of 2-layer LSTM and 3-layer L
 
 In this paper, we focus on the generalization ability of adaptive gradient methods. 
 Concerned with the observation that adaptive gradient methods generalize worse than SGD for over-parameterized neural networks and given the limited theoretical understanding of the generalization of those methods,
-we propose stable adaptive gradient descent methods (\textsc{SAGD}), which boosts the generalization performance in both theory and practice through a novel use of differential privacy. 
-The proposed algorithms generalize well with provable high-probability convergence bounds of the population gradient. Experimental studies demonstrate that the proposed algorithms are competitive and often better than baseline algorithms for training deep neural networks. 
+we propose \textbf{S}table \textbf{A}daptive \textbf{G}radient \textbf{D}escent (\textsc{SAGD}) methods, which boost the generalization performance in both theory and practice through a novel use of differential privacy. 
+The proposed algorithms generalize well with provable high-probability convergence bounds of the population gradient. 
+Experimental studies highlight that the proposed algorithms are competitive and often better than baseline algorithms for training deep neural networks. 
 % In future work, we will consider improving our analysis in several ways, e.g.,  improvement of the dependence on dimension and sharper bounds of \textsc{SAGD} with \textsc{DPG-Sparse}.
 
 
