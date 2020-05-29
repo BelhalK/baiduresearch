@@ -89,11 +89,9 @@ Re-using data samples is therefore a caveat for the generalization of a given al
 
 In order to tackle the above issues, we propose \textit{\textbf{S}table \textbf{A}daptive \textbf{G}radient \textbf{D}escent} (\textsc{SAGD}) which aims at improving the generalization of general adaptive gradient descent algorithms.
 \textsc{SAGD} behaves similarly to the aforementioned ideal case of infinite fresh samples borrowing ideas from \emph{adaptive data analysis}~\citep{dwfe15} and \emph{differential privacy}~\citep{dwro2014}. 
-The main idea of our method is that, at each iteration, \textsc{SAGD} accesses the training set $z$ through a differentially private mechanism and computes an estimated gradient $\nabla \ell(\w,z)$ of the objective function $\nabla f(\w)$. 
+The main idea of our method is that, at each iteration, \textsc{SAGD} accesses the observations $z$ through a differentially private mechanism and computes an estimated gradient $\nabla \ell(\w,z)$ of the objective function $\nabla f(\w)$. 
 It then uses the estimated gradient to perform a descent step using adaptive stepsize. 
-We prove that the reused data points in \textsc{SAGD} nearly possesses the statistical nature of \emph{fresh samples} yielding to high concentration bounds of the population gradients through the iterations.
-
-Our  contributions  can be summarized as follows:
+We prove that the reused data points in \textsc{SAGD} nearly possesses the statistical nature of \emph{fresh samples} yielding to high concentration bounds of the population gradients through the iterations. Our  contributions  can be summarized as follows:
 \begin{itemize}
 \item We derive a novel adaptive gradient method, namely \textsc{SAGD}, leveraging ideas of differential privacy and adaptive data analysis aiming at improving the generalization of current baseline methods. A mini-batch variant is also introduced for large-scale learning tasks.
 \item Our differentially private mechanism, embedded in the \textsc{SAGD}, explores the idea of Laplace Mechanism (adding Laplace noises to gradients) and \textsc{Thresholdout}~\citep{dwro2014} leading to \textsc{DPG-Lap} and \textsc{DPG-Sparse} methods saving privacy cost. 
@@ -109,7 +107,7 @@ Due to space limit, most of the proofs are deferred to the supplementary materia
 
 \textbf{Notations:} 
 We use $\g_t$ and $\nabla f(\w)$ interchangeably to denote the \emph{population gradient} such that $\g_t = \nabla f(\w_t) = \mathbb{E}_{\z \in \cP} [\nabla \ell(\w_t, \z)]$. $S = \left\{\z_{1}, \dots, \z_{n}\right\}$
-denotes the $n$ available training samples. $\hat \g_t$ denotes the sample gradient evaluated on $S$ such that $\hat \g_t = \nabla \hat f(\w) = \frac{1}{n}\sum_{j=1}^n \nabla \ell(\w_t, \z_j)$. For a vector $\v$, $\v^2$ represents that $\v$ is element-wise squared.  We use $\v^i$ or $[\v]_i$ to denote the $i$-th coordinate of $\v$ and $\|\v\|_2$ is the $\ell_2$-norm of $\v$.
+denotes the $n$ available training samples. $\hat \g_t$ denotes the sample gradient evaluated on $S$ such that $\hat \g_t = \nabla \hat f(\w) = \frac{1}{n}\sum_{j=1}^n \nabla \ell(\w_t, \z_j)$. For a vector $\v$, $\v^2$ represents that $\v$ is element-wise squared.  We use $\v^i$ or $[\v]_i$ to denote the $i$-th coordinate of $\v$ and $\|\v\|_2$ is the $\ell_2$-norm of $\v$. We denote $[d]=\{1,\dots,d\}$.
 
 \vspace{-0.05in}
 \section{Preliminaries}
@@ -137,23 +135,38 @@ In other words, the differentially private reused dataset maintains the statisti
 Beforehand, we recall the definition of a $(\epsilon, \delta)$-differentially private algorithm:
 \begin{defn}
 (Differential Privacy~\citep{dwro2014}) A randomized algorithm $\mathcal{M}$ is $(\epsilon, \delta)$-differentially private if 
-$\mathbb{P}\{\mathcal{M}(\cal{D})\in \mathcal{Y}\} \leq \exp(\epsilon)\mathbb{P}\{\mathcal{M}(\cal{D\prime})\in \mathcal{Y} \} + \delta$
+$$\mathbb{P}\{\mathcal{M}(\cal{D})\in \mathcal{Y}\} \leq \exp(\epsilon)\mathbb{P}\{\mathcal{M}(\cal{D\prime})\in \mathcal{Y} \} + \delta$$
 holds for all $\mathcal{Y}\subseteq Range(\mathcal{M})$ and all pairs of adjacent datasets $\cal{D},\cal{D\prime}$ that differ on a single sample.
 \end{defn}
-The general approach for achieving  $(\epsilon, \delta)$-differential privacy when estimating a deterministic real-valued function $q: \cZ^n \rightarrow \mathbb{R}^d$ is Laplace Mechanism~\citep{dwro2014}, which adds Laplace noise calibrated to the function $q$, \ie $\mathcal{M}(\cD)= q(\cD)+ \b$, where for all $i \in [d]$, $\b^i \sim \textrm{Laplace}(0, \sigma^2)$.
+The general approach for achieving $(\epsilon, \delta)$-differential privacy when estimating a deterministic real-valued function $q: \cZ^n \rightarrow \mathbb{R}^d$ is Laplace Mechanism~\citep{dwro2014}, which adds Laplace noise calibrated to the function $q$, \ie $\mathcal{M}(\cD)= q(\cD)+ \b$, where for all $i \in [d]$, $\b^i \sim \textrm{Laplace}(0, \sigma^2)$.
 We present \textsc{SAGD} with two different \textbf{D}ifferential \textbf{P}rivate\textbf{ G}radient (DPG) computing methods to provide an estimate of the gradient $\nabla f(\w)$, namely \textsc{DPG-Lap} based on the \emph{Laplace Mechanism}~\citep{dwro2014}, see Section~\ref{subsec: SAGD_lap} and an improvment named \textsc{DPG-Sparse} motivated by sparse vector technique~\citep{dwro2014} in Section~\ref{subsec: SAGD-sparse}.
 
 \vspace{-0.05in}
-\subsection{\textsc{SAGD} with DPG-LAP} \label{subsec: SAGD_lap}
+\subsection{\textsc{SAGD} with \textsc{DGP-Lap}} \label{subsec: SAGD_lap}
 \vspace{-0.05in}
 
+%\begin{algorithm}[t] 
+%\caption{\textsc{SAGD}}
+%\begin{algorithmic}[1] \label{algo: StAda}
+%\STATE \textbf{Input}: Dataset $S$,  certain loss $\ell(\cdot)$, initial point $\w_0$.
+%\STATE Set  noise level $\sigma$, iteration number $T$,  and stepsize $\eta_t$.
+%\FOR{$t = 0,...,T-1$}
+%\STATE \label{line:dpg} Call DPG($S$,  $\ell(\cdot)$, $\w_t$, $\sigma$) to compute gradient $\tilde \g_t$.
+%\STATE  \label{line:adap1}
+%$\m_t = \tilde \g_t$ and $\v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{2}^{t-i} \tilde \g_{i}^{2}$.
+%\STATE  \label{line:adap2} $\w_{t+1}=\w_{t}-\eta_t \m_t /(\sqrt{\v_t}+\nu)$.
+%\ENDFOR 
+%\end{algorithmic}
+%\end{algorithm}
 \begin{algorithm}[t] 
-\caption{\textsc{SAGD}}
+\caption{\textsc{SAGD} with \textsc{DGP-Lap}}
 \begin{algorithmic}[1] \label{algo: StAda}
-\STATE \textbf{Input}: Dataset $S$,  certain loss $\ell(\cdot)$, initial point $\w_0$.
+\STATE \textbf{Input}: Dataset $S$,  certain loss $\ell(\cdot)$, initial point $\w_0$ and noise level $\sigma$.
 \STATE Set  noise level $\sigma$, iteration number $T$,  and stepsize $\eta_t$.
 \FOR{$t = 0,...,T-1$}
-\STATE \label{line:dpg} Call DPG($S$,  $\ell(\cdot)$, $\w_t$, $\sigma$) to compute gradient $\tilde \g_t$.
+	\STATE  \textsc{DPG-Lap:} Compute full batch gradient on $S$: \\
+	\centerline{ $\hat \g_t = \frac{1}{n} \sum_{j=1}^n\nabla \ell(\w_t, z_j)$.}	
+	\STATE \label{line:dpg} Set $\tilde \g_t = \hat \g_t + \b_t$, where $\b_t^i$ is drawn i.i.d from Lap$(\sigma), \forall\, i \in [d]$.
 \STATE  \label{line:adap1}
 $\m_t = \tilde \g_t$ and $\v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{2}^{t-i} \tilde \g_{i}^{2}$.
 \STATE  \label{line:adap2} $\w_{t+1}=\w_{t}-\eta_t \m_t /(\sqrt{\v_t}+\nu)$.
@@ -161,21 +174,21 @@ $\m_t = \tilde \g_t$ and $\v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{
 \end{algorithmic}
 \end{algorithm}
 In most deep learning applications, a training set $S$ of size $n$ is observed.
-Then, at each iteration $t \in [T]$, \textsc{SAGD}, Algorithm~\ref{algo: StAda}, calls DPG($S$,  $\ell(\cdot)$, $\w_t$, $\sigma$, that computes the empirical gradient noted $\tilde \g_t$ and updates the model parameter $\w_{t+1}$ using adaptive stepsize.
-Note that thenoise variance $\sigma^2$, step-size $\eta_t$, and iteration number $T$, $~ \beta_2,~\nu$ are parameters and play an important role for our theoretical study presented in the sequel. 
-We first consider \textsc{DPG-Lap} (Algorithm~\ref{algo: lap}) which adds Laplace noise $\b_t \in \mathbb{R}^d$ to the empirical gradient $\hat \g_t = \frac{1}{n} \sum_{j=1}^n\nabla \ell(\w_t, \z_j)$ and returns a noisy gradient $\tilde \g_t = \hat \g_t + \b_t$ to the optimization oracle Algorithm~\ref{algo: StAda}.
-\begin{algorithm}[H]
-\caption{DPG-Lap}
-\begin{algorithmic}[1]
-\label{algo: lap}
-	\STATE \textbf{Input}: Dataset $S$,  certain loss $\ell(\cdot)$, parameter $\w_t$, noise level $\sigma$.
-	\STATE Compute full batch gradient on $S$: \\
-	\centerline{ $\hat \g_t = \frac{1}{n} \sum_{j=1}^n\nabla \ell(\w_t, z_j)$.}	
-	\STATE Set $\tilde \g_t = \hat \g_t + \b_t$, where $\b_t^i$ is drawn i.i.d from Lap$(\sigma), \forall\, i \in [d]$.
-	\STATE \textbf{Output}: $\tilde \g_t$.
-	\end{algorithmic}
-\end{algorithm}\vspace{-0.1in}
-In the sequel, the following assumptions are necessary:
+Then, at each iteration $t \in [T]$, \textsc{SAGD}, Algorithm~\ref{algo: StAda}, calls \textsc{DPG-Lap}, that computes the empirical gradient noted $\tilde \g_t$ and updates the model parameter $\w_{t+1}$ using adaptive stepsize.
+Note that the noise variance $\sigma^2$, step-size $\eta_t$, and iteration number $T$, $~ \beta_2,~\nu$ are parameters and play an important role for our theoretical study presented in the sequel. 
+We first consider \textsc{DPG-Lap} (Line~\ref{line:dpg} in Algorithm~\ref{algo: StAda}) which adds Laplace noise $\b_t \in \mathbb{R}^d$ to the empirical gradient $\hat \g_t = \frac{1}{n} \sum_{j=1}^n\nabla \ell(\w_t, \z_j)$ and returns a noisy gradient $\tilde \g_t = \hat \g_t + \b_t$ to the optimization oracle Algorithm~\ref{algo: StAda}.
+%\begin{algorithm}[H]
+%\caption{DPG-Lap}
+%\begin{algorithmic}[1]
+%\label{algo: lap}
+%	\STATE \textbf{Input}: Dataset $S$,  certain loss $\ell(\cdot)$, parameter $\w_t$, noise level $\sigma$.
+%	\STATE Compute full batch gradient on $S$: \\
+%	\centerline{ $\hat \g_t = \frac{1}{n} \sum_{j=1}^n\nabla \ell(\w_t, z_j)$.}	
+%	\STATE Set $\tilde \g_t = \hat \g_t + \b_t$, where $\b_t^i$ is drawn i.i.d from Lap$(\sigma), \forall\, i \in [d]$.
+%	\STATE \textbf{Output}: $\tilde \g_t$.
+%	\end{algorithmic}
+%\end{algorithm}\vspace{-0.1in}
+In the sequel, assume:
 \begin{assumption}
 The objective function $ f: \mathbb{R}^d \rightarrow \mathbb{R}$ is bounded from below by $f^\star$ and is $L$-smooth ($L$-Lipschitz gradients), \ie$\nr \|\nabla f(\w) -\nabla f(\w^\prime) \|\leq L \|\w-\w^\prime \|, ~ \forall\, \w, \w^\prime \in \cW$.
 \end{assumption}
@@ -264,7 +277,7 @@ It then validates $\hat \g_{S_1,t} $ with $\hat \g_{S_2,t}$, \ie\ if the norm of
 \STATE Set  noise level $\sigma$, iteration number $T$,  and stepsize $\eta_t$.
 \STATE Split $S$ randomly into $S_1$ and $S_2$. 
 \FOR{$t = 0,...,T-1$}
-\STATE   Compute full batch gradient on $S_1$ and $S_2$:\\
+\STATE   \textsc{DPG-Sparse:} Compute full batch gradient on $S_1$ and $S_2$:\\
 \centerline{$\hat \g_{S_1,t} = \frac{1}{|S_1|} \sum_{\z_j \in S_1}\nabla \ell(\w_t, \z_j)$,}
 \centerline{$\hat \g_{S_2,t} = \frac{1}{|S_2|} \sum_{\z_j \in S_2}\nabla \ell(\w_t, \z_j)$.}
 \STATE Sample $\gamma \sim \text{Lap}(2\sigma)$, $\tau \sim \text{Lap}(4\sigma)$.
@@ -287,7 +300,7 @@ However, their method is computationally expensive in high-dimensional settings 
 To analyze the privacy cost of \textsc{DPG-Sparse}, let $C_{s}$ be the number of times the validation fails, \ie $\| \hat \g_{S_1,t} - \hat \g_{S_2,t}\| + \gamma >  \tau$ is true, over $T$ iterations in \textsc{SAGD}. The following Lemma presents the privacy cost of \textsc{SAGD} with \textsc{DPG-Sparse}.
 \begin{restatable}{lemm}{lemdppsparse}
 \label{lemma: dpp-sparse}
-\textsc{SAGD} with \textsc{DPG-Sparse}  (Algorithm 3) is  
+\textsc{SAGD} with \textsc{DPG-Sparse}  (Algorithm~\ref{algo: sparse}) is  
 $(\frac{\sqrt{C_{s} \ln(2/\delta)} 2G_1}{n\sigma}, \delta)$-differentially private. 
 \end{restatable}
 Lemma~\ref{lemma: dpp-sparse} shows that the privacy cost of  \textsc{SAGD} with \textsc{DPG-Sparse} scales with $\mathcal{O}(\sqrt{C_{s}})$ where $C_{s} \leq T$. In other words, \textsc{DPG-Sparse} saves the privacy cost of \textsc{SAGD}. In order to achieve the generalization guarantee of \textsc{SAGD} with \textsc{DPG-Sparse} as stated in Lemma~\ref{lem: gen_adv},  by considering the guarantee of Lemma~\ref{lemma: dpp-sparse},  we only need to set $\sqrt{C_{s} \ln(1/\delta)} G_1/(n\sigma) \leq \sigma/13$, which potentially improves the upper bound of $T$. 
@@ -338,7 +351,7 @@ At each iteration $t$, Algorithm~\ref{algo: mini-StAda} uses any DPG procedure t
 \STATE Split $S$ into $B=n/m$ batches: $\{ s_1,..., s_B\}$.
 \FOR{$epoch = 1,...,T$}
 \FOR{$k = 1,..., B$}
-\STATE \label{line:dpgmini} Call DPG($S_k$,  $\ell(\cdot)$, $\w_t$, $\sigma$) to compute $\tilde \g_t$.
+\STATE \label{line:dpgmini} Call \textsc{DPG-Lap} or \textsc{DPG-Sparse} to compute $\tilde \g_t$.
 \STATE \label{line:mini1} $\m_t = \tilde \g_t$ and $\v_t = \left(1-\beta_{2}\right) \sum_{i=1}^{t} \beta_{2}^{t-i} \tilde \g_{i}^{2}$.
 %$\m_t = \phi_t(\tilde \g_1, ..., \tilde \g_t)$ and $\v_t = \psi_t(\tilde \g_1,.., \tilde \g_t)$
 \STATE \label{line:mini2} $\w_{t+1}=\w_{t}-\eta_t \m_t /(\sqrt{\v_t}+\nu)$.
