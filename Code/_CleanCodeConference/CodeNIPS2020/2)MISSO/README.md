@@ -16,8 +16,8 @@ Contents
 ====
 Code to reproduce experiments for 
 - Binary Logistic Regression: R code
-- Bayesian Neural Network: python code (TensorFlow), LeNET-5 on MNIST 
-- Bayesian Neural Network: python code (TensorFlow), ResNet18 on CIFAR-10
+- Bayesian Neural Network: python code (TensorFlow and Tensorflow Probability), LeNET-5 on MNIST 
+- Bayesian Neural Network: python code (TensorFlow and Tensorflow Probability), ResNet18 on CIFAR-10
 
 License
 ====
