@@ -326,11 +326,36 @@ The benefit of such approach is that we do not need to introduce extra communica
 % Nevertheless, one needs to design a way to ensure consensus of adaptive learning rates with a relatively low cost easy-to-implement. 
 % Most importantly, such design will further complicate the already convoluted convergence analysis of adaptive gradient methods. 
 % In the next section, we will introduce our designed algorithmic framework based on this approach and its theoretical guarantee.
-\begin{algorithm}[t]
+% \begin{algorithm}[t]
+% 	\caption{Decentralized Adaptive Gradient Method (with N nodes)}
+% 	\label{alg: dadaptive}
+% 	\begin{algorithmic}[1]
+% 		\STATE {\bfseries Input:} learning rate $\alpha$, initial point $x_{1,i} = x_{init}, u_{\frac{1}{2},i} = \hat v_{0,i}, m_{0,i}=0$, mixing matrix $W$
+% 		\FOR{$t=1,2,\cdots,T$}
+% 		\FORALLP{$i \in [N]$}
+% 		\STATE  $g_{t,i}  \leftarrow \nabla f_i(x_{t,i}) + \xi_{t,i}$
+% 		\STATE $m_{t,i} = \beta_1 m_{t-1,i} + (1-\beta_1) g_{t,i}$ 
+% 		\STATE $\hat v_{t,i} = r_t(g_{1,i},\cdots,g_{t-1,i})$
+% 		\STATE $x_{t+\frac{1}{2},i} = \sum_{j=1}^N W_{ij}x_{t,j}$
+% 	    \STATE $\tilde u_{t,i} = \sum_{j=1}^N W_{ij} \tilde u_{t-\frac{1}{2},j}$
+% 	    \STATE $u_{t,i} = \max(\tilde u_{t,i}, \epsilon)$
+% 		\STATE $x_{t+1,i} = x_{t+\frac{1}{2},i} - \alpha \frac{m_{t,i}}{\sqrt{u_{t,i}}}$
+% 		\STATE $\tilde u_{t+\frac{1}{2},i} = \tilde u_{t,i} - \hat v_{t-1,i} + \hat v_{t,i}$
+% 		\ENDFAP
+% 		\ENDFOR
+% 	\end{algorithmic}
+% \end{algorithm}
+
+\vspace{-0.05in}
+\subsection{Decentralized Adaptive Gradient Unifying Framework}
+\vspace{-0.05in}
+\begin{wrapfigure}[19]{r}{.5\linewidth}\vspace{-0.3in}
+\begin{minipage}{\linewidth}
+\begin{algorithm}[H]
 	\caption{Decentralized Adaptive Gradient Method (with N nodes)}
 	\label{alg: dadaptive}
 	\begin{algorithmic}[1]
-		\STATE {\bfseries Input:} learning rate $\alpha$, initial point $x_{1,i} = x_{init}, u_{\frac{1}{2},i} = \hat v_{0,i}, m_{0,i}=0$, mixing matrix $W$
+		\STATE {\bfseries Input:}  $\alpha$, initial point $x_{1,i} = x_{init}, u_{\frac{1}{2},i} = \hat v_{0,i}, m_{0,i}=0$, mixing matrix $W$
 		\FOR{$t=1,2,\cdots,T$}
 		\FORALLP{$i \in [N]$}
 		\STATE  $g_{t,i}  \leftarrow \nabla f_i(x_{t,i}) + \xi_{t,i}$
@@ -345,17 +370,16 @@ The benefit of such approach is that we do not need to introduce extra communica
 		\ENDFOR
 	\end{algorithmic}
 \end{algorithm}
-
-\vspace{-0.05in}
-\subsection{Decentralized Adaptive Gradient Unifying Framework}
-\vspace{-0.05in}
-
+\end{minipage}
+\end{wrapfigure}
 As mentioned before, we need to choose a method to implement consensus of adaptive learning rates.
 While each node can have different $\hat v_{t,i}$ in DADAM, one can keep track of the min/max/average of these adaptive learning rates and use this quantity to update the adaptive learning rates. 
-Also one can predefine some convergent lower and upper bounds to gradually synchronize the adaptive learning rates on different nodes as developed for AdaBound in \citep{luo2019adaptive}.  
+The predefinition of some convergent lower and upper bounds may also lead to a gradual synchronization of the adaptive learning rates on different nodes as developed for AdaBound in \citep{luo2019adaptive}.
 In this paper, we opt for the average consensus on $\hat v_{t,i}$.
-Since in adaptive gradient methods such as AdaGrad or Adam, the quantity $\hat v_{t,i}$ approximates the second moment of the gradient estimator, the average of the estimations of those second moments from different nodes is an estimation of second moment on the whole network.  
-Also, this design will not introduce any extra hyperparameters that can potentially complicate the tuning process. We now present the main convergence result for our class methods:
+Since for adaptive gradient methods such as AdaGrad or Adam, $\hat v_{t,i}$ approximates the second moment of the gradient estimator, the average of the estimations of those second moments from different nodes is an estimation of second moment on the whole network.  
+Also, this design will not introduce any extra hyperparameters that can potentially complicate the tuning process. 
+Our method is presented Algorithm~\ref{alg: dadaptive}.
+We now present the main convergence result for our class of methods:
 \begin{theorem}\label{thm: dagm_converge}
 Assume A\ref{a:diff}-A\ref{a:matrixW}.
 Set $\alpha = 1/
@@ -383,7 +407,8 @@ As $N$ becomes larger, the term $\sigma^2/N$ will be small.
 This is also strengthened by the fact that with the growth of $N$, the training process tends to be more stable. 
 We now present, in Algorithm~\ref{alg: damsgrad}, a notable special case of our algorithmic framework, namely Decentralized AMSGrad, which is a decentralized variant of AMSGrad.
 
-\begin{wrapfigure}[20]{r}{.5\linewidth}\vspace{-0.15in}
+Compared with DADAM, the above algorithm leverages a dynamic average consensus mechanism to keep track of average of $\{\hat v_{t,i}\}_{i=1}^N$, stored as $\tilde u_{t,i}$ on $i$th node, and uses $u_{t,i} = \max(\tilde u_{t,i}, \epsilon)$ for updating the adaptive learning rate for $i$th node. As the number of iteration grows, even though $\hat v_{t,i}$ on different nodes can converge to different constants, all the $u_{t,i}$ will be converge to the same number $ \lim_{t \rightarrow \infty} 1/N \sum_{i=1}^N\hat v_{t,i} $ if the limit exists.
+\begin{wrapfigure}[21]{r}{.5\linewidth}\vspace{-0.1in}
 \begin{minipage}{\linewidth}
 \begin{algorithm}[H]
 	\caption{Decentralized AMSGrad (with N nodes)}
@@ -406,8 +431,6 @@ We now present, in Algorithm~\ref{alg: damsgrad}, a notable special case of our 
 	\end{algorithmic}
 \end{algorithm}\vspace{-0.1in}
 \end{minipage}\end{wrapfigure}
-
-Compared with DADAM, the above algorithm leverages a dynamic average consensus mechanism to keep track of average of $\{\hat v_{t,i}\}_{i=1}^N$, stored as $\tilde u_{t,i}$ on $i$th node, and uses $u_{t,i} = \max(\tilde u_{t,i}, \epsilon)$ for updating the adaptive learning rate for $i$th node. As the number of iteration grows, even though $\hat v_{t,i}$ on different nodes can converge to different constants, all the $u_{t,i}$ will be converge to the same number $ \lim_{t \rightarrow \infty} 1/N \sum_{i=1}^N\hat v_{t,i} $ if the limit exists.
 The use of this average consensus mechanism enables the consensus of adaptive learning rates on different nodes, which consequentially guarantees convergence to stationary points. 
 The consensus of adaptive learning rates is the key difference between decentralized AMSGrad and DADAM and is the reason why decentralized AMSGrad is a convergent algorithm while DADAM is not.
 One may noticed that decentralized AMSGrad does not deduce to AMSGrad because $u_{t,i}$ in line 10 is calculated based on $v_{t-1,i}$ instead of $v_{t,i}$.
@@ -701,23 +724,66 @@ We first bound $T_3$ using the following quantities of interest:
  }%
 Then, by plugging the LHS of \eqref{eq: to_merge_sketch} in \eqref{eq: exp_telescope_sketch}, and further bounding as operated for $T_2, T_3$ (see supplement), we obtain the bound in Theorem \ref{thm: dagm_converge}.
 
-\section{Numerical Experiments}\label{sec:numerical}
-In this section, we conduct experiments to test the performance of Decentralized AMSGrad, see Algorithm~\ref{alg: damsgrad}, on both homogeneous data and heterogeneous data distribution (i.e. the data generating distribution on different nodes are assumed to be different). 
-We compare it with DADAM and the decentralized stochastic gradient descent (DGD) developed in \citep{lian2017can}. 
-The task consists of training a Convolutional Neural Network (CNN) with 3 convolution layers followed by a fully connected layer on MNIST~\citep{lecun1998mnist}. 
-We set $\epsilon = 10^{-6}$ for both Decentralized AMSGrad and DADAM, the learning rate is chosen from the grid $[10^{-1}, 10^{-2}, 10^{-3}, 10^{-4}, 10^{-5}, 10^{-6}]$ based on validation accuracy for all algorithms. 
-In all the following experiments, the graph contains 5 nodes and the nodes form a ring, each node can only talk with its two adjacent neighbors. We set $W_{ij} = 1/3$ if there nodes $i$ and $j$ are neighbors and $W_{ij} = 0$ otherwise for the mixing matrix. More details and experiments can be found in Appendix \ref{app: experiments}.
-\begin{figure}[H]
-\mbox{
-\includegraphics[width=0.25\textwidth]{train_loss_updated.eps}
-\includegraphics[width=0.25\textwidth]{test_acc_updated.eps}
-\includegraphics[width=0.25\textwidth]{ub_train_loss.eps}
-\includegraphics[width=0.25\textwidth]{ub_test.eps}
+\paragraph{Proof of Theorem \ref{thm: dams_converge}}  
+Recall the bound in \eqref{eq: thm1} of Theorem \ref{thm: dagm_converge}.
+% \begin{align}\label{eq: rep_thm1}
+% \frac{1}{T}\sum_{t=1}^T  \mathbb E \left [\left\|\frac{\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2  \right]
+% \leq  & C_1 \frac{\sqrt{d}}{\sqrt{T}} \left(\mathbb E  [f( \overline X_{1})]  - \min_{z} f(z)]  + \frac{\sigma^2}{N}\right)  +  \frac{ 1}{T} C_2    + \frac{1}{T^{1.5}d^{0.5}} C_3 \nonumber \\ 
+% &+ \left(  \frac{1}{T N^{0.5} } C_4 + \frac{1}{T^{1.5}d^{0.5} N^{0.5}} C_5  \right) \mathbb E \left[ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} \right]  \, ,
+% \end{align}
+% where $\| \cdot\|_{abs}$  denotes the entry-wise $L_1$ norm of a matrix (i.e $\| A\|_{abs} = \sum_{i,j}{|A_{ij}|}$).
+Since Algorithm~\ref{alg: damsgrad} is a special case of Algorithm~\ref{alg: dadaptive}, the remaining of the proof consists in characterizing the growth rate of $\mathbb E [ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} ]$.
+By construction, $\hat V_t$ is non decreasing, then it can be shown that
+$
+\mathbb E [ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} ] = \mathbb E [   \sum_{i=1}^N \sum_{j=1}^d    (- [\hat v_{0,i}]_j + [\hat v_{T-1,i}]_j ) ]
+$.
+Besides, since for all $t,i$, $\|g_{t,i}\|_{\infty} \leq G_{\infty}$ and $v_{t,i}$ is an exponential moving average of $g_{k,i}^2, k=1,2,\cdots,t$, we have $|[v_{t,i}]_j| \leq G^2_{\infty}$ for all $t,i,j$. 
+By construction of $\hat V_t$, we also observe that each element of $\hat V_{t}$ cannot be greater than $G^2_{\infty}$, i.e. $|[\hat v_{t,i}]_j| \leq G^2_{\infty}$ for all $t,i,j$.
+Given that $[\hat v_{0,i}]_j \geq 0$ , we have 
+{\small 
+\begin{align}
+\mathbb E \left[ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} \right]  =\mathbb E \left[   \sum_{i=1}^N \sum_{j=1}^d    (- [\hat v_{0,i}]_j + [\hat v_{T-1,i}]_j ) \right]   \nonumber \leq  \sum_{i=1}^N \sum_{j=1}^d  \mathbb E[G_{\infty}^2]=  Nd G_{\infty}^2 \, .
+\end{align}
 }
-\caption{Performance comparison on homogeneous and heterogeneous data}
+Substituting into \eqref{eq: thm1} yields the desired convergence bound for Algorithm~\ref{alg: damsgrad}.
+
+% \section{Numerical Experiments}\label{sec:numerical}
+\subsection{Illustrative Numerical Experiments}
+In this section, we conduct some experiments to test the performance of Decentralized AMSGrad, developed in Algorithm~\ref{alg: damsgrad}, on both \emph{homogeneous} data and \emph{heterogeneous} data distribution (i.e. the data generating distribution on different nodes are assumed to be different). 
+Womparison with DADAM and the decentralized stochastic gradient descent (DGD) developed in \citep{lian2017can} are conducted. 
+We train a Convolutional Neural Network (CNN) with 3 convolution layers followed by a fully connected layer on MNIST~\citep{lecun1998mnist}.
+We set $\epsilon = 10^{-6}$ for both Decentralized AMSGrad and DADAM, the learning rate is chosen from the grid $[10^{-1}, 10^{-2}, 10^{-3}, 10^{-4}, 10^{-5}, 10^{-6}]$ based on validation accuracy for all algorithms. 
+In the following experiments, the graph contains 5 nodes and each node can only communicate with its two adjacent neighbors. 
+Regarding the mixing matrix, we set $W_{ij} = 1/3$ if nodes $i$ and $j$ are neighbors and $W_{ij} = 0$ otherwise.
+More details and experiments can be found in the supplementary material.
+\begin{figure}[H]
+    \begin{subfigure}[b]{0.49\textwidth}
+      \includegraphics[width=0.49\textwidth]{train_loss_updated.eps}
+            \includegraphics[width=0.49\textwidth]{test_acc_updated.eps}
+      \caption{ Homogeneous data}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.49\textwidth}
+      \includegraphics[width=0.49\textwidth]{ub_train_loss.eps}
+            \includegraphics[width=0.49\textwidth]{ub_test.eps}
+      \caption{Heterogeneous data}
+    \end{subfigure}
+\caption{Training loss and Testing accuracy for homogeneous and heterogeneous data}
 	\label{fig: homo_data}
-%	\vspace{-0.15in}
-\end{figure}
+	\vspace{-0.15in}
+  \end{figure}
+  
+%  
+%\begin{figure}[H]
+%\mbox{
+%\includegraphics[width=0.25\textwidth]{train_loss_updated.eps}
+%\includegraphics[width=0.25\textwidth]{test_acc_updated.eps}
+%\includegraphics[width=0.25\textwidth]{ub_train_loss.eps}
+%\includegraphics[width=0.25\textwidth]{ub_test.eps}
+%}
+%\caption{Performance comparison on homogeneous and heterogeneous data}
+%	\label{fig: homo_data}
+%\vspace{-0.15in}
+%\end{figure}
 
 
 % \begin{figure}[H]
@@ -735,11 +801,19 @@ In all the following experiments, the graph contains 5 nodes and the nodes form 
 % 	\caption{Performance comparison on homogeneous data}
 % 	\label{fig: homo_data}
 % \end{figure}
-Figure \ref{fig: homo_data} shows the performance of different algorithms on homogeneous data. The whole dataset is shuffled evenly split to different nodes. We can see that decentralized AMSGrad and DADAM performs quite similarly and DGD is slower compared with them in terms of both training loss and test accuracy. 
-Though we have prove in previous sections that DADAM is not a convergent algorithm, its performance is still quite good on homogeneous data. The reason is that the adaptive learning rates tend to be similar on different nodes when we have homogeneous data distribution. However, this is usually not true when we have heterogeneous data distribution. This motivates us to compare the performance of the algorithms on a different data distribution. 
+\textit{Homogeneous data:}
+The whole dataset is shuffled and evenly split into different nodes. 
+We see, Figure~\ref{fig: homo_data}(a), that decentralized AMSGrad and DADAM perform quite similarly while DGD is much slower both in terms of training loss and test accuracy. 
+Though the (possible) non convergence of DADAM, mentioned in this paper, its performance are empirically good on homogeneous data. 
+The reason is that the adaptive learning rates tend to be similar on different nodes in presence of homogeneous data distribution. 
+We thus compare these algorithms under the heterogeneous regime. 
 
-% In Figure \ref{fig: hetero_data}
-In Figure \ref{fig: homo_data}, we compare the performance of different algorithms on heterogeneous data. In this case, each node only contains training data with two labels out of ten. We can see that all algorithm converges significantly slower compared with the case with homogeneous data. Especially, the performance of DADAM deteriorates significantly. decentralized AMSGrad achieves the best training and testing performance in this experiment.
+\textit{Heterogeneous data:}
+Here, each node only contains training data with two labels out of ten. 
+We can see that each algorithm converges significantly slower than with homogeneous data. 
+Especially, the performance of DADAM deteriorates significantly. 
+Decentralized AMSGrad achieves the best training and testing performance in that setting as observed Figure~\ref{fig: homo_data}(b).
+
 % \begin{figure}[H]
 % \centering
 % 	\begin{subfigure}[b]{0.4\textwidth}
@@ -770,6 +844,9 @@ Experiments show that the proposed algorithm achieves better performance than th
 
 \clearpage
 \section{Broader Impact of Our Work}
+We hope that efforts towards developing decentralized optimization methods can be put to good use for practical applications where data can not be shared in a central server for privacy reasons.
+Indeed, when the data is sensible and captured on several devices (nodes), we must come up with efficient and low-cost optimization methods for fitting complex models.
+We believe our work is a step forward leveraging current state-of-the-art optimization methods for decentralized optimization.
 
 \bibliography{reference}
 \bibliographystyle{plainnat}
@@ -1182,7 +1259,8 @@ Further, because $\|g_{t,i}\|_{\infty} \leq G_{\infty}, \forall t,i$ and $v_{t,i
 
 Given the fact that $[\hat v_{0,i}]_j \geq 0$ , we have 
 \begin{align}
-\mathbb E \left[ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} \right]  =\mathbb E \left[   \sum_{i=1}^N \sum_{j=1}^d    (- [\hat v_{0,i}]_j + [\hat v_{T-1,i}]_j ) \right]   \nonumber \leq  \mathbb E \left[   \sum_{i=1}^N \sum_{j=1}^d  G_{\infty}^2   \right]=  Nd G_{\infty}^2
+\mathbb E \left[ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} \right]  = \mathbb E \left[   \sum_{i=1}^N \sum_{j=1}^d    (- [\hat v_{0,i}]_j + [\hat v_{T-1,i}]_j ) \right]  
+\leq  \mathbb E \left[   \sum_{i=1}^N \sum_{j=1}^d  G_{\infty}^2   \right] =  Nd G_{\infty}^2
 \end{align}
 
 Substituting the above into \eqref{eq: rep_thm1}, we have 
@@ -1195,14 +1273,10 @@ Substituting the above into \eqref{eq: rep_thm1}, we have
 \end{align}
 where we have 
 \begin{align}
-&C_1' = C_1 \nonumber \\
-& C_2' = C_2\nonumber \\
-& C_3' = C_3\nonumber \\
-& C_4' = C_4G_{\infty}^2\nonumber \\
-& C_5' = C_5 G_{\infty}^2 
+C_1' = C_1 \quad C_2' = C_2 \quad C_3' = C_3 \quad C_4' = C_4G_{\infty}^2 \quad C_5' = C_5 G_{\infty}^2
 \end{align}
 
-The proof is complete. \hfill $\square$
+This completes our proof. \hfill $\square$
 
 
 \subsection{Proof of Lemmas} \label{app: proof_lemmas}
