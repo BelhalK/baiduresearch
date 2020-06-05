@@ -124,7 +124,12 @@ citecolor=blue]{hyperref}
 
 
 \begin{abstract}\vspace{-0.1in}
-Adaptive gradient methods including Adam, AdaGrad, and their variants have been very successful for training deep learning models, such as neural networks, in the past few years. Meanwhile, given the need for distributed training procedures, distributed optimization algorithms are at the center of attention. With the growth of computing power and the need for using machine learning models on mobile devices, the communication cost of distributed training algorithms needs careful consideration. In response to this, more and more attention is shifted from the traditional parameter server training paradigm to the decentralized one, which usually requires lower communication costs. In this paper, we try to rigorously incorporate adaptive gradient methods into decentralized training procedures, coming up with convergent decentralized adaptive gradient methods. Specifically, we propose a general algorithmic framework that can convert existing adaptive gradient methods to their decentralized counterparts. In addition, we rigorously analyze the convergence behavior of the proposed algorithmic framework and show that if a given adaptive gradient method converges, under some specific conditions, then its decentralized counterpart is also convergent. 
+	Adaptive gradient methods including Adam, AdaGrad, and their variants have been very successful for training deep learning models, such as neural networks, in the past few years. 
+Meanwhile, given the need for distributed training procedures, distributed optimization algorithms are at the center of attention.
+	With the growth of computing power and the need for using machine learning models on mobile devices, the communication cost of distributed training algorithms needs careful consideration. 
+	In response to this, more and more attention is shifted from the traditional parameter server training paradigm to the decentralized one, which usually requires lower communication costs. 
+	In this paper, we try to rigorously incorporate adaptive gradient methods into decentralized training procedures, coming up with convergent decentralized adaptive gradient methods. Specifically, we propose a general algorithmic framework that can convert existing adaptive gradient methods to their decentralized counterparts. 
+	In addition, we rigorously analyze the convergence behavior of the proposed algorithmic framework and show that if a given adaptive gradient method converges, under some specific conditions, then its decentralized counterpart is also convergent. 
 % Adaptive gradient methods including Adam, AdaGrad, and their variants are proven to be very successful for training machine learning models such as neural nets in the past a few years. At the same time, distributed optimization is becoming increasingly popular, partly due to its success in training neural nets.  With the growth of computing power and the need for using machine learning models on mobile devices, the communication cost of distributed training algorithms becomes unignorable. In response to this, more and more attention is shifted from the traditional parameter server training paradigm to decentralized training paradigms, which usually require lower communication costs. In this paper, we try to rigorously incorporate adaptive gradient methods into decentralized training, giving rise to convergent decentralized adaptive gradient methods. Specifically, we propose an algorithmic framework that can convert existing adaptive gradient methods to their decentralized counterparts. In addition, we rigorously analyze the convergence behavior of the proposed algorithmic framework and show that if an adaptive gradient method is convergent, its converted counterpart is also convergent. Finally, using the framework, we proposed the first convergent decentralized adaptive gradient method.
 \end{abstract}
 
@@ -154,13 +159,14 @@ Designing adaptive methods in such settings is highly non-trivial due to the alr
 This paper is an attempt at bridging the gap between both realms in nonconvex optimization. 
 Our contributions are summarized as follows:
 \begin{itemize}
-\item In this paper, we investigate the possibility of using any adaptive gradient methods in the decentralized, and gossip-based (nodes have only a local view of the whole communication graph), training paradigm. We develop a general technique that converts an adaptive gradient method from a centralized method to its decentralized variant.
+\item In this paper, we investigate the possibility of using any adaptive gradient methods in the decentralized training paradigm, where nodes have only a local view of the whole communication graph. We develop a general technique that converts an adaptive gradient method from a centralized method to its decentralized variant.
 \item By using our proposed technique, we present a new decentralized optimization algorithm, called decentralized AMSGrad, as the decentralized counterpart of AMSGrad.
 \item We provide a theoretical verification interface, in Theroem~\ref{thm: dagm_converge}, for analyzing the behavior of decentralized adaptive gradient methods obtained as a result of our technique.
 Thus, we characterize the convergence rate of decentralized AMSGrad, which is the first convergent decentralized adaptive gradient method, to the best of our knowledge.
 \end{itemize}
 A \emph{novel technique} in our framework is a mechanism to enforce a consensus on adaptive learning rates at different nodes. 
-We show the importance of consensus on adaptive learning rates by proving a divergent problem instance for a recently proposed decentralized adaptive gradient method, namely, DADAM~\citep{nazari2019dadam}, a decentralized version of ADAM, which lacks of consensus mechanisms on the adaptive learning rates of each node.
+We show the importance of consensus on adaptive learning rates by proving a divergent problem instance for a recently proposed decentralized adaptive gradient method, namely DADAM~\citep{nazari2019dadam}, a decentralized version of ADAM. 
+Though consensus is performed on the model parameter, DADAM lacks of consensus principles on the nodes adaptive learning rates.
 
 After having presented existing related work and important concepts of decentralized adaptive methods in Section~\ref{sec:prelim}, we develop our general framework for converting any adaptive gradient algorithm in its decentralized counterpart along with their rigorous finite-time convergence analysis in Section ~\ref{sec:main} concluded by some illustrative examples of our framework's behavior in practice. 
 % Section~\ref{sec:conclusion} concludes our work.
@@ -298,7 +304,7 @@ We also develop the first convergent decentralized adaptive gradient method, con
 The divergent example in the previous section implies that we should synchronize the adaptive learning rates on different nodes. 
 This can be easily achieved in the parameter server setting where all the nodes are sending their gradients to a central server at each iteration.
 The parameter server can then exploit the received gradients to maintain a sequence of synchronized adaptive learning rates when updating the parameters, see~\citep{reddi2020adaptive}.
-However, in our decentralized setting, every node can only communicate with its neighbors (gossip-based) and such central server does not exist.
+However, in our decentralized setting, every node can only communicate with its neighbors and such central server does not exist.
 Under that setting, the information for updating the adaptive learning rates can only be shared locally instead of broadcasted over the whole network.
 This makes it impossible to obtain, in a single iteration, a synchronized adaptive learning rate update using all the information in the network. 
 
@@ -327,7 +333,7 @@ We now develop this exact idea within the existing adaptive methods stressing on
 		\FORALLP{$i \in [N]$}
 		\STATE  $g_{t,i}  \leftarrow \nabla f_i(x_{t,i}) + \xi_{t,i}$
 		\STATE $m_{t,i} = \beta_1 m_{t-1,i} + (1-\beta_1) g_{t,i}$ 
-		\STATE $\hat v_{t,i} = r_t(g_{1,i},\cdots,g_{t-1,i})$
+		\STATE $\hat v_{t,i} = r_t(g_{1,i},\cdots,g_{t,i})$
 		\STATE $x_{t+\frac{1}{2},i} = \sum_{j=1}^N W_{ij}x_{t,j}$
 	    \STATE $\tilde u_{t,i} = \sum_{j=1}^N W_{ij} \tilde u_{t-\frac{1}{2},j}$
 	    \STATE $u_{t,i} = \max(\tilde u_{t,i}, \epsilon)$
@@ -342,9 +348,9 @@ We now develop this exact idea within the existing adaptive methods stressing on
 As mentioned before, we need to choose a method to implement consensus of adaptive learning rates.
 While each node can have different $\hat v_{t,i}$ in DADAM, one can keep track of the min/max/average of these adaptive learning rates and use this quantity to update the adaptive learning rates. 
 The predefinition of some convergent lower and upper bounds may also lead to a gradual synchronization of the adaptive learning rates on different nodes as developed for AdaBound in \citep{luo2019adaptive}.
-In this paper, we opt for the average consensus on $\hat v_{t,i}$, see operator $r_t$ line 6 of Algorithm~\ref{alg: dadaptive}.
+In this paper, we opt for the average consensus on $\hat v_{t,i}$, see consensus update in line 8 and 11 of Algorithm~\ref{alg: dadaptive}.
 Since for adaptive gradient methods such as AdaGrad or Adam, $\hat v_{t,i}$ approximates the second moment of the gradient estimator, the average of the estimations of those second moments from different nodes is an estimation of second moment on the whole network.  
-Also, this design will not introduce any extra hyperparameters that can potentially complicate the tuning process. 
+Also, this design will not introduce any extra hyperparameters that can potentially complicate the tuning process ($\epsilon$ in line 9 is important for numerical stability as in vanilla Adam).  
 Our method is presented Algorithm~\ref{alg: dadaptive}.
 We now present the main convergence result for our class of methods:
 \begin{theorem}\label{thm: dagm_converge}
