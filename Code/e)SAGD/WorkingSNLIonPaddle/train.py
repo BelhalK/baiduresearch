@@ -69,18 +69,14 @@ class Train():
 	def train(self):
 		self.model.train(); self.dataset.train_iter.init_epoch()
 		n_correct, n_total, n_loss = 0, 0, 0
-		ind = 0
 		for batch_idx, batch in enumerate(self.dataset.train_iter):
-			while ind<2:
-				self.opt.zero_grad()
-				answer = self.model(batch)
-				loss = self.criterion(answer, batch.label)
-				n_correct += (torch.max(answer, 1)[1].view(batch.label.size()) == batch.label).sum().item()
-				n_total += batch.batch_size
-				n_loss += loss.item()
-				loss.backward(); self.opt.step()
-				ind+= 1
-				print(ind)
+			self.opt.zero_grad()
+			answer = self.model(batch)
+			loss = self.criterion(answer, batch.label)
+			n_correct += (torch.max(answer, 1)[1].view(batch.label.size()) == batch.label).sum().item()
+			n_total += batch.batch_size
+			n_loss += loss.item()
+			loss.backward(); self.opt.step()
 		train_loss = n_loss/n_total
 		train_acc = 100. * n_correct/n_total
 		return train_loss, train_acc
@@ -89,16 +85,12 @@ class Train():
 		self.model.eval(); self.dataset.dev_iter.init_epoch()
 		n_correct, n_total, n_loss = 0, 0, 0
 		with torch.no_grad():
-			ind = 0
 			for batch_idx, batch in enumerate(self.dataset.dev_iter):
-				while ind<2:
-					answer = self.model(batch)
-					loss = self.criterion(answer, batch.label)
-					n_correct += (torch.max(answer, 1)[1].view(batch.label.size()) == batch.label).sum().item()
-					n_total += batch.batch_size
-					n_loss += loss.item()
-					ind+= 1
-					print(ind)
+				answer = self.model(batch)
+				loss = self.criterion(answer, batch.label)
+				n_correct += (torch.max(answer, 1)[1].view(batch.label.size()) == batch.label).sum().item()
+				n_total += batch.batch_size
+				n_loss += loss.item()
 			val_loss = n_loss/n_total
 			val_acc = 100. * n_correct/n_total
 			return val_loss, val_acc
