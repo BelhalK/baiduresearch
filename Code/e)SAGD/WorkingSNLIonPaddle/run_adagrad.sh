@@ -18,3 +18,4 @@ for lr in 0.1 0.5
 do
 /opt/conda/envs/py36/bin/python -u train.py --lr $lr --batch_size 256 --seed 141 --epoch 50 --repeat 3 --optimizer adagrad
 done
+
