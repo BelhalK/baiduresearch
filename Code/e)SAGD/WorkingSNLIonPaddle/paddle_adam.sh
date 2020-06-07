@@ -5,7 +5,7 @@
 ##                 请将下面的 ak/sk 替换成自己的 ak/sk              ##                                                              
 ###############################################################                                                                     
 cur_time=`date  +"%Y%m%d%H%M"`
-job_name=snli-bilstm-adagrad-${cur_time}
+job_name=snli-bilstm-adam-${cur_time}
 
 
 group_name="ccl-32g-0-yq01-k8s-gpu-v100-8"                   # 将作业提交到group_name指定的组，必填                                 

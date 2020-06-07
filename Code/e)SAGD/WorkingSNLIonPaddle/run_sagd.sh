@@ -11,7 +11,15 @@ mkdir local_data
 /opt/conda/envs/py36/bin/pip install tqdm
 /opt/conda/envs/py36/bin/pip install datetime
 
-for lr in 20
+# for lr in 20
+# do
+# /opt/conda/envs/py36/bin/python -u train.py --lr $lr --batch_size 256 --seed 141 --epoch 50 --repeat 3 --optimizer sagd --noise-coe 0.1
+# done
+
+for lr in 0.002 #0.001 
 do
-/opt/conda/envs/py36/bin/python -u train.py --lr $lr --batch_size 256 --seed 141 --epoch 50 --repeat 3 --optimizer sagd
+for noi in 0.1 0.01
+do
+/opt/conda/envs/py36/bin/python -u train.py --lr $lr --batch_size 256 --seed 141 --epoch 50 --repeat 3 --optimizer SARMSprop --noise-coe $noi --wdecay 0.5
+done
 done

@@ -69,13 +69,15 @@ class SARMSprop(Optimizer):
                     continue
                 
                 grad = p.grad.data
-                
                 scale = torch.abs(torch.max(grad) - torch.min(grad))
-                
                 noi = group['noise'] * scale
-                
-                noise.normal_(0, noi)
-                
+                # print('scale is equal to {} '.format(scale))
+                # print('noi is equal to {} '.format(noi))
+                if noi > 0:
+                    noise.normal_(0, noi)
+                else:
+                    noi = 0.007
+                    noise.normal_(0, noi)
                 grad = grad.add_(noise)
                 
                 if grad.is_sparse:

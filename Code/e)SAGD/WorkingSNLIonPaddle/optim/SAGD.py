@@ -3,6 +3,7 @@ from torch.optim import Optimizer
 from torch.optim.optimizer import required
 import math
 import numpy as np
+import pdb
 
 class SAGD(Optimizer):
     def __init__(self, params, lr=required, momentum=0, noise =0, dampening=0,
@@ -55,6 +56,7 @@ class SAGD(Optimizer):
                     continue
                 d_p = p.grad.data
                 scale = torch.abs(torch.max(d_p) - torch.min(d_p))
+                # pdb.set_trace()
                 noi = group['noise'] * scale
                 noise.normal_(0, noi)
                 d_p = d_p.add_(noise)
@@ -74,9 +76,7 @@ class SAGD(Optimizer):
                         d_p = buf
 
                 scale = torch.abs(torch.max(d_p) - torch.min(d_p))
-#                print(scale)
-
-                # oi = group['noise'] * scale
+                # noi = group['noise'] * scale
                 # noise.normal_(0, noi)
                 # noise = torch.normal( torch.zeros(d_p.size()), noi*torch.ones(d_p.size())).to(device)
                 # d_p = d_p.add_(noise)
