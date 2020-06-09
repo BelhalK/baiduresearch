@@ -8,6 +8,7 @@ from optim.SAGD import SAGD
 from optim.SAGD_sparse import SAGDSparse
 from optim.SARMSprop import SARMSprop
 from optim.adabound import AdaBound
+from optim.Padam import Padam
 
 import torch.nn as nn
 import numpy as np
@@ -55,6 +56,8 @@ class Train():
 			self.opt = SAGD(self.model.parameters(), lr=self.args.lr, noise=self.args.noise_coe * noi, momentum=self.args.momentum, weight_decay=self.args.wdecay)
 		elif self.args.optimizer == 'SARMSprop':
 			self.opt = SARMSprop(self.model.parameters(), lr=self.args.lr, noise=self.args.noise_coe * noi, momentum=self.args.momentum, weight_decay=self.args.wdecay)
+		elif self.args.optimizer == 'padam':
+			self.opt = Padam(self.model.parameters(), lr=self.args.lr, partial = 0.125, weight_decay = self.args.wdecay, betas = (self.args.beta1, self.args.beta2))
 
 		self.best_accuracy = -1
 		print("resource preparation done: {}".format(datetime.datetime.now()))
