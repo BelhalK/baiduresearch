@@ -1,0 +1,1 @@
+python3 -u train.py --lr 0.001 --batch_size 256 --seed 141 --epoch 1 --repeat 1 --optimizer adam
