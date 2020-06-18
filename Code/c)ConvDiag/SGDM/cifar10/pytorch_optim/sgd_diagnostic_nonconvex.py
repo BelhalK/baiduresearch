@@ -16,9 +16,9 @@ class SGD_Diagnostic_Nonconvex(Optimizer):
                         weight_decay=weight_decay, nesterov=nesterov)
         if nesterov and (momentum <= 0 or dampening != 0):
             raise ValueError("Nesterov momentum requires a momentum and zero dampening")
-        super(SGD_Diagnostic, self).__init__(params, defaults)
+        super(SGD_Diagnostic_Nonconvex, self).__init__(params, defaults)
 
-        # SGD_Diagnostic
+        # SGD_Diagnostic_Nonconvex
         self.old_dp_loss = []
         for group in self.param_groups:
             g_loss_ls = []
@@ -37,7 +37,7 @@ class SGD_Diagnostic_Nonconvex(Optimizer):
         self.sim = sim
 
     def __setstate__(self, state):
-        super(SGD_Diagnostic, self).__setstate__(state)
+        super(SGD_Diagnostic_Nonconvex, self).__setstate__(state)
         for group in self.param_groups:
             group.setdefault('nesterov', False)
 
@@ -86,7 +86,7 @@ class SGD_Diagnostic_Nonconvex(Optimizer):
 
                 p.data.add_(-group['lr'], d_p)
 
-                # SGD_Diagnostic
+                # SGD_Diagnostic_Nonconvex
                 ip[0] += torch.mm(dp_loss.view(1, -1), self.old_dp_loss[i][j].view(-1, 1))
                 dpsq[0] += torch.sum(dp_loss**2)
                 old_dpsq[0] += torch.sum(self.old_dp_loss[i][j]**2)
