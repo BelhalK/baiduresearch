@@ -1,0 +1,75 @@
+%\subsection{Localized Federated Optimization}
+
+\begin{comment}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{algorithm}[H]
+\caption{\texttt{CFL}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning with Sketching for homogeneous setting. }\label{Alg:ce-h}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}^{(r)}=\boldsymbol{w}^{(r-1)}-\gamma\underline{\mathbf{S}}^{(r)}$
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^n\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ %and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+\State $\qquad\qquad$ Sever runs $\underline{\mathbf{S}}^{(r)}= \texttt{HEAVYMIX}(\mathbf{S}^{(r)})$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{CFL}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning with Sketching and gradient tracking. }\label{Alg:one-shot-using data samoples-b}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r-1)}-\gamma\underline{\mathbf{S}}^{(r)}$ 
+\State $\qquad\quad$ Set $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left(\underline{\mathbf{S}}^{(r)}-\underline{\mathbf{S}}^{(r)}_j\right)$
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ back to the server.
+\State $\qquad$Server \textbf{runs} 
+\State $\qquad\qquad\underline{\mathbf{S}}_j^{(r)}= \texttt{HEAVYMIX}(\mathbf{S}_j^{(r)})$ and returns $\underline{\mathbf{S}}_j^{(r)}$ to server $j$.
+\State $\qquad\qquad \underline{\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^n\underline{\mathbf{S}}_j^{(r)}$ %and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+\State $\qquad\qquad$ Sever broadcasts $\underline{\mathbf{S}}^{(r)}$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{comment}
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Assumptions%%%%%%%%%%%%%%%%%%%%%%
+\begin{comment}
+\begin{assumption}[Contraction \cite{stich2018sparsified}]
+A randomized function $\texttt{Comp}_k:\mathbb{R}^d\rightarrow\mathbb{R}^d$ is called a compression operator, if there exists a constant $c\in(0,1]$ (that may depend on $k$ and $d$), such that for every $\mathbf{x}\in\mathbb{R}^d$, we have $\mathbb{E}\left[\left\|\mathbf{x}-\texttt{Comp}_k(\mathbf{x})\right\|^2_2\right]\leq(1-c)\left\|\mathbf{x}\right\|^2_2$ where expectation is taken over $\texttt{Comp}_k$. 
+\end{assumption}
+We note that for the contraction operators (see~ \cite{stich2018sparsified} for more examples) we have $c=\frac{k}{d}$.
+\end{comment}

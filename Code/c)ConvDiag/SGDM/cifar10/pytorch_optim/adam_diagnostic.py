@@ -1,7 +1,7 @@
 import math
 import torch
 from .optimizer import Optimizer
-
+import pdb
 
 class Adam_Diagnostic(Optimizer):
     r"""Implements Adam algorithm.
@@ -61,6 +61,7 @@ class Adam_Diagnostic(Optimizer):
             # num = torch.mm(x.view(1, -1), y.view(-1, 1)) denom = max(torch.norm(x) * torch.norm(y), 1e-8)
             # return num / denom
         self.ip_sim = ip_sim
+        self.initparam = 0
 
     def __setstate__(self, state):
         super(Adam_Diagnostic, self).__setstate__(state)
@@ -85,6 +86,7 @@ class Adam_Diagnostic(Optimizer):
 
         for i, group in enumerate(self.param_groups):
             for j, p in enumerate(group['params']):
+                pdb.set_trace()
                 if p.grad is None:
                     continue
                 grad = p.grad.data

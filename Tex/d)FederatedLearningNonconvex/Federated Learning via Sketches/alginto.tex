@@ -1,0 +1,384 @@
+
+\section{Problem Setting}
+In this paper our goal is to solve the following optimization problem using $p$ distributed devices:
+\begin{align}
+    f(\boldsymbol{x})\triangleq \left[\min_{\boldsymbol{x}\in \mathbb{R}^{d}}\frac{1}{p}\sum_{j=1}^{p}F_j(\boldsymbol{x})\right]
+\end{align}
+where $F_j(\boldsymbol{x})=\mathbb{E}_{\xi\in\mathcal{D}_j}\left[f_j\left(\boldsymbol{x},\xi\right)\right]$ is the local cost function at device $j$.
+
+\section{Federated Learning via Sketching}
+In the following we provide two sections, starting with differential private and communication algorithm using sketches. In the following subsection, we present communication-efficient variant of algorithm provided in first section.
+
+\subsection{Deferentially private and communication efficient algorithms}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{CS}: Count Sketch to compress ${\mathbf{g}}\in\mathbb{R}^{d}$. }\label{Alg:csketch}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} ${\mathbf{g}}\in\mathbb{R}^{d}, t, k, \mathbf{S}_{t\times k}, h_i (1\leq i\leq t), sign_i (1\leq i\leq t)$
+\State \textbf{Compress vector $\tilde{\mathbf{g}}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\tilde{\mathbf{g}}\right)$:}
+\State \textbf{for} $\mathbf{g}_i\in\mathbf{g}$ \textbf{do}
+\State \quad\textbf{for $j=1,\cdots,t$ do}
+\State \quad\quad $\mathbf{S}[j][h_j(i)]=\mathbf{S}[j-1][h_{j-1}(i)]+\text{sign}_j(i).\mathbf{g}_i$ 
+\State \quad\textbf{end for}
+\State \textbf{end for}
+\State \textbf{return} $\mathbf{S}_{t\times k}$
+\State \textbf{Query} $\mathbf{g}_S\in\mathbb{R}^d$ \textbf{from $\mathbf{S(g)}$:}
+\State \textbf{for} $i=1,\ldots,d$ \textbf{do}
+\State \quad\quad $\mathbf{S}_\mathbf{g}=\text{Median}\{\text{sign}_j(i).\mathbf{S}[j][h_j(i)]:1\leq j\leq t\}$ 
+\State \textbf{end for}
+\State \textbf{Output:} $\mathbf{S}\left(\mathbf{g}\right)$
+\belhal{What is this function $\mathbf{S}(\cdot)$?. Do you mean the matrix $\mathbf{S}_g$ ? }
+\vspace{- 0.1cm}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCH}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching. }\label{Alg:PFLHom}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{x}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma\underline{\mathbf{S}}^{(r)}$
+\State $\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $c=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(c,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(c,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}\left[\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right]$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{S}\left[\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right]$ and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+%\State $\qquad$Sever chooses a set of devices  $\mathcal{P}_t$ with distribution $q_j$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCHgt}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching and gradient tracking. }\label{Alg:PFLHet}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{x}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left(\mathbf{S}^{(r-1)}-\mathbf{S}^{(r-1)}_j\right)$
+\State $\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r-1)}-\gamma{\mathbf{S}}^{(r-1)}$ 
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a minibatch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~\left( \tilde{\mathbf{g}}_{j}^{(\ell,r)}-\mathbf{c}_j^{(r)}\right)$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}^{(r)}_j\triangleq\mathbf{S}\left[\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right]$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{S}^{(r)}_j$ and  \textbf{broadcasts} $\mathbf{S}^{(r)}$ to all devices.
+%\State $\qquad$Sever chooses a set of devices  $\mathcal{P}_t$ with distribution $q_j$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Communication-efficient algorithm}
+Here we propose the communication-efficient algorithm:
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{HEAVYMIX}~\cite{ivkin2019communication} }\label{Alg:sketch}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\mathbf{S}_{\mathbf{g}}$; parameter-$k$
+\State \textbf{Compress vector $\tilde{\mathbf{g}}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\tilde{\mathbf{g}}\right)$:}
+\State Query $\hat{\ell}_2^2=\left(1\pm 0.5\right)\left\|\mathbf{g}\right\|^2$ from sketch $\mathbf{S}_{\mathbf{g}}$
+\State $\forall j$ query $\hat{\mathbf{g}}_j^2=\hat{\mathbf{g}}_j^2\pm \frac{1}{2k}\left\|\mathbf{g}\right\|^2$ from sketch $\mathbf{S}_{\mathbf{g}}$
+\State $H=\{j|\hat{\mathbf{g}}_j\geq \frac{\hat{\ell}_2^2}{k}\}$ and $NH=\{j|\hat{\mathbf{g}}_j<\frac{\hat{\ell}_2^2}{k}\}$
+\State Top$_k=H\cup rand_\ell(NH)$, where $\ell=k-\left|H\right|$
+\State Second round of communication to get exact values of Top$_k$ 
+\State \textbf{Output:} $\mathbf{g}_S:\forall j\in\text{Top}_k:\mathbf{g}_{Si}=\mathbf{g}_{i}$ and $\forall\notin\text{Top}_k: \mathbf{g}_{Si}=0$
+%\vspace{- 0.1cm}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCH-II}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning via Sketching. }\label{Alg:ce-h}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}^{(r)}=\boldsymbol{w}^{(r-1)}-\gamma\underline{\mathbf{S}}^{(r)}$
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^n\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ %and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+\State $\qquad\qquad$ Sever runs $\underline{\mathbf{S}}^{(r)}= \texttt{HEAVYMIX}(\mathbf{S}^{(r)})$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+\subsection{Differentially Private Property}
+\begin{definition}
+A randomized mechanism $\mathcal{O}$ satisfies $\epsilon-$differential privacy, if for input data ${S}_1$ and ${S}_2$ differing by up to one element, and for any output $D$ of $\mathcal{O}$,
+\begin{align}
+    \Pr\left[\mathcal{O}(S_1)\in D\right]\leq \exp{\left(\epsilon\right)}\Pr\left[\mathcal{O}(S_2)\in D\right] 
+\end{align}
+\end{definition}
+\todo{Add explanations that this scheme induces local privacy!}
+
+\begin{assumption}[Input vector distribution]\label{assu:invecdist}
+For the purpose of privacy analysis, similar to \cite{,}, we suppose that for any input vector $S$ with length $|S|=l$, each element $s_i\in S$ is drawn i.i.d. from a Gaussian distribution: $s_i\sim \mathcal{N}(0,\sigma^2)$, and bounded by a large probability:  $|s_i|\leq C, 1\leq i\leq p$ for some positive constant $C>0$.    
+\end{assumption}
+
+\begin{theorem}[$\epsilon-$ differential privacy of count sketch, \cite{li2019privacy}]
+For a sketching algorithm $\mathcal{O}$ using Count Sketch $\mathbf{S}_{t\times k}$ with $t$ arrays of $k$ bins, for any input vector $S$ with length $l$ satisfying Assumption~\ref{assu:invecdist}, $\mathcal{O}$ achieves $t.\ln \left(1+\frac{\alpha C^2 k(k-1)}{\sigma^2(l-2)}(1+\ln(l-k) )\right)-$differential privacy with high probability, where $\alpha$ is a positive constant satisfying $\frac{\alpha C^2 k(k-1)}{\sigma^2(l-2)}(1+\ln(l-k) )\leq \frac{1}{2}-\frac{1}{\alpha}$.
+\end{theorem}
+The proof of this theorem can be found in \cite{li2019privacy}.
+
+\section{Convergence analysis for differential privacy algorithms}
+
+\subsection{Assumptions}
+
+
+\begin{assumption}[Smoothness and Lower Boundedness]\label{Assu:1}
+The local objective function $f_j(\cdot)$ of $j$th device is differentiable for $j\in [m]$ and $L$-smooth, i.e., $\|\nabla f_j(\boldsymbol{u})-\nabla f_j(\mathbf{v})\|\leq L\|\boldsymbol{u}-\mathbf{v}\|,\: \forall \;\boldsymbol{u},\mathbf{v}\in\mathbb{R}^d$. Moreover, the optimal objective function $f(\cdot)$ is bounded below by ${f^*} = \min_{\boldsymbol{x}} f(\boldsymbol{x})>-\infty$. 
+\end{assumption}
+
+\begin{assumption}[\pl]\label{assum:pl}
+A function $f(\boldsymbol{x})$ satisfies the \pl~ condition with constant $\mu$ if $\frac{1}{2}\|\nabla f(\boldsymbol{x})\|_2^2\geq \mu\big(f(\boldsymbol{x})-f(\boldsymbol{x}^*)\big),\: \forall \boldsymbol{x}\in\mathbb{R}^d $ with $\boldsymbol{x}^*$ is an optimal solution.
+\end{assumption}
+
+\begin{property}[\cite{li2019privacy}]
+For our proof purpose we will need the following crucial properties of the count sketch described in Algorithm~\ref{Alg:csketch}, for any real valued vector $\mathbf{x}\in \mathbb{R}^{d}$:
+\begin{itemize}
+    \item[1)] \emph{Unbiased estimation}: As it is also mentioned in \cite{li2019privacy}, we have:
+    \begin{align}
+        \mathbb{E}_{\mathbf{S}}\left[\mathbf{S}\left[\mathbf{x}\right]\right]=\mathbf{x}
+    \end{align}
+    \belhal{The biased case is interesting, no hopes dealing with it for now?}
+    \item[2)] \emph{Bounded variance}: With $k=O\left(\frac{e}{\mu^2}\right)$, we have the following bound:
+    \begin{align}
+        \mathbb{E}_{\mathbf{S}}\left[\left\|\mathbf{S}\left[\mathbf{x}\right]-\mathbf{x}\right\|_2^2\right]\leq \mu^2 d\left\|\mathbf{x}\right\|_2^2
+    \end{align}
+\end{itemize}
+\end{property}
+
+
+\subsection{Convergence of  \texttt{FEDSKETCH-I} in homogeneous setting.} 
+Now we focus on the homogeneous case in which the stochastic local gradient of each worker is an unbiased estimator of the global gradient.
+
+
+\begin{assumption}[Bounded Variance]\label{Assu:1.5}
+For all $j\in [m]$, we can sample an independent mini-batch $\ell_j$   of size $|\xi_j^{(\ell,r)}| = b$ and compute an unbiased stochastic gradient  $\tilde{\mathbf{g}}_j = \nabla f_j(\boldsymbol{w}; \xi_j), \mathbb{E}_{\xi_j}[\tilde{\mathbf{g}}_j] = \nabla f(\boldsymbol{w})=\mathbf{g}$ with  the variance bounded is bounded by a constant $\sigma^2$, i.e., $
+\mathbb{E}_{\xi_j}\left[\|\tilde{\mathbf{g}}_j-\mathbf{g}\|^2\right]\leq \sigma^2$.
+\end{assumption}
+
+
+\begin{theorem}[General non-convex]
+Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
+and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:1.5}, if 
+\begin{align}
+   1\geq {\tau L^2\eta^2\tau}+(\frac{\mu^2 d}{p}+1)\eta\gamma L{\tau}\label{eq:cnd-lrs-h} 
+\end{align}
+with probability at least $1-\delta$, we have:
+\begin{align}\label{eq:thm1-result}
+    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \frac{2\left(f(\boldsymbol{x}^{(0)})-f(\boldsymbol{x}^{*})\right)}{\eta\gamma\tau R}+\frac{L\eta\gamma(\frac{\mu^2 d}{p}+1)}{p}\sigma^2+{L^2\eta^2\tau }\sigma^2
+\end{align}
+\end{theorem}
+
+
+\begin{corollary}[Linear speed up] 
+In Eq.~(\ref{eq:thm1-result}) by letting $\eta\gamma=O\left(\frac{1}{L}\sqrt{\frac{p}{R\tau\left(\frac{\mu^2 d}{p}+1\right)}}\right)$, and for $\gamma\geq p$  convergence rate reduces to:
+\begin{align}
+    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2&\leq O\left(\frac{L\sqrt{\left(\frac{\mu^2 d}{p}+1\right)}\left(f(\boldsymbol{w}^{(0)})-f(\boldsymbol{w}^{*})\right)}{\sqrt{pR\tau}}+\frac{\left(\sqrt{\left(\frac{\mu^2 d}{p}+1\right)}\right)\sigma^2}{\sqrt{pR\tau}}+\frac{p\sigma^2}{R\left(\frac{\mu^2 d}{p}+1\right)\gamma^2}\right)\label{eq:convg-error}
+\end{align}
+Note that according to Eq.~(\ref{eq:convg-error}), if we pick  a fixed constant value for  $\gamma$, in order to achieve an $\epsilon$-accurate solution, $R=O\left(\frac{1}{\epsilon}\right)$ communication cost and $\tau=O\left(\frac{\left(\frac{\mu^2 d}{p}+1\right)}{p\epsilon}\right)$ are necessary.
+
+\end{corollary}
+
+
+
+
+\begin{remark}\label{rmk:cnd-lr}
+
+Condition in Eq.~(\ref{eq:cnd-lrs-h}) can be rewritten as 
+\begin{align}
+    \eta&\leq \frac{-\gamma L\tau\left(\frac{\mu^2 d}{p}+1\right)+\sqrt{\gamma^2 \left(L\tau\left(\frac{\mu^2 d}{p}+1\right)\right)^2+4L^2\tau^2}}{2L^2\tau^2}\nonumber\\
+    &= \frac{-\gamma L\tau\left(\frac{\mu^2 d}{p}+1\right)+L\tau\sqrt{\left(\frac{\mu^2 d}{p}+1\right)^2\gamma^2 +4}}{2L^2\tau^2}\nonumber\\
+    &=\frac{\sqrt{\left(\frac{\mu^2 d}{p}+1\right)^2\gamma^2 +4}-\left(\frac{\mu^2 d}{p}+1\right)\gamma}{2L\tau}\label{eq:lrcnd}
+\end{align}
+So based on Eq.~(\ref{eq:lrcnd}), if we set $\eta=O\left(\frac{1}{L\gamma}\sqrt{\frac{p}{R\tau\left(\frac{\mu^2 d}{p}+1\right)}}\right)$, this implies that:
+\begin{align}
+    R\geq \frac{\tau p}{\left(\frac{\mu^2 d}{p}+1\right)\gamma^2\left(\sqrt{\left(\frac{\mu^2 d}{p}+1\right)^2\gamma^2+4}-\left(\frac{\mu^2 d}{p}+1\right)\gamma\right)^2}\label{eq:iidexact}
+\end{align}
+We note that $\gamma^2\left(\sqrt{\left(\frac{\mu^2 d}{p}+1\right)^2\gamma^2+4}-\left(\frac{\mu^2 d}{p}+1\right)\gamma\right)^2=\Theta(1)\leq 5 $ therefore even for $\gamma\geq p$ we need to have 
+\begin{align}
+    R\geq \frac{\tau p}{5\left(\frac{\mu^2 d}{p}+1\right)}=O\left(\frac{\tau p}{\left(\frac{\mu^2 d}{p}+1\right)}\right)
+\end{align}
+\textbf{Therefore for the choice of $\tau=O\left(\frac{\frac{\mu^2 d}{p}+1}{p\epsilon}\right)$ we need to have $R=O\left(\frac{1}{\epsilon}\right)$.}
+\end{remark}
+
+
+\begin{corollary}[Total communication cost]
+As a consequence of Remark~\ref{rmk:cnd-lr}, the total communication cost per-worker becomes \begin{align}
+O\left(Rc\right)&=O\left(Rk\log \left(\frac{d R}{\delta}\right)\right)=O\left(\frac{k }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
+\end{align}
+We note that this result in addition to improving over the communication complexity of federated learning of the state-of-the-art from $O\left(\frac{d}{\epsilon}\right)$ in \cite{karimireddy2019scaffold,wang2018cooperative,liang2019variance} to $O\left(\frac{k p}{\epsilon}\log \left(\frac{d p}{\epsilon\delta}\right)\right)$, it also implies differential privacy. As a result, total communication cost is 
+$$cpR=O\left(\frac{k p}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right).$$ 
+\end{corollary}
+
+\begin{remark}
+We note that the state-of-the-art in \cite{karimireddy2019scaffold} the total communication cost is 
+\begin{align}
+    cpR&=O\left(pd\left(\frac{1}{\epsilon}\right) \right)=O\left(\frac{pd}{\epsilon}\right) 
+\end{align}
+We improve this result, in terms of dependency to $d$, to 
+\begin{align}
+    cpR=O\left(\frac{k p}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
+\end{align}
+In comparison to \cite{ivkin2019communication}, we improve the total communication per worker from $Rc=O\left(\frac{k }{\epsilon^2}\log \left(\frac{d }{\epsilon^2\delta}\right)\right)$ to $Rc=O\left(\frac{k }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)$.
+
+\end{remark}
+
+\begin{remark}
+It is worthy to note that most of the available communication-efficient algorithm with quantization or compression only consider communication-efficiency from devices to server. However, Algorithm~\ref{Alg:PFLHom} also improves the communication efficiency from server to devices as well. 
+\end{remark}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{theorem}[Strongly convex or \pl]
+Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
+and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:1.5},and the choice of learning rate $\eta=\frac{1}{L\gamma (\frac{\mu^2d}{p}+1) \tau}$ with probability at least $1-\delta$, we have:
+\begin{align}
+                \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq \exp{-\left(\frac{ R}{\kappa (\frac{\mu^2d}{p}+1)}\right)}\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\left(\frac{1}{2\gamma^2 {(\frac{\mu^2d}{p}+1)}^2 }+\frac{1}{2p}\right)\frac{\sigma^2}{\mu\tau}
+\end{align}
+\end{theorem}
+
+\begin{remark}[linear speed up]
+To achieve the convergence error of $\epsilon$, we need to have $R=O\left(\kappa(\frac{\mu^2d}{p}+1)\log\frac{1}{\epsilon}\right)$ and $\tau=\left(\frac{1}{\epsilon}\right)$. This leads to the total communication cost per worker of 
+\begin{align}
+cR&=O\left(k\kappa(\frac{\mu^2d}{p}+1)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+\end{align}
+As a consequence, the total communication cost becomes:
+\begin{align}
+cpR&=O\left(k\kappa(\mu^2d+p)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+\end{align}
+\end{remark}
+
+\begin{remark}
+We note that the state-of-the-art in \cite{karimireddy2019scaffold} the total communication cost is 
+\begin{align}
+    cpR=O\left(\kappa pd\log\left(\frac{1}{\epsilon}\right) \right)=O\left(\kappa pd\log\left(\frac{1}{\epsilon}\right)\right) 
+\end{align}
+We improve this result, in terms of dependency to $d$, to 
+\begin{align}
+    cpR=O\left(k\kappa(\mu^2d+p)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+\end{align}
+Improving from $pd$ to $p+d$.
+\end{remark}
+
+\todo{Extending these results to general convex setting Later!}
+
+
+\subsection{Convergence of  \texttt{} in the data heterogeneous setting.} 
+\todo{TBA...}
+\section{Convergence analysis for different sketching scheme}
+We note that the main issue with Assumption~\ref{} is that since $d\neq 0$, you can not improve the convergence analysis. For this purpose, we propose Algorithm~\ref{}, where the proposed algorithm is not differentially private.
+
+\subsection{Convergence of \texttt{FEDSKETCH-II} in the data homogeneous setting.} 
+In this case, we use a different assumption as follows:
+\begin{assumption}\label{Assu:2.5}
+A (randomized) function, for $0<k\leq d$, $\text{Comp}_k:\mathbb{R}^{d}\rightarrow\mathbb{R}^{d}$ is called a compression operator, if we have 
+\begin{align}
+    \mathbb{E}\left[\left\|\boldsymbol{x}-\text{Comp}_k(\boldsymbol{x})\right\|^2_2\right]\leq \left(1-\frac{k}{d}\right)\left\|\boldsymbol{x}\right\|^2_2
+\end{align}
+\end{assumption}
+\begin{remark}
+Main distinction of Assumption~\ref{} from~\ref{} is that first we do not need unbiased estimation of compression. Additionally, unlike Assumption~\ref{}, if you let $k=d$, we have $\boldsymbol{x}=\text{Comp}_{k=d}(\boldsymbol{x})$.    
+\end{remark}
+
+We note that Algorithm~\ref{} satisfies this Assumption~\ref{} as shown in ~\cite{ivkin2019communication}.
+
+\begin{theorem}[General non-convex]
+Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
+and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:2.5}, if 
+\begin{align}
+       L^2\eta^2\tau^2+mL\tau\eta\left(1-\frac{k}{d}\right)+2\gamma L\eta\tau\left(2-\frac{k}{d}\right)-1\leq 0,\:\eta> \frac{1}{mL\tau},\label{eq:cnd-lrs-h-ii} 
+\end{align}
+with probability at least $1-\delta$, we have:
+\begin{align}
+    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \frac{2 \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{R\tau \gamma \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{2\eta^2\gamma L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}}{ \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{\eta^3L^2\tau}{\left({\eta}-\frac{1}{\tau mL}\right)}\sigma^2 
+\end{align}
+\end{theorem}
+\begin{remark}[$k=d$]
+\todo{TBA...}
+\end{remark}
+
+\begin{corollary}[Learning rate range]
+Condition in Eq.~(\ref{}) can further simplified as 
+\begin{align}
+    \frac{1}{mL\tau}<\eta\leq \frac{-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}}{2L\tau}
+\end{align}
+We note that $m$ is a hyperparameter that we choose to pick the feasible range for learning rate. Now, if you set $\eta=\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}}$ which implies the following:
+\begin{itemize}
+    \item  $\frac{1}{mL\tau}<\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}} \implies R <\frac{m^2 p \tau}{\gamma^2\left(2-\frac{k}{d}\right)}$
+    \item$\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}}\leq \frac{-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}}{2L\tau} \implies R\geq \frac{p\tau}{\gamma^2\left(2-\frac{k}{d}\right)\left(-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}\right)^2}$
+\end{itemize}
+Therefore, we have the following range for the choice of $R$:
+\begin{align}
+    \frac{p\tau}{\gamma^2\left(2-\frac{k}{d}\right)\left(-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}\right)^2}\leq R<\frac{m^2 p \tau}{\gamma^2\left(2-\frac{k}{d}\right)}
+\end{align}
+\end{corollary}
+\begin{corollary}
+Based on Corollary~\ref{}, we choose $\eta=\frac{1}{\gamma}\sqrt{\frac{p}{R\tau\left(R\tau \left(2-\frac{k}{d}\right)\right)}}=\frac{n}{mL\tau}$ which also  implies $R=\frac{m^2p\tau}{\gamma^2\left(2-\frac{k}{d}\right)}$ with $1<n<m$, we have:
+\begin{align}
+        \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2&\leq \frac{2 \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{R\tau \gamma \left(\frac{n-1}{m\tau L}\right)}+\frac{2n^2\gamma L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}}{m^2\tau^2L^2 \left(\frac{n-1}{m\tau L}\right)}+\frac{n^3L^2\tau}{m^3\tau^3L^3\left(\frac{n-1}{m\tau L}\right)}\sigma^2\nonumber\\
+        &=\frac{2mL \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{\left(n-1\right)R \gamma }+\frac{2n^2\gamma \left(2-\frac{k}{d}\right)\sigma^2}{m\left(n-1\right) p\tau  }+\frac{n^3\sigma^2}{m^2\left(n-1\right)\tau}
+\end{align}
+Based on relation $R=\frac{m^2p\tau}{\gamma^2\left(2-\frac{k}{d}\right)}$ if we choose $\tau=\frac{\left(2-\frac{k}{d}\right)}{p\epsilon}$ and $m=np$ and $\gamma=m$ we have:
+$$R=\frac{1}{\epsilon}$$ and 
+\begin{align}
+     \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2&\leq \frac{2\epsilon L \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{\left(n-1\right)}+\frac{2n\epsilon \sigma^2}{p\left(n-1\right)}+\frac{n\epsilon\sigma^2}{p\left(n-1\right)\left(2-\frac{k}{d}\right)}
+\end{align}
+\end{corollary}
+
+\begin{theorem}
+\todo{TBA...}
+\end{theorem}
+
+\todo{Convergence analysis for strongly convex objectives!}
