@@ -86,7 +86,7 @@ class Adam_Diagnostic(Optimizer):
 
         for i, group in enumerate(self.param_groups):
             for j, p in enumerate(group['params']):
-                pdb.set_trace()
+                # pdb.set_trace()
                 if p.grad is None:
                     continue
                 grad = p.grad.data
