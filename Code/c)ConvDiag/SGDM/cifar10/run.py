@@ -106,8 +106,9 @@ def train(epoch):
         total += targets.size(0)
         correct += predicted.eq(targets).sum().item()
         
-        
+        # newstat += diag_args['new_stat']
         newstat = ind**(0.2)
+
         logger_diag.append([lr, momentum,newstat, train_loss, 100.*correct/total, np.sum(ip_loss)])
         
         if not debug:
@@ -210,7 +211,7 @@ def adjust_learning_rate(optimizer, epoch, diag_stats):#, grad_norm, ip_loss):
         change_momentum(momentum, optimizer)
         momentum_ind = 1 #only matters for momentum_switch=True case
 
-epochs = 2
+epochs = 5
 for epoch in range(start_epoch, start_epoch+epochs):
     train_loss, train_acc, diag_stats = train(epoch)
     test_loss, test_acc = test(epoch)

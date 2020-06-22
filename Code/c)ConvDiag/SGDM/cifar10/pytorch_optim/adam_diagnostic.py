@@ -81,6 +81,7 @@ class Adam_Diagnostic(Optimizer):
         old_dpsq = [0.0, 0.0]
         ggs = [0.0, 0.0] # grads
         pps = 0.0 # params
+        newstat = 0
         if closure is not None:
             loss = closure()
 
@@ -148,11 +149,12 @@ class Adam_Diagnostic(Optimizer):
                 ggs[0] += torch.norm(dp_loss)
                 ggs[1] += torch.norm(dp_opt)
                 pps += torch.norm(p)
+                # newstat+= tocomplete
 
         ip[0] = self.ip_sim(ip[0], dpsq[0], old_dpsq[0])
         ip[1] = self.ip_sim(ip[1], dpsq[1], old_dpsq[1])
         diag_stats = {'ip_loss':ip[0].data.cpu().numpy()[0][0], 'grad_loss':ggs[0].data.cpu().numpy().item(),
                       'ip_opt':ip[1].data.cpu().numpy()[0][0], 'grad_opt':ggs[1].data.cpu().numpy().item(),
-                      'param':pps.data.cpu().numpy().item()}
+                      'param':pps.data.cpu().numpy().item(), 'newstat': newstat}
 
         return loss, diag_stats
