@@ -149,7 +149,8 @@ class Adam_Diagnostic(Optimizer):
                 ggs[0] += torch.norm(dp_loss)
                 ggs[1] += torch.norm(dp_opt)
                 pps += torch.norm(p)
-                # newstat+= tocomplete
+                pdb.set_trace()
+                newstat+= tocomplete
 
         ip[0] = self.ip_sim(ip[0], dpsq[0], old_dpsq[0])
         ip[1] = self.ip_sim(ip[1], dpsq[1], old_dpsq[1])
