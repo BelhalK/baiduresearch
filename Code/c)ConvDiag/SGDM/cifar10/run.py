@@ -17,6 +17,8 @@ import numpy as np
 import pandas as pd 
 import matplotlib
 import matplotlib.pyplot as plt
+import copy
+import pickle
 
 #data prep
 transform_train = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
@@ -81,6 +83,7 @@ grad_norm = []
 train_loss_ls = []
 test_stat = 0.0
 def train(epoch):
+    global all_weights
     print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0; global train_loss_ls
@@ -101,6 +104,8 @@ def train(epoch):
         ip_loss.append(diag_args['ip_loss'])
         grad_loss.append(diag_args['grad_loss'])
 
+        # pdb.set_trace()
+
         train_loss += loss.item()
         _, predicted = outputs.max(1)
         total += targets.size(0)
@@ -111,6 +116,8 @@ def train(epoch):
 
         logger_diag.append([lr, momentum,newstat, train_loss, 100.*correct/total, np.sum(ip_loss)])
         
+        all_weights.append(net.fc1.weight.data.detach().numpy())
+
         if not debug:
             if ind%100 == 0:
                 print('Train Loss: %.3f | Train Acc: %.3f%% (%d/%d) | IP_sum: %.3f'
@@ -211,9 +218,54 @@ def adjust_learning_rate(optimizer, epoch, diag_stats):#, grad_norm, ip_loss):
         change_momentum(momentum, optimizer)
         momentum_ind = 1 #only matters for momentum_switch=True case
 
-epochs = 5
+epochs = 3
+
+init_weights = copy.deepcopy(net.fc1.weight.data)
+all_weights = []
+
 for epoch in range(start_epoch, start_epoch+epochs):
-    train_loss, train_acc, diag_stats = train(epoch)
+    # train_loss, train_acc, diag_stats = train(epoch)
+    # net.train()
+    train_loss = 0
+    correct = 0
+    total = 0
+    ip_loss = []; 
+    grad_loss = []
+    ind = 0
+    newstat = 0
+    for batch_idx, (inputs, targets) in enumerate(trainloader):
+        ind += 1
+        inputs, targets = inputs.to(device), targets.to(device)
+        optimizer.zero_grad()
+        outputs = net(inputs)
+        loss = criterion(outputs, targets)
+        loss.backward()
+        _, diag_args = optimizer.step()
+        ip_loss.append(diag_args['ip_loss'])
+        grad_loss.append(diag_args['grad_loss'])
+        train_loss += loss.item()
+        _, predicted = outputs.max(1)
+        total += targets.size(0)
+        correct += predicted.eq(targets).sum().item()
+        newstat = ind**(0.2)
+        logger_diag.append([lr, momentum,newstat, train_loss, 100.*correct/total, np.sum(ip_loss)])
+        all_weights.append(net.fc1.weight.data.detach().numpy())
+
+        if not debug:
+            if ind%100 == 0:
+                print('Train Loss: %.3f | Train Acc: %.3f%% (%d/%d) | IP_sum: %.3f'% (train_loss/(batch_idx+1), 100.*correct/total, correct, total, np.sum(ip_loss)))
+
+    # convergence tests based on inner product of loss list from epoch
+    diag_stats = {'ip_loss_sum':np.sum(ip_loss), 'ip_loss_mean':np.mean(ip_loss), 'ip_loss_std':np.std(ip_loss),
+                  'grad_norm_mean':np.mean(grad_loss)}
+    grad_norm.append(diag_stats['grad_norm_mean'])
+    train_loss_ls.append(train_loss)
+
+    if (momentum_switch and momentum_ind == -1) or (not momentum_switch and epoch > burnin):
+        test_stat += np.sum(ip_loss)
+    train_loss, train_acc, diag_stats = train_loss, 100.*correct/total, diag_stats
+
+
     test_loss, test_acc = test(epoch)
 
     # append logger file
@@ -228,3 +280,15 @@ for epoch in range(start_epoch, start_epoch+epochs):
         'acc': test_acc,
         'epoch': epoch,
     }, test_acc)
+
+
+
+
+file_dir = os.getcwd()
+file_path = 'params/trained_weights'
+file_path = os.path.join(file_dir, file_path)
+torch.save(all_weights, file_path)
+
+file_path_init = os.path.join(file_dir, 'params/init_weights')
+torch.save(init_weights, file_path_init)
+
