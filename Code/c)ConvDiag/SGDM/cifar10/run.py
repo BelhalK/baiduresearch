@@ -20,37 +20,95 @@ import matplotlib.pyplot as plt
 import copy
 import pickle
 
-#data prep
-transform_train = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
-transform_test = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
-trainset = torchvision.datasets.MNIST('../data', train=True, download=True, transform=transform_train)
-testset = torchvision.datasets.MNIST('../data', train=False, download=True, transform=transform_test)
 
+# Input argument parsing
+parser = argparse.ArgumentParser(description='PyTorch MNIST/CIFAR10 Training')
+# Model
+parser.add_argument('--dataset', default='cifar10', type=str, choices=['mnist', 'cifar10'], help='Dataset')
+parser.add_argument('--epochs', default=150, type=int, metavar='N', help='number of total epochs to run')
+parser.add_argument('--schedule', nargs='+', default=[80, 120], help='Either str diagnostic / plateau or epochs to decrease learning rate at.')
+parser.add_argument('--gamma', type=float, default=0.1, help='LR is multiplied by gamma on schedule.')
+parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
+parser.add_argument('--final_momentum', default=0.1, type=float, help='momentum')
+parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight decay')
+parser.add_argument('--model', '-m', default='ResNet18', choices=['ShuffleNetV2', 'ResNet18', 'ResNeXt29', 'MnistNet', 'MnistNetSmall', 'MnistNetLarge'],
+                    help='which CNN model')
+parser.add_argument('--batch_size', default=128, type=int, help='batch size')
+parser.add_argument('--optimizer', default='signSGD', type=str, choices=['signSGD', 'SGDM', 'ADAM'], help='optimization algorithm')
+parser.add_argument('--beta2', default=0.999, type=float, help='betar2 EMA var scale for ADAM')
+
+
+# Create parser and extra variables
+args = parser.parse_args()
 
 #parameters
-batch_size = 128
-dataset = "MNIST"
-lr = 0.1
-momentum = 0.9
-gamma = 0.1
-weight_decay = 5e-4
-beta2 = 0.999
+batch_size = args.batch_size
+dataset = args.dataset
+lr = args.lr
+momentum = args.momentum
+gamma = args.gamma
+weight_decay = args.weight_decay #l2 regularizer
+beta2 = args.beta2
 burnin = 10
 window = 10 #stationary test window (epochs)
 sim = 'ip' #['ip', 'cosine'] inner prod. similarity
-schedule = [1, 3] # 'Either str diagnostic / plateau or epochs to decrease learning rate at.')
+schedule = [2, 5] # 'Either str diagnostic / plateau or epochs to decrease learning rate at.')
+#schedule = 'plateau'
 momentum_switch = False #Momentum reduction boolean
 early_threshold = 0.2 #threshold for norm-based momentum switch
-num_reduce = 1 #if diagnostic, number of times to reduce LR
+num_reduce = 4 #if diagnostic, number of times to reduce LR
 debug = False
 
-#train and test loads
+
+
+# Data
+print('==> Preparing data..')
+if args.dataset == 'cifar10':
+    transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4),transforms.RandomHorizontalFlip(),transforms.ToTensor(),transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
+    transform_test = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
+    trainset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True, transform=transform_train)
+    testset = torchvision.datasets.CIFAR10(root='../data', train=False, download=True, transform=transform_test)
+elif args.dataset == 'mnist':
+    #data prep
+    transform_train = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
+    transform_test = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
+    trainset = torchvision.datasets.MNIST('../data', train=True, download=True, transform=transform_train)
+    testset = torchvision.datasets.MNIST('../data', train=False, download=True, transform=transform_test)
+
+    #train and test loads
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2)
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
-#net = MnistNet()
-model = "MnistNetSmall"
-net = MnistNetSmall()
+
+
+# if 'diagnostic' not in schedule:
+#     schedule = [int(x) for x in schedule]
+# elif len(schedule) > 1:
+#     num_reduce = int(schedule[1])
+momentum_ind = -1 # no momentum reduction
+if momentum_switch:
+    momentum_ind = 1 # look for momentum reduction point
+
+
+#MODEL
+print('==> Building model..')
+model = args.model
+if model == 'ResNet18':
+    net = ResNet18()
+elif model == 'ShuffleNetV2':
+    net = ShuffleNetV2(1.0)
+elif model == 'ResNeXt29':
+    net = ResNeXt29_2x64d()
+elif model == 'MnistNet':
+    net = MnistNet()
+elif model == 'MnistNetSmall':
+    net = MnistNetSmall()
+elif model == 'MnistNetLarge':
+    net = MnistNetLarge()
+
+# model = "MnistNetSmall"
+# net = MnistNetSmall()
 device ='cuda:{}'.format(args.gpu[0]) if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
@@ -104,8 +162,6 @@ def train(epoch):
         ip_loss.append(diag_args['ip_loss'])
         grad_loss.append(diag_args['grad_loss'])
 
-        # pdb.set_trace()
-
         train_loss += loss.item()
         _, predicted = outputs.max(1)
         total += targets.size(0)
@@ -158,9 +214,6 @@ def test(epoch):
                 if ind%100 == 0:
                     print('Test Loss: %.3f | Test Acc: %.3f%% (%d/%d) | test stat: %.3f'
                           % (test_loss/(batch_idx+1), 100.*correct/total, correct, total, test_stat))
-#                progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d) | test stat: %.3f'
-#                             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total, test_stat))
-
     return (test_loss, 100.*correct/total)
 
 def save_checkpoint(state, test_acc):
@@ -218,14 +271,18 @@ def adjust_learning_rate(optimizer, epoch, diag_stats):#, grad_norm, ip_loss):
         change_momentum(momentum, optimizer)
         momentum_ind = 1 #only matters for momentum_switch=True case
 
-epochs = 3
+epochs = args.epochs
 
-init_weights = copy.deepcopy(net.fc1.weight.data)
+
+if 'ResNet' in model:
+    init_weights = copy.deepcopy(net.linear.weight.data)
+if 'Mnist' in model:
+    init_weights = copy.deepcopy(net.fc1.weight.data)
 all_weights = []
 
 for epoch in range(start_epoch, start_epoch+epochs):
     # train_loss, train_acc, diag_stats = train(epoch)
-    # net.train()
+    net.train()
     train_loss = 0
     correct = 0
     total = 0
@@ -249,7 +306,14 @@ for epoch in range(start_epoch, start_epoch+epochs):
         correct += predicted.eq(targets).sum().item()
         newstat = ind**(0.2)
         logger_diag.append([lr, momentum,newstat, train_loss, 100.*correct/total, np.sum(ip_loss)])
-        all_weights.append(net.fc1.weight.data.detach().numpy())
+
+        if 'ResNet' in model:
+            a  = net.linear.weight.data.detach().numpy().copy()[3]
+        if 'Mnist' in model:
+            a  = net.fc1.weight.data.detach().numpy().copy()[3]
+        # print(a)
+        all_weights.append(a)
+        # print(all_weights)
 
         if not debug:
             if ind%100 == 0:
@@ -275,20 +339,24 @@ for epoch in range(start_epoch, start_epoch+epochs):
 
     adjust_learning_rate(optimizer, epoch, diag_stats)
 
-    save_checkpoint({
-        'net': net.state_dict(),
-        'acc': test_acc,
-        'epoch': epoch,
-    }, test_acc)
+    # save_checkpoint({
+    #     'net': net.state_dict(),
+    #     'acc': test_acc,
+    #     'epoch': epoch,
+    # }, test_acc)
 
 
 
+#save init weights and trained weights
 
-file_dir = os.getcwd()
-file_path = 'params/trained_weights'
-file_path = os.path.join(file_dir, file_path)
+file_dir = os.path.join(os.getcwd(),'params/{}'.format(model))
+
+### Trained weights
+file_path = os.path.join(file_dir, 'trained_weights')
 torch.save(all_weights, file_path)
 
-file_path_init = os.path.join(file_dir, 'params/init_weights')
+
+### Initial weights
+file_path_init = os.path.join(file_dir, 'init_weights')
 torch.save(init_weights, file_path_init)
 
