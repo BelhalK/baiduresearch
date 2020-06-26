@@ -18,6 +18,8 @@ import pdb
 
 from logger import Logger, savefig
 
+import optimizers as optim_local
+
 tf.enable_v2_behavior()
 
 # TODO(b/78137893): Integration tests currently fail with seaborn imports.
@@ -107,6 +109,7 @@ def create_model():
   ])
 
   # Model compilation.
+  pdb.set_trace()
   if FLAGS.optimizer =='adam':
       optimizer = tf.keras.optimizers.Adam(lr=FLAGS.learning_rate)
   elif FLAGS.optimizer == 'sgd':
@@ -114,6 +117,8 @@ def create_model():
   elif FLAGS.optimizer == 'sgld':
       tfp.optimizer.StochasticGradientLangevinDynamics(FLAGS.learning_rate, preconditioner_decay_rate=0.95, data_size=1, burnin=25,
     diagonal_bias=1e-08, name=None, parallel_iterations=10)
+#   elif FLAGS.optimizer == 'hwa':
+#       optimizer = optim_local.HWA(lr=FLAGS.learning_rate)
 
 #   print(FLAGS.optimizer)
   # We use the categorical_crossentropy loss since the MNIST dataset contains
@@ -204,6 +209,7 @@ def main(argv):
     tf.io.gfile.rmtree(FLAGS.model_dir)
   tf.io.gfile.makedirs(FLAGS.model_dir)
   
+  print('==> Preparing data..')
   if FLAGS.fake_data:
     train_seq = MNISTSequence(batch_size=FLAGS.batch_size,
                               fake_data_size=NUM_TRAIN_EXAMPLES)
@@ -213,30 +219,35 @@ def main(argv):
     train_set, heldout_set = tf.keras.datasets.mnist.load_data()
     train_seq = MNISTSequence(data=train_set, batch_size=FLAGS.batch_size)
     heldout_seq = MNISTSequence(data=heldout_set, batch_size=FLAGS.batch_size)
-
+  print('==> Building Model..')
   model = create_model()
   model.build(input_shape=[None, 28, 28, 1])
 
+  
+  print('==> Creating Logger Files..')
   #Create checkpoints log file
   logname = 'LeNet5'
   dataset = 'MNIST'
   title = '{}-{}'.format(dataset, logname)
   checkpoint_dir = 'checkpoint/checkpoint_{}'.format(dataset)
-  logger = Logger('{}/log{}_opt{}_lr{}_bs{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size), title=title)
-  logger.set_names(['Learning Rate', 'Train Loss', 'Test Loss', 'Train Acc.', 'Test Acc.'])
+  loggertrain = Logger('{}/trainlog{}_opt{}_lr{}_bs{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size), title=title)
+  loggertrain.set_names(['Learning Rate', 'Train Loss','Train Acc.'])
+
+  loggertest = Logger('{}/testlog{}_opt{}_lr{}_bs{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size), title=title)
+  loggertest.set_names(['Learning Rate', 'Test Loss',  'Test Acc.'])
 
 
-  print(' ... Training convolutional neural network')
+  print('==> Training Phase...')
   for epoch in range(FLAGS.num_epochs):
     epoch_accuracy, epoch_loss = [], []
     for step, (batch_x, batch_y) in enumerate(train_seq):
-      pdb.set_trace()
+    #   pdb.set_trace()
       batch_loss, batch_accuracy = model.train_on_batch(batch_x, batch_y)
       epoch_accuracy.append(batch_accuracy)
       epoch_loss.append(batch_loss)
       
-      #write in the logger
-      logger.append([FLAGS.learning_rate, batch_loss, batch_loss, batch_accuracy, batch_accuracy])
+      #write in the logger ['Learning Rate', 'Train Loss', 'Train Acc.']
+      loggertrain.append([FLAGS.learning_rate, batch_loss, batch_accuracy])
 
       if step % 100 == 0:
         print('Epoch: {}, Batch index: {}, '
@@ -244,6 +255,13 @@ def main(argv):
                   epoch, step,
                   tf.reduce_mean(epoch_loss),
                   tf.reduce_mean(epoch_accuracy)))
+    print('==> Testing Phase...')
+    #testing              
+    for step, (batch_x, batch_y) in enumerate(heldout_seq):
+    #   pdb.set_trace()
+      test_loss, test_accuracy = model.train_on_batch(batch_x, batch_y)      
+      #write in the testlogger ['Learning Rate','Test Loss','Test Acc.']
+      loggertest.append([FLAGS.learning_rate, test_loss, test_accuracy])
 
     #   if (step+1) % FLAGS.viz_steps == 0:
     #     # Compute log prob of heldout set by averaging draws from the model:
