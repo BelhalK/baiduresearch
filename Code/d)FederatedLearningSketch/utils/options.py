@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Python version: 3.6
 
 import argparse
 
@@ -14,7 +12,7 @@ def args_parser():
     parser.add_argument('--local_bs', type=int, default=10, help="local mini-batch size (SGD): B")
     parser.add_argument('--bs', type=int, default=128, help="test batch size")
     parser.add_argument('--lr', type=float, default=0.01, help="learning rate")
-    parser.add_argument('--momentum', type=float, default=0.5, help="SGD momentum (default: 0.5)")
+    parser.add_argument('--momentum', type=float, default=0.9, help="SGD momentum (default: 0.9)")
     parser.add_argument('--beta2', default=0.999, type=float, help='betar2 EMA var scale for ADAM')
     parser.add_argument('--split', type=str, default='user', help="train-test split type, user or sample")
 

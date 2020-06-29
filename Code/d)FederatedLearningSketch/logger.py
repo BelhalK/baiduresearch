@@ -1,5 +1,5 @@
-# A simple torch style logger
-# (C) Wei YANG 2017
+# a logger
+
 from __future__ import absolute_import
 import matplotlib
 matplotlib.use('Agg')

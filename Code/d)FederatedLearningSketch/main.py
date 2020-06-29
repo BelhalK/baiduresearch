@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Python version: 3.6
 
 import matplotlib
 matplotlib.use('Agg')
@@ -26,7 +24,7 @@ if __name__ == '__main__':
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
-    # load dataset and split users
+    # load dataset and split data (iid or not) to users
     if args.dataset == 'mnist':
         trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
         dataset_train = datasets.MNIST('./data/mnist/', train=True, download=True, transform=trans_mnist)
@@ -48,7 +46,7 @@ if __name__ == '__main__':
         exit('Error: unrecognized dataset')
     img_size = dataset_train[0][0].shape
 
-    # build model
+    # build global model
     if args.model == 'cnn' and args.dataset == 'cifar':
         net_glob = CNNCifar(args=args).to(args.device)
     elif args.model == 'cnn' and args.dataset == 'mnist':
@@ -64,6 +62,7 @@ if __name__ == '__main__':
     print(net_glob)
     net_glob.train()
 
+    # Prepare Logger file
     logname = args.model
     dataset = args.dataset
 
