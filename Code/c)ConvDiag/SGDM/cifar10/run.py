@@ -107,8 +107,7 @@ elif model == 'MnistNetSmall':
 elif model == 'MnistNetLarge':
     net = MnistNetLarge()
 
-# model = "MnistNetSmall"
-# net = MnistNetSmall()
+
 device ='cuda:{}'.format(args.gpu[0]) if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
@@ -280,6 +279,7 @@ if 'Mnist' in model:
     init_weights = copy.deepcopy(net.fc1.weight.data)
 all_weights = []
 
+print('==> Training Phase...')
 for epoch in range(start_epoch, start_epoch+epochs):
     # train_loss, train_acc, diag_stats = train(epoch)
     net.train()
@@ -317,7 +317,7 @@ for epoch in range(start_epoch, start_epoch+epochs):
 
         if not debug:
             if ind%100 == 0:
-                print('Train Loss: %.3f | Train Acc: %.3f%% (%d/%d) | IP_sum: %.3f'% (train_loss/(batch_idx+1), 100.*correct/total, correct, total, np.sum(ip_loss)))
+                print('Epoch: %d | Train Loss: %.3f | Train Acc: %.3f%% (%d/%d) | IP_sum: %.3f'% (epoch, train_loss/(batch_idx+1), 100.*correct/total, correct, total, np.sum(ip_loss)))
 
     # convergence tests based on inner product of loss list from epoch
     diag_stats = {'ip_loss_sum':np.sum(ip_loss), 'ip_loss_mean':np.mean(ip_loss), 'ip_loss_std':np.std(ip_loss),
@@ -328,17 +328,15 @@ for epoch in range(start_epoch, start_epoch+epochs):
     if (momentum_switch and momentum_ind == -1) or (not momentum_switch and epoch > burnin):
         test_stat += np.sum(ip_loss)
     train_loss, train_acc, diag_stats = train_loss, 100.*correct/total, diag_stats
-
-
     test_loss, test_acc = test(epoch)
 
     # append logger file
     logger.append([lr, momentum, train_loss, test_loss, train_acc, test_acc,
-                   #diag_stats['ip_loss_sum']
-                   test_stat, diag_stats['ip_loss_mean'], diag_stats['ip_loss_std'], diag_stats['grad_norm_mean']])
+                test_stat, diag_stats['ip_loss_mean'], diag_stats['ip_loss_std'],
+                 diag_stats['grad_norm_mean']])
 
+    # Adapt LR
     adjust_learning_rate(optimizer, epoch, diag_stats)
-
     # save_checkpoint({
     #     'net': net.state_dict(),
     #     'acc': test_acc,
@@ -346,15 +344,13 @@ for epoch in range(start_epoch, start_epoch+epochs):
     # }, test_acc)
 
 
-
+print('==> Saving Weights...')
 #save init weights and trained weights
-
 file_dir = os.path.join(os.getcwd(),'params/{}'.format(model))
 
 ### Trained weights
 file_path = os.path.join(file_dir, 'trained_weights')
 torch.save(all_weights, file_path)
-
 
 ### Initial weights
 file_path_init = os.path.join(file_dir, 'init_weights')

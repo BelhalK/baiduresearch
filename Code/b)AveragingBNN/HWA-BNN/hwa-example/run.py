@@ -1,3 +1,7 @@
+# python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer adam
+# python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer sgd --learning_rate 0.01
+# python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer hwa --start_avg 10 --avg_period 100
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -65,6 +69,9 @@ flags.DEFINE_bool('fake_data',
                   help='If true, uses fake data. Defaults to real data.')
 flags.DEFINE_string('optimizer', 
                   default='sgd',help='optimizer to use (sgd, adam)')
+#HWA params
+flags.DEFINE_integer('start_avg',default=10,help='Start Averaging in HWA')
+flags.DEFINE_integer('avg_period',default=10,help='Averaging Period in HWA')
 
 FLAGS = flags.FLAGS
 
@@ -111,7 +118,7 @@ def create_model():
   ])
 
   # Model compilation.
-  pdb.set_trace()
+  # pdb.set_trace()
   if FLAGS.optimizer =='adam':
       optimizer = tf.keras.optimizers.Adam(lr=FLAGS.learning_rate)
   elif FLAGS.optimizer == 'sgd':
@@ -120,8 +127,12 @@ def create_model():
       optimizer = tfp.optimizer.StochasticGradientLangevinDynamics(FLAGS.learning_rate, preconditioner_decay_rate=0.95, data_size=1, burnin=25,
     diagonal_bias=1e-08, name=None, parallel_iterations=10)
   elif FLAGS.optimizer == 'hwa':
+      optimizer = tf.keras.optimizers.Adam(lr=FLAGS.learning_rate)
+      optimizer = tfa.optimizers.SWA(optimizer, start_averaging=FLAGS.start_avg, average_period=FLAGS.avg_period)
+  elif FLAGS.optimizer == 'hwa_sgd':
       optimizer = tf.keras.optimizers.SGD(lr=FLAGS.learning_rate)
-      optimizer = tfa.optimizers.SWA(optimizer, start_averaging=10, average_period=10)
+      optimizer = tfa.optimizers.SWA(optimizer, start_averaging=FLAGS.start_avg, average_period=FLAGS.avg_period)
+
 
   # We use the categorical_crossentropy loss since the MNIST dataset contains
   # ten labels. The Keras API will then automatically add the
@@ -244,7 +255,6 @@ def main(argv):
   for epoch in range(FLAGS.num_epochs):
     epoch_accuracy, epoch_loss = [], []
     for step, (batch_x, batch_y) in enumerate(train_seq):
-    #   pdb.set_trace()
       batch_loss, batch_accuracy = model.train_on_batch(batch_x, batch_y)
       epoch_accuracy.append(batch_accuracy)
       epoch_loss.append(batch_loss)
@@ -261,7 +271,6 @@ def main(argv):
     print('==> Testing Phase...')
     #testing              
     for step, (batch_x, batch_y) in enumerate(heldout_seq):
-    #   pdb.set_trace()
       test_loss, test_accuracy = model.train_on_batch(batch_x, batch_y)      
       #write in the testlogger ['Learning Rate','Test Loss','Test Acc.']
       loggertest.append([FLAGS.learning_rate, test_loss, test_accuracy])

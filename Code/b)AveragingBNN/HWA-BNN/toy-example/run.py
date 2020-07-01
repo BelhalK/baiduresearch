@@ -1,3 +1,5 @@
+#python run.py --optim adam --nb_points 500 --lr 0.08
+
 import numpy as np
 import matplotlib.pyplot as plt
 from keras import backend as K

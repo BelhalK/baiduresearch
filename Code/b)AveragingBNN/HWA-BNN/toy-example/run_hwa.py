@@ -1,3 +1,5 @@
+#python run_hwa.py --optim hwa --nb_points 500 --lr 0.08 --start_avg 10 --avg_period 100
+
 import numpy as np
 import matplotlib.pyplot as plt
 from keras import backend as K
