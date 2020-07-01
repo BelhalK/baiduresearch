@@ -6,6 +6,7 @@ from keras.layers import Layer
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+import tensorflow_addons as tfa
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -15,6 +16,7 @@ from keras.models import Model
 from keras import callbacks, optimizers
 
 from options import args_parser
+from hwa import HWA
 # import tqdm
 
 args = args_parser()
@@ -41,20 +43,22 @@ plt.legend()
 
 class DenseVariational(Layer):
     def __init__(self,
+                 args,
                  units,
                  kl_weight,
                  activation=None,
                  prior_sigma_1=1.5,
                  prior_sigma_2=0.1,
                  prior_pi=0.5, **kwargs):
+        self.args = args
         self.units = units
         self.kl_weight = kl_weight
         self.activation = activations.get(activation)
         self.prior_sigma_1 = prior_sigma_1
         self.prior_sigma_2 = prior_sigma_2
         self.prior_pi_1 = prior_pi
-        self.list_prior_pi_1 = list_prior_pi
         self.prior_pi_2 = 1.0 - prior_pi
+        self.n_models = 0
         self.init_sigma = np.sqrt(self.prior_pi_1 * self.prior_sigma_1 ** 2 +
                                   self.prior_pi_2 * self.prior_sigma_2 ** 2)
 
@@ -64,19 +68,21 @@ class DenseVariational(Layer):
         return input_shape[0], self.units
 
     def build(self, input_shape):
-        self.kernel_mu = self.add_weight(name='kernel_mu',
+        self.kernel_mu = self.add_weight(name='kernel_mu',#weight mean
                                          shape=(input_shape[1], self.units),
                                          initializer=initializers.RandomNormal(stddev=self.init_sigma),
                                          trainable=True)
-        self.bias_mu = self.add_weight(name='bias_mu',
+        # self.kernel_mu_hwa = self.kernel_mu
+        # self.bias_mu_hwa = self.bias_mu
+        self.bias_mu = self.add_weight(name='bias_mu',#bias mean
                                        shape=(self.units,),
                                        initializer=initializers.RandomNormal(stddev=self.init_sigma),
                                        trainable=True)
-        self.kernel_rho = self.add_weight(name='kernel_rho',
+        self.kernel_rho = self.add_weight(name='kernel_rho', #weight mean
                                           shape=(input_shape[1], self.units),
                                           initializer=initializers.constant(0.0),
                                           trainable=True)
-        self.bias_rho = self.add_weight(name='bias_rho',
+        self.bias_rho = self.add_weight(name='bias_rho', #bias variance
                                         shape=(self.units,),
                                         initializer=initializers.constant(0.0),
                                         trainable=True)
@@ -95,7 +101,14 @@ class DenseVariational(Layer):
         return self.activation(K.dot(inputs, kernel) + bias)
 
     def kl_loss(self, w, mu, sigma):
+        # kernel_mu_hwa = self.kernel_mu_hwa
+        # bias_mu_hwa = self.bias_mu
+        # self.n_models = self.args.epochs #update nmodels for averaging
+        # kernel_mu_hwa = (self.n_models*kernel_mu_hwa + mu)/(self.n_models+1) #HWA mean
+        # variational_dist = tfp.distributions.Normal(kernel_mu_hwa, sigma)
+        
         variational_dist = tfp.distributions.Normal(mu, sigma)
+
         return self.kl_weight * K.sum(variational_dist.log_prob(w) - self.log_prior_prob(w))
 
     def log_prior_prob(self, w):
@@ -117,9 +130,9 @@ prior_params = {
 }
 
 x_in = Input(shape=(1,))
-x = DenseVariational(20, kl_weight, **prior_params, activation='relu')(x_in)
-x = DenseVariational(20, kl_weight, **prior_params, activation='relu')(x)
-x = DenseVariational(1, kl_weight, **prior_params)(x)
+x = DenseVariational(args, 20, kl_weight, **prior_params, activation='relu')(x_in)
+x = DenseVariational(args, 20, kl_weight, **prior_params, activation='relu')(x)
+x = DenseVariational(args, 1, kl_weight, **prior_params)(x)
 
 model = Model(x_in, x)
 
@@ -133,6 +146,11 @@ elif args.optim == 'sgd':
     opt = optimizers.SGD(lr=args.lr)
 elif args.optim == 'rmsprop':
     opt = optimizers.RMSprop(lr=args.lr)
+elif args.optim == 'hwa':
+    # opt = optimizers.SGD(lr=args.lr)
+    opt = optimizers.Adam(lr=args.lr)
+    opt = tfa.optimizers.SWA(opt, start_averaging=args.start_avg, average_period=args.avg_period)
+    # opt = HWA(lr=args.lr)
 
 model.compile(loss=neg_log_likelihood, optimizer=opt, metrics=['mse'])
 model.fit(X, y, batch_size=batch_size, epochs=args.epochs, verbose=0);
@@ -149,18 +167,16 @@ for i in range(args.nb_points):
     if i%100 == 0:
         print(i)
     
-        y_preds = np.concatenate(y_pred_list, axis=1)
 
-        y_mean = np.mean(y_preds, axis=1)
-        y_sigma = np.std(y_preds, axis=1) #standard deviation of the predictions --> area of the epistemic uncertainty
-        plt.figure()
-        plt.plot(X_test, y_mean, 'r-', label='Predictive mean');
-        plt.scatter(X, y, marker='+', label='Training data')
-        plt.fill_between(X_test.ravel(), 
-                        y_mean + 2 * y_sigma, 
+y_preds = np.concatenate(y_pred_list, axis=1)
+y_mean = np.mean(y_preds, axis=1)
+y_sigma = np.std(y_preds, axis=1) #standard deviation of the predictions --> area of the epistemic uncertainty
+plt.plot(X_test, y_mean, 'r-', label='Predictive mean')
+plt.scatter(X, y, marker='+', label='Training data')
+plt.fill_between(X_test.ravel(), y_mean + 2 * y_sigma, 
                         y_mean - 2 * y_sigma, 
                         alpha=0.5, label='Epistemic uncertainty')
-        plt.title('Prediction')
-        plt.legend()
-
-plt.show()
+plt.title('Prediction')
+plt.legend()
+plt.savefig('./save/opt_{}.png'.format(args.optim))
+# plt.show()

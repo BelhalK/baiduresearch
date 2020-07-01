@@ -148,18 +148,16 @@ for i in range(args.nb_points):
     if i%100 == 0:
         print(i)
     
-        y_preds = np.concatenate(y_pred_list, axis=1)
+y_preds = np.concatenate(y_pred_list, axis=1)
 
-        y_mean = np.mean(y_preds, axis=1)
-        y_sigma = np.std(y_preds, axis=1) #standard deviation of the predictions --> area of the epistemic uncertainty
-        plt.figure()
-        plt.plot(X_test, y_mean, 'r-', label='Predictive mean');
-        plt.scatter(X, y, marker='+', label='Training data')
-        plt.fill_between(X_test.ravel(), 
-                        y_mean + 2 * y_sigma, 
+y_mean = np.mean(y_preds, axis=1)
+y_sigma = np.std(y_preds, axis=1) #standard deviation of the predictions --> area of the epistemic uncertainty
+plt.plot(X_test, y_mean, 'r-', label='Predictive mean')
+plt.scatter(X, y, marker='+', label='Training data')
+plt.fill_between(X_test.ravel(), y_mean + 2 * y_sigma, 
                         y_mean - 2 * y_sigma, 
                         alpha=0.5, label='Epistemic uncertainty')
-        plt.title('Prediction')
-        plt.legend()
+plt.title('Prediction')
+plt.legend()
 
 plt.show()

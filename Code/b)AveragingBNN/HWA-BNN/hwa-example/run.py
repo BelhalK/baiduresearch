@@ -14,6 +14,8 @@ from matplotlib.backends import backend_agg
 import numpy as np
 import tensorflow.compat.v2 as tf
 import tensorflow_probability as tfp
+import tensorflow_addons as tfa
+
 import pdb
 
 from logger import Logger, savefig
@@ -115,10 +117,11 @@ def create_model():
   elif FLAGS.optimizer == 'sgd':
       optimizer = tf.keras.optimizers.SGD(lr=FLAGS.learning_rate)
   elif FLAGS.optimizer == 'sgld':
-      tfp.optimizer.StochasticGradientLangevinDynamics(FLAGS.learning_rate, preconditioner_decay_rate=0.95, data_size=1, burnin=25,
+      optimizer = tfp.optimizer.StochasticGradientLangevinDynamics(FLAGS.learning_rate, preconditioner_decay_rate=0.95, data_size=1, burnin=25,
     diagonal_bias=1e-08, name=None, parallel_iterations=10)
-#   elif FLAGS.optimizer == 'hwa':
-#       optimizer = optim_local.HWA(lr=FLAGS.learning_rate)
+  elif FLAGS.optimizer == 'hwa':
+      optimizer = tf.keras.optimizers.SGD(lr=FLAGS.learning_rate)
+      optimizer = tfa.optimizers.SWA(optimizer, start_averaging=10, average_period=10)
 
   # We use the categorical_crossentropy loss since the MNIST dataset contains
   # ten labels. The Keras API will then automatically add the
