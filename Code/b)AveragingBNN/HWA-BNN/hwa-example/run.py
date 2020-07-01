@@ -120,7 +120,6 @@ def create_model():
 #   elif FLAGS.optimizer == 'hwa':
 #       optimizer = optim_local.HWA(lr=FLAGS.learning_rate)
 
-#   print(FLAGS.optimizer)
   # We use the categorical_crossentropy loss since the MNIST dataset contains
   # ten labels. The Keras API will then automatically add the
   # Kullback-Leibler divergence (contained on the individual layers of
@@ -219,6 +218,7 @@ def main(argv):
     train_set, heldout_set = tf.keras.datasets.mnist.load_data()
     train_seq = MNISTSequence(data=train_set, batch_size=FLAGS.batch_size)
     heldout_seq = MNISTSequence(data=heldout_set, batch_size=FLAGS.batch_size)
+  
   print('==> Building Model..')
   model = create_model()
   model.build(input_shape=[None, 28, 28, 1])
