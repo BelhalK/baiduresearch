@@ -78,14 +78,8 @@ FLAGS = flags.FLAGS
 
 
 def create_model():
-  """Creates a Keras model using the LeNet-5 architecture.
-
-  Returns:
-      model: Compiled Keras model.
-  """
   # KL divergence weighted by the number of training samples, using
-  # lambda function to pass as input to the kernel_divergence_fn on
-  # flipout layers.
+  # lambda function to pass as input to the kernel_divergence_fn on flipout layers.
   kl_divergence_function = (lambda q, p, _: tfd.kl_divergence(q, p) /  # pylint: disable=g-long-lambda
                             tf.cast(NUM_TRAIN_EXAMPLES, dtype=tf.float32))
 
@@ -136,9 +130,7 @@ def create_model():
 
   # We use the categorical_crossentropy loss since the MNIST dataset contains
   # ten labels. The Keras API will then automatically add the
-  # Kullback-Leibler divergence (contained on the individual layers of
-  # the model), to the cross entropy loss, effectively
-  # calcuating the (negated) Evidence Lower Bound Loss (ELBO)
+  # Kullback-Leibler divergence (contained on the individual layers of the model), to the cross entropy loss, effectively calcuating the (negated) Evidence Lower Bound Loss (ELBO)
   model.compile(optimizer, loss='categorical_crossentropy',
                 metrics=['accuracy'], experimental_run_tf_function=False)
   return model
@@ -149,7 +141,6 @@ class MNISTSequence(tf.keras.utils.Sequence):
 
   def __init__(self, data=None, batch_size=128, fake_data_size=None):
     """Initializes the sequence.
-
     Args:
       data: Tuple of numpy `array` instances, the first representing images and
             the second labels.
@@ -168,7 +159,6 @@ class MNISTSequence(tf.keras.utils.Sequence):
   @staticmethod
   def __generate_fake_data(num_images, num_classes):
     """Generates fake data in the shape of the MNIST dataset for unittest.
-
     Args:
       num_images: Integer, the number of fake images to be generated.
       num_classes: Integer, the number of classes to be generate.
@@ -188,11 +178,9 @@ class MNISTSequence(tf.keras.utils.Sequence):
   @staticmethod
   def __preprocessing(images, labels):
     """Preprocesses image and labels data.
-
     Args:
       images: Numpy `array` representing the image data.
       labels: Numpy `array` representing the labels data (range 0-9).
-
     Returns:
       images: Numpy `array` representing the image data, normalized
               and expanded for convolutional network input.
@@ -318,18 +306,6 @@ if __name__ == '__main__':
 
 
 def plot_weight_posteriors(names, qm_vals, qs_vals, fname):
-  """Save a PNG plot with histograms of weight means and stddevs.
-
-  Args:
-    names: A Python `iterable` of `str` variable names.
-      qm_vals: A Python `iterable`, the same length as `names`,
-      whose elements are Numpy `array`s, of any shape, containing
-      posterior means of weight varibles.
-    qs_vals: A Python `iterable`, the same length as `names`,
-      whose elements are Numpy `array`s, of any shape, containing
-      posterior standard deviations of weight varibles.
-    fname: Python `str` filename to save the plot to.
-  """
   fig = figure.Figure(figsize=(6, 3))
   canvas = backend_agg.FigureCanvasAgg(fig)
 
@@ -351,20 +327,7 @@ def plot_weight_posteriors(names, qm_vals, qs_vals, fname):
   print('saved {}'.format(fname))
 
 
-def plot_heldout_prediction(input_vals, probs,
-                            fname, n=10, title=''):
-  """Save a PNG plot visualizing posterior uncertainty on heldout data.
-
-  Args:
-    input_vals: A `float`-like Numpy `array` of shape
-      `[num_heldout] + IMAGE_SHAPE`, containing heldout input images.
-    probs: A `float`-like Numpy array of shape `[num_monte_carlo,
-      num_heldout, num_classes]` containing Monte Carlo samples of
-      class probabilities for each heldout sample.
-    fname: Python `str` filename to save the plot to.
-    n: Python `int` number of datapoints to vizualize.
-    title: Python `str` title for the plot.
-  """
+def plot_heldout_prediction(input_vals, probs,fname, n=10, title=''):
   fig = figure.Figure(figsize=(9, 3*n))
   canvas = backend_agg.FigureCanvasAgg(fig)
   for i in range(n):
