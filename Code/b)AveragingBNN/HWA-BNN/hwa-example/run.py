@@ -8,7 +8,6 @@ from __future__ import print_function
 
 import os
 import warnings
-
 from absl import app
 from absl import flags
 import matplotlib
@@ -19,16 +18,12 @@ import numpy as np
 import tensorflow.compat.v2 as tf
 import tensorflow_probability as tfp
 import tensorflow_addons as tfa
-
-import pdb
-
 from logger import Logger, savefig
-
 import optimizers as optim_local
 
 tf.enable_v2_behavior()
 
-# TODO(b/78137893): Integration tests currently fail with seaborn imports.
+import pdb
 warnings.simplefilter(action='ignore')
 
 try:
