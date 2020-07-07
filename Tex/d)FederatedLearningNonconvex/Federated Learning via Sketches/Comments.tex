@@ -73,3 +73,242 @@ A randomized function $\texttt{Comp}_k:\mathbb{R}^d\rightarrow\mathbb{R}^d$ is c
 \end{assumption}
 We note that for the contraction operators (see~ \cite{stich2018sparsified} for more examples) we have $c=\frac{k}{d}$.
 \end{comment}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCH-III}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning via Sketching with memory. }\label{Alg:ce-h-wm}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}^{(r)}=\boldsymbol{w}^{(r-1)}-\gamma\underline{\mathbf{S}}^{(r)}$ \belhal{This should be out of the local loops right?} \textcolor{blue}{FH: Good point, but in order to save communication cost each worker store both local and global models, so this should be here!}
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}+\mathbf{m}_j^{(r)}\right)$ back to the server.
+\State $\qquad\quad\quad$Device $j$ computes $\mathbf{m}_j^{(r)}=\mathbf{m}_j^{(r-1)}+\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)-\mathbf{S}_j^{(r)}$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^p\mathbf{S}^{(r)}_j$ %and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+\State $\qquad\qquad$ Sever runs $\underline{\mathbf{S}}^{(r)}= \texttt{HEAVYMIX}(\mathbf{S}^{(r)})$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Convergence result for \texttt{FEDSKETCH-III}}
+For this part we use standard perturbed iterate analysis. With short hand notation of 
+
+\begin{align}
+\Delta_j^{(r)}&\triangleq\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\nonumber\\
+\tilde{\mathbf{g}}^{(r)}_j&=\Delta_j^{(r)}+\mathbf{m}_j^{(r)}\nonumber\\
+\mathbf{m}_j^{(r+1)}&=\mathbf{m}_j^{(r)}+\left[\Delta_j^{(r)}-\underline{\mathbf{S}}_j^{(r)}\right]\nonumber\\
+&=\sum_{r=0}^{R-1}\left[\Delta_j^{(r)}-\underline{\mathbf{S}}_j^{(r)}\right]\nonumber\\
+\tilde{\mathbf{g}}^{(r)}&\triangleq\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_j^{(r)}\nonumber\\
+\underline{\mathbf{S}}^{(r)}&=\frac{1}{p}\sum_{j=1}^p\underline{\mathbf{S}}^{(r)}_j
+\end{align}
+
+
+Before proceeding to the proof we need a few short hand notation. We have:
+\begin{align}
+     \sum_{r=0}^{r-1}\left(\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\right)&{=} \frac{1}{p}\sum_{r=0}^{r-1}\sum_{j=1}^p\left(\Delta_j^{(r)}-\underline{\mathbf{S}}^{(r)}_j\right)\nonumber\\
+    &= \frac{1}{p}\sum_{j=1}^p\left[\sum_{r=0}^{r-1}\left(\Delta_j^{(r)}-\underline{\mathbf{S}}^{(r)}_j\right)\right]\nonumber\\
+    &= \frac{1}{p}\sum_{j=1}^p\mathbf{m}_j^{(r)}\nonumber\\
+    &\triangleq\mathbf{m}^{(r)}
+\end{align}
+
+Based on Algorithm~\ref{} and the update rules:
+\begin{align}
+\mathbf{S}_j^{(r)}&=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}+\mathbf{m}_j^{(r)}\right)\nonumber\\
+\mathbf{m}_j^{(r)}&=\mathbf{m}_j^{(r-1)}+\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)-\mathbf{S}_j^{(r)}
+\end{align}
+
+\todo{Continue from here....>}
+
+
+
+\begin{property}[\cite{ivkin2019communication}]\label{prop:2}
+Based on Lemma~\ref{} in \cite{ivkin2019communication}, for all $1\leq j\leq p$ we have
+\begin{align}
+    \mathbb{E}_{\mathbf{S}_j}\left[\left\|\mathbf{m}_j^{(r+1)}\right\|^2_2\right]\leq\left(1-\frac{k}{d}\right)\left\|\mathbf{m}_j^{(r)}+\mathbf{\Delta}_j^{(r)}\right\|_2^2\label{eq:sketch_var}
+\end{align}
+\end{property}
+Based on Property~\ref{prop:2} we have tha following Lemma:
+\begin{lemma}\label{lmm:bndng-m}
+\begin{align}
+        \mathbb{E}\left\|\mathbf{m}^{(r+1)}\right\|^2\leq\frac{2d}{k}\sum_{c=0}^{r+1}\left(1-\frac{k}{2d}\right)^{c}\left\|\mathbf{\Delta}_j^{(r+1-c)}\right\|_2^2
+\end{align}
+\end{lemma}
+\begin{proof}
+\begin{align}
+   \mathbb{E}_{\mathbf{S}_j}\left[\left\|\mathbf{m}_j^{(r+1)}\right\|^2_2\right]&\leq\left(1-\frac{k}{d}\right)\left\|\mathbf{m}_j^{(r)}+\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &\stackrel{(a)}{\leq}\left(1-\frac{k}{d}\right)\left[\left(1+\frac{k}{2d}\right)\left\|\mathbf{m}_j^{(r)}\right\|_2^2+\left(1+\frac{2d}{k}\right)\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\right]\nonumber\\
+  &\leq \left(1-\frac{k}{2d}\right)\mathbb{E}\left[\left\|\mathbf{m}_j^{(r)}\right\|_2^2\right]+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &\leq \left(1-\frac{k}{2d}\right)\left[\left(1-\frac{k}{2d}\right)\mathbb{E}\left[\left\|\mathbf{m}_j^{(r-1)}\right\|_2^2\right]+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r-1)}\right\|_2^2\right]+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &=\left(1-\frac{k}{2d}\right)^2\mathbb{E}\left[\left\|\mathbf{m}_j^{(r-1)}\right\|_2^2\right]+\left(1-\frac{k}{2d}\right)\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r-1)}\right\|_2^2+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &\leq \left(1-\frac{k}{2d}\right)^3\mathbb{E}\left[\left\|\mathbf{m}_j^{(r-2)}\right\|_2^2\right]+\left(1-\frac{k}{2d}\right)^2\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r-2)}\right\|_2^2+\left(1-\frac{k}{2d}\right)\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r-1)}\right\|_2^2+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &\leq \dots\leq\nonumber\\
+  &\leq \left(1-\frac{k}{2d}\right)^{r+1}\mathbb{E}\left[\left\|\mathbf{m}_j^{(0)}\right\|_2^2\right]+\frac{2d}{k}\sum_{c=0}^{r+1}\left(1-\frac{k}{2d}\right)^{c}\left\|\mathbf{\Delta}_j^{(r+1-c)}\right\|_2^2\nonumber\\
+  &\stackrel{(b)}{=}\frac{2d}{k}\sum_{c=0}^{r+1}\left(1-\frac{k}{2d}\right)^{c}\left\|\mathbf{\Delta}_j^{(r+1-c)}\right\|_2^2
+\end{align}
+\end{proof}
+
+Next, taking expectation with respect to $\xi$ (random mini-batches) we obtain:
+\begin{align}
+    \mathbb{E}_{\xi}\left[\mathbb{E}_{\mathbf{S}_j}\left[\left\|\mathbf{m}_j^{(r+1)}\right\|^2_2\right]\right]\leq \frac{2d}{k}\sum_{c=0}^{r+1}\left(1-\frac{k}{2d}\right)^{c}\mathbb{E}_{\xi}\left[\left\|\mathbf{\Delta}_j^{(r+1-c)}\right\|_2^2 \right]
+\end{align}
+Next step is to bound the term $\mathbb{E}_{\xi}\left[\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2 \right]$:
+\begin{lemma}\label{lmm:bndng-delta}
+\begin{align}
+    \mathbb{E}_{\xi}\left[\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2 \right]\leq\tau\sigma^2\eta^2+\tau\eta^2\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2
+\end{align}
+\end{lemma}
+\begin{proof}
+\begin{align}
+    \mathbb{E}_{\xi}\left[\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2 \right]&=\mathbb{E}_{\xi}\left[\left\|-\eta\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 \right]\nonumber\\
+    &=\eta^2\mathbb{E}_{\xi}\left[\left\|\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 \right]\nonumber\\
+    &=\eta^2 \text{Var}\left(\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(r,\ell)}\right)+\eta^2\left[\left\|\sum_{\ell=0}^{\tau-1}\mathbb{E}_{\xi}\left[\tilde{\mathbf{g}}_j^{(r,\ell)}\right]\right\|_2^2 \right]\nonumber\\
+    &\stackrel{(a)}{=}\eta^2 \sum_{\ell=0}^{\tau-1}\text{Var}\left(\tilde{\mathbf{g}}_j^{(r,\ell)}\right)+\eta^2\left[\left\|\sum_{\ell=0}^{\tau-1}{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 \right]\nonumber\\
+        &\stackrel{(b)}{\leq}\eta^2 \sum_{\ell=0}^{\tau-1}\sigma^2+\eta^2\left\|\sum_{\ell=0}^{\tau-1}{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 \nonumber\\
+        &\stackrel{(c)}{\leq} \tau\sigma^2\eta^2+\tau\eta^2\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 
+\end{align}
+where (a) is due to independent mini-batch sampling, (b) comes from Assumption~\ref{} and (c) holds because of $\left\|\sum_{i=1}^s\mathbf{b}_i\right\|^2\leq s\sum_{i=1}^s\left\|\mathbf{b}_i\right\|^2$.
+\end{proof}
+Now, mixing Lemmas~\ref{lmm:bndng-delta} and \ref{lmm:bndng-m} we obtain:
+\begin{align}
+    \mathbb{E}_{\xi}\left[\mathbb{E}_{\mathbf{S}_j}\left[\left\|\mathbf{m}_j^{(r)}\right\|^2_2\right]\right]&\leq \frac{2d}{k}\sum_{c=0}^{r}\left(1-\frac{k}{2d}\right)^{c}\left(\tau\sigma^2\eta^2+\tau\eta^2\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r-c,\ell)}\right\|_2^2\right)\nonumber\\
+    &\leq \frac{2d}{k}\sum_{c=0}^{r}\left(\tau\sigma^2\eta^2+\tau\eta^2\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r-c,\ell)}\right\|_2^2\right)\nonumber\\
+    &=\frac{2d}{k}\left((r+1)\tau\sigma^2\eta^2+\tau\eta^2\sum_{c=0}^{r}\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r-c,\ell)}\right\|_2^2\right)
+\end{align}
+
+From the $L$-smoothness gradient assumption on global objective, by using  $\underline{\mathbf{S}}^{(r)}$ we have:
+\begin{align}
+    f(&{\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\nonumber\\ 
+    &\leq -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\underline{\mathbf{S}}^{(r)}\big\rangle+\frac{\gamma^2 L}{2}\|\underline{\mathbf{S}}^{(r)}\|^2\nonumber\\
+    &=-\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle+\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\big\rangle+\frac{\gamma^2 L}{2}\|\underline{\mathbf{S}}^{(r)}-\tilde{\mathbf{g}}^{(r)}+\tilde{\mathbf{g}}^{(r)}\|^2\nonumber\\
+    &\leq -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle+\gamma\alpha\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2+\frac{\gamma}{\alpha}\left\|\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\right\|^2+{\gamma^2 L}\left\|\underline{\mathbf{S}}^{(r)}-\tilde{\mathbf{g}}^{(r)}\right\|^2+{\gamma^2 L}\left\|\tilde{\mathbf{g}}^{(r)}\right\|^2\nonumber\\
+    &=-\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle+\gamma\alpha\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2+\left(\frac{\gamma}{\alpha}+{\gamma^2 L}\right)\left\|\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\right\|^2+\gamma^2 L\left\|\tilde{\mathbf{g}}^{(r)}\right\|^2\label{eq:wit_exp}
+\end{align}
+Next, we take expectation from both side of Eq.~(\ref{eq:wit_exp}) as follows:
+\begin{align}
+    \mathbb{E}\left[f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\right]\leq \underbrace{-\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}^{(r)}\right]\big\rangle}_{(\mathrm{I})}+\gamma\alpha\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2+\underbrace{\left(\frac{\gamma}{\alpha}+{\gamma^2 L}\right)\mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\right\|^2\right]}_{(\mathrm{II})}+\underbrace{\gamma^2 L\mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}\right\|^2\right]}_{(\mathrm{III})}
+\end{align}
+In the rest of the proof we bound the terms $(\mathrm{I},\mathrm{II},\mathrm{III})$ as follows:
+Now, we start bounding these terms:
+
+\paragraph{Bounding $(\mathrm{I})$:}
+\begin{lemma}
+\begin{align}
+    -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}^{(r)}\right]\big\rangle\leq ...
+\end{align}
+\end{lemma}
+\begin{proof}
+\begin{align}
+    -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}^{(r)}\right]\big\rangle&=-\gamma \left\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_j^{(r)}\right]\right\rangle\nonumber\\
+    &=-\gamma\frac{1}{p}\sum_{j=1}^p \left\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}_j^{(r)}\right]\right\rangle\nonumber\\
+    &=-\gamma\frac{1}{p}\sum_{j=1}^p \left\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}_j^{(r)}\right]\right\rangle\nonumber\\
+    &=-\gamma\frac{1}{p}\sum_{j=1}^p \left\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\Delta}_j^{(r)}+\mathbf{m}_j^{(r)}\right]\right\rangle\nonumber\\
+\end{align}
+\end{proof}
+
+\todo{To be continued from here...}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Deferentially private algorithm}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Communication-efficient algorithm}
+Here we propose the communication-efficient algorithm:
+
+
+
+
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCH-II}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning via Sketching.  
+}\label{Alg:ce-h}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}^{(r)}=\boldsymbol{w}^{(r-1)}-\gamma{\mathbf{S}}^{(r)}$
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\texttt{HEAVYMIX}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^n\mathbf{S}_j$ and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+%\State $\qquad\qquad$ Sever runs $\underline{\mathbf{S}}^{(r)}= (\mathbf{S}^{(r)})$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Private and Communication-efficient algorithm}
+
+
+\subsection{Communication-efficient and differential private algorithm based on induced compressor}
+
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCH}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching. }\label{Alg:combined}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{x}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma{\mathbf{S}}^{(r-1)}$
+\State $\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $c=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(c,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(c,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $$\mathbf{g}^{(\text{ind},r)}_j\triangleq \texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)+\mathbf{S}\left[\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)-\texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)\right]$$ 
+back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{g}^{(\text{ind},r)}_j$ and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+%\State $\qquad$Sever chooses a set of devices  $\mathcal{P}_t$ with distribution $q_j$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}

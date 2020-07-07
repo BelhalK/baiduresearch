@@ -14,7 +14,6 @@ from pcode.tracking.logging import log, configure_log, log_args
 
 
 
-
 def init_process(rank, args):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = '127.0.0.1'
