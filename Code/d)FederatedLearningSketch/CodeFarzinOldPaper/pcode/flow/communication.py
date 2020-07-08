@@ -220,9 +220,7 @@ def aggregate_models_virtual(args, model, group, online_clients):
 
 def scaffold_aggregation(args, model_server, model_client, model_server_control, model_client_control,
                          group, online_clients, optimizer, lr, local_steps, lambda_weight=None):
-    """Aggregate gradients for federated learning using SCAFFOLD.
-    https://arxiv.org/abs/1910.06378
-    """
+    """Aggregate gradients for federated learning using SCAFFOLD.https://arxiv.org/abs/1910.06378"""
     model_client_control_copy = deepcopy(model_client_control)
     num_online_clients = len(online_clients) if 0 in online_clients else len(online_clients) + 1
     if (0 not in online_clients) and (args.graph.rank == 0):
