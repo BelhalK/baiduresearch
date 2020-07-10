@@ -153,16 +153,6 @@ class MNISTSequence(tf.keras.utils.Sequence):
 
   @staticmethod
   def __generate_fake_data(num_images, num_classes):
-    """Generates fake data in the shape of the MNIST dataset for unittest.
-    Args:
-      num_images: Integer, the number of fake images to be generated.
-      num_classes: Integer, the number of classes to be generate.
-    Returns:
-      images: Numpy `array` representing the fake image data. The
-              shape of the array will be (num_images, 28, 28).
-      labels: Numpy `array` of integers, where each entry will be
-              assigned a unique integer.
-    """
     images = np.random.randint(low=0, high=256,
                                size=(num_images, IMAGE_SHAPE[0],
                                      IMAGE_SHAPE[1]))
@@ -172,16 +162,7 @@ class MNISTSequence(tf.keras.utils.Sequence):
 
   @staticmethod
   def __preprocessing(images, labels):
-    """Preprocesses image and labels data.
-    Args:
-      images: Numpy `array` representing the image data.
-      labels: Numpy `array` representing the labels data (range 0-9).
-    Returns:
-      images: Numpy `array` representing the image data, normalized
-              and expanded for convolutional network input.
-      labels: Numpy `array` representing the labels data (range 0-9),
-              as one-hot (categorical) values.
-    """
+    """Preprocesses image and labels data."""
     images = 2 * (images / 255.) - 1.
     images = images[..., tf.newaxis]
 
