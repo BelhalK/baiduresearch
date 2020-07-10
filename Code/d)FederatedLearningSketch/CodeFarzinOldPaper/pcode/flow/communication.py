@@ -9,7 +9,6 @@ from pcode.utils.auxiliary import deepcopy_model
 
 """the frequency of communication"""
 
-
 def configure_sync_scheme(args):
     args.local_steps = define_sync_freq(
         num_epochs=args.num_epochs,
