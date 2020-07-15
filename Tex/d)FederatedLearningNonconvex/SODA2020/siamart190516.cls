@@ -1582,7 +1582,7 @@ Vol.\ #3, No.\ #4, pp.\ #5
   \patchBothAmsMathEnvironmentsForLineno{gather}%
   \patchBothAmsMathEnvironmentsForLineno{multline}%
   \renewcommand{\footercopyright}{\textcolor{siamreviewcolor}%
-    {\textit{This manuscript is for review purposes only.}}}
+    {\textit{}}}
 \fi
 %%
 %% <<tgk<<
