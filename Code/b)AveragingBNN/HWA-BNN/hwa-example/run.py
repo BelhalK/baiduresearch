@@ -208,12 +208,11 @@ def main(argv):
   dataset = 'MNIST'
   title = '{}-{}'.format(dataset, logname)
   checkpoint_dir = 'checkpoint/checkpoint_{}'.format(dataset)
-  loggertrain = Logger('{}/trainlog{}_opt{}_lr{}_bs{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size), title=title)
+  loggertrain = Logger('{}/trainlog{}_opt{}_lr{}_bs{}_avgp{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size, FLAGS.avg_period), title=title)
   loggertrain.set_names(['Learning Rate', 'Train Loss','Train Acc.'])
 
-  loggertest = Logger('{}/testlog{}_opt{}_lr{}_bs{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size), title=title)
+  loggertest = Logger('{}/testlog{}_opt{}_lr{}_bs{}_avgp{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size,FLAGS.avg_period), title=title)
   loggertest.set_names(['Learning Rate', 'Test Loss',  'Test Acc.'])
-
 
   print('==> Training Phase...')
   for epoch in range(FLAGS.num_epochs):
