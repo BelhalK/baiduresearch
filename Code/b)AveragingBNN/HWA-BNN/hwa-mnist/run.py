@@ -1,6 +1,7 @@
 # python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer adam
 # python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer sgd --learning_rate 0.01
 # python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer hwa --start_avg 10 --avg_period 100
+# python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer hwa_sgd --start_avg 10 --avg_period 10
 
 from __future__ import absolute_import
 from __future__ import division
@@ -40,7 +41,7 @@ NUM_HELDOUT_EXAMPLES = 10000
 NUM_CLASSES = 10
 
 flags.DEFINE_float('learning_rate',
-                   default=0.001,
+                   default=0.01,
                    help='Initial learning rate.')
 flags.DEFINE_integer('num_epochs',
                      default=10,
