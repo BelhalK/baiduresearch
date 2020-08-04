@@ -1,114 +1,110 @@
-% !TEX root = main.tex
+
 \section{Problem Setting}
-In this paper our goal is to solve the following optimization problem using $p$ distributed devices:
-\begin{align}
-    f(\boldsymbol{x})\triangleq \left[\min_{\boldsymbol{x}\in \mathbb{R}^{d}}\frac{1}{p}\sum_{j=1}^{p}F_j(\boldsymbol{x})\right]
+\label{sec:problem}
+%\todo{Replace $k$ with $m$ in main body!}
+
+
+The federated learning optimization problem across $p$ distributed devices is defined as follows:
+\begin{align}\label{eq:main}
+   \min_{\boldsymbol{x}\in \mathbb{R}^{d},\: \sum_{j=1}^pq_j=1} f(\boldsymbol{x})\triangleq \left[\sum_{j=1}^{p}q_jF_j(\boldsymbol{x})\right]
 \end{align}
-where $F_j(\boldsymbol{x})=\mathbb{E}_{\xi\in\mathcal{D}_j}\left[f_j\left(\boldsymbol{x},\xi\right)\right]$ is the local cost function at device $j$. $\xi$ is a random variable with probability distribution $\mathcal{D}_j$.
+where $F_j(\boldsymbol{x})=\mathbb{E}_{\xi\in\mathcal{D}_j}\left[L_j\left(\boldsymbol{x},\xi\right)\right]$ is the local cost function at device $j$, $q_j\triangleq\frac{n_j}{n}$ with $n_j$ shows the number of data shards at device $j$ and $n=\sum_{j=1}^pn_j$ is the total number of data samples.
+$\xi$ is a random variable with probability distribution $\mathcal{D}_j$, and $L_j$ is a loss function that measures the performance of model $\boldsymbol{x}$. 
+We note that, while for the homogeneous data distribution, we assume $\mathcal{D}_j$ for $1\leq j\leq p$ have the same distribution and $L_1=L_2=\ldots=L_p$, in the heterogeneous setting these data distributions and loss functions $L_j$ can be different from device to device. 
 
-\todo{Differences and potential improvements over \cite{haddadpour2020federated}!}
+We focus on solving optimization problem in Eq.~(\ref{eq:main}) for the homogeneous data distribution but for the heterogeneous setting we consider the special case of $q_1=\ldots=q_p=\frac{1}{p}$. 
 
+\section{Count Sketch as a Compression Operation}\label{sec:compression}
 
-\section{Count Sketch Review}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{algorithm}[H]
-\caption{\texttt{CS}: Count Sketch to compress ${\boldsymbol{x}}\in\mathbb{R}^{d}$. }\label{Alg:csketch}
+A common sketching solution employed to tackle \eqref{eq:main} called \texttt{Count Sketch} ~(for more detail see the seminal works \cite{DBLP:journals/tcs/CharikarCF04, cormode2005improved,kleinberg2003bursty}) is described Algorithm~\ref{alg:csketch}.
+\begin{algorithm}[b]
+\caption{\texttt{CS} \cite{kleinberg2003bursty}: Count Sketch to compress ${\boldsymbol{x}}\in\mathbb{R}^{d}$. }\label{alg:csketch}
 \begin{algorithmic}[1]
-\State \textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, k, \mathbf{S}_{t\times k}, h_i (1\leq i\leq t), sign_i (1\leq i\leq t)$
-\State \textbf{Compress vector $\boldsymbol{x}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\boldsymbol{x}\right)$:}
-\State \textbf{for} $\boldsymbol{x}_i\in\boldsymbol{x}$ \textbf{do}
-\State \quad\textbf{for $j=1,\cdots,t$ do}
-\State \quad\quad $\mathbf{S}[j][h_j(i)]=\mathbf{S}[j-1][h_{j-1}(i)]+\text{sign}_j(i).\boldsymbol{x}_i$ 
-\State \quad\textbf{end for}
-\State \textbf{end for}
-\State \textbf{return} $\mathbf{S}_{t\times k}(\boldsymbol{x})$
+\State{\textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, k, \mathbf{S}_{t\times m}, h_j (1\leq i\leq t), sign_j (1\leq i\leq t)$}
+\State{\textbf{Compress vector $\boldsymbol{x}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\boldsymbol{x}\right)$:}}
+\State{\textbf{for} $\boldsymbol{x}_i\in\boldsymbol{x}$ \textbf{do}}
+\State{\quad\textbf{for $j=1,\cdots,t$ do}}
+\State{\quad\quad $\mathbf{S}[j][h_j(i)]=\mathbf{S}[j-1][h_{j-1}(i)]+\text{sign}_j(i).\boldsymbol{x}_i$ }
+\State{\quad\textbf{end for}}
+\State{\textbf{end for}}
+\State{\textbf{return} $\mathbf{S}_{t\times m}(\boldsymbol{x})$}
 \end{algorithmic}
 \end{algorithm}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%We indicate the total size of the sketch with $D$.
-\paragraph{Notation:} For the rest of the paper we indicate the number of communication rounds and number of bits per round per device with $R(\epsilon)$ and $B(d)$ respectively. For the rest of the paper we indicate the count sketch of any vector $\boldsymbol{x}$ with $\mathbf{S}(\boldsymbol{x})$
-\section{Compression Operations}
-In this subsection, we review a recent results that will be useful for our work. Similar to \cite{horvath2020better}, we define the following two types of compressor operators that will be useful for our algorithm.
+The algorithm for generating count sketching is using two sets of functions that encode any input vector $\boldsymbol{x}$ \textbf{into a hash table} $\boldsymbol{S}_{t\times m}(\boldsymbol{x})$. We use hash functions $\{h_{j,1\leq j\leq t }:[d]\rightarrow m\}$ (which are pairwise independent) along with another set of pairwise independent sign hash functions $\{\text{sign}_{j}: [d]\rightarrow \{+1,-1\}\}$ to map every entry of $\boldsymbol{x}$ ($\boldsymbol{x}_i, \:1\leq i\leq d$) into $t$ different columns of hash table $\mathbf{S}_{t\times m}$. This steps are summarized in Algorithm~\ref{alg:csketch}.  
+   
 \subsection{Unbiased Compressor}
 \begin{definition}[Unbiased compressor]
 A randomized function, $\text{C}:\mathbb{R}^{d}\rightarrow\mathbb{R}^{d}$ is called an unbiased compression operator with $\Delta\geq 1$, if we have 
-\begin{align}
-\mathbb{E}\left[\text{C}(\boldsymbol{x})\right]&=\boldsymbol{x}\nonumber\\
-    \mathbb{E}\left[\left\|\text{C}(\boldsymbol{x})\right\|^2_2\right]&\leq \Delta\left\|\boldsymbol{x}\right\|^2_2
+\begin{align}\notag
+\mathbb{E}\left[\text{C}(\boldsymbol{x})\right]&=\boldsymbol{x}\nonumber \quad \textrm{and} \quad    \mathbb{E}\left[\left\|\text{C}(\boldsymbol{x})\right\|^2_2\right] \leq \Delta\left\|\boldsymbol{x}\right\|^2_2\notag \, .
 \end{align}
-We indicate this class of compressor with $\text{C}\in\mathbb{U}(\Delta)$
+We indicate this class of compressor with $\text{C}\in\mathbb{U}(\Delta)$.
 \end{definition}
 We note that this definition leads to the property 
-\begin{align}
-    \mathbb{E}\left[\left\|\text{C}(\boldsymbol{x})-\boldsymbol{x}\right\|^2_2\right]&\leq \left(\Delta-1\right)\left\|\boldsymbol{x}\right\|^2_2
+\begin{align}\notag
+    \mathbb{E}\left[\left\|\text{C}(\boldsymbol{x})-\boldsymbol{x}\right\|^2_2\right]&\leq \left(\Delta-1\right)\left\|\boldsymbol{x}\right\|^2_2\, .
 \end{align}
 \begin{remark}
-Note that in case of $\Delta=1$ our algorithm reduces for the case of no compression. This property allows us the noise of the compression.
+Note that in case of $\Delta=1$ our algorithm reduces for the case of no compression. This property allows us to control the noise of the compression.
 \end{remark}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{algorithm}[H]
-\caption{\texttt{PRIVIX}\cite{li2019privacy}: Unbiased compressor based on sketching. }\label{Alg:csketch}
+
+\subsection{An Example of Unbiased Compressor via Sketching}
+An instance of such unbiased compressor is \texttt{PRIVIX} which obtains an estimate of input $\boldsymbol{x}$ to a count sketching $\boldsymbol{S}(\boldsymbol{x})$. In this algorithm to query $x_i$, the $i-th$ element of the vector, we compute the median of $t$ approximated value specified by the indices of $h_j(i)$ for $1\leq j\leq t$. These steps are summarized in Algorithm~\ref{Alg:privix}.
+
+\begin{algorithm}[t]
+\caption{\texttt{PRIVIX}\cite{li2019privacy}: Unbiased compressor based on sketching. }\label{Alg:privix}
 \begin{algorithmic}[1]
-\State \textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, k, \mathbf{S}_{t\times k}, h_i (1\leq i\leq t), sign_i (1\leq i\leq t)$
-%\State \textbf{Compress vector $\tilde{\mathbf{g}}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\tilde{\mathbf{g}}\right)$:}
-%\State \textbf{for} $\mathbf{g}_i\in\mathbf{g}$ \textbf{do}
-%\State \quad\textbf{for $j=1,\cdots,t$ do}
-%\State \quad\quad $\mathbf{S}[j][h_j(i)]=\mathbf{S}[j-1][h_{j-1}(i)]+\text{sign}_j(i).\mathbf{g}_i$ 
-%\State \quad\textbf{end for}
-%\State \textbf{end for}
-%\State \textbf{return} $\mathbf{S}_{t\times k}$
-\State \textbf{Query} $\tilde{\boldsymbol{x}}\in\mathbb{R}^d$ \textbf{from $\mathbf{S(\boldsymbol{x})}$:}
-\State \textbf{for} $i=1,\ldots,d$ \textbf{do}
-\State \quad\quad ${\tilde{\boldsymbol{x}}}[i]=\text{Median}\{\text{sign}_j(i).\mathbf{S}[j][h_j(i)]:1\leq j\leq t\}$ 
-\State \textbf{end for}
-\State \textbf{Output:} ${\tilde{\boldsymbol{x}}}$
-%\belhal{What is this function $\mathbf{S}(\cdot)$?. Do you mean the matrix $\mathbf{S}_g$ ? }
-%\textcolor{blue}{Farzin: I will change the notation later, see \cite{li2019privacy} for the original algorithm!}
+\State{\textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, m, \mathbf{S}_{t\times m}, h_j (1\leq i\leq t), sign_j (1\leq i\leq t)$}
+\State{\textbf{Query} $\tilde{\boldsymbol{x}}\in\mathbb{R}^d$ \textbf{from $\mathbf{S(\boldsymbol{x})}$:}}
+\State{\textbf{for} $i=1,\ldots,d$ \textbf{do}}
+\State{\quad\quad ${\tilde{\boldsymbol{x}}}[i]=\text{Median}\{\text{sign}_j(i).\mathbf{S}[j][h_j(i)]:1\leq j\leq t\}$ }
+\State{\textbf{end for}}
+\State{\textbf{Output:} ${\tilde{\boldsymbol{x}}}$}
 \vspace{- 0.1cm}
 \end{algorithmic}
 \end{algorithm}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Estimation errors:}
+ 
+ Next we review a few properties of \texttt{PRIVIX} as follows: 
 
+
+
+% \paragraph{Estimation errors:}
 \begin{property}[\cite{li2019privacy}]
-For our proof purpose we will need the following crucial properties of the count sketch described in Algorithm~\ref{Alg:csketch}, for any real valued vector $\mathbf{x}\in \mathbb{R}^{d}$:
+For our proof purpose we will need the following crucial properties of the count sketch described in Algorithm~\ref{alg:csketch}, for any real valued vector $\mathbf{x}\in \mathbb{R}^{d}$:
 \begin{itemize}
     \item[1)] \emph{Unbiased estimation}: As it is also mentioned in \cite{li2019privacy}, we have:
-    \begin{align}
-        \mathbb{E}_{\mathbf{S}}\left[\texttt{PRIVIX}\left[\mathbf{S}\left(\mathbf{x}\right)\right]\right]=\mathbf{x}
+    \begin{align}\notag
+        \mathbb{E}_{\mathbf{S}}\left[\texttt{PRIVIX}\left[\mathbf{S}\left(\mathbf{x}\right)\right]\right]=\mathbf{x}\, .
     \end{align}
-    %\belhal{The biased case is interesting, no hopes dealing with it for now?}
-    
-    %\textcolor{blue}{Farzin: See Algorithms 5 and 6, yet I am working on the convergence proof! Plus, this is the property of the count sketch not assumption, so I think we are good even for unbiased case!}
-    \item[2)] \emph{Bounded variance}: With $k=O\left(\frac{e}{\mu^2}\right)$ and $t=O\left(\ln \left(\frac{1}{\delta}\right)\right)$, we have the following bound with probability $1-\delta$:
-    \begin{align}
-        \mathbb{E}_{\mathbf{S}}\left[\left\|\texttt{PRIVIX}\left[\mathbf{S}\left(\mathbf{x}\right)\right]-\mathbf{x}\right\|_2^2\right]\leq \mu^2 d\left\|\mathbf{x}\right\|_2^2
+    \item[2)] \emph{Bounded variance}: With $m=\mathcal{O}\left(\frac{e}{\mu^2}\right)$ and $t=\mathcal{O}\left(\ln \left(\frac{1}{\delta}\right)\right)$, we have the following bound with probability $1-\delta$:
+    \begin{align}\notag
+        \mathbb{E}_{\mathbf{S}}\left[\left\|\texttt{PRIVIX}\left[\mathbf{S}\left(\mathbf{x}\right)\right]-\mathbf{x}\right\|_2^2\right]\leq \mu^2 d\left\|\mathbf{x}\right\|_2^2\, .
     \end{align}
 \end{itemize}
 \end{property}
 Therefore, $\texttt{PRIVIX}\in \mathbb{U}(1+\mu^2 d)$ with probability $1-\delta$.
 \begin{remark}
-We note that $\Delta=1+\mu^2d$ implies that if $k\rightarrow d$, $\Delta\rightarrow 1+1=2$, which means that the case of no compression is not covered. Thus, the algorithms based on this may converges poorly.
+We note that $\Delta=1+\mu^2d$ implies that if $m\rightarrow d$, $\Delta\rightarrow 1+1=2$, which means that the case of no compression is not covered. Thus, the algorithms based on this may converges poorly.
 \end{remark}
 
-\paragraph{Differentially Private Property:}
+% \paragraph{Differentially Private Property:}
 \begin{definition}
 A randomized mechanism $\mathcal{O}$ satisfies $\epsilon-$differential privacy, if for input data ${S}_1$ and ${S}_2$ differing by up to one element, and for any output $D$ of $\mathcal{O}$,
-\begin{align}
-    \Pr\left[\mathcal{O}(S_1)\in D\right]\leq \exp{\left(\epsilon\right)}\Pr\left[\mathcal{O}(S_2)\in D\right] 
+\begin{align}\notag
+    \Pr\left[\mathcal{O}(S_1)\in D\right]\leq \exp{\left(\epsilon\right)}\Pr\left[\mathcal{O}(S_2)\in D\right] \, .
 \end{align}
 \end{definition}
-\todo{Add explanations that this scheme induces local privacy!}
+
 
 \begin{assumption}[Input vector distribution]\label{assu:invecdist}
-For the purpose of privacy analysis, similar to \cite{,}, we suppose that for any input vector $S$ with length $|S|=l$, each element $s_i\in S$ is drawn i.i.d. from a Gaussian distribution: $s_i\sim \mathcal{N}(0,\sigma^2)$, and bounded by a large probability:  $|s_i|\leq C, 1\leq i\leq p$ for some positive constant $C>0$.    
+For the purpose of privacy analysis, similar to 3, we suppose that for any input vector $S$ with length $|S|=l$, each element $s_i\in S$ is drawn i.i.d. from a Gaussian distribution: $s_i\sim \mathcal{N}(0,\sigma^2)$, and bounded by a large probability:  $|s_i|\leq C, 1\leq i\leq p$ for some positive constant $C>0$.    
 \end{assumption}
 
 \begin{theorem}[$\epsilon-$ differential privacy of count sketch, \cite{li2019privacy}]
-For a sketching algorithm $\mathcal{O}$ using Count Sketch $\mathbf{S}_{t\times k}$ with $t$ arrays of $k$ bins, for any input vector $S$ with length $l$ satisfying Assumption~\ref{assu:invecdist}, $\mathcal{O}$ achieves $t.\ln \left(1+\frac{\alpha C^2 k(k-1)}{\sigma^2(l-2)}(1+\ln(l-k) )\right)-$differential privacy with high probability, where $\alpha$ is a positive constant satisfying $\frac{\alpha C^2 k(k-1)}{\sigma^2(l-2)}(1+\ln(l-k) )\leq \frac{1}{2}-\frac{1}{\alpha}$.
+For a sketching algorithm $\mathcal{O}$ using Count Sketch $\mathbf{S}_{t\times m}$ with $t$ arrays of $m$ bins, for any input vector $S$ with length $l$ satisfying Assumption \ref{assu:invecdist}, $\mathcal{O}$ achieves $t.\ln \left(1+\frac{\alpha C^2 m(m-1)}{\sigma^2(l-2)}(1+\ln(l-m) )\right)-$differential privacy with high probability, where $\alpha$ is a positive constant satisfying $\frac{\alpha C^2 m(m-1)}{\sigma^2(l-2)}(1+\ln(l-m) )\leq \frac{1}{2}-\frac{1}{\alpha}$.
 \end{theorem}
 The proof of this theorem can be found in \cite{li2019privacy}.
 
@@ -118,247 +114,200 @@ The proof of this theorem can be found in \cite{li2019privacy}.
 \subsection{Biased compressor}
 \begin{definition}[Biased compressor]
 A (randomized) function,  ${\text{C}}:\mathbb{R}^{d}\rightarrow\mathbb{R}^{d}$ is called a compression operator with $\alpha>0$ and $\Delta\geq 1$, if we have 
-\begin{align}
-    \mathbb{E}\left[\left\|\alpha\boldsymbol{x}-\bar{\text{C}}(\boldsymbol{x})\right\|^2_2\right]\leq \left(1-\frac{1}{\Delta}\right)\left\|\boldsymbol{x}\right\|^2_2
+\begin{align}\notag
+    \mathbb{E}\left[\left\|\alpha\boldsymbol{x}-\bar{\text{C}}(\boldsymbol{x})\right\|^2_2\right]\leq \left(1-\frac{1}{\Delta}\right)\left\|\boldsymbol{x}\right\|^2_2\, ,
 \end{align}
-Any biased compression operator $C$ is indicated by $C\in \mathbb{C}(\Delta,\alpha)$. 
+then, any biased compression operator $C$ is indicated by $C\in \mathbb{C}(\Delta,\alpha)$. 
 \end{definition}
 The following Lemma links these two definitions:
 \begin{lemma}[\cite{horvath2020better}]
 We have $\mathbb{U}(\Delta)\subset\mathbb{C}(\Delta)$.
 \end{lemma}
 
-An instance of biased compressor based on sketching is as follows:
+An instance of biased compressor based on sketching is given in Algorithm~\ref{alg:heavymix}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
-\caption{\texttt{HEAVYMIX}~\cite{ivkin2019communication} }\label{Alg:sketch}
+\caption{\texttt{HEAVYMIX}  }\label{alg:heavymix}
 \begin{algorithmic}[1]
-\State \textbf{Inputs:} $\mathbf{S}_{\mathbf{g}}$; parameter-$k$
-\State \textbf{Compress vector $\tilde{\mathbf{g}}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\tilde{\mathbf{g}}\right)$:}
-\State Query $\hat{\ell}_2^2=\left(1\pm 0.5\right)\left\|\mathbf{g}\right\|^2$ from sketch $\mathbf{S}_{\mathbf{g}}$
-\State $\forall j$ query $\hat{\mathbf{g}}_j^2=\hat{\mathbf{g}}_j^2\pm \frac{1}{2k}\left\|\mathbf{g}\right\|^2$ from sketch $\mathbf{S}_{\mathbf{g}}$
-\State $H=\{j|\hat{\mathbf{g}}_j\geq \frac{\hat{\ell}_2^2}{k}\}$ and $NH=\{j|\hat{\mathbf{g}}_j<\frac{\hat{\ell}_2^2}{k}\}$
-\State Top$_k=H\cup rand_\ell(NH)$, where $\ell=k-\left|H\right|$
-\State Get exact values of Top$_k$ 
-\State \textbf{Output:} $\mathbf{g}_S:\forall j\in\text{Top}_k:\mathbf{g}_{Si}=\mathbf{g}_{i}$ and $\forall\notin\text{Top}_k: \mathbf{g}_{Si}=0$
+\State{\textbf{Inputs:} $\mathbf{S}_{\mathbf{g}}$; parameter-$m$}
+\State{\textbf{Compress vector $\tilde{\mathbf{g}}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\tilde{\mathbf{g}}\right)$:}}
+\State{Query $\hat{\ell}_2^2=\left(1\pm 0.5\right)\left\|\mathbf{g}\right\|^2$ from sketch $\mathbf{S}_{\mathbf{g}}$}
+\State{$\forall j$ query $\hat{\mathbf{g}}_j^2=\hat{\mathbf{g}}_j^2\pm \frac{1}{2m}\left\|\mathbf{g}\right\|^2$ from sketch $\mathbf{S}_{\mathbf{g}}$}
+\State{$H=\{j|\hat{\mathbf{g}}_j\geq \frac{\hat{\ell}_2^2}{m}\}$ and $NH=\{j|\hat{\mathbf{g}}_j<\frac{\hat{\ell}_2^2}{m}\}$}
+\State{Top$_m=H\cup rand_\ell(NH)$, where $\ell=m-\left|H\right|$}
+\State{Get exact values of Top$_m$ }
+\State{\textbf{Output:} $\mathbf{g}_S:\forall j\in\text{Top}_m:\mathbf{g}_{Si}=\mathbf{g}_{i}$ and $\forall j \notin\text{Top}_m: \mathbf{g}_{Si}=0$}
 %\vspace{- 0.1cm}
 \end{algorithmic}
 \end{algorithm}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\todo{Explain minor distinction here!}
+
 
 \begin{lemma}[\cite{ivkin2019communication}]
-\texttt{HEAVYMIX}, with sketch size $\Theta\left(k\log\left(\frac{d}{\delta}\right)\right)$ is a biased compressor with $\alpha=1$ and  $\Delta=d/k$ with probability $\geq1-\delta$. In other words, with probability $1-\delta$, $\texttt{HEAVYMIX}\in C(\frac{d}{k},1)$. 
+\texttt{HEAVYMIX}, with sketch size $\Theta\left(m\log\left(\frac{d}{\delta}\right)\right)$ is a biased compressor with $\alpha=1$ and  $\Delta=d/m$ with probability $\geq1-\delta$. In other words, with probability $1-\delta$, $\texttt{HEAVYMIX}\in C(\frac{d}{m},1)$. 
 \end{lemma}
+
+We note that Algorithm~\ref{alg:heavymix} is a variation of sketching algorithm in~\cite{ivkin2019communication}
+with distinction that \texttt{HEAVYMIX} does not require extra second round of communcation to obtain the exact value of top$_k$. 
+
 \subsection{Sketching Based on Induced Compressor}
-The following Lemma from~\cite{horvath2020better} shows that how we can transfer biased compressor into an unbiased compressor: 
-\begin{lemma}[Induced Compressor ~\cite{horvath2020better}]\label{lemm:induced_compress}
+The following Lemma from \cite{horvath2020better} shows that how we can transfer biased compressor into an unbiased compressor: 
+\begin{lemma}[Induced Compressor  \cite{horvath2020better}]\label{lemm:induced_compress}
 For $C_1\in \mathbb{C}(\Delta_1)$ with $\alpha=1$, choose $C_2\in \mathbb{U}(\Delta_2)$ and define the induced compressor with
-\begin{align}
-    C(\mathbf{x})=C_1(\mathbf{x})+C_2\left(x-C_1\left(\mathbf{x}\right)\right)
+\begin{align}\notag
+    C(\mathbf{x})=C_1(\mathbf{x})+C_2\left(x-C_1\left(\mathbf{x}\right)\right)\, ,
 \end{align}
-The induced compressor $C$ satisfies $C\in\mathbb{U}(\mathbf{x})$ with $\Delta=\Delta_2+\frac{1-\Delta_2}{\Delta_1}$.
+then, the induced compressor $C$ satisfies $C\in\mathbb{U}(\mathbf{x})$ with $\Delta=\Delta_2+\frac{1-\Delta_2}{\Delta_1}$.
 \end{lemma}
 \begin{remark}
-We note that if $\Delta_2\geq 1$ and $\Delta_1\leq 1$, we have $\Delta=\Delta_2+\frac{1-\Delta_2}{\Delta_1}\leq \Delta_2$
+We note that if $\Delta_2\geq 1$ and $\Delta_1\leq 1$, we have $\Delta=\Delta_2+\frac{1-\Delta_2}{\Delta_1}\leq \Delta_2$\, .
 \end{remark}
-Using this concept of the induced compressor we introduce the following:
+Using this concept of the induced compressor we introduce \texttt{HEAPRIX}:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{HEAPRIX} }\label{alg:heaprix}
+\begin{algorithmic}[1]
+\State{\textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, m, \mathbf{S}_{t\times m}, h_j (1\leq i\leq t), sign_j (1\leq i\leq t)$, parameter-$m$}
+\State{\textbf{Approximate $\mathbf{S}(x)$ using \texttt{HEAVYMIX} }}
+\State{\textbf{Approximate $\mathbf{S}\left(x - \texttt{HEAVYMIX}[\mathbf{S}(x)]\right)$ using \texttt{PRIVIX} }}
+\State{\textbf{Output:} $\texttt{HEAVYMIX}\left[\mathbf{S}\left(\mathbf{x}\right)\right]+\texttt{PRIVIX}\left[\mathbf{S}\left(\mathbf{x}-\texttt{HEAVYMIX}\left[\mathbf{S}\left(\mathbf{x}\right)\right]\right)\right]$}
+%\vspace{- 0.1cm}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \begin{corollary}
-Based on Lemma~\ref{lemm:induced_compress} and defining 
-\begin{align}
-    \texttt{HEAPRIX}\left[\mathbf{S}\left(\boldsymbol{x}\right)\right]=\texttt{HEAVYMIX}\left[\mathbf{S}\left(\mathbf{x}\right)\right]+\texttt{PRIVIX}\left[\mathbf{S}\left(\mathbf{x}-\texttt{HEAVYMIX}\left[\mathbf{S}\left(\mathbf{x}\right)\right]\right)\right]
-\end{align}
-
-we have $C(x)\in \mathbb{U}(\mu^2 d)$.
+Based on Lemma \ref{lemm:induced_compress} and using Algorithm~\ref{alg:heaprix}, we have $C(x)\in \mathbb{U}(\mu^2 d)$.
 \end{corollary}
 \begin{remark}
-We highlight that in this case if $k\rightarrow d$, then $C(x)\rightarrow x$ which means that your convergence algorithm can be improved by decreasing the noise of compression (with choice of bigger $k$). 
+We highlight that in this case if $m\rightarrow d$, then $C(x)\rightarrow x$ which means that your convergence algorithm can be improved by decreasing the noise of compression (with choice of bigger $m$). 
 \end{remark}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 In the following we define two general framework for different sketching algorithms for homogeneous and heterogeneous data distributions.
-\section{Algorithms for homogeneous and heterogeneous settings}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Algorithms for homogeneous and heterogeneous settings}\label{sec:algos}
 In the following, first we present two algorithm for homogeneous setting. Then, we present two algorithms for heterogeneous algorithms to deal with data heterogeneity.   
 
 \subsection{Homogeneous setting}
 In this section, we propose two algorithms for the setting where data at distributed devices is  correlated. The proposed Federated Learning with averaging uses sketching to compress communication. The main difference between first algorithm and the algorithm in \cite{li2019privacy} is that we use distinct local and global learning rates. Additionally, unlike \cite{li2019privacy} we do not add add local Gaussian noise for the privacy purpose. 
 
-In \texttt{FedSKETCH-I}, we indicate the number of communication rounds between devices and server with $R$, and the number of local updates at device $j$ is illustrated with $\tau$, which happens between two consecutive communication rounds. Unlike \cite{haddadpour2020federated}, server node does not store any global model, instead device $j$ has two models, $\boldsymbol{x}^{(r)}$ and $\boldsymbol{x}^{(\ell,r)}_j$. In communication round $r$ device $j$, the local model $\boldsymbol{x}^{(\ell,r)}_j$ is updated using the rule $$\boldsymbol{x}_j^{(\ell+1,r)}=\boldsymbol{x}_j^{(\ell,r)}-\eta \tilde{\mathbf{g}}_j^{(\ell,r)}, \qquad\qquad \text{for}\:\:\ell=0,\ldots,\tau-1$$
-where $\tilde{\mathbf{g}}_j^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}_j^{(\ell,r)},\Xi_j^{(\ell,r)})\triangleq\frac{1}{b}\sum_{\xi\in\Xi_j^{(\ell,r)}}\nabla{L}_j(\boldsymbol{x}_j^{(\ell,r)},\xi)$ is a stochastic gradient of $f_j$ evaluated using the mini-batch $\Xi_j^{(\ell,r)}=\{\xi^{(\ell,r)}_{j,1},\ldots,\xi^{(\ell,r)}_{j,b_j} \}$ of size $b_j$. $\eta$ is the local learning rate. After $\tau$ local updates locally, model at device $j$ and communication round $r$ is indicated by $\boldsymbol{x}_j^{(\tau,r)}$. The next step of our algorithm is that device $j$ sends the count sketch $\mathbf{S}_j^{(r)}\triangleq\mathbf{S}_j\left(\boldsymbol{x}_j^{(\tau,r)}-\boldsymbol{x}_j^{(0,r)}\right)$ back to the server. We highlight that $$\mathbf{S}_j^{(r)}\triangleq\mathbf{S}_j\left(\boldsymbol{x}_j^{(\tau,r)}-\boldsymbol{x}_j^{(0,r)}\right)=\mathbf{S}_j\left(\eta\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(\ell,r)}\right)=\eta\mathbf{S}_j\left(\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(\ell,r)}\right),$$ which is the aggregation of the consecutive stochastic gradients multiplied with local updates $\eta$.
+In \texttt{FedSKETCH}, we indicate the number of communication rounds between devices and server with $R$, and the number of local updates at device $j$ is illustrated with $\tau$, which happens between two consecutive communication rounds. Unlike \cite{haddadpour2020federated}, server node does not store any global model, instead device $j$ has two models, $\boldsymbol{x}^{(r)}$ and $\boldsymbol{x}^{(\ell,r)}_j$. In communication round $r$ device $j$, the local model $\boldsymbol{x}^{(\ell,r)}_j$ is updated using the rule $$\boldsymbol{x}_j^{(\ell+1,r)}=\boldsymbol{x}_j^{(\ell,r)}-\eta \tilde{\mathbf{g}}_j^{(\ell,r)} \qquad\qquad \text{for}\:\:\ell=0,\ldots,\tau-1\, ,$$
+where $\tilde{\mathbf{g}}_j^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}_j^{(\ell,r)},\Xi_j^{(\ell,r)})\triangleq\frac{1}{b}\sum_{\xi\in\Xi_j^{(\ell,r)}}\nabla{L}_j(\boldsymbol{x}_j^{(\ell,r)},\xi)$ is a stochastic gradient of $f_j$ evaluated using the mini-batch $\Xi_j^{(\ell,r)}=\{\xi^{(\ell,r)}_{j,1},\ldots,\xi^{(\ell,r)}_{j,b_j} \}$ of size $b_j$. $\eta$ is the local learning rate. After $\tau$ local updates locally, model at device $j$ and communication round $r$ is indicated by $\boldsymbol{x}_j^{(\tau,r)}$. The next step of our algorithm is that device $j$ sends the count sketch $\mathbf{S}_j^{(r)}\triangleq\mathbf{S}_j\left(\boldsymbol{x}_j^{(\tau,r)}-\boldsymbol{x}_j^{(0,r)}\right)$ back to the server. We highlight that $$\mathbf{S}_j^{(r)}\triangleq\mathbf{S}_j\left(\boldsymbol{x}_j^{(\tau,r)}-\boldsymbol{x}_j^{(0,r)}\right)=\mathbf{S}_j\left(\eta\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(\ell,r)}\right)=\eta\mathbf{S}_j\left(\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(\ell,r)}\right)\, ,$$ which is the aggregation of the consecutive stochastic gradients multiplied with local updates $\eta$.
 
-Upon receiving all $\mathbf{S}_j^{(r)}$ from devices, the server computes 
+Upon receiving all $\mathbf{S}_j^{(r)}$ from sampled devices, the server computes \begin{align}\mathbf{S}^{(r)}=\frac{1}{k}\sum_{j\in\mathcal{K}^{(r)}}\mathbf{S}_j^{(r)}\label{eq:average-skestching}
+\end{align} and broadcasts it to all devices. Devices after receiving $\mathbf{S}^{(r)}$ from server updates  global model $\boldsymbol{x}^{(r)}$ using rule $$\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma \texttt{PRIVIX}\left[\mathbf{S}^{(r-1)}\right]\, .$$
+All these steps are summarized in \texttt{FedSKETCH} (Algorithm~\ref{Alg:PFLHom}). A variant of this algorithm which uses a different compression scheme, called \texttt{HEAPRIX} is also described in Algorithm~\ref{Alg:PFLHom}. We note that for this variant we need to have an additional communication round between server and worker $j$ to aggregate $\delta_j^{(r)}\triangleq \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$. Then, server averages all $\delta^{(r)}_j$ and broadcasts to all devices the following quantity:
 \begin{align}
-    \mathbf{S}^{(r)}=\frac{1}{p}\sum_{j=1}^p\mathbf{S}_j^{(r)}
+\tilde{\mathbf{S}}^{(r)}\triangleq \frac{1}{k}\sum_{j\in\mathcal{K}^{(r)}}\delta^{(r)}_j \, .\label{eq:glbl-updts}
 \end{align}
-and broadcasts it to all devices. Devices after receiving $\mathbf{S}^{(r)}$ from server updates  global model $\boldsymbol{x}^{(r)}$ using rule $$\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma \texttt{PRIVIX}\left[\mathbf{S}^{(r-1)}\right]$$
-All these steps are summarized in \texttt{FedSKETCH-I} (Algorithm~\ref{Alg:PFLHom-I}).
+Upon receiving $\tilde{\mathbf{S}}^{(r)}$  all devices compute
+\begin{align}
+    {\mathbf{\Phi}}^{(r)}\triangleq \texttt{HEAVYMIX}\left[{\mathbf{S}}^{(r)}\right]+\texttt{PRIVIX}\left[{\mathbf{S}}^{(r)}- \tilde{\mathbf{S}}^{(r)}\right]
+\end{align}
+and then updates his global model using $\boldsymbol{x}^{(r+!)}=\boldsymbol{x}^{(r)}-\gamma{\mathbf{\Phi}}^{(r)}$.
+
+\begin{remark}[Improvement over \cite{haddadpour2020federated}]\label{rmrk:bidirect}
+An important feature of our algorithm is that due to lower dimension of the count sketch, the resulting averages ($\mathbf{S}^{(r)}$ and  $\tilde{\mathbf{S}}^{(r)}$) taken by the server, are also of lower dimension. 
+Therefore, these algorithms exploit bidirectional compression in communication from server to device back and forth. 
+As a result, due to this bidirectional property of communicating sketching for the case of large quantiziation error shown by $q=\theta(\frac{d}{m})$ in \cite{haddadpour2020federated}, our algorithms outperform \texttt{FedCOM} and \texttt{FedCOMGATE} in \cite{haddadpour2020federated}. 
+Furthermore, sketching-based server-devices communication algorithm such as ours also provides privacy as a by-product.
+\end{remark}
+
 \begin{algorithm}[H]
-\caption{\texttt{FedSKETCH-I}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching. }\label{Alg:PFLHom-I}
+\caption{\texttt{FedSKETCH}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching. }\label{Alg:PFLHom}
 \begin{algorithmic}[1]
-\State \textbf{Inputs:} $\boldsymbol{x}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
-%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
-\State \textbf{for $r=0, \ldots, R-1$ do}
-\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
-\State $\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma{\texttt{PRIVIX}}\left[{\mathbf{S}}^{(r-1)}\right]$ 
-\State $\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ 
-\State $\qquad\quad $\textbf{for} $c=0,\ldots,\tau-1$ \textbf{do}
-\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(c,r)})$
-\State $\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
-\State $\qquad\quad$\textbf{end for}
-\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}^{(r)}_{j}\triangleq\mathbf{S}_{j}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$ back to the server.
-\State $\qquad$Server \textbf{computes} 
-\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{S}^{(r)}_{j}$ and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
-%\State $\qquad$Sever chooses a set of devices  $\mathcal{P}_t$ with distribution $q_j$.
-%\State $\qquad\quad$ \textbf{end if}
-\State $\qquad$\textbf{end parallel for}
-\State \textbf{end}
-\State \textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$
+\State{\textbf{Inputs:} $\boldsymbol{x}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively}
+%\State{Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State{\textbf{for $r=0, \ldots, R-1$ do}}
+\State{$\qquad$\textbf{parallel for device $j\in \mathcal{K}^{(r)}$ do}:}
+\State{$\qquad \quad$ \textbf{if PRIVIX variant:} }
+\State{$\qquad\quad \quad$ Computes ${\mathbf{\Phi}}^{(r)}\triangleq  {\texttt{PRIVIX}}\left[{\mathbf{S}}^{(r-1)}\right]$ }
+\State{$\qquad \quad$ \textbf{if HEAPRIX variant:} }
+\State{$\qquad\quad \quad$ Computes ${\mathbf{\Phi}}^{(r)}\triangleq \texttt{HEAVYMIX}\left[{\mathbf{S}}^{(r-1)}\right]+\texttt{PRIVIX}\left[{\mathbf{S}}^{(r-1)}- \tilde{\mathbf{S}}^{(r-1)}\right]$}
+\State{$\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma{\mathbf{\Phi}}^{(r)}$}
+\State{$\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ }
+\State{$\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}}
+\State{$\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$}
+\State{$\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}}
+\State{$\qquad\quad$\textbf{end for}}
+\State{$\qquad\quad\quad$Device $j$ sends $\mathbf{S}^{(r)}_{j}\triangleq\mathbf{S}_{j}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$ back to the server.}
+
+\State{$\qquad$Server \textbf{computes} }
+\State{$\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{k}\sum_{j\in\mathcal{K}}\mathbf{S}^{(r)}_{j}$ .}
+\State {$\qquad$Server samples a subset of devices $\mathcal{K}^{(r)}$ randomly with replacement and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to devices in set $\mathcal{K}^{(r)}$.} 
+\vspace{0.1cm}
+\State{$\qquad$ \textbf{if HEAPRIX variant:} }
+\State{$\qquad \quad$ Second round of communication to obtain $\delta_j^{(r)} :=  \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$ }
+\State{$\qquad \quad$ Broadcasts $\tilde{\mathbf{S}}^{(r)}\triangleq\frac{1}{k}\sum_{j\in\mathcal{K}}\delta_j^{(r)}$ to devices in set $\mathcal{K}^{(r)}$}
+
+\State{$\qquad$\textbf{end parallel for}}
+\State{\textbf{end}}
+\State{\textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$}
 \vspace{- 0.1cm}
-%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
 \end{algorithmic}
 \end{algorithm}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-Next, we describe our algorithm using induced sketching.
-
-
-
-
-
-
-\begin{algorithm}[H]
-\caption{\texttt{FedSKETCH-II}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching. }\label{Alg:PFLHom}
-\begin{algorithmic}[1]
-\State \textbf{Inputs:} $\boldsymbol{x}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
-%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
-\State \textbf{for $r=0, \ldots, R-1$ do}
-
-\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
-\State $\qquad\quad$ Computes ${\mathbf{\Phi}}^{(r-1)}\triangleq \texttt{HEAVYMIX}(\mathbf{S}^{(r-1)})+\texttt{PRIVIX}\left[{\mathbf{S}}^{(r-1)}- \tilde{\mathbf{S}}^{(r-1)}\right]$
-
-
-\State $\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma{\mathbf{\Phi}}^{(r-1)}$
-\State $\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ 
-\State $\qquad\quad $\textbf{for} $c=0,\ldots,\tau-1$ \textbf{do}
-\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(c,r)})$
-\State $\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(c,r)}$ \label{eq:update-rule-alg}
-\State $\qquad\quad$\textbf{end for}
-\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}^{(r)}_{j}\triangleq\mathbf{S}_{j}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$ back to the server.
-\State $\qquad$Server \textbf{computes} 
-\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{S}^{(r)}_{j}$ and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
-\State $\qquad$ Second round of communication to obtain $\delta_j^{(r)} :=  \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$ 
-\State $\qquad$ Broadcasts $\tilde{\mathbf{S}}^{(r)}\triangleq\frac{1}{p}\sum_{j=1}^p\delta_j^{(r)}$ to devices
-\State $\qquad$\textbf{end parallel for}
-\State \textbf{end}
-\State \textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$
-\vspace{- 0.1cm}
-%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
-\end{algorithmic}
-\end{algorithm}
-
-
-\todo{revise it!}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 
 \subsection{Heterogeneous setting}
+In this section, we focus on the optimization problem in Eq.~(\ref{eq:main}) in special case of $q_1=\ldots=q_p=\frac{1}{p}$ with full device participation ($k=p$). We also note that these results can be extended to the scenario where devices are sampled, but for simplicity we do not analyze it in this section. In the previous section, we discussed algorithm \texttt{FedSKETCH}, which is originally designed for homogeneous setting where data distribution available at devices are identical. However, in a heterogeneous setting where data distribution could be different, the aforementioned algorithms may fail to perform well in practice. The main reason to cause this issue is that in Federated learning devices are using local stochastic descent direction which could be different than global descent direction when the data distribution are non-identical. 
+
+Therefore, to mitigate the effect of data heterogeneity, we introduce new algorithm \texttt{FedSKETCHGATE} based on sketching. This algorithm uses the idea of gradient tracking introduced in~\cite{haddadpour2020federated} (with compression) and a variation in \cite{liang2019variance} (without compression). The main idea is that using an approximation of global gradient, $\mathbf{c}_j^{(r)}$, we correct the local gradient direction. For the \texttt{FedSKETCH GATE} with \texttt{PRIVIX} variant, the correction vector $\mathbf{c}_j^{(r)}$ at device $j$ and communication round $r$ is computed using the update rule $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left({\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}\right)-{\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}_{j}\right)\right)$ where $\mathbf{S}^{(r-1)}_{j}\triangleq\mathbf{S}\left(\boldsymbol{x}_j^{(0,r-1)}-~{\boldsymbol{x}}_{j}^{(\tau,r-1)}\right)$ is computed and stored at device $j$ from previous communication round $r-1$. The term $\mathbf{S}^{(r-1)}$ is computed similar to \texttt{FedSKETCH} in \eqref{eq:average-skestching}. 
+For \texttt{FedSKETCHGATE}, the server needs to compute $\tilde{\mathbf{S}}^{(r)}$ using \eqref{eq:glbl-updts}. 
+Then, device $j$ computes $\mathbf{\Phi}_j\triangleq \texttt{HEAPRIX}[\mathbf{S}_j^{(r)}]$ and $  {\mathbf{\Phi}}\triangleq \texttt{HEAPRIX}(\mathbf{S}^{(r-1)})$ and updates the correction vector $\mathbf{c}_j^{(r)}$ using the recursion $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left(\mathbf{\Phi}-\mathbf{\Phi}_j\right)$.
 
 \begin{algorithm}[H]
-\caption{\texttt{FedSKETCHGATE-I}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching and gradient tracking. }\label{Alg:PFLHet}
+\caption{\texttt{FedSKETCHGATE}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching and gradient tracking. }\label{Alg:PFLHet}
 \begin{algorithmic}[1]
-\State \textbf{Inputs:} $\boldsymbol{x}^{(0)}=\boldsymbol{x}^{(0)}_j$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
-%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
-\State \textbf{for $r=0, \ldots, R-1$ do}
-\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
-\State $\qquad\quad$ Set $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left({\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}\right)-{\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}_{j}\right)\right)$
-\State $\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma{\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}\right)$
-\State $\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ % \belhal{Where do we compute/define $\boldsymbol{x}^{(r-1)}$ ?}\textcolor{blue}{FH: Added to previous line!}
-\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
-\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
-\State $\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~\left( \tilde{\mathbf{g}}_{j}^{(\ell,r)}-\mathbf{c}_j^{(r)}\right)$ \label{eq:update-rule-alg}
-\State $\qquad\quad$\textbf{end for}
-\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}^{(r)}_{j}\triangleq\mathbf{S}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$ back to the server.
-\State $\qquad$Server \textbf{computes} 
-\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{S}^{(r)}_{j}$ and  \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
-%\State $\qquad$Sever chooses a set of devices  $\mathcal{P}_t$ with distribution $q_j$.
-%\State $\qquad\quad$ \textbf{end if}
-\State $\qquad$\textbf{end parallel for}
-\State \textbf{end}
-\State \textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$
+\State{\textbf{Inputs:} $\boldsymbol{x}^{(0)}=\boldsymbol{x}^{(0)}_j$ shared by all local devices, communication rounds $R$, local updates $\tau$, global and local learning rates $\gamma$ and $\eta$.}
+\State{\textbf{for $r=0, \ldots, R-1$ do}}
+\State{$\qquad$\textbf{parallel for device $j=1,\ldots,p$ do}:}
+\State{$\qquad \quad$ \textbf{if PRIVIX variant:} }
+\State{$\qquad\qquad$ Set $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left({\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}\right)-{\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}_{j}\right)\right)$}
+
+\State{$\qquad\qquad$ Computes ${\mathbf{\Phi}}^{(r)}\triangleq \texttt{PRIVIX}(\mathbf{S}^{(r-1)})$}
+
+\State{$\qquad \quad$ \textbf{if HEAPRIX variant:} }
+\State{$\qquad\qquad$ Set $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left(\mathbf{\Phi}^{(r)}-\mathbf{\Phi}^{(r)}_j\right)$}
+\State{$\qquad\quad \quad$ Computes ${\mathbf{\Phi}}^{(r)}\triangleq \texttt{HEAVYMIX}\left[{\mathbf{S}}^{(r-1)}\right]+\texttt{PRIVIX}\left[{\mathbf{S}}^{(r-1)}- \tilde{\mathbf{S}}^{(r-1)}\right]$}
+
+\State{$\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma\mathbf{\Phi}^{(r)}$ and $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ }
+\State{$\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}}
+\State{$\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$}
+\State{$\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta \left( \tilde{\mathbf{g}}_{j}^{(\ell,r)}-\mathbf{c}_j^{(r)}\right)$ \label{eq:update-rule-alg-heter1}}
+\State{$\qquad\quad$\textbf{end for}}
+\State{$\qquad\quad\quad$Device $j$ sends $\mathbf{S}^{(r)}_{j}\triangleq\mathbf{S}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$ back to the server.}
+\State{$\qquad$Server \textbf{computes} }
+\State{$\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{S}^{(r)}_{j}$ and  \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.}
+\vspace{0.1cm}
+\State{$\qquad$ \textbf{if HEAPRIX variant:} }
+\State{$\qquad\quad\quad$ Device $j$ computes $\mathbf{\Phi}^{(r)}_j\triangleq \texttt{HEAPRIX}[\mathbf{S}_j^{(r)}]$}
+\State{$\qquad \qquad$ Second round of communication to obtain $\delta_j^{(r)} :=  \mathbf{S}_j\left(\texttt{HEAVYMIX}[\mathbf{S}^{(r)}]\right)$ }
+\State{$\qquad\qquad$ Broadcasts $\tilde{\mathbf{S}}^{(r)}\triangleq\frac{1}{p}\sum_{j=1}^p\delta_j^{(r)}$ to devices}
+
+\State{$\qquad$\textbf{end parallel for}}
+\State{\textbf{end}}
+\State{\textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$}
 \vspace{- 0.1cm}
-%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
 \end{algorithmic}
 \end{algorithm}
 
 
-\todo{revise it!}
-
-\begin{algorithm}[H]
-\caption{\texttt{FedSKETCHGATE-II}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching and gradient tracking. }\label{Alg:PFLHet}
-\begin{algorithmic}[1]
-\State \textbf{Inputs:} $\boldsymbol{x}^{(0)}=\boldsymbol{x}^{(0)}_j$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
-%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
-\State \textbf{for $r=0, \ldots, R-1$ do}
-\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
-\State $\qquad\quad$ Computes ${\mathbf{\Phi}}(\mathbf{S}^{(r-1)})\triangleq \texttt{HEAVYMIX}(\mathbf{S}^{(r-1)})+\texttt{PRIVIX}\left[{\mathbf{S}}^{(r-1)}- \tilde{\mathbf{S}}^{(r-1)}\right]$
-\State $\qquad\quad$ Set $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left(\mathbf{\Phi}\left(\mathbf{S}^{(r-1)}\right)-\mathbf{\Phi}\left(\mathbf{S}^{(r-1)}_{j}\right)\right)$
-\State $\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma\mathbf{\Phi}\left(\mathbf{S}^{(r-1)}\right)$
-\State $\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ % \belhal{Where do we compute/define $\boldsymbol{x}^{(r-1)}$ ?}\textcolor{blue}{FH: Added to previous line!}
-\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
-\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
-\State $\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~\left( \tilde{\mathbf{g}}_{j}^{(\ell,r)}-\mathbf{c}_j^{(r)}\right)$ \label{eq:update-rule-alg}
-\State $\qquad\quad$\textbf{end for}
-\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}^{(r)}_{j}\triangleq\mathbf{S}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$ back to the server.
-\State $\qquad\quad\quad$Device $j$ computes $$\mathbf{\Phi}\left(\mathbf{S}^{(r)}_{j}\right)\triangleq \texttt{HEAVYMIX}[\mathbf{S}_j^{(r)}]+\texttt{PRIVIX}\left[{\mathbf{S}}_j^{(r)}- {\mathbf{S}_j}^{(r)}\left(\texttt{HEAVYMIX}[{\mathbf{S}_j}^{(r)}]\right)\right]$$
-\State $\qquad$Server \textbf{computes} 
-\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{S}^{(r)}_{j}$ and  \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
-\State $\qquad$ Second round of communication to obtain $\delta_j^{(r)} :=  \mathbf{S}_j\left(\texttt{HEAVYMIX}[\mathbf{S}^{(r)}]\right)$ 
-\State $\qquad$ Broadcasts $\tilde{\mathbf{S}}^{(r)}\triangleq\frac{1}{p}\sum_{j=1}^p\delta_j^{(r)}$ to devices
-%\State $\qquad$Sever chooses a set of devices  $\mathcal{P}_t$ with distribution $q_j$.
-%\State $\qquad\quad$ \textbf{end if}
-\State $\qquad$\textbf{end parallel for}
-\State \textbf{end}
-\State \textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$
-\vspace{- 0.1cm}
-%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
-\end{algorithmic}
-\end{algorithm}
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Our algorithms for different sketching schemes}
-\paragraph{Privacy-preserving algorithm}
-
-
-If we set  $\texttt{PRIVIX}\left(\boldsymbol{x}_j^{(0,r)}-\boldsymbol{x}_j^{(\tau,r)}\right)$,...
-
-%\paragraph{Communication-efficient algorithm}
-%If we set  $\Phi_{j,\mathbf{S}}=\texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-\boldsymbol{x}_j^{(\tau,r)}\right)$,...
-\paragraph{Privacy-preserving and Communication-efficient algorithm}
-If we set  $\texttt{HEAPRIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$,...
-
-\todo{Discuss variations and contrast with \cite{ivkin2019communication}!}
-
-%\todo{continue from here.........}
 
 
 
 
-
-
-\section{Convergence Analysis}
+\section{Convergence Analysis}\label{sec:cnvg-an}
 
 \subsection{Assumptions}
 
 
 \begin{assumption}[Smoothness and Lower Boundedness]\label{Assu:1}
-The local objective function $f_j(\cdot)$ of $j$th device is differentiable for $j\in [m]$ and $L$-smooth, i.e., $\|\nabla f_j(\boldsymbol{u})-\nabla f_j(\mathbf{v})\|\leq L\|\boldsymbol{u}-\mathbf{v}\|,\: \forall \;\boldsymbol{u},\mathbf{v}\in\mathbb{R}^d$. Moreover, the optimal objective function $f(\cdot)$ is bounded below by ${f^*} = \min_{\boldsymbol{x}} f(\boldsymbol{x})>-\infty$. 
+The local objective function $f_j(\cdot)$ of $j$th device is differentiable for $j\in [p]$ and $L$-smooth, i.e., $\|\nabla f_j(\boldsymbol{u})-\nabla f_j(\mathbf{v})\|\leq L\|\boldsymbol{u}-\mathbf{v}\|,\: \forall \;\boldsymbol{u},\mathbf{v}\in\mathbb{R}^d$. Moreover, the optimal objective function $f(\cdot)$ is bounded below by ${f^*} = \min_{\boldsymbol{x}} f(\boldsymbol{x})>-\infty$. 
 \end{assumption}
 
 \begin{assumption}[\pl]\label{assum:pl}
@@ -377,39 +326,33 @@ For all $j\in [m]$, we can sample an independent mini-batch $\ell_j$   of size $
 
 
 \begin{theorem}\label{thm:homog_case}
-  Suppose that the conditions in Assumptions~\ref{Assu:1}-\ref{Assu:1.5} hold. Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$, and Consider \texttt{FedSKETCH} in Algorithm~\ref{Alg:PFLHom} with sketch size $B=O\left(k\log\left(\frac{d R}{\delta}\right)\right)$. If the local data distributions of all users are identical (homogeneous setting), then with probability $1-\delta$ we have  
+  Suppose that the conditions in Assumptions~\ref{Assu:1}-\ref{Assu:1.5} hold. Given $0<m=O\left(\frac{e}{\mu^2}\right)\leq d$, and Consider \texttt{FedSKETCH} in Algorithm~\ref{Alg:PFLHom} with sketch size $B=O\left(m\log\left(\frac{d R}{\delta}\right)\right)$. If the local data distributions of all users are identical (homogeneous setting), then with probability $1-\delta$ we have  
  \begin{itemize}
      \item \textbf{Nonconvex:}  
      \begin{itemize}
-         \item [1)] For the case of $\Phi_{j,\mathbf{S}}=\texttt{PRIVIX}\left(\boldsymbol{x}_j^{(0,r)}-\boldsymbol{x}_j^{(\tau,r)}\right)$, by choosing stepsizes as $\eta=\frac{1}{L\gamma}\sqrt{\frac{p}{R\tau\left(\frac{\mu^2d}{p}+1\right)}}$ and $\gamma\geq m$, the sequence of iterates satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2\leq {\epsilon}$ if we set
-     $R=O\left(\frac{1}{\epsilon}\right)$ and $ \tau=O\left(\frac{\frac{\mu^2d}{p}+1}{{p}\epsilon}\right)$.
-         \item[2)] For the case of 
-$  \Phi_{j,\mathbf{S}}=\texttt{HEAPRIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$, by choosing stepsizes as $\eta=\frac{1}{L\gamma}\sqrt{\frac{p}{R\tau\left(\frac{\mu^2d-1}{p}+1\right)}}$ and $\gamma\geq m$, the sequence of iterates satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2\leq {\epsilon}$ if we set
-     $R=O\left(\frac{1}{\epsilon}\right)$ and $ \tau=O\left(\frac{\frac{\mu^2d-1}{p}+1}{{p}\epsilon}\right)$. 
+         \item [1)] For the  \texttt{FedSKETCH-PRIVIX} algorithm, by choosing stepsizes as $\eta=\frac{1}{L\gamma}\sqrt{\frac{k}{R\tau\left(\frac{\mu^2d}{k}+1\right)}}$ and $\gamma\geq k$, the sequence of iterates satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2\leq {\epsilon}$ if we set
+     $R=O\left(\frac{1}{\epsilon}\right)$ and $ \tau=O\left(\frac{\mu^2d+1}{{k}\epsilon}\right)$.
+         \item[2)] For \texttt{FedSKETCH-HEAPRIX} algorithm, by choosing stepsizes as $\eta=\frac{1}{L\gamma}\sqrt{\frac{k}{R\tau\left(\frac{\mu^2d-1}{k}+1\right)}}$ and $\gamma\geq k$, the sequence of iterates satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2\leq {\epsilon}$ if we set
+     $R=O\left(\frac{1}{\epsilon}\right)$ and $ \tau=O\left(\frac{\mu^2d}{{k}\epsilon}\right)$. 
      \end{itemize}
      
-     \item \textbf{Strongly convex or PL:}
+     \item \textbf{PL or Strongly convex:}
       \begin{itemize}
-          \item[1)] For the case of $\Phi_{j,\mathbf{S}}=\texttt{PRIVIX}\left(\boldsymbol{x}_j^{(0,r)}-\boldsymbol{x}_j^{(\tau,r)}\right)$, by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d}{p}+1\right)\tau\gamma}$ and $\gamma\geq m$, we obtain that the iterates satisfy $\mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if  we set
-     $R=O\left(\left(\frac{\mu^2d}{p}+1\right)\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{m\epsilon}\right)$.
+          \item[1)] For \texttt{FedSKETCH-PRIVIX} algorithm, by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d}{k}+1\right)\tau\gamma}$ and $\gamma\geq k$, we obtain that the iterates satisfy $\mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if  we set
+     $R=O\left(\left(\frac{\mu^2d}{k}+1\right)\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{\mu^2d+1}{k\left(\frac{\mu^2d}{k}+1\right)\epsilon}\right)$.
           
-          \item[2)] For the case of 
-         \begin{align}
-    \Phi_{j,\mathbf{S}}=\texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)+\texttt{PRIVIX}\left[\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)-\texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)\right],
-\end{align}
-by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d-1}{p}+1\right)\tau\gamma}$ and $\gamma\geq m$, we obtain that the iterates satisfy $\mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if  we set
-     $R=O\left(\left(\frac{\mu^2d-1}{p}+1\right)\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{m\epsilon}\right)$. 
+          \item[2)] For \texttt{FedSKETCH-HEAPRIX} algorithm
+by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d-1}{k}+1\right)\tau\gamma}$ and $\gamma\geq k$, we obtain that the iterates satisfy $\mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if  we set
+     $R=O\left(\left(\frac{\mu^2d-1}{k}+1\right)\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{\mu^2d}{k\left(\frac{\mu^2d-1}{k}+1\right)\epsilon}\right)$. 
       \end{itemize}
       
      \item \textbf{Convex:}
      \begin{itemize}
-         \item[1)]For the case of $\Phi_{j,\mathbf{S}}=\texttt{PRIVIX}\left(\boldsymbol{x}_j^{(0,r)}-\boldsymbol{x}_j^{(\tau,r)}\right)$, by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d}{p}+1\right)\tau\gamma}$ and $\gamma\geq m$, we obtain that the iterates satisfy $ \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if we set
-     $R=O\left(\frac{L\left(1+\frac{\mu^2d}{p}\right)}{\epsilon}\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{m\epsilon^2}\right).$
-         \item[2)] For the case of 
-         $
-    \Phi_{j,\mathbf{S}}=\texttt{HEAPRIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right),$
-by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d-1}{p}+1\right)\tau\gamma}$ and $\gamma\geq m$, we obtain that the iterates satisfy $ \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if we set
-     $R=O\left(\frac{L\left(\frac{\mu^2d-1}{p}+1\right)}{\epsilon}\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{m\epsilon^2}\right).$ 
+         \item[1)]For the \texttt{FedSKETCH-PRIVIX} algorithm, by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d}{k}+1\right)\tau\gamma}$ and $\gamma\geq k$, we obtain that the iterates satisfy $ \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if we set
+     $R=O\left(\frac{L\left(1+\frac{\mu^2d}{k}\right)}{\epsilon}\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{\left(\mu^2d+1\right)^2}{k\left(\frac{\mu^2d}{k}+1\right)^2\epsilon^2}\right).$
+         \item[2)] For the \texttt{FedSKETCH-HEAPRIX} algorithm,
+by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d-1}{k}+1\right)\tau\gamma}$ and $\gamma\geq k$, we obtain that the iterates satisfy $ \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if we set
+     $R=O\left(\frac{L\left(\frac{\mu^2d-1}{k}+1\right)}{\epsilon}\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{\left(\mu^2d\right)^2}{k\left(\frac{\mu^2d-1}{k}+1\right)^2\epsilon^2}\right).$ 
      \end{itemize}
  \end{itemize}
 \end{theorem}
@@ -422,20 +365,20 @@ by choosing stepsizes as $\eta=\frac{1}{2L\left(\frac{\mu^2d-1}{p}+1\right)\tau\
 
 \begin{corollary}[Total communication cost]
 As a consequence of Remark~\ref{rmk:cnd-lr}, the total communication cost per-worker becomes \begin{align}
-O\left(RB\right)&=O\left(Rk\log \left(\frac{d R}{\delta}\right)\right)=O\left(\frac{k }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
+O\left(RB\right)&=O\left(Rm\log \left(\frac{d R}{\delta}\right)\right)=O\left(\frac{m }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
 \end{align}
-We note that this result in addition to improving over the communication complexity of federated learning of the state-of-the-art from $O\left(\frac{d}{\epsilon}\right)$ in \cite{karimireddy2019scaffold,wang2018cooperative,liang2019variance} to $O\left(\frac{k p}{\epsilon}\log \left(\frac{d p}{\epsilon\delta}\right)\right)$, it also implies differential privacy. As a result, total communication cost is 
-$$BpR=O\left(\frac{k p}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right).$$ 
+We note that this result in addition to improving over the communication complexity of federated learning of the state-of-the-art from $O\left(\frac{d}{\epsilon}\right)$ in \cite{karimireddy2019scaffold,wang2018cooperative,liang2019variance} to $O\left(\frac{m k}{\epsilon}\log \left(\frac{d k}{\epsilon\delta}\right)\right)$, it also implies differential privacy. As a result, total communication cost is 
+$$BkR=O\left(\frac{m k}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right).$$ 
 
 We note that the state-of-the-art in \cite{karimireddy2019scaffold} the total communication cost is 
 \begin{align}
-    BpR&=O\left(pd\left(\frac{1}{\epsilon}\right) \right)=O\left(\frac{pd}{\epsilon}\right) 
+    BkR&=O\left(kd\left(\frac{1}{\epsilon}\right)\frac{P^{2/3}}{k^{2/3}} \right)=O\left(\frac{kd}{\epsilon}\frac{P^{2/3}}{k^{2/3}}\right) 
 \end{align}
 We improve this result, in terms of dependency to $d$, to 
 \begin{align}
-    BpR=O\left(\frac{k p}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
+    BkR=O\left(\frac{m k}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
 \end{align}
-In comparison to \cite{ivkin2019communication}, we improve the total communication per worker from $RB=O\left(\frac{k }{\epsilon^2}\log \left(\frac{d }{\epsilon^2\delta}\right)\right)$ to $RB=O\left(\frac{k }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)$.
+In comparison to \cite{ivkin2019communication}, we improve the total communication per worker from $RB=O\left(\frac{m }{\epsilon^2}\log \left(\frac{d }{\epsilon^2\delta}\right)\right)$ to $RB=O\left(\frac{m }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)$.
 \end{corollary}
 
 \begin{remark}
@@ -446,26 +389,26 @@ It is worthy to note that most of the available communication-efficient algorith
 
 
 \begin{corollary}[Total communication cost for PL or strongly convex]
-To achieve the convergence error of $\epsilon$, we need to have $R=O\left(\kappa(\frac{\mu^2d}{p}+1)\log\frac{1}{\epsilon}\right)$ and $\tau=\left(\frac{1}{\epsilon}\right)$. This leads to the total communication cost per worker of 
+To achieve the convergence error of $\epsilon$, we need to have $R=O\left(\kappa(\frac{\mu^2d}{k}+1)\log\frac{1}{\epsilon}\right)$ and $\tau=\left(\frac{(\mu^2d+1)}{(\frac{\mu^2d}{k}+1)k\epsilon}\right)$. This leads to the total communication cost per worker of 
 \begin{align}
-BR&=O\left(k\kappa(\frac{\mu^2d}{p}+1)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+BR&=O\left(m\kappa(\frac{\mu^2d}{k}+1)\log\left(\frac{\kappa(\frac{\mu^2d^2}{k}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
 \end{align}
 As a consequence, the total communication cost becomes:
 \begin{align}
-BpR&=O\left(k\kappa(\mu^2d+p)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+BkR&=O\left(m\kappa(\mu^2d+k)\log\left(\frac{\kappa(\frac{\mu^2d^2}{k}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
 \end{align}
 We note that the state-of-the-art in \cite{karimireddy2019scaffold} the total communication cost is 
 \begin{align}
-    BpR=O\left(\kappa pd\log\left(\frac{1}{\epsilon}\right) \right)=O\left(\kappa pd\log\left(\frac{1}{\epsilon}\right)\right) 
+    BkR=O\left(\kappa kd\log\left(\frac{1}{\epsilon}\right) \right)=O\left(\kappa kd\log\left(\frac{1}{\epsilon}\right)\right) 
 \end{align}
 We improve this result, in terms of dependency to $d$, to 
 \begin{align}
-    BpR=O\left(k\kappa(\mu^2d+p)\log\left(\frac{\kappa(\frac{\mu^2d}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+    BkR=O\left(m\kappa(\mu^2d+k)\log\left(\frac{\kappa(\frac{\mu^2d}{k}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
 \end{align}
-Improving from $pd$ to $p+d$.
+Improving from $kd$ to $k+d$.
 \end{corollary}
 
-\todo{Revise this!}
+%\todo{Revise this!}
 
 %\begin{comment}
 
@@ -474,11 +417,11 @@ Improving from $pd$ to $p+d$.
 \begin{table}[t]
     \centering
     \resizebox{0.9\linewidth}{!}{
-    \begin{tabular}{llllll}
+    \begin{tabular}{lllll}
         \toprule
                     &  \multicolumn{3}{c}{Objective function} &
         \\ \cmidrule(r){2-4}
-        Reference        & Nonconvex      & PL/Strongly Convex                                  & General Convex   & UG & PP
+        Reference        & Nonconvex      & PL/Strongly Convex                                 & UG & PP
         \\
         %\midrule
         %\makecell{\cite{li2019privacy}}  & \makecell[l]{$-$}   & \makecell[l]{$-$}               & \makecell{$R\!=\!O\left(\frac{\mu^2 d}{\epsilon^{2}}\right)$ \\ $\tau\!=\!1\\
@@ -487,8 +430,8 @@ Improving from $pd$ to $p+d$.
         %\\
 
         \midrule
-        \makecell{\cite{ivkin2019communication}}  & \makecell[l]{$-$}   & \makecell[l]{$R=O\left(\frac{\mu^2 d}{\epsilon}\right)$\\  $\tau=1$\\ $B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)$\\
-        $pRB=O\left(\frac{p\mu^2 d}{\epsilon}k\log\left(\frac{\mu^2d^2}{\epsilon\delta}\right)\right)$}               & \makecell{$-$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{55}}
+        \makecell{\cite{ivkin2019communication}}  & \makecell[l]{$-$}   & \makecell[l]{$R=O\left(\frac{\mu^2 d}{\epsilon}\right)$\\  $\tau=1$\\ $B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)$\\
+        $pRB=O\left(\frac{p\mu^2 d}{\epsilon}m\log\left(\frac{\mu^2d^2}{\epsilon\delta}\right)\right)$}                                                                                           & \makecell{\ding{55}} & \makecell{\ding{55}}
         \\
         
         %\midrule
@@ -501,73 +444,64 @@ Improving from $pd$ to $p+d$.
         %$pRB=O\left(\frac{pd}{\epsilon}\right)$}                                                                            & \makecell{\ding{52}} & \makecell{\ding{55}}
         %\\
         \midrule
-       \makecell{\textbf{Theorem~\ref{thm:homog_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\frac{\mu^2d}{p}+1}{p\epsilon}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left(\frac{pk}{\epsilon}\log\left(\frac{d}{\epsilon\delta}\right)\right)}$}   & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\frac{\mu^2 d}{p}+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\$\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left({k}\kappa(\mu^2d+p)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\frac{\mu^2d}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}               & \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{1+\frac{\mu^2d}{p}}{\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
-       $\boldsymbol{\tau\!=\!O\left(\frac{1}{m\epsilon^2}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left(\frac{k}{\epsilon}\kappa(\mu^2d+p)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\frac{\mu^2d}{p}+d)\log\frac{1}{\epsilon}}{\epsilon\delta}\right)\right)}$}                                                                            & \makecell{\ding{52}} & \makecell{\ding{52}}
+       \makecell{\textbf{Theorem~\ref{thm:homog_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\mu^2d+1}{k\epsilon}\right)}$\\[3pt]
+       $\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
+       $\boldsymbol{kBR=O\left(\frac{mk}{\epsilon}\log\left(\frac{d}{\epsilon\delta}\right)\right)}$}   & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\frac{\mu^2 d}{k}+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\left(\mu^2 d+1\right)}{k\left(\frac{\mu^2 d}{k}+1\right)\epsilon}\right)}$\\$\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
+       $\boldsymbol{kBR=O\left({m}\kappa(\mu^2d+k)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\frac{\mu^2d^2}{k}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}                                               & \makecell{\ding{52}} & \makecell{\ding{52}}
    \\
         \midrule
-              \makecell{\textbf{Theorem~\ref{thm:homog_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\frac{\mu^2d-1}{p}+1}{p\epsilon}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left(\frac{pk}{\epsilon}\log\left(\frac{d}{\epsilon\delta}\right)\right)}$}   & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\frac{\mu^2 d-1}{p}+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\$\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left({k}\kappa(\mu^2d-1+p)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\frac{\mu^2d-1}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}               & \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{1+\frac{\mu^2d-1}{p}}{\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
-       $\boldsymbol{\tau\!=\!O\left(\frac{1}{m\epsilon^2}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left(\frac{k}{\epsilon}\kappa(\mu^2d-1+p)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\frac{\mu^2d-1}{p}+d)\log\frac{1}{\epsilon}}{\epsilon\delta}\right)\right)}$}                                                                            & \makecell{\ding{52}} & \makecell{{\color{red}\ding{52}}}
+              \makecell{\textbf{Theorem~\ref{thm:homog_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\mu^2d}{k\epsilon}\right)}$\\[3pt]
+       $\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
+       $\boldsymbol{kBR=O\left(\frac{mk}{\epsilon}\log\left(\frac{d}{\epsilon\delta}\right)\right)}$}   & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\frac{\mu^2 d-1}{k}+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\left({\mu^2 d}\right)}{k\left(\frac{\mu^2 d}{k}+1\right)\epsilon}\right)}$\\$\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
+       $\boldsymbol{kBR=O\left({m}\kappa(\mu^2d-1+k)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(d\frac{\mu^2d-1}{k}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}                                                                                   & \makecell{\ding{52}} & \makecell{{\color{red}\ding{52}}}
    \\
         \bottomrule
     \end{tabular}
     }
-\caption{Comparison of results with compression and periodic averaging in the homogeneous setting. Here, $m$ is the number of devices, $q$ is compression distortion constant, $\kappa$ is condition number, $\epsilon$ is target accuracy, $R$ is  the number of communication rounds, and $\tau$ is the number of local updates. \todo{Continue from here!!!!!!!!}}
+\caption{Comparison of results with compression and periodic averaging in the homogeneous setting. Here, $m$ is the number of devices, $\mu$ is compression of hash table, $d$ is the dimension of the model, $\kappa$ is condition number, $\epsilon$ is target accuracy, $R$ is  the number of communication rounds, and $\tau$ is the number of local updates. UG and PP stand for unbounded gradient and privacy properly.}
 \label{table:1}
 \end{table}
 %\end{comment}
 
 
 \subsection{Convergence of  \texttt{FedSKETCHGATE} in data heterogeneous setting.} 
+
+
 \begin{assumption}[Bounded Local Variance]\label{Assu:2}
-For all $j\in [m]$, we can sample an independent mini-batch $\Xi_j$   of size $|{\xi}_j| = b$ and compute an unbiased stochastic gradient $\tilde{\mathbf{g}}_j = \nabla f_j(\boldsymbol{w}; \Xi_j), \mathbb{E}_{\xi}[\tilde{\mathbf{g}}_j] = \nabla f_{j}(\boldsymbol{w})={\mathbf{g}}_j$. Moreover, the variance of local stochastic gradients is bounded above by a constant $\sigma^2$, i.e., $
+For all $j\in [p]$, we can sample an independent mini-batch $\Xi_j$   of size $|{\xi}_j| = b$ and compute an unbiased stochastic gradient $\tilde{\mathbf{g}}_j = \nabla f_j(\boldsymbol{w}; \Xi_j), \mathbb{E}_{\xi}[\tilde{\mathbf{g}}_j] = \nabla f_{j}(\boldsymbol{w})={\mathbf{g}}_j$. Moreover, the variance of local stochastic gradients is bounded above by a constant $\sigma^2$, i.e., $
 \mathbb{E}_{\Xi}\left[\|\tilde{\mathbf{g}}_j-{\mathbf{g}}_j\|^2\right]\leq \sigma^2$.
 \end{assumption}
-\todo{Revise this!}
+
 
 \begin{theorem}\label{thm:hetreg_case}
-  Suppose that the conditions in Assumptions~\ref{Assu:1} and \ref{Assu:2} hold. Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$, and Consider \texttt{FedSKETCHGATE} in Algorithm~\ref{Alg:PFLHet} with sketch size $B=O\left(k\log\left(\frac{d R}{\delta}\right)\right)$. If the local data distributions of all users are identical (homogeneous setting), then with probability $1-\delta$ we have  
+  Suppose that the conditions in Assumptions~\ref{Assu:1} and \ref{Assu:2} hold. Given $0<m=O\left(\frac{e}{\mu^2}\right)\leq d$, and Consider \texttt{FedSKETCHGATE} in Algorithm~\ref{Alg:PFLHet} with sketch size $B=O\left(m\log\left(\frac{d R}{\delta}\right)\right)$. If the local data distributions of all users are identical (homogeneous setting), then with probability $1-\delta$ we have  
  \begin{itemize}
      \item \textbf{Nonconvex:}  
      \begin{itemize}
-         \item [1)] For the case of $\Phi_{j,\mathbf{S}}=\texttt{PRIVIX}\left(\boldsymbol{x}_j^{(0,r)}-\boldsymbol{x}_j^{(\tau,r)}\right)$, by choosing stepsizes as $\eta=\frac{1}{L\gamma}\sqrt{\frac{p}{R\tau\left(\mu^2d\right)}}$ and $\gamma\geq m$, the sequence of iterates satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2\leq {\epsilon}$ if we set
+         \item [1)] For the \texttt{FedSKETCHGATE-PRIVIX} algorithm, by choosing stepsizes as $\eta=\frac{1}{L\gamma}\sqrt{\frac{p}{R\tau\left(\mu^2d\right)}}$ and $\gamma\geq p$, the sequence of iterates satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2\leq {\epsilon}$ if we set
      $R=O\left(\frac{\mu^2d+1}{\epsilon}\right)$ and $ \tau=O\left(\frac{1}{{p}\epsilon}\right)$.
-         \item[2)] For the case of 
-$  \Phi_{j,\mathbf{S}}=\texttt{HEAPRIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)$, by choosing stepsizes as $\eta=\frac{1}{L\gamma}\sqrt{\frac{p}{R\tau\left(\mu^2d\right)}}$ and $\gamma\geq m$, the sequence of iterates satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2\leq {\epsilon}$ if we set
+         \item[2)] For \texttt{FedSKETCHGATE-HEAPRIX} algorithm, by choosing stepsizes as $\eta=\frac{1}{L\gamma}\sqrt{\frac{p}{R\tau\left(\mu^2d\right)}}$ and $\gamma\geq p$, the sequence of iterates satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2\leq {\epsilon}$ if we set
      $R=O\left(\frac{\mu^2d}{\epsilon}\right)$ and $ \tau=O\left(\frac{1}{{p}\epsilon}\right)$. 
      \end{itemize}
      
      \item \textbf{PL or Strongly convex:}
       \begin{itemize}
-          \item[1)] For the case of $\Phi_{j,\mathbf{S}}=\texttt{PRIVIX}\left(\boldsymbol{x}_j^{(0,r)}-\boldsymbol{x}_j^{(\tau,r)}\right)$, by choosing stepsizes as $\eta=\frac{1}{2L\left({\mu^2d}+1\right)\tau\gamma}$ and $\gamma\geq m$, we obtain that the iterates satisfy $\mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if  we set
-     $R=O\left(\left(\mu^2d+1\right)\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{m\epsilon}\right)$.
+          \item[1)] For the \texttt{FedSKETCHGATE-PRIVIX} algorithm, by choosing stepsizes as $\eta=\frac{1}{2L\left({\mu^2d}+1\right)\tau\gamma}$ and $\gamma\geq p$, we obtain that the iterates satisfy $\mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if  we set
+     $R=O\left(\left(\mu^2d+1\right)\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{p\epsilon}\right)$.
           
           \item[2)] For the case of 
-         \begin{align}
-    \Phi_{j,\mathbf{S}}=\texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)+\texttt{PRIVIX}\left[\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)-\texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)\right],
-\end{align}
-by choosing stepsizes as $\eta=\frac{1}{2L\left(\mu^2d\right)\tau\gamma}$ and $\gamma\geq m$, we obtain that the iterates satisfy $\mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if  we set
-     $R=O\left(\left(\mu^2d\right)\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{m\epsilon}\right)$. 
+         \texttt{FedSKETCHGATE-HEAPRIX} algorithm,
+by choosing stepsizes as $\eta=\frac{1}{2L\left(\mu^2d\right)\tau\gamma}$ and $\gamma\geq p$, we obtain that the iterates satisfy $\mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if  we set
+     $R=O\left(\left(\mu^2d\right)\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{p\epsilon}\right)$. 
       \end{itemize}
       
      \item \textbf{Convex:}
      \begin{itemize}
-         \item[1)]For the case of $\Phi_{j,\mathbf{S}}=\texttt{PRIVIX}\left(\boldsymbol{x}_j^{(0,r)}-\boldsymbol{x}_j^{(\tau,r)}\right)$, by choosing stepsizes as $\eta=\frac{1}{2L\left(\mu^2d+1\right)\tau\gamma}$ and $\gamma\geq m$, we obtain that the iterates satisfy $ \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if we set
-     $R=O\left(\frac{L\left(1+\mu^2d\right)}{\epsilon}\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{m\epsilon^2}\right).$
-         \item[2)] For the case of 
-         $
-    \Phi_{j,\mathbf{S}}=\texttt{HEAPRIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right),$
-by choosing stepsizes as $\eta=\frac{1}{2L\left(\mu^2d\right)\tau\gamma}$ and $\gamma\geq m$, we obtain that the iterates satisfy $ \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if we set
-     $R=O\left(\frac{L\left(\mu^2d\right)}{\epsilon}\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{m\epsilon^2}\right).$ 
+         \item[1)]For the \texttt{FedSKETCHGATE-PRIVIX} algorithm, by choosing stepsizes as $\eta=\frac{1}{2L\left(\mu^2d+1\right)\tau\gamma}$ and $\gamma\geq p$, we obtain that the iterates satisfy $ \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if we set
+     $R=O\left(\frac{L\left(1+\mu^2d\right)}{\epsilon}\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{p\epsilon^2}\right).$
+         \item[2)] For the \texttt{FedSKETCHGATE-HEAPRIX} algorithm,
+by choosing stepsizes as $\eta=\frac{1}{2L\left(\mu^2d\right)\tau\gamma}$ and $\gamma\geq p$, we obtain that the iterates satisfy $ \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]\leq \epsilon$ if we set
+     $R=O\left(\frac{L\left(\mu^2d\right)}{\epsilon}\log\left(\frac{1}{\epsilon}\right)\right)$ and $ \tau=O\left(\frac{1}{p\epsilon^2}\right).$ 
      \end{itemize}
  \end{itemize}
 \end{theorem}
@@ -581,16 +515,15 @@ by choosing stepsizes as $\eta=\frac{1}{2L\left(\mu^2d\right)\tau\gamma}$ and $\
 \begin{table}[t]
     \centering
     \resizebox{0.9\linewidth}{!}{
-    \begin{tabular}{llllll}
+    \begin{tabular}{lllll}
         \toprule
                     &  \multicolumn{3}{c}{Objective function} &
         \\ \cmidrule(r){2-4}
-        Reference        & Nonconvex      & PL/Strongly Convex                                  & General Convex   & UG & PP
+        Reference        & Nonconvex                                        & General Convex   & UG & PP
         \\
         \midrule
-        \makecell{\cite{li2019privacy}}  & \makecell[l]{$-$}   & \makecell[l]{$-$}               & \makecell[l]{$R\!=\!O\left(\frac{\mu^2 d}{\epsilon^{2}}\right)$ \\ $\tau\!=\!1\\
-        B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)$\\
-        $pRB=O\left(\frac{p\mu^2 d}{\epsilon^{2}}k\log\left(\frac{\mu^2d^2}{\epsilon^2\delta}\right)\right)$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{52}}
+        \makecell{\cite{li2019privacy}}  & \makecell[l]{$-$}                & \makecell[l]{$R\!=\!O\left(\frac{\mu^2 d}{\epsilon^{2}}\right)$ \\ $\tau\!=\!1$\\
+        $B=O\left(m\log\left(\frac{\mu^2d^2}{\epsilon^2\delta}\right)\right)$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{52}}
         \\
 
         %\midrule
@@ -599,160 +532,53 @@ by choosing stepsizes as $\eta=\frac{1}{2L\left(\mu^2d\right)\tau\gamma}$ and $\
         %\\
         
         \midrule
-        \makecell{\cite{karimireddy2019scaffold}}  & \makecell[l]{$R=O\left(\frac{1}{\epsilon}\right)$ \\ $\tau=O\left(\frac{1}{p\epsilon}\right)$\\
-        $B=O\left(d\right)$\\
-        $pRB=O\left(\frac{pd}{\epsilon}\right)$}   & \makecell[l]{$R=O\left(\kappa\log\left(\frac{1}{\epsilon}\right)\right)$ \\ $\tau=O\left(\frac{1}{p\epsilon}\right)$\\
-        $B=O\left(d\right)$\\
-        $pRB=O\left(p\kappa d\log\left(\frac{1}{\epsilon}\right)\right)$}               & \makecell[l]{$R=O\left(\frac{1}{\epsilon}\right)$ \\ $\tau=O\left(\frac{1}{p\epsilon}\right)$\\
-        $B=O\left(d\right)$\\
-        $pRB=O\left(\frac{pd}{\epsilon}\right)$}                                                                            & \makecell{\ding{52}} & \makecell{\ding{55}}
+        \makecell{\cite{rothchild2020fetchsgd}}  & \makecell[l]{$R=O\left(\max(\frac{1}{\epsilon^2},\frac{d^2-md}{m^2\epsilon})\right)$ \\ $\tau=1$\\
+        $B=O\left(m\log\left(\frac{d}{\epsilon^2\delta}\right)\right)$\\
+        $BR=O\left(\frac{m}{\epsilon^2}\max(\frac{1}{\epsilon^2},\frac{d^2-md}{m^2\epsilon})\log\left(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2-md}{m^2\epsilon})\right)\right)$}       & \makecell[l]{$-$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{55}}
+        \\
+        \midrule
+        \makecell{\cite{rothchild2020fetchsgd}}  & \makecell[l]{$R=O\left(\frac{\max(I^{2/3},2-\alpha)}{\epsilon^3}\right)$ \\ $\tau=1$\\
+        $B=O\left(\frac{m}{\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$\\
+        $BR=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$
+        }       & \makecell[l]{$-$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{55}}
         \\
         \midrule
        \makecell{\textbf{Theorem~\ref{thm:hetreg_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{\mu^2d+1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left(\frac{p\left(\mu^2d+1\right)k}{\epsilon}\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\right)\right)}$}   & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\mu^2 d+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\$\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left({pk}\kappa(\mu^2d+1)\log\frac{1}{\epsilon}\log\left(\frac{\kappa({\mu^2d^2}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}               & \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{1+\mu^2d}{\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
-       $\boldsymbol{\tau\!=\!O\left(\frac{1}{m\epsilon^2}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left(\frac{k}{\epsilon}p\kappa(\mu^2d+1)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\mu^2d^2+d)\log\frac{1}{\epsilon}}{\epsilon\delta}\right)\right)}$}                                                                            & \makecell{\ding{52}} & \makecell{\ding{52}}
+       $\boldsymbol{B=O\left(m\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\right)\right)}$\\[3pt]
+       $\boldsymbol{BR=O\left(\frac{m\left(\mu^2d+1\right)}{\epsilon}\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$
+       }   & 
+       \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{1+\mu^2d}{\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
+       $\boldsymbol{\tau\!=\!O\left(\frac{1}{p\epsilon^2}\right)}$\\[3pt]
+       $\boldsymbol{B=O\left(m\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$
+}                                                                            & \makecell{\ding{52}} & \makecell{\ding{52}}
    \\
         \midrule
               \makecell{\textbf{Theorem~\ref{thm:hetreg_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{\mu^2d}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left(\frac{p\mu^2dk}{\epsilon}\log\left(\frac{\mu^2d^2}{\epsilon\delta}\right)\right)}$}   & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\mu^2 d\right)\log\left(\frac{1}{\epsilon}\right)\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\$\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left({k}\kappa(p\mu^2d)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\mu^2d^2)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}               & \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{\mu^2d}{\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
-       $\boldsymbol{\tau\!=\!O\left(\frac{1}{m\epsilon^2}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(k\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{pBR=O\left(\frac{k}{\epsilon}\kappa p(\mu^2d)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\mu^2d^2+d)\log\frac{1}{\epsilon}}{\epsilon\delta}\right)\right)}$}                                                                            & \makecell{\ding{52}} & \makecell{{\color{red}\ding{52}}}
+       $\boldsymbol{B=O\left(m\log\left(\frac{\mu^2d^2}{\epsilon\delta}\right)\right)}$\\[3pt]
+       $\boldsymbol{BR=O\left(\frac{m\left(\mu^2d\right)}{\epsilon}\log\left(\frac{\mu^2d^2}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$}   & \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{\mu^2d}{\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
+       $\boldsymbol{\tau\!=\!O\left(\frac{1}{p\epsilon^2}\right)}$\\[3pt]
+       $\boldsymbol{B=O\left(m\log\left(\frac{\mu^2d^2}{\epsilon\delta}\right)\right)}$}                                                                            & \makecell{\ding{52}} & \makecell{{\color{red}\ding{52}}}
    \\
         \bottomrule
     \end{tabular}
     }
-\caption{Comparison of results with compression and periodic averaging in the heterogeneous setting. Here, $m$ is the number of devices, $q$ is compression distortion constant, $\kappa$ is condition number, $\epsilon$ is target accuracy, $R$ is  the number of communication rounds, and $\tau$ is the number of local updates. \todo{Fixing non-convex results!}}
+\caption{Comparison of results with compression and periodic averaging in the heterogeneous setting. Here, $p$ is the number of devices, $\mu$ is compression of hash table, $d$ is the dimension of the model, $\kappa$ is condition number, $\epsilon$ is target accuracy, $R$ is  the number of communication rounds, and $\tau$ is the number of local updates. UG and PP stand for unbounded gradient and privacy properly respectively.}
 \label{table:1}
 \end{table}
 
-{\color{blue}
+\paragraph{Comparison with \cite{li2019privacy}, \cite{rothchild2020fetchsgd} and \cite{philippenko2020artemis}:} 
+\paragraph{Comparison to\cite{li2019privacy}.} We note that our convergence analysis does not rely on bounded gradient assumption, it can be seen that we both improve the number of communication rounds $R$ and the size of vector $B$ per communication round while preserving privacy property. Additionally, we highlight that our while \cite{li2019privacy} provides convergence result for convex  objectives, we provide the convergence analysis for PL (thus strongly convex case), general convex and general non-convex objectives.
 
-\begin{corollary}[Total communication cost]
-As a consequence of Remark~\ref{rmk:cnd-lr}, the total communication cost per-worker becomes \begin{align}
-O\left(RB\right)&=O\left(Rk\log \left(\frac{d R}{\delta}\right)\right)=O\left(\frac{k }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
-\end{align}
-We note that this result in addition to improving over the communication complexity of federated learning of the state-of-the-art from $O\left(\frac{d}{\epsilon}\right)$ in \cite{karimireddy2019scaffold,wang2018cooperative,liang2019variance} to $O\left(\frac{k p}{\epsilon}\log \left(\frac{d p}{\epsilon\delta}\right)\right)$, it also implies differential privacy. As a result, total communication cost is 
-$$BpR=O\left(\frac{k p}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right).$$ 
+\paragraph{Comparison with \cite{rothchild2020fetchsgd}.}
+Consider two versions of \texttt{FetchSGD} in this reference. First while in our schemes we do not to have access to the exact entries of gradients, since the approaches in \cite{rothchild2020fetchsgd} is based on $top_m$ queries, both of the proposed algorithms (in \cite{rothchild2020fetchsgd}) require to have access to the exact value of $top_k$ gradients, hence they do not preserve privacy. Second, both of the convergence results in \cite{rothchild2020fetchsgd} rely on the bounded gradient assumption and it is known that this assumption is not in consistent with $L$-smoothness when data distribution is heterogeneous which is the case in Federated Learning (see \cite{bayoumi2020tighter} for more detail). However, our convergence results do not need any bounded gradient assumption. Third, Theorem 1~\cite{rothchild2020fetchsgd} is based on an Assumption that \emph{Contraction Holds} for the sequence of gradients encountered during the optimization which may not hold necessarily in practice, yet based on this strong assumption their total communication cost ($RB$) to achieve $\epsilon$ error is  $BR=O\left(m\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\log\left(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\right)\right)$ (Note for the sake of comparison we let the compression ration in \cite{rothchild2020fetchsgd} to be $\frac{m}{d}$). In contrast, without any extra assumptions, our results in Theorem~\ref{thm:hetreg_case} for \texttt{PRIVIX} and \texttt{HEAPRIX} are respectively $BR=O\left(\frac{m\left(\mu^2d+1\right)}{\epsilon}\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)$ and $BR=O\left(\frac{m\left(\mu^2d\right)}{\epsilon}\log\left(\frac{\mu^2d^2}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)$ which improves total communication cost in Theorem 1 in \cite{rothchild2020fetchsgd} in regimes where $\frac{1}{\epsilon}\geq d$ or $d>>m$. Theorem 2 in \cite{rothchild2020fetchsgd} is based on another assumption of Sliding Window Heavy Hitters, which is similar to gradient diversity assumption in \cite{li2018federated,haddadpour2019convergence} (but it is weaker assumption of contraction in Theorem 1 in \cite{rothchild2020fetchsgd}), and they showed that the total communication cost is $BR=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$ ($I$ is constant comes from the extra assumption over the window of gradients which similar to bounded gradient diversity) which is again worse than obtained result in this paper with weaker assumptions in a regime where $\frac{I^{2/3}}{\epsilon^2}\geq d$. Next, unlike \cite{rothchild2020fetchsgd} which only focuses on non-convex objectives, in this work we provide the convergence analysis for PL (thus strongly convex case), general convex and general non-convex objectives. Finally, although the algorithm in \cite{rothchild2020fetchsgd} requires additional memory for the server to store the compression error correction vector, our algorithm does not need such additional storage.      
 
-We note that the state-of-the-art in \cite{karimireddy2019scaffold} the total communication cost is 
-\begin{align}
-    BpR&=O\left(pd\left(\frac{1}{\epsilon}\right) \right)=O\left(\frac{pd}{\epsilon}\right) 
-\end{align}
-We improve this result, in terms of dependency to $d$, to 
-\begin{align}
-    BpR=O\left(\frac{k p}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
-\end{align}
-In comparison to \cite{ivkin2019communication}, we improve the total communication per worker from $RB=O\left(\frac{k }{\epsilon^2}\log \left(\frac{d }{\epsilon^2\delta}\right)\right)$ to $RB=O\left(\frac{k }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)$.
-\end{corollary}
-
-\begin{remark}
-It is worthy to note that most of the available communication-efficient algorithm with quantization or compression only consider communication-efficiency from devices to server. However, Algorithm~\ref{Alg:PFLHom} also improves the communication efficiency from server to devices as well. 
-\end{remark}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Comparison with \cite{philippenko2020artemis}.} The reference \cite{philippenko2020artemis} considers two-way compression from parameter server to devices and vice versa. They provide the convergence rate of $R=O\left(\frac{\omega^{\text{Up}}\omega^{\text{Down}}}{\epsilon^2}\right)$ for strongly-objective functions where $\omega^{\text{Up}}$ and $\omega^{\text{Down}}$ are uplink and downlink's compression noise (specilalizing to our case for the sake of comparision $\omega^{\text{Up}}=\omega^{\text{Down}}=\theta\left(d\right)$) for general heterogeneous data distribution. In contrast, while as pointed out in Remark~\ref{rmrk:bidirect} that our algorithms are using bidirectional compression due to use of sketching for communication, our convergence rate for strongly-convex objective is $R=O(\kappa\mu^2d\log\left(\frac{1}{\epsilon}\right))$ with probability $1-\delta$.  
 
 
-\begin{corollary}[Total communication cost for PL or strongly convex]
-To achieve the convergence error of $\epsilon$, we need to have $R=O\left(\kappa(\frac{\mu^2d}{p}+1)\log\frac{1}{\epsilon}\right)$ and $\tau=\left(\frac{1}{\epsilon}\right)$. This leads to the total communication cost per worker of 
-\begin{align}
-BR&=O\left(k\kappa(\frac{\mu^2d}{p}+1)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
-\end{align}
-As a consequence, the total communication cost becomes:
-\begin{align}
-BpR&=O\left(k\kappa(\mu^2d+p)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
-\end{align}
-We note that the state-of-the-art in \cite{karimireddy2019scaffold} the total communication cost is 
-\begin{align}
-    BpR=O\left(\kappa pd\log\left(\frac{1}{\epsilon}\right) \right)=O\left(\kappa pd\log\left(\frac{1}{\epsilon}\right)\right) 
-\end{align}
-We improve this result, in terms of dependency to $d$, to 
-\begin{align}
-    BpR=O\left(k\kappa(\mu^2d+p)\log\left(\frac{\kappa(\frac{\mu^2d}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
-\end{align}
-Improving from $pd$ to $p+d$.
-\end{corollary}
-
-}
-
-\subsection{Convergence of \texttt{FEDSKETCH} in data homogeneous setting.} 
-
-We note that the main issue with Assumption~\ref{} is that since $d\neq 0$, you can not improve the convergence analysis. For this purpose, we propose Algorithm~\ref{}, where the proposed algorithm is not differentially private.
-
-In this case, we use a different assumption as follows:
-
-\begin{remark}
-Main distinction of Assumption~\ref{} from~\ref{} is that first we do not need unbiased estimation of compression. Additionally, unlike Assumption~\ref{}, if you let $k=d$, we have $\boldsymbol{x}=\text{Comp}_{k=d}(\boldsymbol{x})$.    
-\end{remark}
+%\paragraph{Comparison with Artemis~\cite{}}
+%\todo{....}
 
 
-
-
-We note that Algorithm~\ref{} satisfies this Assumption~\ref{} as shown in ~\cite{ivkin2019communication}.
-
-\begin{theorem}[General non-convex]
-Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
-and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:2.5}, if 
-\begin{align}
-       L^2\eta^2\tau^2+mL\tau\eta\left(1-\frac{k}{d}\right)+2\gamma L\eta\tau\left(2-\frac{k}{d}\right)-1\leq 0,\:\eta> \frac{1}{mL\tau},\label{eq:cnd-lrs-h-ii} 
-\end{align}
-with probability at least $1-\delta$, we have:
-\begin{align}
-    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \frac{2 \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{R\tau \gamma \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{2\eta^2\gamma L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}}{ \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{\eta^3L^2\tau}{\left({\eta}-\frac{1}{\tau mL}\right)}\sigma^2 
-\end{align}
-\end{theorem}
-\begin{remark}[$k=d$]
-\todo{TBA...}
-\end{remark}
-
-\begin{corollary}[Learning rate range]
-Condition in Eq.~(\ref{}) can further simplified as 
-\begin{align}
-    \frac{1}{mL\tau}<\eta\leq \frac{-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}}{2L\tau}
-\end{align}
-We note that $m$ is a hyperparameter that we choose to pick the feasible range for learning rate. Now, if you set $\eta=\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}}$ which implies the following:
-\begin{itemize}
-    \item  $\frac{1}{mL\tau}<\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}} \implies R <\frac{m^2 p \tau}{\gamma^2\left(2-\frac{k}{d}\right)}$
-    \item$\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}}\leq \frac{-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}}{2L\tau} \implies R\geq \frac{p\tau}{\gamma^2\left(2-\frac{k}{d}\right)\left(-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}\right)^2}$
-\end{itemize}
-Therefore, we have the following range for the choice of $R$:
-\begin{align}
-    \frac{p\tau}{\gamma^2\left(2-\frac{k}{d}\right)\left(-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}\right)^2}\leq R<\frac{m^2 p \tau}{\gamma^2\left(2-\frac{k}{d}\right)}
-\end{align}
-\end{corollary}
-\begin{corollary}
-Based on Corollary~\ref{}, if we choose $\eta=\frac{1}{\gamma}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}}=\frac{n}{mL\tau}$ which also  implies $R=\frac{m^2p\tau}{\gamma^2n^2\left(2-\frac{k}{d}\right)}$ with $1<n<m$, then we have:
-\begin{align}
-        \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2&\leq \frac{2 \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{R\tau \gamma \left(\frac{n-1}{m\tau L}\right)}+\frac{2n^2\gamma L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}}{m^2\tau^2L^2 \left(\frac{n-1}{m\tau L}\right)}+\frac{n^3L^2\tau}{m^3\tau^3L^3\left(\frac{n-1}{m\tau L}\right)}\sigma^2\nonumber\\
-        &=\frac{2mL \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{\left(n-1\right)R \gamma }+\frac{2n^2\gamma \left(2-\frac{k}{d}\right)\sigma^2}{m\left(n-1\right) p\tau  }+\frac{n^3\sigma^2}{m^2\left(n-1\right)\tau}
-\end{align}
-Based on relation $R=\frac{m^2p\tau}{\gamma^2n^2\left(2-\frac{k}{d}\right)}$ if we choose $\tau=\frac{\left(2-\frac{k}{d}\right)}{p\epsilon}$ and $m=np$ and $\gamma=m$ we have:
-$$R=\frac{1}{n^2\epsilon}$$ and 
-\begin{align}
-     \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2&\leq \frac{2\epsilon L \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{\left(n-1\right)}+\frac{2n\epsilon \sigma^2}{p\left(n-1\right)}+\frac{n\epsilon\sigma^2}{p\left(n-1\right)\left(2-\frac{k}{d}\right)}
-\end{align}
-\end{corollary}
-
-\begin{theorem}[PL/strongly-convex]
-Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
-and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:2.5}, if 
-\begin{align}
-       L^2\eta^2\tau^2+mL\tau\eta\left(1-\frac{k}{d}\right)+2\gamma L\eta\tau\left(2-\frac{k}{d}\right)-1\leq 0,\:\eta> \frac{1}{mL\tau},\label{eq:cnd-lrs-h-ii} 
-\end{align}
-with probability at least $1-\delta$, Then for the choice of $\eta=\frac{n}{mL\tau}$, for $m>n>1$, and the choice of $ d\left(1-\frac{1}{3n}\right)\leq k\leq d$ with probability $1-\delta$,  we obtain:
-
-
-\begin{align}
-                \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq\exp{-\left(\frac{\gamma\left(n-1\right) R}{m\kappa}\right) }\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{\left(\frac{ n^3}{2m^2}+\frac{n^2}{p}\gamma L\left(2-\frac{k}{d}\right)\frac{1}{p} \right)}{\mu\tau\left(n-1\right)}\sigma^2
-\end{align}
-
-\end{theorem}
 %\todo{Add general theorem and then corollary}
 
 %\subsection{Convergence of \texttt{FEDSKETCH-III} in the data homogeneous setting.} 
