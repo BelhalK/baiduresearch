@@ -1,5 +1,5 @@
 # python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer adam
-# python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer sgd --learning_rate 0.01
+# python3 run.py --num_epochs 8 --viz_steps 200 --num_monte_carlo 5 --optimizer hwa_sgd --learning_rate 0.01 --lr_choice cyclical
 # python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer hwa --start_avg 10 --avg_period 100
 # python3 run.py --num_epochs 2 --viz_steps 200 --num_monte_carlo 5 --optimizer hwa_sgd --start_avg 10 --avg_period 10
 
@@ -65,6 +65,8 @@ flags.DEFINE_bool('fake_data',
                   help='If true, uses fake data. Defaults to real data.')
 flags.DEFINE_string('optimizer', 
                   default='sgd',help='optimizer to use (sgd, adam)')
+flags.DEFINE_string('lr_choice', 
+                  default='normal',help='lr schedule')
 #HWA params
 flags.DEFINE_integer('start_avg',default=10,help='Start Averaging in HWA')
 flags.DEFINE_integer('avg_period',default=10,help='Averaging Period in HWA')
@@ -109,6 +111,14 @@ def create_model():
 
   # Model compilation.
   # pdb.set_trace()
+
+  if FLAGS.lr_choice == 'cyclical':
+    tfa.optimizers.CyclicalLearningRate(
+        initial_learning_rate = 5e-5,
+        maximal_learning_rate=6e-3,
+        step_size = 200, scale_fn= lambda x:1, 
+        scale_mode= 'cycle',name= 'CyclicalLearningRate')
+
   if FLAGS.optimizer =='adam':
       optimizer = tf.keras.optimizers.Adam(lr=FLAGS.learning_rate)
   elif FLAGS.optimizer == 'sgd':
@@ -209,10 +219,16 @@ def main(argv):
   dataset = 'MNIST'
   title = '{}-{}'.format(dataset, logname)
   checkpoint_dir = 'checkpoint/checkpoint_{}'.format(dataset)
-  loggertrain = Logger('{}/trainlog{}_opt{}_lr{}_bs{}_avgp{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size, FLAGS.avg_period), title=title)
+  loggertrain = Logger('{}/trainlog{}_opt{}_lr{}_bs{}_avgp{}_{}.txt'.format(checkpoint_dir, logname,  
+                                                                    FLAGS.optimizer, FLAGS.learning_rate, 
+                                                                    FLAGS.batch_size, FLAGS.avg_period,
+                                                                    FLAGS.lr_choice), title=title)
   loggertrain.set_names(['Learning Rate', 'Train Loss','Train Acc.'])
 
-  loggertest = Logger('{}/testlog{}_opt{}_lr{}_bs{}_avgp{}.txt'.format(checkpoint_dir, logname,  FLAGS.optimizer, FLAGS.learning_rate, FLAGS.batch_size,FLAGS.avg_period), title=title)
+  loggertest = Logger('{}/testlog{}_opt{}_lr{}_bs{}_avgp{}_{}.txt'.format(checkpoint_dir, logname,  
+                                                                    FLAGS.optimizer, FLAGS.learning_rate, 
+                                                                    FLAGS.batch_size,FLAGS.avg_period,
+                                                                    FLAGS.lr_choice), title=title)
   loggertest.set_names(['Learning Rate', 'Test Loss',  'Test Acc.'])
 
   print('==> Training Phase...')
