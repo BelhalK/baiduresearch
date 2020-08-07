@@ -71,9 +71,9 @@ flags.DEFINE_string('lr_choice',
 flags.DEFINE_integer('start_avg',default=10,help='Start Averaging in HWA')
 flags.DEFINE_integer('avg_period',default=10,help='Averaging Period in HWA')
 
+flags.DEFINE_integer('seed',default=10,help='seed')
+
 FLAGS = flags.FLAGS
-
-
 
 def create_model():
   # KL divergence weighted by the number of training samples, using
@@ -111,7 +111,7 @@ def create_model():
 
   # Model compilation.
   # pdb.set_trace()
-
+  tf.random.set_seed(FLAGS.seed)
   if FLAGS.lr_choice == 'cyclical':
     tfa.optimizers.CyclicalLearningRate(
         initial_learning_rate = 5e-5,
@@ -219,16 +219,16 @@ def main(argv):
   dataset = 'MNIST'
   title = '{}-{}'.format(dataset, logname)
   checkpoint_dir = 'checkpoint/checkpoint_{}'.format(dataset)
-  loggertrain = Logger('{}/trainlog{}_opt{}_lr{}_bs{}_avgp{}_{}.txt'.format(checkpoint_dir, logname,  
+  loggertrain = Logger('{}/trainlog{}_opt{}_lr{}_bs{}_avgp{}_{}_seed{}.txt'.format(checkpoint_dir, logname,  
                                                                     FLAGS.optimizer, FLAGS.learning_rate, 
                                                                     FLAGS.batch_size, FLAGS.avg_period,
-                                                                    FLAGS.lr_choice), title=title)
+                                                                    FLAGS.lr_choice, FLAGS.seed), title=title)
   loggertrain.set_names(['Learning Rate', 'Train Loss','Train Acc.'])
 
-  loggertest = Logger('{}/testlog{}_opt{}_lr{}_bs{}_avgp{}_{}.txt'.format(checkpoint_dir, logname,  
+  loggertest = Logger('{}/testlog{}_opt{}_lr{}_bs{}_avgp{}_{}_seed{}.txt'.format(checkpoint_dir, logname,  
                                                                     FLAGS.optimizer, FLAGS.learning_rate, 
                                                                     FLAGS.batch_size,FLAGS.avg_period,
-                                                                    FLAGS.lr_choice), title=title)
+                                                                    FLAGS.lr_choice, FLAGS.seed), title=title)
   loggertest.set_names(['Learning Rate', 'Test Loss',  'Test Acc.'])
 
   print('==> Training Phase...')
