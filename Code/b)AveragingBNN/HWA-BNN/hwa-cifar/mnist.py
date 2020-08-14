@@ -19,7 +19,8 @@ class MNISTSequence(tf.keras.utils.Sequence):
       data: Tuple of numpy `array` instances, the first representing images and
             the second labels.
       batch_size: Integer, number of elements in each training batch.
-      fake_data_size: Optional integer number of fake datapoints to generate.
+      fake
+      _data_size: Optional integer number of fake datapoints to generate.
     """
     if data:
       images, labels = data
