@@ -131,7 +131,8 @@ class DAMSGrad(Optimizer):
                     # use adpative learning rate consensused outside of the optimizer to update
                     
                     # keep the true adaptive learning positive, line 10
-                    denom = np.maximum(math.sqrt(state["adp_u"],0.001))
+                    # denom = np.maximum(math.sqrt(state["adp_u"],0.001))
+                    denom = np.maximum(torch.sqrt(state["adp_u"]),0.001)
                     step_size = group["lr"] / bias_correction1
                     # parameter update, line 11
                     p.addcdiv_(exp_avg, denom, value=-step_size)
