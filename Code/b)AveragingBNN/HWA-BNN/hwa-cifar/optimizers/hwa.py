@@ -79,6 +79,7 @@ class HWA(optimizer_v2.OptimizerV2):
       return resource_variable_ops.resource_scatter_add(
           var.handle, indices, -grad * coefficients["lr_t"])
 
+
   def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
     # This method is only needed for momentum optimization.
     var_device, var_dtype = var.device, var.dtype.base_dtype
