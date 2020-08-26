@@ -6,7 +6,11 @@
 \usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem}
 \usepackage{wrapfig,lipsum}
 \usepackage{xargs}
-\usepackage{hyperref}
+\definecolor{ao(english)}{rgb}{0.0, 0.5, 0.0}
+\definecolor{lavander}{cmyk}{0,0.48,0,0}
+\definecolor{violet}{cmyk}{0.79,0.88,0,0}
+\definecolor{burntorange}{cmyk}{0,0.52,1,0}
+\usepackage[colorlinks=true,linkcolor=ao(english),urlcolor=blue,citecolor=purple]{hyperref}
 \usepackage{url}
 
 \input{shortcuts_OPT.sty}
@@ -46,42 +50,61 @@ Bayesian Deep Learning presents itself as the most useful tool for adding uncert
 Confidence of the model and the predictions at inference time are left alone.
 Applying randomness and Bayes Rule to the weights of a deep neural network is a step towards achieving this goal.
 Current state of the art optimization method for training a Bayesian Neural Network are relatively slow and inefficient, compared to their deterministic counterparts.
-In this paper, we propose HWA (Hyperparameters Weight Averaging) algorithm that leverages the averaging procedure of Polyak and Ruppert in order to train faster and achieve a better accuracy.
+In this paper, we propose HWA (Hyperparameters Weight Averaging) algorithm that leverages averaging procedure in order to train faster and achieve a better accuracy.
 We develop our main algorithm using the simple averaging heuristic and demonstrate its effectiveness on the space of the hyperparameters of the neural networks random weights.
 Numerical applications confirm the empirical benefits of our method.
 \end{abstract}
 
 \section{Introduction}
 While Deep Learning methods have shown increasing efficiency in various domains such as natural language processing, computer vision or robotics, sensible areas including autonomous driving or medical imaging not only require accurate predictions but also uncertainty quantification.
-In \citep{neal2012bayesian}, authors develop a bayesian variant of plain feedforward multilayer neural networks in which weights and biases are considered as random variables.
-For supervised learning tasks, deterministic models are prone to overfitting and are not capable of estimating uncertainty in the training data resulting in making overly confident decisions about the correct class, \textit{i.e.} miscalibration \citep{guo2017calibration,kendall2017uncertainties}.
+In~\citep{neal2012bayesian}, authors develop a bayesian variant of plain feedforward multilayer neural networks in which weights and biases are considered as random variables.
+For supervised learning tasks, deterministic models are prone to overfitting and are not capable of estimating uncertainty in the training data resulting in making overly confident decisions about the correct class, \textit{i.e.} miscalibration~\citep{guo2017calibration,kendall2017uncertainties}.
 Nevertheless, representing that aforementioned uncertainty is crucial for decision making.
 
-Bayesian methods display a hierarchical probabilistic model that assume a (prior) random distribution over the parameters of the parameters and are useful for assessing the uncertainty of the model via posterior predictive distribution quantification \citep{blundell2015weight,kingma2015variational}.
-Current training methods for Bayesian Neural Networks (BNN) \citep{neal2012bayesian} include Variational Inference \citep{graves2011practical, hoffman2013stochastic} or BayesByBackprop \citep{blundell2015weight} based on Evidence Lower Bound (ELBO) maximization task.
+Bayesian methods display a hierarchical probabilistic model that assume a (prior) random distribution over the parameters of the parameters and are useful for assessing the uncertainty of the model via posterior predictive distribution quantification~\citep{blundell2015weight,kingma2015variational}.
+Current training methods for Bayesian Neural Networks (BNN)~\citep{neal2012bayesian} include Variational Inference~\citep{graves2011practical, hoffman2013stochastic} or BayesByBackprop~\citep{blundell2015weight} based on Evidence Lower Bound (ELBO) maximization task.
 Naturally, Bayesian methods, and in particular BNNs, are thus highly sensitive to the parameters choice of the prior distribution and current state-of-the-art models are not as efficient and robust as traditional deep learning models.
 
 In this paper, we introduce a new \emph{optimization} algorithm to alleviate those challenges.
 Our main contributions read as follows:
 \begin{itemize}
-\item We introduce Hyperparameter Weight Averaging (HWA), a training algorithm that leverages stochastic averaging techniques \citep{polyak1992acceleration} and posterior sampling methods.
-\item Given the high nonconvexity of the loss landscape, our method finds heuristic explanation from theoretical works on averaging and generalization such as \citep{keskar2016large,he2019asymmetric} and more practical work on Deep Neural Networks (DNN) optimization such as \citep{izmailov2018averaging}.
+\item We introduce Hyperparameter Weight Averaging (HWA), a training algorithm that leverages stochastic averaging techniques~\citep{polyak1992acceleration} and posterior sampling methods.
+\item Given the high nonconvexity of the loss landscape, our method finds heuristic explanation from theoretical works on averaging and generalization such as~\citep{keskar2016large,he2019asymmetric} and more practical work on Deep Neural Networks (DNN) optimization such as~\citep{izmailov2018averaging}.
 
-\item \color{red}{ Plots to show how HWA adapt to the curvature and goes in a better testing accuracy (but worst training loss). Plots with hyperparameters landscape and HWA trajectory on PCA subspace.}
+\item {\color{red} Plots to show how HWA adapts to the curvature and reaches a better testing accuracy (but worst training loss). Plots with hyperparameters landscape and HWA trajectory on PCA subspace.}
 
 \item We provide numerical examples showcasing the effectiveness of our method on simple and complex supervised classification tasks.
 \end{itemize}
 
 The remaining of the paper is organized as follows.
+Section~\ref{sec:related} presents the related works in the fields of optimization, Variational Inference and posterior sampling.
+Section~\ref{sec:main} introduces the HWA algorithm which is the main contribution of our paper.
+Section~\ref{sec:numerical} highlights the benefits of our averaging procedure on simple and complex numerical classification tasks.
+Section~\ref{sec:conclusion} concludes our work.
  
-\section{Related Work}
-\textbf{Stochastic Averaging:}
+\section{Related Work}\label{sec:related}
+\textbf{Posterior Prediction.}
+Due to the nonconvexity of the loss landscapes involved in modern and complex deep learning tasks, direct sampling from the posterior distribution of the weights is not an option.
+Depending on the nature and in particular the dimensionality of the problem, Markov Chain Monte Carlo (MCMC) methods have been employed to overcome this intractability issue.
+By constructing a Markov chain, the samples drawn at convergence are guaranteed to be drawn from the target distribution.
+Hamiltonian Monte Carlo (HMC)~\citep{neal2011mcmc} or Metropolis Hastings (MH)~\citep{hastings1970monte} are two standard solutions used.
+Their stochastic gradients counterpart are extensively studied in \citep{ma2015complete}.
 
-\textbf{Variational Inference:}
 
-\textbf{Posterior Prediction:}
+\textbf{Variational Inference (VI).}
+When tackling an optimization problem, exact posterior sampling may be computationally involved and not even required.
+variational inference was proposed in~\citep{graves2011practical}, in the particular case of BNNs, in order to fit a Gaussian variational posterior approximation over the weights of neural networks.
+Through a simple reparameterization trick~\citep{blundell2015weight}, several methods have emerged to train BNNs leveraging the ease of use and implementation of VI~\citep{kingma2015variational,blundell2015weight,molchanov2017variational}.
+Though, those methods appear to be inefficient for large-scale datasets and newer methods were proposed to alleviate this issue such as the use of normalizing flows~\citep{louizos2017multiplicative}, deterministic VI~\citep{wu2018deterministic} or dropout VI~\citep{gal2016dropout}.
 
-\section{Hyperparameters Averaging in Bayesian Neural Networks}
+\textbf{Stochastic Averaging.}
+Averaging methods include the seminal papers of~\citep{polyak1990sa} and~\citep{ruppert1988efficient}, both based on the combination of past iterates along a stochastic approximation trajectory.
+For nonconvex loss objectives, this averaging procedure has been adapted to Stochastic Gradient Descent (SGD) trajectory~\citep{zhou2017convergence}.
+In particular, in modern deep learning examples, \citet{izmailov2018averaging} develops a novel method that averages snapshots of a deep neural networks (DNN) through the iterations and shows empirical benefits leading to a better generalization.
+Those experimental discoveries are then backed by theoretical understanding of the DNN loss landscape and the impact of averaging successive iterates in~\citep{keskar2016large,he2019asymmetric}.
+
+
+\section{Hyperparameters Averaging in Bayesian Neural Networks}\label{sec:main}
 
 \begin{algorithm}[H]
 \algsetup{indent=0.25em}
@@ -105,8 +128,9 @@ $\mu_{\ell} = \hat{\mu}_{\ell}$ and $\mu^{HWA}_{\ell} = \mu_{\ell}$.
 
 
 
-\section{Numerical Experiments}
-\section{Conclusion}
+\section{Numerical Experiments}\label{sec:numerical}
+
+\section{Conclusion}\label{sec:conclusion}
 
 \newpage
 
