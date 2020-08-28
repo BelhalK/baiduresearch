@@ -11,6 +11,8 @@ def args_parser():
     parser.add_argument('--local_ep', type=int, default=2, help="the number of local epochs: E")
     parser.add_argument('--local_bs', type=int, default=30, help="local mini-batch size (SGD): B")
 
+    parser.add_argument('--LAMB', dest='LAMB', default=False, action='store_true')
+    # parser.add_argument('--LAMB', type=bool, default=0, help="LAMB layer-wise adjusted lr")
     parser.add_argument('--bs', type=int, default=128, help="test batch size")
     parser.add_argument('--lr', type=float, default=0.01, help="learning rate")
     parser.add_argument('--glob_lr', type=float, default=0.01, help="global learning rate")
