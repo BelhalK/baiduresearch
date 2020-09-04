@@ -111,12 +111,16 @@ From an optimization perspective, we review the SWA~\citep{izmailov2018averaging
 We then discuss the uncertainty estimation prediction of such method and how our proposed extra step combining \emph{posterior sampling} and \emph{optimization} can lead to a better generalization of the trained model on test sets.
 
 \subsection{Bayesian Neural Networks and ELBO Maximization}
-Let $((x_i,y_i),  i \in \inter)$ be i.i.d.~input-output pairs and $w \in \Wset[] \subseteq \rset^{d}$ be a latent variable. When conditioned on the input data $x = (x_i, i \in \inter)$, the joint distribution of $y = (y_i, i \in \inter)$ and $w$ is given by:
+Let $((x_i,y_i),  i \in [n])$ be i.i.d.~input-output pairs and $w \in \mathcal{W} \subseteq \mathbb{R}^{d}$ be a latent variable. When conditioned on the input data $x = (x_i, i \in [n])$, the joint distribution of $y = (y_i, i \in [n])$ and $w$ is given by:
 \begin{equation}\label{eq:vi} \textstyle
     p(y,w | x) = \prior(w)\prod_{i=1}^{n}{p(y_i | x_i, w)} \eqsp.
 \end{equation}
-Our goal is to compute the posterior distribution $p(w|y,x)$.
-In most cases, the posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. The variational inference (VI) problem~\citep{blei2017vi} boils down to minimizing the Kullback-Leibler (KL) divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$:
+
+In the particular case of BNN, this likelihood function is parametrized by a multilayer neural network, which can be convolutional or not.
+The latent variables $w$ are thus the weights and the biases of the model and are considered as latent (and random) variables.
+Training of such hierarchical models implies sampling from the posterior distribution of the weights $w$ conditioned on the data $(x,y)$ and noted $p(w|y,x)$.
+In most cases, this posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. 
+The variational inference (VI) problem~\citep{blei2017vi} boils down to minimizing the Kullback-Leibler (KL) divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$:
 \begin{equation} \label{eq:VI}  
 \min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp.
 \end{equation}
@@ -127,6 +131,9 @@ Using \eqref{eq:vi}, we decompose ${\cal L}(\param) = n^{-1} \sum_{i=1}^{n}{{\ca
 Directly optimizing the finite sum objective function in \eqref{eq:VI} can be difficult.
 First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
 Second, for some complex models, the expectations in \eqref{eq:variationalobjective} can be intractable even if we assume a simple parametric model for $q(w; \param)$.
+
+Solutions simply include using SGD~\citep{bottou2008tradeoffs} where the gradient of the individual ELBO~\eqref{eq:variationalobjective} is computed using Automatic Differentation~\citep{kucukelbir2017automatic}. The final update goes in the opposite direction of that gradient up to a learning rate factor.
+
 
 
 \subsection{HWA: Hyperparameters Weight Averaging}
