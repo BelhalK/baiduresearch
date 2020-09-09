@@ -81,6 +81,8 @@ Section~\ref{sec:related} presents the related works in the fields of optimizati
 Section~\ref{sec:main} introduces the HWA algorithm which is the main contribution of our paper.
 Section~\ref{sec:numerical} highlights the benefits of our averaging procedure on simple and complex numerical classification tasks.
 Section~\ref{sec:conclusion} concludes our work.
+
+\textbf{Notations:} We denote for all $n >1$, $[n]$ the set $ \{1, \cdots, n\}$.
  
 \section{Related Work}\label{sec:related}
 \textbf{Posterior Prediction.}
@@ -107,7 +109,7 @@ Those experimental discoveries are then backed by theoretical understanding of t
 \section{Hyperparameters Averaging in Bayesian Neural Networks}\label{sec:main}
 
 In this section, we introduce the basic concepts of Bayesian Neural Networks and their corresponding loss function which plays a key role in this paper.
-From an optimization perspective, we review the SWA~\citep{izmailov2018averaging} averaging procedure, which can be seen as an approximation of the mean trajectory of the SGD iterates and introduce our method, namely HWA.
+From an optimization perspective, we review the Stochastic Weight Averaging (SWA)~\citep{izmailov2018averaging} averaging procedure, which can be seen as an approximation of the mean trajectory of the SGD iterates and introduce our method, namely HWA.
 We then discuss the uncertainty estimation prediction of such method and how our proposed extra step combining \emph{posterior sampling} and \emph{optimization} can lead to a better generalization of the trained model on test sets.
 
 \subsection{Bayesian Neural Networks and ELBO Maximization}
@@ -120,7 +122,7 @@ In the particular case of BNN, this likelihood function is parametrized by a mul
 The latent variables $w$ are thus the weights and the biases of the model and are considered as latent (and random) variables.
 Training of such hierarchical models implies sampling from the posterior distribution of the weights $w$ conditioned on the data $(x,y)$ and noted $p(w|y,x)$.
 In most cases, this posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. 
-The variational inference (VI) problem~\citep{blei2017vi} boils down to minimizing the Kullback-Leibler (KL) divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$:
+The variational inference (VI) problem~\citep{blei2017variational} boils down to minimizing the Kullback-Leibler (KL) divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$:
 \begin{equation} \label{eq:VI}  
 \min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp.
 \end{equation}
@@ -132,11 +134,27 @@ Directly optimizing the finite sum objective function in \eqref{eq:VI} can be di
 First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
 Second, for some complex models, the expectations in \eqref{eq:variationalobjective} can be intractable even if we assume a simple parametric model for $q(w; \param)$.
 
-Solutions simply include using SGD~\citep{bottou2008tradeoffs} where the gradient of the individual ELBO~\eqref{eq:variationalobjective} is computed using Automatic Differentation~\citep{kucukelbir2017automatic}. The final update goes in the opposite direction of that gradient up to a learning rate factor.
+Solutions simply include using SGD~\citep{bottou2008tradeoffs} where the gradient of the individual ELBO~\eqref{eq:variationalobjective} is computed using Automatic Differentiation~\citep{kucukelbir2017automatic}. The final update goes in the opposite direction of that gradient up to a learning rate factor.
+In the sequel, we develop an improvement over baseline SGD, invoking averaging virtue of several successive snapshots of the gradients.
+The method, called Hyperparameters Weight Averaging (HWA), aims at improving the generalization property of the trained model on unseen data.
 
 
+\subsection{Averaging iterates through hyperparmeter loss landscapes snapshots.}
 
-\subsection{HWA: Hyperparameters Weight Averaging}
+We now recall the classical SWA method developed in~\citep{izmailov2018averaging}. 
+Consider a deterministic deep neural network, the idea behind the Stochastic Weight Averaging procedure is to run several iterates of the classical SGD procedure, starting from a pre-trained model.
+At each timestep noted $T_{\mathsf{avg}}$, the model estimate is equal to the average of the last $T_{\mathsf{avg}}$ iterates.
+Empirically, a constant and large learning rate is more efficient given the exploration virtue that it implies.
+
+After establishing the connectivity between several modes (point estimate of minimal loss) of the same deep neural network (after different training procedure) in~\citep{garipov2018loss}, being able to average all those iterates probably traversing several models or at least model estimates that belong to low loss region would make the resulting trained model more robust and thus generalize better to unseen data.
+Several theoretical paper such as~\citep{he2019asymmetric} or \citep{keskar2016large} provide an attempt at explaining this phenomena.
+
+
+\textbf{Hyperparameters Weight Averaging:}
+Based on the probabilistic model developed above, the loss function~\eqref{eq:VI} is defined on the space of the hyperparameters, \textit{i.e.} the mean and the variance of the variational candidate distribution.
+As a result, the averaging procedure practically occurs on the 
+
+
 \begin{algorithm}[H]
 \algsetup{indent=0.25em}
 \begin{algorithmic}[1]
@@ -149,18 +167,24 @@ $\mu_{\ell} = \hat{\mu}_{\ell}$ and $\mu^{HWA}_{\ell} = \mu_{\ell}$.
 \IF{$\textrm{mod}(k,c) = 0$}
 	\STATE $n_{\textrm{models}} \leftarrow k/c$ (Number of models to average)
 		\STATE $\mu_{\ell}^{HWA} \leftarrow \frac{n_{\textrm{models}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{models}}+1}$
-		\STATE $\mu_{\ell}^{HWA} \leftarrow \frac{n_{\textrm{models}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{models}}+1}$
+		\STATE $\sigma^{HWA} \leftarrow \frac{n_{\textrm{models}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{models}}+1}$
+
 \ENDIF
 \ENDFOR
 \end{algorithmic}
 \caption{HWA: Hyperparameters Weight Averaging}
 \label{alg:miso}
-        \end{algorithm}
+\end{algorithm}
+
 
 
 \subsection{Through the Lenses of Loss Landscapes}
+\textcolor{red}{PCA plot of the loss landscape and visualization of HWA iterates.}
+
 
 \section{Numerical Experiments}\label{sec:numerical}
+\textcolor{red}{MNIST and CIFAR-10 experiments}.
+
 
 \section{Conclusion}\label{sec:conclusion}
 
