@@ -12,8 +12,13 @@ import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import models.b_vgg as vgg
+from logger import Logger, savefig
 
-#adapted from https://github.com/chengyangfu/pytorch-vgg-cifar10/blob/master/main.py
+#hwa imports
+from swa_utils import AveragedModel, SWALR
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
+import pdb
 
 model_names = sorted(name for name in vgg.__dict__
     if name.islower() and not name.startswith("__")
@@ -51,7 +56,7 @@ parser.add_argument('--cpu', dest='cpu', action='store_true',
 parser.add_argument('--save-dir', dest='save_dir',
                     help='The directory used to save the trained models',
                     default='save_temp', type=str)
-parser.add_argument('optimizer', 
+parser.add_argument('--optimizer', 
                   default='sgd',help='optimizer to use (sgd, adam)')
 
 
@@ -59,6 +64,9 @@ best_prec1 = 0
 
 
 def main():
+
+    print('==> Parsing Args..')
+
     global args, best_prec1, freeze
     args = parser.parse_args()
 
@@ -67,6 +75,8 @@ def main():
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
+    print('==> Uploading Model..')
+
     model = vgg.__dict__[args.arch]()
 
     model.features = torch.nn.DataParallel(model.features)
@@ -74,6 +84,23 @@ def main():
         model.cpu()
     else:
         model.cuda()
+    
+    print('==> Creating Logger Files..')
+    #Create checkpoints log file
+    logname = 'bvgg'
+    dataset = 'cifar10'
+    title = '{}-{}'.format(dataset, logname)
+    checkpoint_dir = 'checkpoint/checkpoint_{}'.format(dataset)
+    loggertrain = Logger('{}/trainlog{}_opt{}_lr{}_bs{}.txt'.format(checkpoint_dir, logname,  
+                                                                    args.optimizer, args.lr, 
+                                                                    args.batch_size), title=title)
+    loggertrain.set_names(['Learning Rate', 'Train Loss','Train Acc.'])
+    
+    loggertest = Logger('{}/testlog{}_opt{}_lr{}_bs{}.txt'.format(checkpoint_dir, logname,  
+                                                                    args.optimizer, args.lr, 
+                                                                    args.batch_size), title=title)
+    loggertest.set_names(['Learning Rate', 'Test Loss',  'Test Acc.'])
+
 
     #model.freeze_()
     #freeze = True
@@ -125,29 +152,35 @@ def main():
         model.half()
         criterion.half()
 
+    print('==> Chosing Optimizer..')
+    
     if args.optimizer =='adam':
-      optimizer = torch.optim.Adam(model.parameters(), args.lr)
+        optimizer = torch.optim.Adam(model.parameters(), args.lr)
     elif args.optimizer == 'sgd':
-      optimizer = torch.optim.SGD(model.parameters(), args.lr)
-  	elif args.optimizer == 'hwa':
-      optimizer = torch.optim.SGD(model.parameters(), args.lr)
-      swa_model = AveragedModel(model)
-	  scheduler = CosineAnnealingLR(optimizer, T_max=100)
-	  swa_start = 5
-	  swa_scheduler = SWALR(optimizer, swa_lr=0.05)
+        optimizer = torch.optim.SGD(model.parameters(), args.lr)
+    elif args.optimizer == 'hwa':
+        optimizer = torch.optim.SGD(model.parameters(), args.lr)
+        swa_model = AveragedModel(model)
+        scheduler = CosineAnnealingLR(optimizer, T_max=100)
+        swa_start = 5
+        swa_scheduler = SWALR(optimizer, swa_lr=0.05)
 
     if args.evaluate:
         validate(val_loader, model, criterion)
         return
 
+    print('==> Starting Training Epochs..')
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch)
+        if args.optimizer =='hwa':
+            trainhwa(train_loader, model, criterion, optimizer, epoch, loggertrain,swa_model,scheduler,swa_start, swa_scheduler)
+        else:
+            train(train_loader, model, criterion, optimizer, epoch, loggertrain)
 
         # evaluate on validation set
-        prec1 = validate(val_loader, model, criterion)
+        prec1 = validate(val_loader, model, criterion,loggertest)
 
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
@@ -159,7 +192,7 @@ def main():
         }, is_best, filename=os.path.join(args.save_dir, 'checkpoint_{}.tar'.format(epoch)))
 
 
-def train(train_loader, model, criterion, optimizer, epoch):
+def train(train_loader, model, criterion, optimizer, epoch, loggertrain):
     """
         Run one train epoch
     """
@@ -204,12 +237,6 @@ def train(train_loader, model, criterion, optimizer, epoch):
         loss.backward()
         optimizer.step()
 
-        if args.optimizer == 'hwa':
-        	if epoch > swa_start:
-        		swa_model.update_parameters(model)
-        		swa_scheduler.step()
-	     	else:
-	     		scheduler.step()
 
         output = model(input)
         output = output.float()
@@ -232,8 +259,83 @@ def train(train_loader, model, criterion, optimizer, epoch):
                       epoch, i, len(train_loader), batch_time=batch_time,
                       data_time=data_time, loss=losses, top1=top1))
 
+        loggertrain.append([args.lr, losses.val, top1.val])
 
-def validate(val_loader, model, criterion):
+def trainhwa(train_loader, model, criterion, optimizer, epoch, loggertrain,swa_model,scheduler,swa_start, swa_scheduler):
+    """
+        Run one train epoch
+    """
+    global freeze
+
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    losses = AverageMeter()
+    top1 = AverageMeter()
+
+    # switch to train mode
+    model.train()
+
+    end = time.time()
+
+    #if epoch == 3:
+     #   model.MOPED_()
+      #  freeze = False
+
+    for i, (input, target) in enumerate(train_loader):
+
+        # measure data loading time
+        data_time.update(time.time() - end)
+
+        if args.cpu == False:
+            input = input.cuda()
+            target = target.cuda()
+
+        # compute output
+        if not freeze:
+            loss = model.sample_elbo(inputs=input,
+                           labels=target,
+                           criterion=criterion,
+                           sample_nbr=3,
+			               complexity_cost_weight=1/50000)
+        else:
+            output = model(input)
+            loss = criterion(output, target)
+
+        # compute gradient and do SGD step
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        if epoch > swa_start:
+            swa_model.update_parameters(model)
+            swa_scheduler.step()
+        else:
+            scheduler.step()
+
+        output = model(input)
+        output = output.float()
+        loss = loss.float()
+        # measure accuracy and record loss
+        prec1 = accuracy(output.data, target)[0]
+        losses.update(loss.item(), input.size(0))
+        top1.update(prec1.item(), input.size(0))
+
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        if i % args.print_freq == 0:
+            print('Epoch: [{0}][{1}/{2}]\t'
+                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
+                      epoch, i, len(train_loader), batch_time=batch_time,
+                      data_time=data_time, loss=losses, top1=top1))
+
+        loggertrain.append([args.lr, losses.val, top1.val])
+
+def validate(val_loader, model, criterion, loggertest):
     """
     Run evaluation
     """
@@ -281,6 +383,7 @@ def validate(val_loader, model, criterion):
     print(' * Prec@1 {top1.avg:.3f}'
           .format(top1=top1))
 
+    loggertest.append([args.lr, losses.val, top1.val])
     return top1.avg
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
