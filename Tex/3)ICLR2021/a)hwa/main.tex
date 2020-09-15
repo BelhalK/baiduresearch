@@ -155,6 +155,7 @@ Based on the probabilistic model developed above, the loss function~\eqref{eq:VI
 As a result, the averaging procedure practically occurs on the set of hyperparameters and 
 
 
+
 \begin{algorithm}[H]
 \algsetup{indent=0.25em}
 \begin{algorithmic}[1]
@@ -163,18 +164,47 @@ As a result, the averaging procedure practically occurs on the set of hyperparam
 $\mu_{\ell} = \hat{\mu}_{\ell}$ and $\mu^{HWA}_{\ell} = \mu_{\ell}$.
 \FOR {$k=0,1,...$}
 \STATE $\gamma \leftarrow \gamma(k)$ (Cyclical LR for the iteration)
-\STATE $\mu_{\ell}^{k+1} \leftarrow \mu_{\ell}^{k} - \gamma \nabla \mathcal{L}(\mu_{\ell}^{k})$ (regular SVI update)
+\STATE $\mu_{\ell}^{k+1} \leftarrow \mu_{\ell}^{k} - \gamma_k \nabla \mathcal{L}(\mu_{\ell}^{k})$ (regular SVI update) \label{line:svi}
 \IF{$\textrm{mod}(k,c) = 0$}
-	\STATE $n_{\textrm{models}} \leftarrow k/c$ (Number of models to average)
-		\STATE $\mu_{\ell}^{HWA} \leftarrow \frac{n_{\textrm{models}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{models}}+1}$
-		\STATE $\sigma^{HWA} \leftarrow \frac{n_{\textrm{models}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{models}}+1}$
-
+	\STATE \qquad $n_{\textrm{m}} \leftarrow k/c$ \quad (Number of models to average over)
+		\STATE \qquad$\mu_{\ell}^{HWA} \leftarrow \frac{n_{\textrm{m}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{m}}+1}$
+		\STATE \qquad $\sigma^{HWA} \leftarrow \frac{n_{\textrm{m}}\sigma^{HWA} + (\mu_{\ell}^{k+1})^2}{n_{\textrm{m}}+1} -( \mu_{\ell}^{HWA})^2 $
 \ENDIF
 \ENDFOR
+\STATE \textbf{Return} hyperparameters $(\{\mu_{\ell}^{HWA}\}_{l=1}^L, \sigma^{HWA})$.
 \end{algorithmic}
 \caption{HWA: Hyperparameters Weight Averaging}
-\label{alg:miso}
+\label{alg:hwa}
 \end{algorithm}
+
+Algorithm~\ref{alg:hwa} develops the main method of our paper.
+Stochastic Variational update is executed Line~\ref{line:svi}.
+The stochastic averaging procedure happens every $c$ iterations, and consists in computing the weight sum between the latest model estimate and the running average noted using the superscript $\textrm{HWA}$.
+
+Several hyperparameters are worth highlighting here.
+The standard learning rate $\gamma_k$ plays a key role and is either equal to a constant or a cyclical learning rate.
+The cycle length $c$ which monitors the number of times snapshots of the model estimates are being averaged is also of utmost importance and needs careful tuning.
+
+%\begin{algorithm}[H]
+%\algsetup{indent=0.25em}
+%\begin{algorithmic}[1]
+%\STATE \textbf{Input:} Trained hyperparameters $\hat{\mu}_{\ell}$ and $\hat{\sigma}$. LR bounds $\gamma_1$ and $\gamma_2$. Cycle length $c$.
+%\STATE Initialize the hyperparameters of the weights and 
+%$\mu_{\ell} = \hat{\mu}_{\ell}$ and $\mu^{HWA}_{\ell} = \mu_{\ell}$.
+%\FOR {$k=0,1,...$}
+%\STATE $\gamma \leftarrow \gamma(k)$ (Cyclical LR for the iteration)
+%\STATE $\mu_{\ell}^{k+1} \leftarrow \mu_{\ell}^{k} - \gamma \nabla \mathcal{L}(\mu_{\ell}^{k})$ (regular SVI update)
+%\IF{$\textrm{mod}(k,c) = 0$}
+%	\STATE $n_{\textrm{m}} \leftarrow k/c$ (Number of models to average)
+%		\STATE $\mu_{\ell}^{HWA} \leftarrow \frac{n_{\textrm{m}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{m}}+1}$
+%		\STATE $\sigma^{HWA} \leftarrow \frac{n_{\textrm{m}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{m}}+1}$
+%
+%\ENDIF
+%\ENDFOR
+%\end{algorithmic}
+%\caption{HWA: Hyperparameters Weight Averaging}
+%\label{alg:miso}
+%\end{algorithm}
 
 
 
