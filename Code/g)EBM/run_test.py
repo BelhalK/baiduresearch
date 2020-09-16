@@ -53,13 +53,26 @@ def sample_p_d():
 
 print("==> Sampling...")
 sample_p_0=lambda:t.FloatTensor(m,n_ch,im_sz,im_sz).uniform_(-1,1).to(device)
+
+
 def sample_q(K=K):
+    #Langevin Dynamics update to sample from EBM
+    x_k=t.autograd.Variable(sample_p_0(),requires_grad=True)
+    for k in range(K):
+        #compute gradient term
+        f_prime=t.autograd.grad(f(x_k).sum(),[x_k],retain_graph=True)[0]
+        #add Gaussian noise (Langevin)
+        x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
+    return x_k.detach()
+
+def sample_q_new(K=K):
+    #New MCMC method
     x_k=t.autograd.Variable(sample_p_0(),requires_grad=True)
     for k in range(K):
         f_prime=t.autograd.grad(f(x_k).sum(),[x_k],retain_graph=True)[0]
-        #Langevin Dynamics update to sample from EBM
         x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
     return x_k.detach()
+
 sqrt= lambda x : int(t.sqrt(t.Tensor([x])))
 plot= lambda p,x : tv.utils.save_image(t.clamp(x,-1.,1.),p,normalize=True,nrow=sqrt(m))
 
@@ -77,7 +90,6 @@ for i in range(n_i) :
     #-L to minimize (SGD step)
     (-L).backward()
     optim.step()
-    print(i)
     if i%100 == 0:
         print("==> Checkpoint")
         print('{:>6d}f(x_p_d)={:>14.9f}f(x_q)={:>14.9f}'.format(i,f(x_p_d).mean(),f(x_q).mean()))
