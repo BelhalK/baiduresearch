@@ -65,8 +65,9 @@ def sample_q(K=K):
         x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
     return x_k.detach()
 
+
+#New MCMC method
 def sample_q_new(K=K):
-    #New MCMC method
     x_k=t.autograd.Variable(sample_p_0(),requires_grad=True)
     for k in range(K):
         f_prime=t.autograd.grad(f(x_k).sum(),[x_k],retain_graph=True)[0]
@@ -83,6 +84,8 @@ print("==> Start Training...")
 for i in range(n_i) :
     #sample from data distribution and EBM (Langevin)
     x_p_d,x_q=sample_p_d(),sample_q()
+    # x_p_d,x_q=sample_p_d(),sample_q_new()
+    
     #log likelihood (to maximize) and before taking gradient
     #mean() to average over all samples
     L=f(x_p_d).mean()-f(x_q).mean() 
