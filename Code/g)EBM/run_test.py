@@ -70,8 +70,13 @@ def sample_q(K=K):
 def sample_q_new(K=K):
     x_k=t.autograd.Variable(sample_p_0(),requires_grad=True)
     for k in range(K):
+        #compute MAP of target distribution (MAP of log p actually so map of neural net f)
         f_prime=t.autograd.grad(f(x_k).sum(),[x_k],retain_graph=True)[0]
+
+        #MH proposal centered around MAP
         x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
+
+
     return x_k.detach()
 
 sqrt= lambda x : int(t.sqrt(t.Tensor([x])))
