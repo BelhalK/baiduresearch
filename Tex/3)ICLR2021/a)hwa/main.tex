@@ -128,7 +128,7 @@ The variational inference (VI) problem~\citep{blei2017variational} boils down to
 \end{equation}
 Using \eqref{eq:vi}, we decompose ${\cal L}(\param) = n^{-1} \sum_{i=1}^{n}{{\cal L}_i(\param)} + {\rm const}.$ where:
 \begin{equation}\label{eq:variationalobjective}
-{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big] \eqdef r_i(\param) + d(\param) \eqsp.
+{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big]  \eqsp.
 \end{equation}
 Directly optimizing the finite sum objective function in \eqref{eq:VI} can be difficult.
 First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
@@ -152,9 +152,20 @@ Several theoretical paper such as~\citep{he2019asymmetric} or \citep{keskar2016l
 
 \textbf{Hyperparameters Weight Averaging:}
 Based on the probabilistic model developed above, the loss function~\eqref{eq:VI} is defined on the space of the hyperparameters, \textit{i.e.} the mean and the variance of the variational candidate distribution.
-As a result, the averaging procedure practically occurs on the set of hyperparameters and 
 
+Regarding the parameterization choice of the variational candidate $q( w; \param )$, we chose for simplicity a scalar mean $\mu_{\ell}$ depending on the layer $\ell \in [L]$ and constant between each neuron. Classically, the covariance of this variational distribution is diagonal, see~\citep{kirkpatrick2017overcoming, blundell2015weight}, yet can be too restrictive.
+We follow the direction taken in~\citep{maddox2019simple}, where the covariance of $q(w, \param)$ is a low-rank plus diagonal posterior approximation matrix.
 
+As a result, the averaging procedure practically occurs on the set of hyperparameters and requires updating the mean and the variance of the variational candidate distribution, at iteration $k+1$, if $k$, the iteration index, is a multiple of the cycle length $c$,  as below:
+
+\begin{equation}
+\begin{split}
+& \mu_{\ell}^{HWA}  =  \frac{n_{\textrm{m}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{m}}+1} \\
+& \sigma^{HWA}   =  \frac{n_{\textrm{m}}\sigma^{HWA} + (\mu_{\ell}^{k+1})^2}{n_{\textrm{m}}+1} -( \mu_{\ell}^{HWA})^2
+\end{split}
+\end{equation}
+
+where for all $\ell \in [L]$, $\mu_{\ell}^{k+1}$ and $\sigma^{k+1}$ are both obtained via Stochastic Variational Inference.
 
 \begin{algorithm}[H]
 \algsetup{indent=0.25em}
@@ -164,11 +175,14 @@ As a result, the averaging procedure practically occurs on the set of hyperparam
 $\mu_{\ell} = \hat{\mu}_{\ell}$ and $\mu^{HWA}_{\ell} = \mu_{\ell}$.
 \FOR {$k=0,1,...$}
 \STATE $\gamma \leftarrow \gamma(k)$ (Cyclical LR for the iteration)
-\STATE $\mu_{\ell}^{k+1} \leftarrow \mu_{\ell}^{k} - \gamma_k \nabla \mathcal{L}(\mu_{\ell}^{k})$ (regular SVI update) \label{line:svi}
+\STATE \textbf{SVI updates:}
+
+\STATE \quad $\mu_{\ell}^{k+1} \leftarrow \mu_{\ell}^{k} - \gamma_k \nabla \mathcal{L}(\mu_{\ell}^{k})$  \label{line:svi}
+\STATE \quad $\sigma^{k+1} \leftarrow \sigma^{k} - \gamma_k \nabla \mathcal{L}(\sigma^{k})$ \label{line:svisigma}
 \IF{$\textrm{mod}(k,c) = 0$}
 	\STATE \qquad $n_{\textrm{m}} \leftarrow k/c$ \quad (Number of models to average over)
-		\STATE \qquad$\mu_{\ell}^{HWA} \leftarrow \frac{n_{\textrm{m}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{m}}+1}$
-		\STATE \qquad $\sigma^{HWA} \leftarrow \frac{n_{\textrm{m}}\sigma^{HWA} + (\mu_{\ell}^{k+1})^2}{n_{\textrm{m}}+1} -( \mu_{\ell}^{HWA})^2 $
+		\STATE \quad$\mu_{\ell}^{HWA} \leftarrow \frac{n_{\textrm{m}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{m}}+1}$
+		\STATE \quad $\sigma^{HWA} \leftarrow \frac{n_{\textrm{m}}\sigma^{HWA} + (\mu_{\ell}^{k+1})^2}{n_{\textrm{m}}+1} -( \mu_{\ell}^{HWA})^2 $
 \ENDIF
 \ENDFOR
 \STATE \textbf{Return} hyperparameters $(\{\mu_{\ell}^{HWA}\}_{l=1}^L, \sigma^{HWA})$.
@@ -184,28 +198,6 @@ The stochastic averaging procedure happens every $c$ iterations, and consists in
 Several hyperparameters are worth highlighting here.
 The standard learning rate $\gamma_k$ plays a key role and is either equal to a constant or a cyclical learning rate.
 The cycle length $c$ which monitors the number of times snapshots of the model estimates are being averaged is also of utmost importance and needs careful tuning.
-
-%\begin{algorithm}[H]
-%\algsetup{indent=0.25em}
-%\begin{algorithmic}[1]
-%\STATE \textbf{Input:} Trained hyperparameters $\hat{\mu}_{\ell}$ and $\hat{\sigma}$. LR bounds $\gamma_1$ and $\gamma_2$. Cycle length $c$.
-%\STATE Initialize the hyperparameters of the weights and 
-%$\mu_{\ell} = \hat{\mu}_{\ell}$ and $\mu^{HWA}_{\ell} = \mu_{\ell}$.
-%\FOR {$k=0,1,...$}
-%\STATE $\gamma \leftarrow \gamma(k)$ (Cyclical LR for the iteration)
-%\STATE $\mu_{\ell}^{k+1} \leftarrow \mu_{\ell}^{k} - \gamma \nabla \mathcal{L}(\mu_{\ell}^{k})$ (regular SVI update)
-%\IF{$\textrm{mod}(k,c) = 0$}
-%	\STATE $n_{\textrm{m}} \leftarrow k/c$ (Number of models to average)
-%		\STATE $\mu_{\ell}^{HWA} \leftarrow \frac{n_{\textrm{m}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{m}}+1}$
-%		\STATE $\sigma^{HWA} \leftarrow \frac{n_{\textrm{m}}\mu_{\ell}^{HWA} + \mu_{\ell}^{k+1}}{n_{\textrm{m}}+1}$
-%
-%\ENDIF
-%\ENDFOR
-%\end{algorithmic}
-%\caption{HWA: Hyperparameters Weight Averaging}
-%\label{alg:miso}
-%\end{algorithm}
-
 
 
 \subsection{Through the Lens of Loss Landscapes}
