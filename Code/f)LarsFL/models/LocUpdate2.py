@@ -11,6 +11,7 @@ from sklearn import metrics
 from torch.autograd import Variable
 from .localams2 import LocalAMSGrad
 import collections
+from .localsgd import LocalSGD
 
 import pdb
 
@@ -37,11 +38,8 @@ class LocalUpdate(object):
     def train(self, net):
         net.train()
         # train and update
-        if self.args.optim == 'sgd':
-            optimizer = torch.optim.SGD(net.parameters(), lr=self.args.lr, momentum=0.5)
-        elif self.args.optim == 'fedadam':
-            optimizer = torch.optim.Adam(net.parameters(), lr=self.args.lr, betas=(self.args.momentum, self.args.beta2))
-
+        optimizer = LocalSGD(net.parameters(), lr=self.args.lr, momentum=0, LAMB=self.args.LAMB)
+        
         epoch_loss = []
         for iter in range(self.args.local_ep):
             batch_loss = []
