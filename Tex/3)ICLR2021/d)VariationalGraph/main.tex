@@ -9,7 +9,6 @@
 \usepackage{amsfonts}       % blackboard math symbols
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
-\usepackage{hyperref}
 \usepackage{amsfonts}     
 \usepackage{graphicx}
 \usepackage{epsfig}
@@ -23,6 +22,12 @@
 \usepackage{microtype}
 \usepackage{url}
 \usepackage{xcolor}
+
+\definecolor{ao(english)}{rgb}{0.0, 0.5, 0.0}
+\definecolor{lavander}{cmyk}{0,0.48,0,0}
+\definecolor{violet}{cmyk}{0.79,0.88,0,0}
+\definecolor{burntorange}{cmyk}{0,0.52,1,0}
+\usepackage[colorlinks=true,linkcolor=ao(english),urlcolor=blue,citecolor=burntorange]{hyperref}
 
 \newcommand{\zz}[1]{\textcolor{blue}{#1}}
 \newcommand{\Xc}{{\mathcal X}}
@@ -39,6 +44,7 @@
 	\textup{\lowercase\expandafter{\it \romannumeral#1}}%
 }
 
+\newcommand{\belhal}[1]{{\color{red}{\bf\sf [BK: #1]}}}
 \newcommand{\yz}[1]{{\color{red}{\bf\sf [YANG: #1]}}}
 
 
@@ -98,103 +104,165 @@ This paper presents an approach to  assemble flow-based models with hierarchical
 \section{Introduction}
 Graphical models~\citep{madigan1995bayesian,hruschka2007bayesian} are powerful tools to combine the graph structure and probabilistic modeling, which provides a structural probabilistic (and hierarchical) characterization of variables. 
 Due to both the flexibility and power of the representation of graphical models and their ability to effectively learn and
-perform inference in large networks~\cite{koller2007graphical}, they have attracted lots of interest and have been applied in many fields, \textit{e.g.} artificial intelligence like speech recognition~\citep{bilmes2005graphical}, biology like Quick Medical Reference (QMR) model~\citep{shwe1990probabilistic} and physics like energy-based model~\citep{jordan2004graphical}.
+perform inference in large networks~\citep{koller2007graphical}, they have attracted lots of interest and have been applied in many fields, \textit{e.g.} artificial intelligence like speech recognition~\citep{bilmes2005graphical}, biology like Quick Medical Reference (QMR) model~\citep{shwe1990probabilistic} and physics like energy-based model~\citep{jordan2004graphical}.
 
-In graphical models, we are often interested in the marginal distribution $p(\mathbf{x})$ of the observed variables $\mathbf{x}$. The maximization of such a likelihood $p(\mathbf{x})$ in a parameterized model is closely related to the inference of $p(\mathbf{x}|\mathbf{z})$ that is involved as a subroutine, given the Bayes theorem $p(\mathbf{x}|\mathbf{z}) = p(\mathbf{z}, \mathbf{x}) / p(\mathbf{x})$ where $\mathbf{z}$ is the latent variable and $p(\mathbf{x}, \mathbf{z})$ is the joint distribution. 
+The quantity of interest in such models is the marginal distribution, also known as incomplete likelihood, of the observed data, noted $p(\mathbf{x})$.
+Most statistical learning, from a finite set of observations, tasks leverage a parameterized model and their respective training procedure involves computing the maximum likelihood estimate, \textit{i.e.} the parameter defined as $\theta^* :=  \arg \max \limits_{\theta \in \mathbb{R}^d} p_{\theta}(\mathbf{x})$.
+A direct consequence of Bayes rule, which we recall reads $p_{\theta}(\mathbf{x}|\mathbf{z}) = p_{\theta}(\mathbf{z}, \mathbf{x}) / p_{\theta}(\mathbf{x})$, is that the maximization of such likelihood $p_{\theta}(\mathbf{x})$ in a parameterized model is closely related to the inference of the pdf $p_{\theta}(\mathbf{x}|\mathbf{z})$, as a subroutine in the general training procedure.
+ Note that in the above, $\mathbf{z}$ is the latent variable and $p(\mathbf{x}, \mathbf{z})$ is the joint distribution of the complete data comprised of the observations $x$ and the latent variables $z$. 
 
-In this paper, we focus on this graphical inference subroutine. There are two general approaches: \textit{exact inference} and \textit{approximate inference}. $(\RN{1})$ Exact inference, \textit{e.g.} elimination algorithm~\cite{sanner2012symbolic} and junction tree algorithm~\cite{kahle2008junction}, resorts to an exact numerical calculation procedure leading to satisfactory results. However, the time complexity may be unacceptable or the intractable marginal likelihood presents a difficult challenge. Moreover, the exactitude achieved by the exact inference is not worth the computational cost in some cases, \textit{e.g.} the distribution is well determined by a small cluster of nodes in the network~\cite{jordan1999introduction}. $(\RN{2})$ In contrast, approximate inference, \textit{e.g.} Markov Chain Monte-Carlo (MCMC) and variational inference, yields deterministic approximation procedures that generally provide bounds on probabilities of interest. Considering the underlying slow convergence issues of stochastic MCMC sampling procedure~\cite{salimans2015markov}, we prefer the deterministic optimization variational inference approach to tackle with the graphical inference problem in this paper. Variational inference provides a lower bound on $p(\mathbf{x})$ and is efficiently solvable by using off-the-shelf optimization techniques, and easily applicable to large datasets~\cite{liu2016stein,kingma2013auto}.
+The focus of this paper is mostly on this graphical inference subroutine. 
+There are two general approaches for the latter task: \textit{exact inference} and \textit{approximate inference}. $(\RN{1})$ Exact inference, \textit{e.g.} \textsc{Elimination Algorithm}~\citep{sanner2012symbolic} and \textsc{Junction Tree Algorithm}~\citep{kahle2008junction}, resorts to an exact numerical calculation procedure of the quantity of interest and leading to satisfactory results. 
+However, in most cases, exactly inferring from $p_{\theta}(\mathbf{x}|\mathbf{z})$ is either \textit{computationally involved} or simply \textit{intractable}. It is the case for modern graphical models aiming at modeling complex tasks employing for instance deep neural networks.
+Moreover, the exactitude achieved by the exact inference is not worth the computational cost in some cases.
+Indeed the distribution can be well determined by a small cluster of nodes in the network, see \citep{jordan1999introduction}. Thus, there exist a trade-off between exact inference and light computations. 
+$(\RN{2})$ In contrast, approximate inference, \textit{e.g.} Markov Chain Monte-Carlo (MCMC) and variational inference, yields deterministic approximation procedures that generally provide bounds on the pdfs of interest. 
+Considering the underlying slow convergence issues of stochastic MCMC sampling procedure~\citep{salimans2015markov}, we ratehr opt for the deterministic Variational Inference (VI) approach to tackle the graphical inference problem.
+VI provides a lower bound on $p_{\theta}(\mathbf{x})$ and is computationally efficient using off-the-shelf optimization techniques, and easily applicable to large datasets~\citep{hoffman2013stochastic, kingma2013auto, liu2016stein}.
 
-Mean-field approximation~\cite{xing2012generalized} and variational message passing~\cite{winn2005variational} are two common approaches. They both require the intractable posterior $p(\mathbf{z}|\mathbf{x})$ that can be approximated by some family of distributions. However, on one hand, this kind of approximations is often limited by the choice of distributions that can't recover the true posterior, leading to a loose lower bound; on the other hand, they often lack a flexible structure to learn an inherent disentangled latent features thus can't encode enough information to reconstruct the data. The issues become more severe when we are dealing with higher dimensional data using a graphical model. 
+In Variational Inference, mean-field approximation~\citep{xing2012generalized} and variational message passing~\citep{winn2005variational} are two common approaches in graphical models.
+They both require to access the intractable posterior $p(\mathbf{z}|\mathbf{x})$.
+Those methods leverage families of simple and tractable distributions to approximate that latter quantity.
+However, on one hand, such approximation is limited by the choice of distributions that by definition do not recover the true posterior, often leading to a loose lower bound and on the other hand, they often lack a flexible structure to learn the inherent disentangled latent features. 
+Thus, those methods cannot model the latent layer in order to accurately reconstruct the data. 
+Dealing with high dimensional data using graphical models exacerbates that systemic flaw.
 
-Motivated by these limitations, we propose a new framework to uncover the latent relational structures of high dimensional data by crafting a variational hierarchical graphical flow model. Our contributions are threefold:
+Motivated by these limitations, we propose a new framework to uncover the latent relational structures of high dimensional data.
+The main idea is to build a variational hierarchical graphical flow model. 
+Our contributions read as follows:
 \begin{itemize}
-    \item We construct hierarchical latent space between variables to uncover the latent structural relations of high dimensional data, leading to a tighter lower bound.
-    \item Normalizing flow is introduced to impose a richer and tractable posterior to approximate the true posterior as the truth is more faithful posterior approximations do result in better performance.  enjoying the exact inference capability at a low computational cost.
-    \item Experiments....
+    \item \textbf{Hierarchical Latent Structure:} We construct hierarchical latent space between variables to uncover the latent structural relations of high dimensional data, leading to a tighter lower bound.
+    \item \textbf{Normalizing Flows:} Normalizing flow is introduced to impose a richer and tractable posterior to approximate the true posterior as the truth is more faithful posterior approximations do result in better performance.  enjoying the exact inference capability at a low computational cost.
+    \item \textbf{Hierarchical and Flow-Based:} Introducing \textsc{Variational Flow Graphical (VFG)} model
+    \item \textbf{Numerical Applications:} Experiments....
 \end{itemize}
 
 
 \section{Preliminaries}
-In this section, we will first review the principles and general notations of normalizing flows and variational inference; then introduce their relations with graphical models.
-\subsection{Normalizing flow}
-Normalizing flow~\citep{kingma2018glow,rezende2015variational} defines an invertible transformation $\mathbf{f}: \mathcal{Z} \xrightarrow[]{} \mathcal{X}$ between two random variables. $\mathbf{z} \sim p(\mathbf{z})$ is the latent variable which has a tractable density. $\mathbf{x} \sim p_\theta(\mathbf{x})$ is an unknown true distribution which we want to model. We usually focus on a finite sequence of transformations $\mathbf{f}=\mathbf{f}_1  \circ \mathbf{f}_2 \circ   \cdot  \cdot \cdot     \circ   \mathbf{f}_L$ such that $\mathbf{x}=\mathbf{f}(\mathbf{z})$ and $\mathbf{z}=\mathbf{f}^{-1}(\mathbf{x})$:
+In this section, we first introduce the standard principles and general notations of normalizing flows and variational inference. 
+Then, we explain how those concepts can be used with graphical models.
+
+\subsection{Normalizing flows}\label{subsec:nf}
+Normalizing flows~\citep{kingma2018glow,rezende2015variational} is a transformation of a simple probability distribution into a more complex distribution by a sequence of invertible and differentiable mappings, noted $\mathbf{f}: \mathcal{Z} \xrightarrow[]{} \mathcal{X}$ between two random variables $z \in \mathcal{Z}$ and $x \in \mathcal{X}$. 
+
+The latent variable is noted $\mathbf{z} \sim p(\mathbf{z})$ and is distributed according to a tractable density $p(\mathbf{z})$. 
+The observed variable $\mathbf{x} \sim p_\theta(\mathbf{x})$ is assumed to be distributed according to an unknown distribution $p_\theta(\mathbf{x})$ parameterized by a user-designed model $\theta$. 
+% We focus on a finite sequence of transformations $\mathbf{f}=\mathbf{f}_1  \circ \mathbf{f}_2 \circ   \cdot  \cdot \cdot     \circ   \mathbf{f}_L$ such that $\mathbf{x}=\mathbf{f}(\mathbf{z})$ and $\mathbf{z}=\mathbf{f}^{-1}(\mathbf{x})$:
+We focus on a finite sequence of transformations $\mathbf{f}:=\mathbf{f}_1  \circ \mathbf{f}_2 \circ   \cdot  \cdot \cdot     \circ   \mathbf{f}_L$ such that :
 \begin{align*}
+\mathbf{x}=\mathbf{f}(\mathbf{z})\, , \quad \mathbf{z}=\mathbf{f}^{-1}(\mathbf{x}) \quad \textrm{and} \quad
     \mathbf{z} \xrightleftharpoons[\mathbf{f}_1^{-1}]{\mathbf{f}_1} \mathbf{h}^1 \xrightleftharpoons[\mathbf{f}_2^{-1}]{\mathbf{f}_2} \mathbf{h}^2 \cdots \xrightleftharpoons[\mathbf{f}_L^{-1}]{\mathbf{f}_L}\mathbf{x}.
 \end{align*}
-Under the change of variables theorem~\eqref{eq:flow}, the probability density function~(pdf) of the model given a data point can be written as 
+
+Using the change of variables formula, the probability density function~(pdf) of the model given a data point can be written as: 
 \begin{align}\label{eq:flow}
 \log p_\theta(\mathbf{x}) =& \log p(\mathbf{z})  + \log | \text{det} ( \frac{\partial \mathbf{z} }{\partial \mathbf{x}} ) | 
-=  \log p(\mathbf{z}) + \sum_{i=1}^L\log | \text{det} ( \frac{\partial \mathbf{h}^i } {\partial \mathbf{h}^{i-1}}) | ,
+=  \log p(\mathbf{z}) + \sum_{i=1}^L\log | \text{det} ( \frac{\partial \mathbf{h}^i } {\partial \mathbf{h}^{i-1}}) | \, ,
 \end{align}
-where we have $\mathbf{h}^0 = \mathbf{x}$ and $\mathbf{h}^L = \mathbf{z}$ for conciseness. The scalar value $\log |\text{det}( \frac{\partial \mathbf{h}^i}{\partial \mathbf{h}^{i-1}})|$ is the logarithm of the absolute value of the determinant of the Jacobian matrix ($\frac{\partial \mathbf{h}^i}{ \partial\mathbf{h}^{i-1}}$), also called the log-determinant. 
+where we have $\mathbf{h}^0 = \mathbf{x}$ and $\mathbf{h}^L = \mathbf{z}$ for conciseness. 
+The scalar value $\log |\text{det}( \frac{\partial \mathbf{h}^i}{\partial \mathbf{h}^{i-1}})|$ is the logarithm of the absolute value of the determinant of the Jacobian matrix ($\frac{\partial \mathbf{h}^i}{ \partial\mathbf{h}^{i-1}}$), also called the log-determinant. 
+The result of this approach is a mechanism to construct new families of distributions by choosing an initial density and then chaining together some number of parameterized, invertible and differentiable transformations. 
+The advantage of such methods is that the new density can be sampled from (by sampling from the initial density and applying the transformations).
 
 \subsection{Variational inference}
-Given above, the mapping $\mathbf{f}$: $\mathbf{x} \xrightarrow{} \mathbf{z}$ can be taken as encoding process (inference or recognition), and the mapping $\mathbf{f}^{-1}$: $\mathbf{z} \xrightarrow{} \mathbf{x}$ be taken as decoding process (generation):
+Following the setting discussed above, the functional mapping $\mathbf{f}$: $\mathbf{x} \xrightarrow{} \mathbf{z}$ can be viewed as an encoding process (inference or recognition), and the mapping $\mathbf{f}^{-1}$: $\mathbf{z} \xrightarrow{} \mathbf{x}$ be considered as a decoding process (generation):
 $\mathbf{z} \sim p(\mathbf{z}), \mathbf{x} \sim p_\theta(\mathbf{x}|\mathbf{z}).$
-To learn the parameters $\theta$, one typically maximizes the following marginal log-likelihood:
+In order to learn the vector of parameters $\theta$, one typically maximizes the following marginal log-likelihood:
 \begin{align*}
-    \log p_\theta(\mathbf{x}) = \int p(\mathbf{z})  p_\theta(\mathbf{x}|\mathbf{z})d\mathbf{z}.
+    \log p_\theta(\mathbf{x}) = \log \int p(\mathbf{z})  p_\theta(\mathbf{x}|\mathbf{z})d\mathbf{z}.
 \end{align*}
-Direct optimization of the log-likelihood is usually intractable. Variational inference instead parameterizes a family of variational distribution $q_\phi(\mathbf{z}|\mathbf{x})$ to approximate the true posterior $p_\theta(\mathbf{z}|\mathbf{x}) \varpropto  p(\mathbf{z})  p_\theta(\mathbf{x}|\mathbf{z})$, ending up optimizing the following evidence lower bound (ELBO): 
+Direct optimization of the log-likelihood is usually not an option due to the intractable latent structure. Instead VI employs a parameterized family of so-called variational distributions $q_\phi(\mathbf{z}|\mathbf{x})$ to approximate the true posterior $p_\theta(\mathbf{z}|\mathbf{x}) \varpropto  p(\mathbf{z})  p_\theta(\mathbf{x}|\mathbf{z})$.
+The goal of VI is to minimized the distance, in terms of Kullback-Leibler (KL), between the variational candidate and the true posterior, noted $\text{KL}(q_\phi(\mathbf{z}|\mathbf{x})||p_\theta(\mathbf{z}|\mathbf{x}) )$.
+
+It is easy to show that this optimization problem is equivalent to maximizing the following evidence lower bound (ELBO) objective, noted $\mathcal{L}(\mathbf{x}; \theta)$: 
 \begin{align}\label{eq:vi_elbo}
-    \log p_\theta(\mathbf{x}) \geqslant \text{ELBO} &= E_{p_\theta(\mathbf{x})} 
-     \{E_{q_\phi(\mathbf{z}|\mathbf{x})} \log p_\theta(\mathbf{x}|\mathbf{z})  - \text{KL}(q_\phi(\mathbf{z}|\mathbf{x})||p(\mathbf{z}))\}.
+    \log p_\theta(\mathbf{x}) \geqslant \mathcal{L}(\mathbf{x}; \theta) &= E_{p_\theta(\mathbf{x})} 
+     \{E_{q_\phi(\mathbf{z}|\mathbf{x})} \log p_\theta(\mathbf{x}|\mathbf{z})  - \text{KL}(q_\phi(\mathbf{z}|\mathbf{x})||p(\mathbf{z}))\} \, .
 \end{align}
+
+\belhal{I do not understand the sentence below}
+
 Since the transformation $f$ is invertible, we can simplify $q_\phi(\mathbf{z}|\mathbf{x})$ using the same set of parameters $\theta$ as in $p_\theta(\mathbf{x}|\mathbf{z})$, implying that $\phi=\theta$.
 
 \subsection{Variational graphical models}
-In directed acyclic graph models, each node $\mathbf{v}$ corresponds to a random variable, \textit{e.g.} latent variables $\mathbf{z}$ and observed variables $\mathbf{x}$ in the variational framwork and the edge represents statistical dependencies between the variables, \textit{e.g.} a function $\mathbf{f}_\theta$ parameterized by $\theta$.  The joint distribution of the model is thus given by:
+In Directed Acyclic Graph (DAG) models, each node $\mathbf{v}$ corresponds to a random variable, \textit{e.g.} $\mathbf{v}$ include the latent variables $\mathbf{z}$ and observed variables $\mathbf{x}$ in the variational framework. 
+The edges represent the statistical dependencies between the variables, it can be for instance a function $\mathbf{f}_\theta$ parameterized by $\theta$ which serves as a link function between two variables.  
+The joint distribution of the model is thus given by:
 \begin{align}
-    p_\theta(\mathbf{v}) = \prod_{\mathbf{v} \in \mathcal{V}} p_\theta(\mathbf{v}|pa(\mathbf{v})),
+    p_\theta(\mathbf{v}) = \prod_{\mathbf{v} \in \mathcal{V}} p_\theta(\mathbf{v}|pa(\mathbf{v})) \, , 
 \end{align}
-where $\mathbf{v}=(\mathbf{z}, \mathbf{x})$, $\mathcal{V}$ is a sample space for all graph variables and $pa(\mathbf{v})$ denotes the parent node of $\mathbf{v}$. The goal of variational Bayesian networks is to find a variational distribution, \textit{e.g.} $q(\mathbf{z}|\mathbf{x})$, to approximate the true posterior $p(\mathbf{z}|\mathbf{x})$. This exactly coincides with the general variational inference framework as in \eqref{eq:vi_elbo} in the last subsection. In this paper, we focus on the factorization of the independency of disjoint latent variables~\cite{bishop2003vibes}:
+where $\mathbf{v}=(\mathbf{z}, \mathbf{x})$, $\mathcal{V}$ is a sample space for all graph variables and $pa(\mathbf{v})$ denotes the parent node of $\mathbf{v}$. 
+The goal of variational Bayesian networks, as a special instance of variational graphical models, is to find a variational distribution, noted $q(\mathbf{z}|\mathbf{x})$, to approximate the true posterior $p(\mathbf{z}|\mathbf{x})$. 
+This exactly coincides with the general VI framework as in (\ref{eq:vi_elbo}) in the last subsection. 
+In this paper, we focus on the factorization of the independent and disjoint latent variables~\citep{bishop2003vibes}:
 \begin{align}
-    q(\mathbf{z}|\mathbf{x}) = \prod_i q_i(\mathbf{z}_i),
+    q(\mathbf{z}|\mathbf{x}) = \prod_i q_i(\mathbf{z}_i)\, ,
 \end{align}
-where $\mathbf{z}_i$ is the latent variable at node $i$ of the graph, implying that the observation $\mathbf{x}$ is the parent node: $\mathbf{x}=pa(\mathbf{z}_i)$. 
+where $\mathbf{z}_i$ is the latent variable at node $i$ of the graph, assuming that the observation $\mathbf{x}$ is the parent node: $\mathbf{x}=pa(\mathbf{z}_i)$. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Variational Flow Graphical Model with Hierarchical Latent Structures}
 
-Assume the latent space and the observation space are bridged by a sequence of variables, we can build a graphical model with normalizing flow, leading to exact latent-variable inference and log-likelihood evaluation of the model. We call this model as \textit{Variational Flow Graphical Model} (VFG).
-\begin{wrapfigure}{r}{.4\textwidth}
+Assume that there exist a sequence of variables that bridge the latent and the observation sets.
+Then, it is possible to define a graphical model using normalizing flows, as introduced Section~\ref{subsec:nf}, leading to exact latent-variable inference and log-likelihood evaluation of the model. 
+We call this model a \textit{Variational Flow Graphical Model} (VFG).
+
+\subsection{The evidence lower bound of Variational Flow Graphical Models}
+Figure~\ref{fig:node_tree} illustrates the tree structure induced by variational flows.  
+The hierarchical generative network is comprised of $L$ layers, $\mathbf{h}^l$ denotes the latent variable in layer $l$ and $\theta$ is the vector of parameters of the model. 
+The hierarchical generative process of the model is defined as:
+\begin{align*}
+p_{\theta_{\mathbf{f}}}(\mathbf{x}) = \sum_{\mathbf{h}^1, ..., \mathbf{h}^L} p_{\theta_{\mathbf{f}}}(\mathbf{h}^L)p_{\theta_{\mathbf{f}}}(\mathbf{h}^{L-1} | \mathbf{h}^{L}) \cdot \cdot  \cdot  p_{\theta_{\mathbf{f}}}(\mathbf{x} | \mathbf{h}^{1}) \, .
+\end{align*}
+
+The probability density function $p_{\theta_{\mathbf{f}}}(\mathbf{h}^{l-1} | \mathbf{h}^{l})$ is modeled with an invertible normalizing flow function.
+The hierarchical recognition network is factorized as
+\begin{align*}
+q_{\theta_{\mathbf{f}}}(\mathbf{h}| \mathbf{x}) =  q_{\theta_{\mathbf{f}}}(\mathbf{h}^1 | \mathbf{x})  q_{\theta_{\mathbf{f}}}(\mathbf{h}^2 | \mathbf{h}^1) \cdot \cdot  \cdot  q_{\theta_{\mathbf{f}}}(\mathbf{h}^{L} | \mathbf{h}^{L-1}) \, ,
+\end{align*}
+where $\mathbf{h}=\{\mathbf{h}^1, \cdots, \mathbf{h}^L \}$ denotes all latent variables of the model.
+At node $i$, the invertible function $\mathbf{h}^{(i)}$ is used as the forward evidence message received from its children, and $\widehat{\mathbf{h}}^{(i)}$ as the  reconstruction of $\mathbf{h}^{(i)}$ with backward message received from the root. 
+We denote by $ch(i)$ and $pa(i)$, the node $i$'s child set and parent, respectively. 
+Let $\mathbf{f}_{(i, j)}$ be the direct edge~(function) from node $i$ to $j$, and $\mathbf{f}^{-1}_{ (i, j)}$ or  $\mathbf{f}_{ (j, i)}$ defined as its inverse function.  
+Then, we observe that
+\begin{align*}
+&  \mathbf{h}^{(j)} = \frac{1}{|ch(j)|} \sum_{i \in ch(j) } \mathbf{f}^{(i,j)}(\mathbf{h}^{(i)}),  \quad \widehat{\mathbf{h}}^{(i)} = \frac{1}{|pa(i)|} \sum_{j \in pa(i) } \mathbf{f}^{-1}_{ (i,j)}(\widehat{\mathbf{h}}^{(j)}) \, .
+\end{align*} 
+The inference procedure includes forward and backward message passing corresponding to the encoding and decoding procedures, respectively. 
+With $\mathbf{h}^0 = \mathbf{x}$, the layer-wise ELBO (for latent states in each layer) can be derived as 
+\begin{align} \label{eq:elbo_tree}
+\mathcal{L}(\mathbf{x}; \theta) =  \sum_{l=0}^{L-1}  \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \widehat{\mathbf{h}}^{l+1})   \bigg] +  \sum_{l=1}^{L-1}   \textbf{\text{H}}(\mathbf{h}^l | \mathbf{h}^{l-1} )   -   \textbf{\text{KL}}\big(q(\mathbf{h}^L | \mathbf{h}^{L-1} )   | p(\mathbf{h}^L)  \big) \, .  
+\end{align}
+\begin{wrapfigure}{l}{.7\textwidth}
  %\begin{figure}[!htbp]
 \begin{center}
  \includegraphics[width=1.0\linewidth]{fig/node.pdf}
 \end{center}
 \vspace{-0.2in}
-\caption{ {\small (Left) The structure of one node. Node $\mathbf{h}^{2,1}$ connects with its children with invertible functions. The messages from its children are aggregated at $\mathbf{h}^{2,1}$.   (Right)An illustration of the latent structure from layer $l-1$ to $l+1$.  $\mathbf{h}^{h, i}$ means the $i$th latent variable  in layer $l$.}}
+\caption{ {\small (Left) The structure of one node. Node $\mathbf{h}^{2,1}$ connects with its children with invertible functions. The messages from its children are aggregated at $\mathbf{h}^{2,1}$.   (Right)An illustration of the latent structure from layer $l-1$ to $l+1$.  $\mathbf{h}^{l, i}$ means the $i$th latent variable  in layer $l$.}}
 \label{fig:node_tree}
 \vspace{-0.25in}
 \end{wrapfigure}
-\subsection{The evidence lower bound of Variational Flow Graphical Model}
-Figure~\ref{fig:node_tree} illustrates the tree structure induced by varational flow.  The hierarchical generative network has $L$ layers, and $\mathbf{h}^l$ is the latent variable in layer $l$, and $\theta$ is the parameter vector of the model. The hierarchical generative process of the model is given by 
-\begin{align*}
-p_{\theta_{\mathbf{f}}}(\mathbf{x}) = \sum_{\mathbf{h}^1, ..., \mathbf{h}^L} p_{\theta_{\mathbf{f}}}(\mathbf{h}^L)p_{\theta_{\mathbf{f}}}(\mathbf{h}^{L-1} | \mathbf{h}^{L}) \cdot \cdot  \cdot  p_{\theta_{\mathbf{f}}}(\mathbf{x} | \mathbf{h}^{1}) .
-\end{align*}
-$p_{\theta_{\mathbf{f}}}(\mathbf{h}^{l-1} | \mathbf{h}^{l})$ is modeled with an invertible normalizing flow function. The hierarchical recognition network is factorized by
-\begin{align*}
-q_{\theta_{\mathbf{f}}}(\mathbf{h}| \mathbf{x}) =  q_{\theta_{\mathbf{f}}}(\mathbf{h}^1 | \mathbf{x})  q_{\theta_{\mathbf{f}}}(\mathbf{h}^2 | \mathbf{h}^1) \cdot \cdot  \cdot  q_{\theta_{\mathbf{f}}}(\mathbf{h}^{L} | \mathbf{h}^{L-1}),
-\end{align*}
-where $\mathbf{h}=\{\mathbf{h}^1, \cdots, \mathbf{h}^L \}$ denotes all latent variables. For node $i$, we use $\mathbf{h}^{(i)}$ as the forward evidence message receives from its children, and $\widehat{\mathbf{h}}^{(i)}$ as the  reconstruction of $\mathbf{h}^{(i)}$ with backward message from the rood. $ch(i)$ and $pa(i)$ are node $i$'s child set and parent  set, respectively. Let $\mathbf{f}_{(i, j)}$ be the direct edge~(function) from node $i$  to  $j$, and $\mathbf{f}^{-1}_{ (i, j)}$ or  $\mathbf{f}_{ (j, i)}$  is its inverse function.  We have
-\begin{align*}
-&  \mathbf{h}^{(j)} = \frac{1}{|ch(j)|} \sum_{i \in ch(j) } \mathbf{f}^{(i,j)}(\mathbf{h}^{(i)}),  \quad \widehat{\mathbf{h}}^{(i)} = \frac{1}{|pa(i)|} \sum_{j \in pa(i) } \mathbf{f}^{-1}_{ (i,j)}(\widehat{\mathbf{h}}^{(j)}) .
-\end{align*} 
-The inference procedure includes forward and backward message passings, and they corresponds to the encoding and decoding procedures, respectively. The we can compute the layer-wise ELBO for latent states in each layer. With $\mathbf{h}^0 = \mathbf{x}$, the ELBO can be derived as 
-\begin{align}  \notag
-& \log p(\mathbf{x})  \geqslant \mathcal{L}(\mathbf{x}; \theta) \\
- = & \sum_{l=0}^{L-1}  \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \widehat{\mathbf{h}}^{l+1})   \bigg] +  \sum_{l=1}^{L-1}   \textbf{\text{H}}(\mathbf{h}^l | \mathbf{h}^{l-1} )   -   \textbf{\text{KL}}\big(q(\mathbf{h}^L | \mathbf{h}^{L-1} )   | p(\mathbf{h}^L)  \big) .  \label{eq:elbo_tree}
-\end{align}
-The derivation of the ELBO can be found in the Appendix. The first term of ELBO is the reconstruction for each layer: $\mathbf{x}$ and the latent representations $\mathbf{h}^1, ..., \mathbf{h}^{L-1}$. The second and third terms are the regularizations for the latent representation. The nodes are connected with invertible functions such as flow-based models~\cite{Dinh2016DensityEU} to achieve tractable message passing. 
+The details of the derivation of the ELBO can be found in the Appendix. 
+The first term of ELBO is the reconstruction term for each layer: $\mathbf{x}$ and the latent representations $\mathbf{h}^1, ..., \mathbf{h}^{L-1}$ where the model pushes the variational distribution to fit the observed data. 
+The second and third terms are some regularizations term for the latent representation where the negated \textbf{KL} term in the third position appears to keep the model near the prior. A clear trade-off is happening via such loss function.
+The nodes are connected with invertible functions such as flow-based models~\citep{Dinh2016DensityEU} to achieve tractable message passing. 
 
-As shown in Figure~\ref{fig:node_tree}-(Left), a node in a flow-graph can has multiple children and multiple parents. Each node has the forward messages from the input data samples and the backward messages from the root.  If all the nodes have only one parent, then the structure is a tree. If there are nodes have multiple parents, the graph will be a DAG~(directed acyclic graph). It is easy to extend the ELBO~\eqref{eq:elbo_tree} to DAGs with topology ordering  of the nodes and thus the layer number. We have the ELBO for a DAG structure as follows
+As shown in Figure~\ref{fig:node_tree}-(Left), a node in a flow-graph can have multiple children and multiple parents.
+Each node has the forward messages from the input data samples and the backward messages from the root.  
+If all the nodes have only one parent, then the structure becomes a tree. 
+If there several nodes have multiple parents, the graph will be a DAG~(directed acyclic graph). 
+It is easy to extend the computation of the ELBO~(\ref{eq:elbo_tree}) to DAGs with topology ordering  of the nodes and thus the layer number. 
+We develop the ELBO for a DAG structure as follows:
 \begin{align}  \notag
  \log p(\mathbf{x}) \geqslant \mathcal{L}(\mathbf{x}; \theta) 
 = &  \sum_{i \in \mathcal{G}  \setminus  \mathcal{R}_{ \mathcal{G} }  }  \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{ch(pa(i))})} \bigg[ \log p( \mathbf{h}^{(i)}|  \widehat{\mathbf{h}}^{pa(i)})   \bigg]\\
  & +  \sum_{i \in \mathcal{G}  \setminus  \mathcal{R}_{ \mathcal{G} }  } \textbf{\text{H}}(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   -    \sum_{i \in  \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   | p(\mathbf{h}^{(i)})  \big) . \label{eq:elbo_dag}
  \end{align}
-Here $\mathcal{G}$ stands for the node set of the GAG, and $\mathcal{R}_{ \mathcal{G}}$ is the set of root or source nodes. 
- Assume there are $k$ leaf nodes on a tree or a DAG model, and they correspond to $k$ sections of the input sample $\mathbf{x} = [\mathbf{x}^{(1)}, ..., \mathbf{x}^{(k)}]$.   The terms in both~\eqref{eq:elbo_tree} and~\eqref{eq:elbo_dag} are computed with . We provide more details about the nodes in next subsection.
+Here $\mathcal{G}$ stands for the node set of the GAG, and $\mathcal{R}_{ \mathcal{G}}$ is the set of root, or source, nodes. 
+
+Assume there are $k$ leaf nodes on a tree or a DAG model, and they correspond to $k$ sections of the input sample $\mathbf{x} = [\mathbf{x}^{(1)}, ..., \mathbf{x}^{(k)}]$, then the terms in both~(\ref{eq:elbo_tree}) and~(\ref{eq:elbo_dag}) are computed with . \belhal{incomplete sentence, what did you want to say here?}
+We provide more details about the nodes in next subsection.
  
 \begin{figure*}[!htbp] %{r{0.4\textwidth}
 \begin{center}
@@ -207,13 +275,22 @@ Here $\mathcal{G}$ stands for the node set of the GAG, and $\mathcal{R}_{ \mathc
 
 \subsection{Node Aggregation}
 
-We use normal distribution as the prior for all the nodes. There are two approaches to aggregate signals from different nodes:  average based and concatenation based  aggregation. They are illustrated by the left and right plots of Figure~\ref{fig:node_aggre}, respectively. Concatenation based aggregation is simple and straight forward. We will focus on average aggregation nodes. We assume each entry of a hidden node follow normal distribution, i.e., $\mathbf{h}_j^{(i)} \sim \mathbb{N}(\mu_j^{(i)}, \sigma^2)$ for node $i$'s $j$th entry. We use the same $\sigma$ value across all nodes. Let's assume a model  only has one average aggregation node as shown in Figure~\ref{fig:node_aggre}-left. According to with the ELBO 
+In the sequel, we consider that all nodes latent variables, noted $\mathbf{h}^{l, i}$, for all $l [L]$ and $i \in \mathbb{N}$, admit Gaussian distributions as prior distribution.
+There are two approaches to aggregate signals from different nodes:  \textsc{--} Average-based and \textsc{--} Concatenation-based  aggregation, see Figure~\ref{fig:node_aggre} for an illustrrative scheme. 
+While concatenation-based aggregation is simple and straightforward, we rather focus on Average-based aggregation for the purpose of this paper. 
+We assume each entry of a hidden node follows a normal distribution, i.e., $\mathbf{h}_j^{(i)} \sim \mathcal{N}(\mu_j^{(i)}, \sigma^2)$ for node $i$'s $j$th entry. 
+To avoid cumbersome notations, we  use the same standard deviation $\sigma$ across all nodes. Extending to different values for each node does not affec tthe rest of the paper.
+Assume a model only has one average aggregation node as shown in Figure~\ref{fig:node_aggre}. According to~(\ref{eq:elbo_tree}), we have
 \begin{align} \notag
 \log p(\mathbf{x})  \geqslant \mathcal{L}(\mathbf{x}; \theta_{\mathbf{f}})
-=&\mathbb{E}_{q(\mathbf{h}^1 | \mathbf{x})} \big[\log p(\mathbf{x}|\widehat{\mathbf{h}}^1)\big] + \mathbf{H}(\mathbf{h}^1 | \mathbf{x}) + \\ \label{eq:average}
-&\mathbb{E}_{q(\mathbf{h}^2 | \mathbf{h}^1)} \big[\log p(\mathbf{h}^1|\widehat{\mathbf{h}}^2)\big] - \textbf{\text{KL}}\big(q(\mathbf{h}^2 | \mathbf{h}^1) | p(\mathbf{h}^2)\big).
+=&\mathbb{E}_{q(\mathbf{h}^1 | \mathbf{x})} \big[\log p(\mathbf{x}|\widehat{\mathbf{h}}^1)\big] + \mathbf{H}(\mathbf{h}^1 | \mathbf{x})  \\ \label{eq:average}
+&+\mathbb{E}_{q(\mathbf{h}^2 | \mathbf{h}^1)} \big[\log p(\mathbf{h}^1|\widehat{\mathbf{h}}^2)\big] - \textbf{\text{KL}}\big(q(\mathbf{h}^2 | \mathbf{h}^1) | p(\mathbf{h}^2)\big).
 \end{align} 
-In an average aggregation node $i$, the parent value is the mean of its children, i.e., $\mathbf{h}^{(i)} = \frac{1}{|ch(i)|} \sum_{j \in ch(i)} \mathbf{h}^{(j)}$. The  children  share the same reconstruction value with its parent, i.e., $\widehat{\mathbf{h}}^{(j)} = \widehat{\mathbf{h}}^{(i)}, \forall j \in ch(i)$. In an one aggregation node model with $\mathbf{h}^{(r)}$ as the root, we have  $\widehat{\mathbf{h}}^{(r)} = \mathbf{h}^{(r)} = \frac{1}{k}\sum_{t=1}^k \mathbf{h}^{(t)} $, and $ \widehat{\mathbf{h}}^{(1)} = ... = \widehat{\mathbf{h}}^{(k)}= \widehat{\mathbf{h}}^{(r)}$. Here $k$ is the children number, and $k=3$ in Figure~\ref{fig:node_aggre}-left. Given one data sample $\mathbf{x}$, the reconstruction terms in ELBO~\eqref{eq:average} are computed with 
+Note that in an average-based aggregation node $i$, the parent value is the mean of its children, i.e., $\mathbf{h}^{(i)} = \frac{1}{|ch(i)|} \sum_{j \in ch(i)} \mathbf{h}^{(j)}$. 
+The  children  share the same reconstruction value with its parent, i.e., $\widehat{\mathbf{h}}^{(j)} = \widehat{\mathbf{h}}^{(i)}, \forall j \in ch(i)$. 
+In an one aggregation node model with $\mathbf{h}^{(r)}$ as the root, we have  
+$$\widehat{\mathbf{h}}^{(r)} = \mathbf{h}^{(r)} = \frac{1}{k}\sum_{t=1}^k \mathbf{h}^{(t)} \quad \textrm{and} \quad \widehat{\mathbf{h}}^{(1)} = ... = \widehat{\mathbf{h}}^{(k)}= \widehat{\mathbf{h}}^{(r)} \, .$$
+Here $k$ is the children number, and $k=3$ in Figure~\ref{fig:node_aggre}-left. Given one data sample $\mathbf{x}$, the reconstruction terms in ELBO~\eqref{eq:average} are computed with 
 \begin{align}\notag
 \log p(\mathbf{x}|\widehat{\mathbf{h}}^1) + \log p(\mathbf{h}^1|\widehat{\mathbf{h}}^2)
 =&-\sum_{t=1}^k\bigg\{ \frac{1}{2\sigma^2_{\mathbf{x}}}\big|\big| \mathbf{x}^{(t)} - \mathbf{f}_t^{-1}(\widehat{\mathbf{h}}^{(t)})\big|\big|^2 +  \frac{1}{2\sigma^2}\big|\big| \mathbf{h}^{(t)} -\widehat{\mathbf{h}}^2 \big|\big|^2 \bigg\} +C \\
@@ -222,7 +299,11 @@ In an average aggregation node $i$, the parent value is the mean of its children
 Here $C=-dk\ln(2\pi)-\frac{dk}{2}\ln(\sigma_{\mathbf{y}}^2)-\frac{dk}{2}\ln(\sigma^2)$, and $\mathbf{f}_t$ connects $\mathbf{h}^{(t)}$ and $\mathbf{x}^{(t)}$. We use constant values for both  $\sigma^2_{\mathbf{y}}$ and $\sigma^2$, hence the value of $C$ is constant as well. We use the latent variables from a batch of training samples to approximate the entry \textbf{H} and \textbf{KL} terms in~\eqref{eq:average}. We take the parent and children involved an aggregation operation as one node in the graphical figures, e.g., Figure~\ref{fig:node_tree}. 
 
 \subsection{Inference on Sub-graphs }
-Given a trained VFG model, we can infer a node's state given observed nodes. Relations between variables at different nodes  can also be infered with the model. The prediction of leaf node $i$ dependents on its parents, i.e.,
+Given a trained VFG model, we can infer the state of a node given the observed nodes. 
+Relations between variables at different nodes can also be inferred via the flow-based graphical model that we propose. 
+The prediction of leaf node $i$ dependents on its parents, i.e., \belhal{to complete here}
+
+
 \begin{wrapfigure}{r}{.5\textwidth}
 \begin{center}
  \includegraphics[width=0.4\linewidth]{fig/two_layer_infer.png}
@@ -234,15 +315,22 @@ Given a trained VFG model, we can infer a node's state given observed nodes. Rel
 \label{fig:two_layer_infer}
 \vspace{-0.23in}
 \end{wrapfigure}
-\begin{align*}
-p(\mathbf{h}^{(i)} | \mathbf{h}^{pa(i)}) & = p(\mathbf{h}^{pa(i)}) \bigg|\det(\frac{\partial \mathbf{h}^{pa(i)} }{\partial \mathbf{h}^{(i)}})\bigg|  =
-p(\mathbf{h}^{pa(i)}) \big|\det(\mathbf{J}_{pa(i)}(i))\big| .
-\end{align*} 
 The hidden state of the parent node $s$ in a single aggregation model can be approximated by the observed children,
 $\mathbf{h}^{(s)}  = \frac{1}{|ch(s)|}\sum_{i \in ch(s) \cap O} \mathbf{h}^{(i)} .$
 %\begin{figure}[!htbp] %{r{0.4\textwidth}
 Here $O$ is the set of observed leaf nodes. Figure~\ref{fig:two_layer_infer}-left illustrates one example of this case. 
-For a node in a tree or DAG model, its state is updated with messages from its children with updating and then pass it to  children without updating. Figure~\ref{fig:two_layer_infer}-right illustrates  inference on a DAG. The tree and DAG structures enable the model to perform message passing  among the nodes.  We have the following lemma regarding the relation between two leaf nodes. 
+
+Observe that for either a tree or a DAG, the state of any given node is updated via messages received from its children. 
+The message passing firstly occurs from the children to the parent with updating and then pass it back to the children without updating. 
+Figure~\ref{fig:two_layer_infer} illustrates this inference mechanism for both trees and DAGS. T
+he tree and DAG structures enable the model to perform message passing among the nodes.  
+Using the normalizing flow equation~(\ref{eq:flow}), we have the following identity for each node of the graph structure:
+\begin{align*}
+p(\mathbf{h}^{(i)} | \mathbf{h}^{pa(i)}) & = p(\mathbf{h}^{pa(i)}) \bigg|\det(\frac{\partial \mathbf{h}^{pa(i)} }{\partial \mathbf{h}^{(i)}})\bigg|  =
+p(\mathbf{h}^{pa(i)}) \big|\det(\mathbf{J}_{pa(i)}(i))\big| .
+\end{align*} 
+
+We now establish the following Lemma regarding the relation between two leaf nodes:
 \begin{lemma}\label{lm:apprx}
 Let $\mathcal{G}$ be a well trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. Given observed value at node $i$, the value of node $j$ can be approximated with   $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be approximated with 
 \begin{align} \label{eq:cond_llk}
@@ -259,7 +347,7 @@ These results can be easily extended to DAG models. The proof of Lemma~\ref{lm:a
 \subsection{Algorithm and Implementation}
 Model parameters $\theta_{\mathbf{f}}$ are learned by maximizing the ELBO~\eqref{eq:elbo_tree} or~\eqref{eq:elbo_dag}.  The latent variables are computed in forward message passing and their reconstructions are computed in backward message passing.  We use the empirical variance in a batch of training samples to approximate the entropy and \textbf{KL} terms. Ignoring  explicit variance  for all latent nodes enable us to use flow-based models as the encoders as well as the decoders. 
 
-\begin{algorithm}[h!]
+\begin{algorithm}[H]
    \caption{Inference model parameters with  forward and backward message propagation}
    \label{alg:main}
 \begin{algorithmic}
@@ -298,7 +386,7 @@ The data set is divided into training and testing sets. The model is trained wit
 \begin{itemize}
 \item \textbf{Mean Value} \ We can directly use the mean values in the corresponding position of training set to replace the missing entries in the testing set.  
 
-\item \textbf{Iterative Imputation} A strategy for imputing missing values by modeling each feature with missing values as a function of other features in a Round-Robin fashion. We choose the KNeighborRegressor as the specific function~\cite{scikit-learn}.
+\item \textbf{Iterative Imputation} A strategy for imputing missing values by modeling each feature with missing values as a function of other features in a Round-Robin fashion. We choose the KNeighborRegressor as the specific function~\citep{scikit-learn}.
 
 \item \textbf{KNN} \  To use K-Nearest Neighbor for data imputation,  we compare the non-missing entries of each sample to the training set and use the  average of top $k$ samples to impute the missing entries. 
 
@@ -354,7 +442,7 @@ Proposed &  1.45  \\
 \end{table}
 
 \subsubsection{Arrhythmia Data Set}
-We further investigate the method on a tabular data set.  The Arrhythmia~\cite{Dua:2019}  data set is  obtained from the ODDS repository. The smallest classes, including 3, 4, 5, 7, 8, 9, 14, and 15, are combined to form the anomaly class, and the rest of the classes are combined to form the normal class. Table 4 shows the anomaly detection results with different methods. 
+We further investigate the method on a tabular data set.  The Arrhythmia~\citep{Dua:2019}  data set is  obtained from the ODDS repository. The smallest classes, including 3, 4, 5, 7, 8, 9, 14, and 15, are combined to form the anomaly class, and the rest of the classes are combined to form the normal class. Table 4 shows the anomaly detection results with different methods. 
 
 
 \subsection{Disentanglement on MNIST}
@@ -368,8 +456,9 @@ We further investigate the method on a tabular data set.  The Arrhythmia~\cite{D
 % G.) thanks $\ldots$''. Instead, try ``R. B. G. thanks$\ldots$''. Put sponsor 
 % acknowledgments in the unnumbered footnote on the first page.
 
+\clearpage
 \bibliographystyle{iclr2021_conference}
-\bibliography{iclr2021_conference}
+\bibliography{references}
 
 \clearpage
 \section*{Appendix A.  ELBO of Tree Models}\label{appd:tree_elbo}
@@ -537,7 +626,7 @@ Since $L  \subseteq   \mathcal{R}_{ \mathcal{G}} $,  with $\mathbf{h}^{(0)} = \m
 \end{figure*}
 
 \section*{Appendix C.  Proof of Lemma1}\label{appd:proof}
-Let\textbf{Lemma 1.} {\it Let $\mathcal{G}$ be a well trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. Given observed value at node $i$, the value of node $j$ can be approximated with   $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be approximated with 
+\textbf{Lemma 1.} {\it Let $\mathcal{G}$ be a well trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. Given observed value at node $i$, the value of node $j$ can be approximated with   $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be approximated with 
 \begin{align*} %\label{eq:cond_llk}
 \log p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)}) &\approx  \log p(\widehat{\mathbf{h}}^L) -  \frac{1}{2} \log \big(\det \big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)\big) \big).
 \end{align*}
