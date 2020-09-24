@@ -68,16 +68,20 @@ def sample_q(K=K):
 
 #New MCMC method
 def sample_q_new(K=K):
+    #Anisotropic stepsize Langevin sampling
     x_k=t.autograd.Variable(sample_p_0(),requires_grad=True)
     for k in range(K):
-        #Anisotropic stepsize
         f_prime=t.autograd.grad(f(x_k).sum(),[x_k],retain_graph=True)[0]
 
         #curvature informed stepsize (matrix)
-        # stepsize = 
+        # thresh = 0.1
+        # stepsize = thresh/torch.max(torch.norm(f_prime),thresh)
+        # D = stepsize*f_prime
+        # cov = torch.matmul(D,D)
+        # chol_cov = torch.cholesky(cov)
 
-        #proposal
-        x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
+        ## Proposal
+        x_k.data+= D+ chol_cov*t.randn_like(x_k) 
 
     return x_k.detach()
 
