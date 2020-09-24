@@ -23,6 +23,8 @@
 \usepackage{url}
 \usepackage{xcolor}
 
+\usepackage[font=small,labelfont=bf]{caption}
+
 \definecolor{ao(english)}{rgb}{0.0, 0.5, 0.0}
 \definecolor{lavander}{cmyk}{0,0.48,0,0}
 \definecolor{violet}{cmyk}{0.79,0.88,0,0}
@@ -138,7 +140,16 @@ Our contributions read as follows:
 \end{itemize}
 
 
-\section{Preliminaries}
+The remaining of the paper is organized as follows.
+Section~\ref{sec:prelim} presents preliminaries corresponding to important concepts such as normalizing flows, variational inference and variational graphical models.
+Section~\ref{sec:main} introduces the Variational Flow Graphical Model (VFG) model to tackle the latent relational structure learning of high dimensional data.
+Section~\ref{sec:theory} corresponds to theoretical findings of our model.
+Section~\ref{sec:numerical} showcases the advantage of our model, namely VFG on two different tasks: missing values imputation on both synthetic and real dataset and disentanglement learning.
+Section~\ref{sec:conclusion} presents some conclusive remarks of our work.
+
+\textbf{Notations:} We denote for all $n >1$, $[L]$ the set $ \{1, \cdots, L\}$ and by $\textbf{\text{KL}}(p || q ) := \int_{\mathcal{Z}} p(z) \log(p(z)/q(z)) \mathrm{d}z$ the Kullback-Leibler divergence from $q$ to $p$, two probability density functions defined on the set $\mathcal{Z} \subset \mathbb{R}^d$ for an arbitrary dimension $d >0$.
+
+\section{Preliminaries}\label{sec:prelim}
 In this section, we first introduce the standard principles and general notations of normalizing flows and variational inference. 
 Then, we explain how those concepts can be used with graphical models.
 
@@ -201,7 +212,7 @@ In this paper, we focus on the factorization of the independent and disjoint lat
 where $\mathbf{z}_i$ is the latent variable at node $i$ of the graph, assuming that the observation $\mathbf{x}$ is the parent node: $\mathbf{x}=pa(\mathbf{z}_i)$. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Variational Flow Graphical Model with Hierarchical Latent Structures}
+\section{Variational Flow Graphical Model with Hierarchical Latent Structures}\label{sec:main}
 
 Assume that there exist a sequence of variables that bridge the latent and the observation sets.
 Then, it is possible to define a graphical model using normalizing flows, as introduced Section~\ref{subsec:nf}, leading to exact latent-variable inference and log-likelihood evaluation of the model. 
@@ -241,7 +252,7 @@ With $\mathbf{h}^0 = \mathbf{x}$, the layer-wise ELBO (for latent states in each
 \vspace{-0.2in}
 \caption{ {\small (Left) The structure of one node. Node $\mathbf{h}^{2,1}$ connects with its children with invertible functions. The messages from its children are aggregated at $\mathbf{h}^{2,1}$.   (Right)An illustration of the latent structure from layer $l-1$ to $l+1$.  $\mathbf{h}^{l, i}$ means the $i$th latent variable  in layer $l$.}}
 \label{fig:node_tree}
-\vspace{-0.25in}
+\vspace{-0.15in}
 \end{wrapfigure}
 The details of the derivation of the ELBO can be found in the Appendix. 
 The first term of ELBO is the reconstruction term for each layer: $\mathbf{x}$ and the latent representations $\mathbf{h}^1, ..., \mathbf{h}^{L-1}$ where the model pushes the variational distribution to fit the observed data. 
@@ -261,7 +272,8 @@ We develop the ELBO for a DAG structure as follows:
  \end{align}
 Here $\mathcal{G}$ stands for the node set of the GAG, and $\mathcal{R}_{ \mathcal{G}}$ is the set of root, or source, nodes. 
 
-Assume there are $k$ leaf nodes on a tree or a DAG model, and they correspond to $k$ sections of the input sample $\mathbf{x} = [\mathbf{x}^{(1)}, ..., \mathbf{x}^{(k)}]$, then the terms in both~(\ref{eq:elbo_tree}) and~(\ref{eq:elbo_dag}) are computed with . \belhal{incomplete sentence, what did you want to say here?}
+Assume there are $k$ leaf nodes on a tree or a DAG model, and they correspond to $k$ sections of the input sample $\mathbf{x} = [\mathbf{x}^{(1)}, ..., \mathbf{x}^{(k)}]$, then the terms in both~(\ref{eq:elbo_tree}) and~(\ref{eq:elbo_dag}) are computed with . 
+\belhal{incomplete sentence, what did you want to say here?}
 We provide more details about the nodes in next subsection.
  
 \begin{figure*}[!htbp] %{r{0.4\textwidth}
@@ -304,125 +316,129 @@ Relations between variables at different nodes can also be inferred via the flow
 The prediction of leaf node $i$ dependents on its parents, i.e., \belhal{to complete here}
 
 
-\begin{wrapfigure}{r}{.5\textwidth}
+
+The hidden state of the parent node $s$ in a single aggregation model can be approximated by the observed children,
+$\mathbf{h}^{(s)}  = \frac{1}{|ch(s)|}\sum_{i \in ch(s) \cap O} \mathbf{h}^{(i)} .$
+%\begin{figure}[!htbp] %{r{0.4\textwidth}
+Here $O$ is the set of observed leaf nodes. Figure~\ref{fig:two_layer_infer}-left illustrates one example of this case. 
+
+
+\begin{wrapfigure}{r}{.6\textwidth}
 \begin{center}
  \includegraphics[width=0.4\linewidth]{fig/two_layer_infer.png}
  \hspace{0.15in}
  \includegraphics[width=0.5\linewidth]{fig/dag_infer.png}
 \end{center}
 \vspace{-0.2in}
- \caption{{\small (Left) Inference of single aggregation node model. Node 4 aggregates messages from node 1 and 2, and then pass  the updated state to node 3 for prediction. (Right) Inference on a DAG model. Observed node states are gathered in node 5 to predict the state of node 4.}}
+ \caption{{\small (Left) Inference of single aggregation node model. Node 4 aggregates from node 1 and 2, and  pass the updated state to node 3 for prediction. (Right) Inference on a DAG model. Observed node states are gathered in node 5 to predict the state of node 4.}}
 \label{fig:two_layer_infer}
-\vspace{-0.23in}
+\vspace{-0.2in}
 \end{wrapfigure}
-The hidden state of the parent node $s$ in a single aggregation model can be approximated by the observed children,
-$\mathbf{h}^{(s)}  = \frac{1}{|ch(s)|}\sum_{i \in ch(s) \cap O} \mathbf{h}^{(i)} .$
-%\begin{figure}[!htbp] %{r{0.4\textwidth}
-Here $O$ is the set of observed leaf nodes. Figure~\ref{fig:two_layer_infer}-left illustrates one example of this case. 
-
 Observe that for either a tree or a DAG, the state of any given node is updated via messages received from its children. 
 The message passing firstly occurs from the children to the parent with updating and then pass it back to the children without updating. 
 Figure~\ref{fig:two_layer_infer} illustrates this inference mechanism for both trees and DAGS. T
 he tree and DAG structures enable the model to perform message passing among the nodes.  
-Using the normalizing flow equation~(\ref{eq:flow}), we have the following identity for each node of the graph structure:
-\begin{align*}
-p(\mathbf{h}^{(i)} | \mathbf{h}^{pa(i)}) & = p(\mathbf{h}^{pa(i)}) \bigg|\det(\frac{\partial \mathbf{h}^{pa(i)} }{\partial \mathbf{h}^{(i)}})\bigg|  =
-p(\mathbf{h}^{pa(i)}) \big|\det(\mathbf{J}_{pa(i)}(i))\big| .
-\end{align*} 
-
 We now establish the following Lemma regarding the relation between two leaf nodes:
 \begin{lemma}\label{lm:apprx}
-Let $\mathcal{G}$ be a well trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. Given observed value at node $i$, the value of node $j$ can be approximated with   $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be approximated with 
+Let $\mathcal{G}$ be a trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. Given observed value at node $i$, the value of node $j$ can be approximated with   $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be approximated by: 
 \begin{align} \label{eq:cond_llk}
 \log p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)}) &\approx  \log p(\widehat{\mathbf{h}}^L) -  \frac{1}{2} \log \big(\det \big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)\big) \big).
 \end{align}
 \end{lemma}
+where we recall that using the normalizing flow equation~(\ref{eq:flow}), we have the following identity for each node of the graph structure:
+\begin{align*}
+p(\mathbf{h}^{(i)} | \mathbf{h}^{pa(i)}) & = p(\mathbf{h}^{pa(i)}) \big|\det(\frac{\partial \mathbf{h}^{pa(i)} }{\partial \mathbf{h}^{(i)}})\big| =
+p(\mathbf{h}^{pa(i)}) \big|\det(\mathbf{J}_{pa(i)}(i))\big| .
+\end{align*} 
+The proof of Lemma~\ref{lm:apprx} can be found in the appendix. 
 
 \begin{remark}\label{rmk:apprx_mul}
-Let $O$ be the set of observed leaf nodes, $j$ be an unobserved node, and $a$ is the closest ancestor of $O \bigcup a$. Then the state of $j$ can be imputed with  $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(O, a)}(\mathbf{x}^{(i)}))$.  $\mathbf{f}_{(O, a)}$ is the flow function path from all nodes in $O$ to $a$, and approximation~\eqref{eq:cond_llk} still holds for $p(\mathbf{x}^{(j)} | \mathbf{x}^{O})$.
+Let $O$ be the set of observed leaf nodes, $j$ be an unobserved node, and $a$ is the closest ancestor of $O \cup a$. Then the state of $j$ can be imputed with  $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(O, a)}(\mathbf{x}^{(i)}))$.  
+We denote $\mathbf{f}_{(O, a)}$ as the flow function path from all nodes in $O$ to $a$, and approximation~\eqref{eq:cond_llk} still holds for $p(\mathbf{x}^{(j)} | \mathbf{x}^{O})$.
 \end{remark}
-
-These results can be easily extended to DAG models. The proof of Lemma~\ref{lm:apprx} can be found in the appendix. 
+These results can be easily extended to DAG models. 
 
 \subsection{Algorithm and Implementation}
-Model parameters $\theta_{\mathbf{f}}$ are learned by maximizing the ELBO~\eqref{eq:elbo_tree} or~\eqref{eq:elbo_dag}.  The latent variables are computed in forward message passing and their reconstructions are computed in backward message passing.  We use the empirical variance in a batch of training samples to approximate the entropy and \textbf{KL} terms. Ignoring  explicit variance  for all latent nodes enable us to use flow-based models as the encoders as well as the decoders. 
+In this section, we develop the training algorithm, see Algorithm~\ref{alg:main}, that outputs the fitted vector of parameters resulting from the maximization of the ELBO objective function~(\eqref{eq:elbo_tree}) or~(\eqref{eq:elbo_dag}) depending on what graph structure is used.
+In Algorithm~\ref{alg:main}, the inference of the latent variables is performed via forward message passing, cf. Line~\ref{line:forward}, and their reconstructions are computed in backward message passing, cf. Line~\ref{line:backward}.
+
+\belhal{To Improve. We should add a paragraph on implementation and ELBO/gradient computation} 
+We use the empirical variance in a batch of training samples to approximate the entropy and \textbf{KL} terms. 
+\belhal{KL  term between Gaussian priors is tractable, why do we approximate it?}
+Ignoring  explicit variance  for all latent nodes enable us to use flow-based models as the encoders as well as the decoders. 
+
+
+
+
 
 \begin{algorithm}[H]
+\algsetup{indent=0.25em}
    \caption{Inference model parameters with  forward and backward message propagation}
    \label{alg:main}
-\begin{algorithmic}
+\begin{algorithmic}[1]
    \STATE {\bfseries Input:} Data distribution $\mathcal{D}$,  $\mathcal{G} = \{\mathcal{V}, \mathbf{f}\}$
-   \REPEAT
-   \STATE Sample minibatch $b$ samples $\{\mathbf{x}_1, ..., \mathbf{x}_b \}$ from $\mathcal{D}$;
+   \FOR {$k=0,1,...$}
+   \STATE  Sample minibatch $b$ samples $\{\mathbf{x}_1, ..., \mathbf{x}_b \}$ from $\mathcal{D}$;
    \FOR{$i \in \mathcal{V}$}
-   \STATE $\mathbf{h}^{(i)} = \frac{1}{|ch(i)|} \sum_{j \in ch(i) } \mathbf{f}_{(j,i)}(\mathbf{h}^{(j)})$;  \textcolor{blue}{// forward message passing}
+   \STATE $\mathbf{h}^{(i)} = \frac{1}{|ch(i)|} \sum_{j \in ch(i) } \mathbf{f}_{(j,i)}(\mathbf{h}^{(j)})$; \label{line:forward} \textcolor{blue}{// forward message passing}
    \ENDFOR
     \STATE  $\mathbf{h} =  \{\mathbf{h}^{(1)}, ...,  \mathbf{h}^{(|\mathcal{V}|)}  \}$;
     \FOR{$i \in \mathcal{V}$}
-   \STATE $\widehat{\mathbf{h}}^{(i)} = \frac{1}{|pa(i)|} \sum_{j \in pa(i) } \mathbf{f}^{-1, (i,j)}(\widehat{\mathbf{h}}^{(j)}) $;  \textcolor{blue}{// backward message passing}
+   \STATE $\widehat{\mathbf{h}}^{(i)} = \frac{1}{|pa(i)|} \sum_{j \in pa(i) } \mathbf{f}^{-1, (i,j)}(\widehat{\mathbf{h}}^{(j)}) $;\label{line:backward}  \textcolor{blue}{// backward message passing}
    \ENDFOR
     \STATE  $ \widehat{\mathbf{h}} =  \{\widehat{\mathbf{h}}^{1}, ...,  \widehat{\mathbf{h}}^{(|\mathcal{V}|)}  \}$;
     
-    \STATE Updating flow-graph $\mathcal{G}$ by descending the gradient $\bigtriangledown_{\theta_{\mathbf{f}}}\frac{1}{b} \sum_{i=1}^b  \big[ -\mathcal{L}(\mathbf{x}_b; \theta_{\mathbf{f}} ) \big] $ ;
+    \STATE Updating flow-graph $\mathcal{G}$ using SGD: $\theta^{(k+1)} = \theta^{(k)} -  \nabla_{\theta}\frac{1}{b} \sum_{i=1}^b  \mathcal{L}(\mathbf{x}_b; \theta^{(k)})   \, .$
    %\ENDFOR 
-   \UNTIL{Converge}
+   \ENDFOR
 \end{algorithmic}
 \end{algorithm}
 
 
 
 
-\section{Theory}
-The proposed VFG models provide approaches to integrate  multi-modal data or data sets from different sources. 
+\section{Theory}\label{sec:theory}
+The proposed VFG models provide approaches to integrate multi-modal data or data sets from different sources. 
 
-\section{Experiments}
-
+\section{Experiments}\label{sec:numerical}
+We present in this section several numerical experiments to highlight the benefits of our VFG model.
+The first main application we present consists in missing values imputation. Several baseline models are compared with our newly introduced one on both synthetic and real datasets.
+The second application we present is the disentanglement learning tasks, as in finding latent representations that separate the explanatory factors of variations in the data, see \citep{bengio2013representation}.
+For that latter application, the model is trained and evaluated on the MNIST handwritten digits dataset.
 
 \subsection{Imputation}
+We now focus on the task of imputing missing entries in a graph structure.
+For all the following experiments, the models are trained on the training set and are used to infer the missing entries of samples in the testing set.
 
-\subsubsection{Baselines}
-The data set is divided into training and testing sets. The model is trained with the training set, then it is used to infer the missing entries of samples in the testing set. We use the following baselines for data imputation.
-
+\textbf{Baseline Methods:} We use the following baselines for data imputation:
 \begin{itemize}
-\item \textbf{Mean Value} \ We can directly use the mean values in the corresponding position of training set to replace the missing entries in the testing set.  
-
-\item \textbf{Iterative Imputation} A strategy for imputing missing values by modeling each feature with missing values as a function of other features in a Round-Robin fashion. We choose the KNeighborRegressor as the specific function~\citep{scikit-learn}.
-
-\item \textbf{KNN} \  To use K-Nearest Neighbor for data imputation,  we compare the non-missing entries of each sample to the training set and use the  average of top $k$ samples to impute the missing entries. 
-
-\item \textbf{Multivariate Imputation by Chained Equation (MICE)} \ This method impute the missing entries with multiple  rounds of inference. The method can handle different kind data types.
+\item \textit{Mean Value} \ We can directly use the mean values in the corresponding position of training set to replace the missing entries in the testing set.  
+\item \textit{Iterative Imputation} A strategy for imputing missing values by modeling each feature with missing values as a function of other features in a Round-Robin fashion. We choose the KNeighborRegressor as the specific function~\citep{scikit-learn}.
+\item \textit{KNN} \  To use K-Nearest Neighbor for data imputation,  we compare the non-missing entries of each sample to the training set and use the  average of top $k$ samples to impute the missing entries. 
+\item \textit{Multivariate Imputation by Chained Equation (MICE)} \ This method impute the missing entries with multiple  rounds of inference. The method can handle different kind data types.
 \end{itemize}
-
-\subsubsection{Evaluation with Synthetic Data  }
+\textbf{Evaluation with Synthetic Data: }
 In this set of experiments, we study the proposed model with synthetic data sets.
 We use two latent variables, i.e. Z
 
-We generate 1000 data points for model training, and each data sample  has 8 dimension with 2 latent variables.  The relation between the latent variables and the 
+We generate $1\,000$ data points for model training, and each data sample  has $8$ dimension with $2$ latent variables.  The relation between the latent variables and the \belhal{to complete}
+
 
 Figure~\ref{fig:elbo} gives the ELBO values of the proposed method. 
 
-\begin{figure}[!htbp]
+
+
+ \begin{minipage}{\textwidth}
+  \begin{minipage}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=2.3in]{fig/elbo.png}
-    \caption{ELBO on the synthetic data}
+   \includegraphics[width=2.3in]{fig/elbo.png}
+    \captionof{figure}{ELBO on the synthetic data}
     \label{fig:elbo}
-\end{figure}
-
-\begin{figure*}[!htbp]
+  \end{minipage}
+  \hfill
+  \begin{minipage}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=0.95\textwidth]{fig/mse.png}
-    \caption{Imputation with $\mathsf{Mask}$ on the child nodes [0, 1, 2, 3] indicated by colored legends. }
-    \label{fig:mse}
-\end{figure*}
-
-%\subsubsection{Data Imputation}
-
-%\subsubsection{Graph Structure Recovery}
-\begin{table}[t!]
-\begin{center}
-%\vspace{0.15in}
-\caption{Imputation Results on Synthetic Data.} \label{tab:causality2}
-\begin{tabular}{l | c  }\hline
+ \begin{tabular}{l | c  }\hline
 Methods & Imputation MSE  \\
 \hline
 Mean Value &8.43 \\
@@ -438,17 +454,65 @@ KNN (k=5) &0.18 \\
 Proposed &  1.45  \\  
 \hline
 \end{tabular}
-\end{center}
-\end{table}
+\vspace{0.4in}
+      \captionof{table}{Imputation Results on Synthetic Data.} \label{tab:causality2}
+    \end{minipage}
+  \end{minipage}  
+  
+%\begin{figure}[!htbp]
+%    \centering
+%    \includegraphics[width=2.3in]{fig/elbo.png}
+%    \caption{ELBO on the synthetic data}
+%    \label{fig:elbo}
+%\end{figure}
 
-\subsubsection{Arrhythmia Data Set}
-We further investigate the method on a tabular data set.  The Arrhythmia~\citep{Dua:2019}  data set is  obtained from the ODDS repository. The smallest classes, including 3, 4, 5, 7, 8, 9, 14, and 15, are combined to form the anomaly class, and the rest of the classes are combined to form the normal class. Table 4 shows the anomaly detection results with different methods. 
+\begin{figure*}[!htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fig/mse.png}
+    \caption{Imputation with $\mathsf{Mask}$ on the child nodes [0, 1, 2, 3] indicated by colored legends. }
+    \label{fig:mse}
+\end{figure*}
+
+%\subsubsection{Data Imputation}
+
+%\subsubsection{Graph Structure Recovery}
+
+
+%
+%
+%    \begin{table}[t!]
+%\begin{center}
+%%\vspace{0.15in}
+%\caption{Imputation Results on Synthetic Data.} \label{tab:causality2}
+%\begin{tabular}{l | c  }\hline
+%Methods & Imputation MSE  \\
+%\hline
+%Mean Value &8.43 \\
+%\hline
+%MICE &8.38 \\
+%\hline
+%Iterative Imputation & 2.64 \\
+%\hline
+%KNN (k=3) &0.14 \\
+%\hline
+%KNN (k=5) &0.18 \\
+%\hline
+%Proposed &  1.45  \\  
+%\hline
+%\end{tabular}
+%\end{center}
+%\end{table}
+
+
+  
+\textbf{Arrhythmia Data Set: }
+We further investigate the method on a tabular data set.  The Arrhythmia~\citep{Dua:2019}  data set is  obtained from the ODDS repository. The smallest classes, including 3, 4, 5, 7, 8, 9, 14, and 15, are combined to form the anomaly class, and the rest of the classes are combined to form the normal class. Table~\ref{tab:arrhythmiacausality2} shows the anomaly detection results with different methods. 
 
 
 \subsection{Disentanglement on MNIST}
 
 
-\section{Conclusion}
+\section{Conclusion}\label{sec:conclusion}
 % \section*{Acknowledgment}
 
 % The preferred spelling of the word ``acknowledgment'' in America is without 
@@ -604,8 +668,7 @@ Similarly the KL term can be expanded as in the tree structures. For nodes in la
 The forward and backward messages or latent state of a node are stored in the message passing procedures. They can be used by the node's parents and children  to compute the ELBO.  
 It enables the calculation even the parents or children are  not  in layer~$l+1$ or $l-1$. For the node $i$ in layer $l$,   $pa(i)$ may have children in layers below $l$. Some nodes in $l$ may not have parent, and combining with the prior, the entropy term will become an KL term in this case.  Thus,  we have 
 \begin{align} \label{eq:KL_dag2}
-&-\textbf{\text{KL}}^{l:L} \\ \notag
-=&   \sum_{i:i\in l, i \not\in   \mathcal{R}_{ \mathcal{G}} }  \bigg\{ \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{ch(pa(i))}} \big[ \log p( \mathbf{h}^{i}|  \mathbf{h}^{pa(i)})    \big]   +  \textbf{\text{H}}_q(\mathbf{h}^{i}|\mathbf{h}^{ch(i)})  \bigg\}  \\ \notag
+-\textbf{\text{KL}}^{l:L} = &  \sum_{i:i\in l, i \not\in   \mathcal{R}_{ \mathcal{G}} }  \bigg\{ \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{ch(pa(i))}} \big[ \log p( \mathbf{h}^{i}|  \mathbf{h}^{pa(i)})    \big]   +  \textbf{\text{H}}_q(\mathbf{h}^{i}|\mathbf{h}^{ch(i)})  \bigg\}  \\ \notag
 & -  \sum_{i \in l \bigcap \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   | p(\mathbf{h}^{(i)})  \big)  - \textbf{\text{KL}}^{l+1:L}. \notag
 \end{align}
 
@@ -617,8 +680,7 @@ By recurrently applying~\eqref{eq:KL_dag2}, we have
  \end{align}
 Since $L  \subseteq   \mathcal{R}_{ \mathcal{G}} $,  with $\mathbf{h}^{(0)} = \mathbf{x}$,~\eqref{eq:dag_elbo}, and~\eqref{eq:kl_dag3} we have 
 \begin{align*}  
- &\log p(\mathbf{x}) \geqslant  \mathcal{L}(\mathbf{x}; \theta) \\
-=&   \sum_{i \in \mathcal{G}  \setminus  \mathcal{R}_{ \mathcal{G} }  }  \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{ch(pa(i))})} \bigg[ \log p( \mathbf{h}^{(i)}|  \mathbf{h}^{pa(i)})   \bigg]  \\
+ \log p(\mathbf{x}) \geqslant  \mathcal{L}(\mathbf{x}; \theta) =&   \sum_{i \in \mathcal{G}  \setminus  \mathcal{R}_{ \mathcal{G} }  }  \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{ch(pa(i))})} \bigg[ \log p( \mathbf{h}^{(i)}|  \mathbf{h}^{pa(i)})   \bigg]  \\
  & +  \sum_{i \in \mathcal{G}  \setminus  \mathcal{R}_{ \mathcal{G} }  } \textbf{\text{H}}(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   -    \sum_{i \in  \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   | p(\mathbf{h}^{(i)})  \big) .   
  \end{align*}
 
