@@ -4,6 +4,7 @@ import torch.nn as nn
 import torchvision as tv
 import torchvision.transforms as tr
 
+
 seed = 1
 im_sz = 32
 sigma = 3e-2
@@ -82,5 +83,8 @@ for i in range(n_i) :
         print('{:>6d}f(x_p_d)={:>14.9f}f(x_q)={:>14.9f}'.format(i,f(x_p_d).mean(),f(x_q).mean()))
         plot('x_q_{:>06d}.png'.format(i),x_q)
 
-print("==> Task is Finished...")
+print("==> Generation is Finished...")
+
+
+
 

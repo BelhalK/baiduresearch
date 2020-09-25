@@ -68,7 +68,6 @@ def sample_q(K=K):
 
 #New MCMC method
 def sample_q_new(K=K):
-    # Laplace Approximation of the energy function (ConvNet)
     x_k=t.autograd.Variable(sample_p_0(),requires_grad=True)
     for k in range(K):
         #compute MAP of target distribution (MAP of log p actually so map of neural net f)
@@ -108,5 +107,5 @@ for i in range(n_i) :
         print('{:>6d}f(x_p_d)={:>14.9f}f(x_q)={:>14.9f}'.format(i,f(x_p_d).mean(),f(x_q).mean()))
         plot('x_q_{:>06d}.png'.format(i),x_q)
 
-print("==> Task is Finished...")
+print("==> Generation is Finished...")
 
