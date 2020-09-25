@@ -1,3 +1,5 @@
+# python -m eval --path path/to/dataset1 --path path/to/dataset2 --gpu
+
 from utils.fid import calculate_fid_given_paths
 import os
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -22,7 +24,7 @@ print("==> Parse Arguments...")
 args = parser.parse_args()
 
 #### Evaluation Metrics
-path = args.path #path to the generated images or npz file
+path = args.path #path to the generated images or npz file (put to path for FD comparison)
 batch_size = args.batch_size #bs to use
 gpu = args.gpu
 dims = args.dims #Dimensionality of Inception features to use.
