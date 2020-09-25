@@ -3,7 +3,6 @@
 # python3 main2.py --dataset mnist --num_channels 1 --model cnn --epochs 2 --gpu -1 --optim sgd --LAMB --num_users 20 --frac 0.5 --local_ep 1 --glob_lr 0.1 --lr 0.0001 --customarg 0
 
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
@@ -11,7 +10,7 @@ from torchvision import datasets, transforms
 import torch
 import collections
 
-from utils.sampling import mnist_iid, mnist_noniid, cifar_iid
+from utils.sampling import mnist_iid, mnist_noniid, cifar_iid, cifar_noniid
 from utils.options import args_parser
 from models.LocUpdate2 import LocalUpdate, LocalUpdateAMS
 from models.Models import MLP, CNNMnist, CNNCifar
@@ -47,12 +46,14 @@ if __name__ == '__main__':
             dict_users = mnist_noniid(dataset_train, args.num_users)
     elif args.dataset == 'cifar':#num_channels == 3
         trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        dataset_train = datasets.CIFAR10('./data/cifar', train=True, download=True, transform=trans_cifar)
-        dataset_test = datasets.CIFAR10('./data/cifar', train=False, download=True, transform=trans_cifar)
-        if args.iid:
+        dataset_train = datasets.CIFAR10('data/cifar', train=True, download=True, transform=trans_cifar)
+        dataset_test = datasets.CIFAR10('data/cifar', train=False, download=True, transform=trans_cifar)
+        if args.customarg==1:
             dict_users = cifar_iid(dataset_train, args.num_users)
         else:
-            exit('Error: only consider IID setting in CIFAR10')
+            # exit('Error: only consider IID setting in CIFAR10')
+            print('non-iid data!')
+            dict_users = cifar_noniid(dataset_train, args.num_users)
     else:
         exit('Error: unrecognized dataset')
     img_size = dataset_train[0][0].shape
@@ -80,7 +81,6 @@ if __name__ == '__main__':
     dataset = args.dataset
     title = '{}-{}'.format(dataset, logname)
     checkpoint_dir = 'checkpoints/checkpoints_{}'.format(dataset)
-    pdb.set_trace()
     logger = Logger('{}/log{}_opt{}_LAMB{}_lr{}_ep{}_clients{}_frac{}_iid{}.txt'.format(checkpoint_dir, logname,  args.optim, args.LAMB, args.lr, args.local_ep,args.num_users, args.frac,args.customarg), title=title)
     logger.set_names(['Learning Rate', 'Avg. Loss','Train Loss','Train Acc.','Test Loss','Test Acc.', 'Time'])
 
