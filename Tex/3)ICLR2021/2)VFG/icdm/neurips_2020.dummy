@@ -1,0 +1,581 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2020
+
+% ready for submission
+% \usepackage{neurips_2020}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2020}
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2020}
+
+% to avoid loading the natbib package, add option nonatbib:
+%\usepackage[nonatbib]{neurips_2020}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{hyperref}
+\usepackage{amsfonts}     
+\usepackage{graphicx}
+\usepackage{epsfig}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{wrapfig}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm}
+\usepackage{balance}
+\usepackage{mathtools} 
+\usepackage{extarrows} 
+\usepackage{microtype}
+\usepackage{url}
+\usepackage{xcolor}
+\newcommand{\zz}[1]{\textcolor{blue}{#1}}
+\newcommand{\Xc}{{\mathcal X}}
+\newcommand{\Zc}{{\mathcal Z}}
+\newcommand{\Pn}{\mathbb P^{(n)}}
+\newcommand{\Qn}{\mathbb Q^{(n)}}
+\newcommand{\pr}{{\mathbb P}}
+\newcommand{\ex}{\mathbb E}
+\newtheorem{lemma}{Lemma}
+\newtheorem{remark}{Remark}
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+
+\newcommand{\yz}[1]{{\color{brown}{\bf\sf [YANG: #1]}}}
+
+\title{Variational Flow-graph with Hierarchical Latent Structures}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+\author{%
+  David S.~Hippocampus\thanks{Use footnote for providing further information
+    about author (webpage, alternative address)---\emph{not} for acknowledging
+    funding agencies.} \\
+  Department of Computer Science\\
+  Cranberry-Lemon University\\
+  Pittsburgh, PA 15213 \\
+  \texttt{hippo@cs.cranberry-lemon.edu} \\
+  % examples of more authors
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \AND
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper presents an approach to  assemble flow-based models with hierarchical structures.  With  designed  structures, the proposed model tries to uncover the latent relational structures of  high dimensional data sets.  Meanwhile, the model can generate  data representations with reduced latent dimensions, and thus it overcomes the drawbacks of many flow-based models that usually require a high dimensional latent space involving many trivial variables.  Experiments on synthetic and real world data sets show advantages and broad potentials of the proposed method. 
+\end{abstract}
+
+
+%\textcolor{red}{Causality direction and graph causality! }
+%\textcolor{red}{1. Logistic or sigmoid distribution for likelihood averaging?} \textcolor{blue}{Theory of optimal distribution for averaging  inference!}
+%\textcolor{red}{2. Prove the empirical latent posterior can unbiasedly approximate the true one ? }
+%\textcolor{red}{3. Difference between the training with log-det approach and elbo (vae)  approaches !}
+
+\section{Introduction}
+%Glow: Generative Flow with Invertible 1×1 Convolutions
+Two major unsolved problems in the field of machine learning are (1) data-efficiency: the ability to learn from few data points, like humans; and (2) generalization: robustness to changes of the task or its context. AI systems, for example, often do not work at all when given inputs that are different from their training distribution. A promise of generative models, a major branch of machine learning, is to overcome these limitations by: (1) learning realistic world models, potentially allowing agents to plan in a world model before actual interaction with the world, and (2) learning meaningful features of the input while requiring little or no human supervision or labeling. Since such features can be learned from large unlabeled datasets and are not necessarily task-specific, downstream solutions based on those features could potentially be more robust and more data efficient. In this paper we work towards this ultimate vision, in addition to intermediate applications, by aiming to improve upon the state-of-the-art of generative models.
+
+Generative modeling is generally concerned with the extremely challenging task of modeling all dependencies within very high-dimensional input data, usually specified in the form of a full joint probability distribution. Since such joint models potentially capture all patterns that are present in the data, the applications of accurate generative models are near endless. Immediate applications are as diverse as speech synthesis, text analysis, semi-supervised learning and model-based control.
+
+\yz{what kind of problems we want to deal with and how our method works briefly}
+
+The discipline of generative modeling has experienced enormous leaps in capabilities in recent years, mostly with likelihood-based methods~\cite{Graves2013GeneratingSW,Kingma14,Dinh2014NICENI,Oord2016PixelRN} and generative adversarial networks (GANs)~\cite{Goodfellow14}. Likelihood-based methods can be divided into three categories:
+
+a). Autoregressive models~\cite{Hochreiter97,Graves2013GeneratingSW,Oord2016PixelRN}. Those have the advantage of simplicity, but have as disadvantage that synthesis has limited parallelizability, since the computational length of synthesis is proportional to the dimensionality of the data; this is especially troublesome for large images or video.
+
+b). Variational autoencoders (VAEs)~\cite{Kingma14}, which optimize a lower bound on the log-likelihood of the data. Variational autoencoders have the advantage of parallelizability of training and synthesis, but can be comparatively challenging to optimize~\cite{Kingma16}.
+
+c). Flow-based generative models, first described in NICE~\cite{Dinh2014NICENI} and extended in RealNVP~\cite{Dinh2016DensityEU}. We explain the key ideas behind this class of model in the following sections.
+
+Flow-based generative models have so far gained little attention in the research community compared to GANs~\cite{Goodfellow14} and VAEs~\cite{Kingma14}. Some of the merits of flow-based generative models include:
+a) Exact latent-variable inference and log-likelihood evaluation. In VAEs, one is able to infer only approximately the value of the latent variables that correspond to a datapoint. GANs have no encoder at all to infer the latents. In reversible generative models, this can be done exactly without approximation. Not only does this lead to accurate inference, it also enables optimization of the exact log-likelihood of the data, instead of a lower bound of it.
+
+% b) Efficient inference and efficient synthesis. Autoregressive models, such as the Pixel-CNN~\cite{Oord2016PixelRN}, are also reversible, however synthesis from such models is difficult to parallelize, and typically inefficient on parallel hardware. Flow-based generative models like Glow (and RealNVP) are efficient to parallelize for both inference and synthesis.
+
+c) Useful latent space for downstream tasks. The hidden layers of autoregressive models have unknown marginal distributions, making it much more difficult to perform valid manipulation of data. In GANs, data points can usually not be directly represented in a latent space, as they have no encoder and might not have full support over the data distribution~\cite{GroverDE17}. This is not the case for reversible generative models and VAEs, which allow for various applications such as interpolations between data points and meaningful modifications of existing datapoints.
+
+% d)Significant potential for memory savings. Computing gradients in reversible neural networks requires an amount of memory that is constant instead of linear in their depth, as explained in the RevNet paper~\cite{gomez2017reversible}.
+
+Our contributions are summarized as:
+\begin{itemize}
+    \item 
+\end{itemize}
+
+
+
+\section{Preliminaries }
+
+\subsection{Normalizing flow}
+Normalizing flow defines an invertible transformation $f: \mathcal{X} \xleftarrow[]{} \mathcal{Z}$ between two random variables. $\mathbf{z} \sim p(\mathbf{z})$ is the latent variable which has a tractable density. $\mathbf{x} \sim p_\theta(\mathbf{x})$ is an unknown true distribution which we want to model. We usually focus on a finite sequence of transformations $f=f_1  \circ f_2   \cdot \cdot     \circ   f_L$ such that :
+\begin{align}
+    \mathbf{x} \xlongleftrightarrow[]{f_1} \mathbf{h}^1 \xlongleftrightarrow[]{f_2} \mathbf{h}^2 \cdots \xlongleftrightarrow[]{f_L}\mathbf{z}
+\end{align}
+Under the change of variables theorem~\eqref{eq:flow}, the probability density function~(pdf) of the model given a data point can be written as 
+\begin{align}\label{eq:flow}
+\log p_\theta(\mathbf{x}) =& \log p(\mathbf{z})  + \log | \text{det} ( \frac{d \mathbf{z} }{ d \mathbf{x}} ) | \\
+= & \log p(\mathbf{z}) + \sum_{i=1}^L\log | \text{det} ( \frac{d \mathbf{h}^i } { d \mathbf{h}^{i-1}}) | .
+\end{align}
+where we have $\mathbf{h}^0 = \mathbf{x}$ and $\mathbf{h}^L = \mathbf{z}$ for conciseness. The scalar value $\log |\text{det}( \frac{d \mathbf{h}^i}{d \mathbf{h}^{i-1}})|$ is the logarithm of the absolute value of the determinant of the Jacobian matrix ($\frac{d \mathbf{h}^i}{d \mathbf{h}^{i-1}}$), also called the log-determinant. 
+% Given $N$ data samples, we minimize the following:
+% \begin{align}\label{eq:loss}
+% \mathcal{L} = \frac{1}{N} \sum_{i=1}^N - \log p_{\mathbf{\theta}}(\mathbf{x}_{i}) .
+% \end{align}
+
+% Let $\mathbf{x}$ be a high-dimensional random vector with unknown true distribution $\mathbf{x} \sim p(\mathbf{x})$.  In most flow-based generative models~\cite{Dinh2016DensityEU}, the generative process is defined as:
+% \begin{align}
+% &\mathbf{z} \sim p_{\mathbf{\theta}}(\mathbf{z}) \\
+% & \mathbf{x} = \mathbf{g}_{\mathbf{\theta}}(\mathbf{z}),\label{eq:flow}
+% \end{align}
+% where $\mathbf{z}$ is the latent variable and $p_{\mathbf{\theta}}(\mathbf{z})$ has a tractable density, such as a multivariate Gaussian distribution: $ p_{\mathbf{\theta}}(\mathbf{z}) = \mathbb{N}(\mathbf{z}; 0, \mathbf{I})$. The function $\mathbf{g}_{\mathbf{\theta}}()$ is invertible, also called bijective, such that given a datapoint $\mathbf{x}$, latent variable inference is done by $\mathbf{z} = \mathbf{f}(\mathbf{x}) = \mathbf{g}^{-1}_{\mathbf{\theta}}(\mathbf{x})$. Flow models usually focus on a sequence of transformations, $\mathbf{f} =\mathbf{f}_1 \circ \mathbf{f}_2  \circ   \cdot \cdot    \circ   \mathbf{f}_F $, such that the relationship between $\mathbf{x}$ and  $\mathbf{z}$ can be written as :
+
+
+
+% \begin{align}
+% \mathbf{x} 
+% \begin{matrix}
+% \mathbf{f}_1 \\
+% \longleftrightarrow
+%  \end{matrix}  \mathbf{h}_1  \begin{matrix} \mathbf{f}_2  \\  \longleftrightarrow  \end{matrix} 
+%  \mathbf{h}_2  \cdot \cdot  \cdot   \begin{matrix} \mathbf{f}_F \\  \longleftrightarrow  \end{matrix}  \mathbf{z} .
+% \end{align}
+
+% Such a sequence of invertible transformations is also called a (normalized) flow~\cite{Rezende2015VariationalIW}. 
+
+\subsection{Relation with variational inference}
+Given above, we can take the mapping $f$: $\mathbf{x} \xrightarrow{} \mathbf{z}$ can be taken as encoding process (inference), and the mapping $f^{-1}$: $\mathbf{z} \xrightarrow{} \mathbf{x}$ be taken as decoding process (generation):
+\begin{align}
+    \mathbf{z} \sim p(\mathbf{z}), \mathbf{x} \sim p_\theta(\mathbf{x}|\mathbf{z}),
+\end{align}
+To learn the parameters $\theta$, one typically maximizes the following marginal log-likelihood:
+\begin{align}
+    \log p_\theta(\mathbf{x}) = \int p(\mathbf{z})  p_\theta(\mathbf{x}|\mathbf{z})d\mathbf{z}
+\end{align}
+Direct optimization of the log-likelihood is usually intractable. Variational inference instead parameterizes a family of variational distribution $q_\phi(\mathbf{z}|\mathbf{x})$ to approximate the true posterior $p_\theta(\mathbf{z}|\mathbf{x}) \varpropto  p(\mathbf{z})  p_\theta(\mathbf{x}|\mathbf{z})$, ending up optimizing the following evidence lower bound (ELBO): 
+\begin{align}
+    \log p_\theta(\mathbf{x}) \geqslant \text{ELBO} = E_{p_\theta(\mathbf{x})} \{E_{q_\phi(\mathbf{z}|\mathbf{x})} \log p_\theta(\mathbf{x}|\mathbf{z}) 
+   - \text{KL}(q_\phi(\mathbf{z}|\mathbf{x})||p(\mathbf{z}))\}
+\end{align}
+Since the transformation $f$ is invertible, we can simplify $q_\phi(\mathbf{z}|\mathbf{x})$ using the same set of parameters $\theta$ as $p_\theta(\mathbf{x}|\mathbf{z})$.
+\section{Variational Flow-graph}
+
+Many real-world high dimensional datasets concentrate near low dimensional unknown manifolds. We assume the latent variables are from  a  latent space, i.e., $\mathbf{z} \in \mathbb{R}^d$, and the dimension for data sample is $D$, i.e., $\mathbf{x} \in   \mathbb{R}^D$.
+
+\subsection{ELBO for Hierarchy Flow-graph}
+We try to extend the framework of variational auto-encoder~\cite{Kingma14,burda2015importance} to a hierarchical latent model. Figure~\ref{fig:node_tree} presents an illustration of a node  and a tree structure.  The hierarchical generative network has $L$ layers, and $\mathbf{h}^l$ is the latent variable in layer $l$, and $\theta$ is the parameter vector of the model. The likelihood of $\mathbf{x}$ is given by 
+\begin{align*}
+p(\mathbf{x}| \mathbf{\theta}_{\mathbf{f}}) = \sum_{\mathbf{h}^1, ..., \mathbf{h}^L} p(\mathbf{h}^L | \theta_{\mathbf{f}})p(\mathbf{h}^{L-1} | \mathbf{h}^{L},\theta_{\mathbf{f}}) \cdot \cdot  \cdot  p(\mathbf{x} | \mathbf{h}^{1} \theta_{\mathbf{f}}) .
+\end{align*}
+$p(\mathbf{h}^{l-1} | \mathbf{h}^{l},\theta_{\mathbf{f}})$ is modeled with flow-based model. The hierarchy of the recognition network is given by
+\begin{align*}
+q(\mathbf{h}| \mathbf{x}) = q(\mathbf{h}^1 | \mathbf{x})  q(\mathbf{h}^2 | \mathbf{h}^1) \cdot \cdot  \cdot  q(\mathbf{h}^{L} | \mathbf{h}^{L-1}) .
+\end{align*}
+$q( \mathbf{h}^{l} | \mathbf{h}^{l-1} )$  use the same network as $p(\mathbf{h}^{l-1} | \mathbf{h}^{l},\theta_{\mathbf{f}})$. With $\mathbf{h}^0 = \mathbf{x}$, the ELBO can be derived as 
+\begin{align}  \notag
+& \log p(\mathbf{x}) \geq   \mathcal{L}(\mathbf{x}; \theta_{\mathbf{f}} ) \\
+& =  \sum_{l=0}^{L-1}  \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \mathbf{h}^{l+1})   \bigg] +  \sum_{l=1}^{L-1}   H_q(\mathbf{h}^l | \mathbf{h}^{l-1} ) -   \text{KL}\big(q(\mathbf{h}^L | \mathbf{h}^{L-1} )   | p(\mathbf{h}^L)  \big) .  \label{eq:elbo}
+ \end{align}
+
+ \begin{wrapfigure}{r}{0.65\textwidth}
+\begin{center}
+ \includegraphics[width=0.36\linewidth]{fig/node.png}
+  \includegraphics[width=0.55\linewidth]{fig/tree.png}
+\end{center}
+\caption{ (a) The structure of one node. Node $\mathbf{h}^{2,1}$ connects with its children with invertible functions. The messages from its children are aggregated at $\mathbf{h}^{2,1}$.   (b)An illustration of the latent structure from layer $l-1$ to $l+1$.  $\mathbf{h}^{h, i}$ means the $i$th latent variable  in layer $l$. }
+\label{fig:node_tree}
+\end{wrapfigure}
+%\subsubsection{Flow-Graph Node and Structures}
+%$\mathbf{h}^0 = \mathbf{x}$.  
+The derivation of the ELBO can be found in the Appendix. The first term of ELBO is the reconstruction for both $\mathbf{x}$ and the latent representations $\mathbf{h}^1, ..., \mathbf{h}^{L-1}$. The second and third terms are the regularizations for the latent representation. The nodes are connected with invertible functions such as flow-based models~\cite{Dinh2016DensityEU} to achieve tractable message passing. 
+
+As shown in Figure~\ref{fig:node_tree}-(a), a node in a flow-graph can has multiple children and multiple parents. Each node has the forward messages from the input data samples and the backward messages from the root.  If all the nodes have only one parent, then the structure is a tree. If there are nodes have multiple parents, the graph will be a DAG~(directed acyclic graph). It is easy to extend the ELBO~\eqref{eq:elbo} to DAGs with topology ordering  of the nodes and thus the layer number.  We provide more details about the nodes in next subsection. 
+  %The forward message comes from data samples are aggregated 
+
+\subsection{Enforced Locality for Variational Flow-graph }
+
+For node $i$, we use $\overrightarrow{\mathbf{h}}^{(i)}$ as the forward evidence message receives from its children, and $\overleftarrow{\mathbf{h}}^{(i)}$ as the  backward message from the rood. $\mathcal{C}(i)$ and $\mathcal{P}(i)$ are node $i$'s child and parent  sets, respectively.   Let $\mathbf{f}^{(j, i)}$ be the edge connecting $j$ and one of its parents $i$, and $\mathbf{f}^{-1, (j, i)}$ is its inverse function.  We have 
+\begin{align*}
+&  \overrightarrow{\mathbf{h}}^{(i)} = \frac{1}{|\mathcal{C}(i)|} \sum_{j \in \mathcal{C}(i) } \mathbf{f}^{(j,i)}(\overrightarrow{\mathbf{h}}^{(j)}), \ \overleftarrow{\mathbf{h}}^{(i)} = \frac{1}{|\mathcal{P}(i)|} \sum_{j \in \mathcal{P}(i) } \mathbf{f}^{-1, (i,j)}(\overleftarrow{\mathbf{h}}^{(j)}) .
+\end{align*} 
+
+\subsubsection{Coherence of Child Nodes}
+
+The second term of the ELBO~\eqref{eq:elbo} is to raise the conditional entropy of the latent variables. 
+To recover the latent data structure, we enforce locality and  coherence of children in the flow-graph model. We enforce the output of each child commits to the aggregated representation, i.e.,
+\begin{align*} %\label{eq:locality}
+&\min_{\theta_{\mathbf{f}}} \sum_{i \in \mathcal{G}}     \frac{1}{|\mathcal{C}(i)|} \sum_{j \in \mathcal{C}(i) } \big| \big|  \overrightarrow{\mathbf{h}}^{(i)}  - \mathbf{f}^{(j,i)}(\overrightarrow{\mathbf{h}}^{(j)})  \big| \big|^2. 
+\end{align*} 
+The above objective can be taken as a regularization term in the training objective of the model. The loss to learning the parameters becomes 
+\begin{align}\label{eq:objective}
+\min_{\theta_{\mathbf{f}}}  \mathbb{E}_{\mathbf{x} \sim \mathcal{D}} \big[-   \mathcal{L}(\mathbf{x}; \theta_{\mathbf{f}} ) +\lambda \Psi(\mathbf{x}; \theta_{\mathbf{f}}) \big] 
+ \end{align}
+where $ \Psi(\mathbf{x}; \theta_{\mathbf{f}}) =  \sum_{i \in \mathcal{G}}     \frac{1}{|\mathcal{C}(i)|} \sum_{j \in \mathcal{C}(i) } \big| \big|  \overrightarrow{\mathbf{h}}^{(i)}  - \mathbf{f}^{(j,i)}(\overrightarrow{\mathbf{h}}^{(j)})  \big| \big|^2$.
+\subsubsection{Prediction with Partial Observed Data}
+
+The tree and DAG structures enable the model to perform message passing  among the nodes. The model can perform data imputation with partial observed data as the input. We also can use the model for multi-modal data integration and prediction.  These applications rely on effective message passing among the node. Let's assume each data sample consist $m$ sections, $\mathbf{x} = \{ \mathbf{x}^1,  \mathbf{x}^2, ..., \mathbf{x}^m \}$, then we have the following lemma regarding the model.
+
+\begin{figure}[h]%{r{0.4\textwidth}
+\begin{center}
+\text{(a)} \quad \quad  \quad \quad \quad   \quad   \quad \quad \text{(b)} \quad  \quad \quad \quad \quad  
+\quad \quad  \quad \quad  \quad \quad \quad   \quad \quad  \text{(c)} \quad \quad  \quad \quad \quad  \quad \quad \quad  \quad \quad   \quad \quad  \quad \quad  \\
+ \includegraphics[width=0.17\linewidth]{fig/node_message.png}
+   \includegraphics[width=0.4\linewidth]{fig/propagation.png}
+ \includegraphics[width=0.3\linewidth]{fig/mblanket.png} %propagation.png  mblkt.png
+\end{center}
+   \caption{(a) Message passing in a node. (b) Message passing in a tree. (c) Markov blanket of node $\mathbf{x}_i$. In this example, $\mathbf{x}_i$ correlates with data sections $\mathbf{x}_{i-1}$ and  $\mathbf{x}_{i+1}$.   }
+\label{fig:mblanket}
+\end{figure}
+
+Given a set of data with multiple sections, we cannot directly recover the structural relations among these sections. However, we have the following lemma regarding the latent structure.
+
+
+\begin{lemma}
+Let $\mathcal{S}(i)$ be the set of data sections correlate section $i$, then the Markov blanket of node $i$ is the  Markov blanket  of   $\mathcal{S}(i) \cup \{i\}$ recovered by the model. 
+\end{lemma}
+
+\begin{proof}
+As  the nodes in $\mathcal{S}(i) \cup \{i\}$ do not have child nodes, we only consider the patient nodes. It is easy to see that with the penalty term in objective~\eqref{eq:objective} always lead to a smaller loss value if $\mathbf{f}^{(i,k)}(\mathbf{x}_i)$ is approximate with the messages from the the nodes in the Markov blanket of $\mathcal{S}(i) \cup \{i\}$ . 
+\end{proof}
+
+\subsection{Causal Detection with Flow-graph}
+Variational flow-graph provides an approach to impute the values of any data section given its correlating sections. Assume two data sections are a pair of causal and effect variables, we can detect the causal relation by extending the approach in~\cite{bloebaum2018cause} to the model proposed here. Given a causal-effect pair $\{\mathbf{c}, \mathbf{e}\}$ with functional relation 
+$\mathbf{e} = \mathbf{\phi}(\mathbf{c}) + \alpha \mathbf{n}$, we have the following theorem for the identification of causal-effect detection. Here $\phi$ is an invertible function, and $\alpha$ is a positive real number, and $\mathbf{n}$ following noise distribution. 
+
+\noindent\textbf{Theorem 1.}
+{\it For a pair of causal and effect variables   $\{\mathbf{c}, \mathbf{e}\}$ , the following limit holds 
+\begin{align*} 
+\lim_{\alpha \to 0} \frac{\mathbb{E}[\text{Var} [\mathbf{c} | \tilde{\mathbf{e}}_{\alpha}]]}{\mathbb{E}[\text{Var} [\tilde{\mathbf{e}}_{\alpha}  | \mathbf{c} ]]} \geq 1.
+\end{align*}
+}
+The proof can be found in Appendix-B. 
+
+\subsection{Algorithm and Implementation}
+
+\subsubsection{Algorithms}
+The model parameters for  flow graph can be learning with likelihood maximum.  For each node,  we have to ensure the  inputs from multiple edges are as close as possible.  To train the graph, we first apply forward propagation to get the latent variable $\mathbf{z}$, and then layer-wisely train each layer with likelihood back-propagation. 
+
+\begin{algorithm}[h!]
+   \caption{Inference model parameters with layer wise forward and backward message propagation}
+   \label{alg:main}
+\begin{algorithmic}
+   \STATE {\bfseries Input:} Data distribution $\mathcal{D}$,  $\mathcal{G} = \{\mathcal{V}, \mathbf{f}\}$
+   \REPEAT
+   \STATE Sample minibatch $b$ samples $\{\mathbf{x}_1, ..., \mathbf{x}_b \}$ from $\mathcal{D}$;
+   \FOR{$i \in \mathcal{V}$}
+   \STATE $\overrightarrow{\mathbf{h}}^{(i)} = \frac{1}{|\mathcal{C}(i)|} \sum_{j \in \mathcal{C}(i) } \mathbf{f}^{(j,i)}(\overrightarrow{\mathbf{h}}^{(j)})$;  \quad  \quad \quad \quad \quad \quad \textcolor{blue}{// forward message passing}
+   \ENDFOR
+    \STATE  $ \overrightarrow{\mathbf{h}} =  \{\overrightarrow{\mathbf{h}}^{(1)}, ...,  \overrightarrow{\mathbf{h}}^{(|\mathcal{V}|)}  \}$;
+    \FOR{$i \in \mathcal{V}$}
+   \STATE $\overleftarrow{\mathbf{h}}^{(i)} = \frac{1}{|\mathcal{P}(i)|} \sum_{j \in \mathcal{P}(i) } \mathbf{f}^{-1, (i,j)}(\overleftarrow{\mathbf{h}}^{(j)}) $;  \quad \quad \ \  \quad \quad \textcolor{blue}{// backward message passing}
+   \ENDFOR
+    \STATE  $ \overleftarrow{\mathbf{h}} =  \{\overleftarrow{\mathbf{h}}^{1}, ...,  \overleftarrow{\mathbf{h}}^{(|\mathcal{V}|)}  \}$;
+    
+    \STATE Updating flow-graph $\mathcal{G}$ by descending the gradient $\bigtriangledown_{\theta_{\mathbf{f}}}\frac{1}{b} \sum_{i=1}^b  \big[ -\mathcal{L}(\mathbf{x}; \theta_{\mathbf{f}} ) +\lambda \Psi(\mathbf{x}; \theta_{\mathbf{f}}) \big] $ ;
+   %\ENDFOR 
+   \UNTIL{Converge}
+\end{algorithmic}
+\end{algorithm}
+
+
+
+%%% =========== forward algorithm ====================
+%\begin{algorithm}[h!]
+%   \caption{Forward message passing to compute each node's hidden state in network $\mathcal{G}$ }
+%   \label{alg:forward}
+%\begin{algorithmic}
+%   \STATE {\bfseries Input:}Data sample $\mathbf{x}$;
+%   \FOR{$i \in \mathcal{N}$}
+%   \STATE $\overrightarrow{\mathbf{h}}^i = \frac{1}{|\mathcal{C}(i)|} \sum_{j \in \mathcal{C}(i) } \mathbf{f}^{(j,i)}(\overrightarrow{\mathbf{h}}^j)$; 
+%   \ENDFOR
+%    \STATE  $ \overrightarrow{\mathbf{h}} =  \{\overrightarrow{\mathbf{h}}^{1}, ...,  \overrightarrow{\mathbf{h}}^{|\mathcal{N}|}  \}$;
+%   \STATE {\bfseries Return}   $ \overrightarrow{\mathbf{h}} $ ;
+%\end{algorithmic}
+%\end{algorithm}
+
+%\begin{algorithm}[h!]
+%   \caption{Backward message passing to compute each node's hidden state in network $\mathcal{G}$}
+%   \label{alg:backward}
+%\begin{algorithmic}
+%   \STATE {\bfseries Input:} Latent variable $\mathbf{z}$ 
+%   \STATE $\overleftarrow{\mathbf{h}}^{|\mathcal{N}|} = \mathbf{z}$;
+%   \FOR{$i \in \mathcal{N}$}
+%   \STATE $\overleftarrow{\mathbf{h}}^i = \frac{1}{|\mathcal{P}(i)|} \sum_{j \in \mathcal{P}(i) } \mathbf{f}^{-1, (i,j)}(\overleftarrow{\mathbf{h}}^j) $;
+%   \ENDFOR
+%    \STATE  $ \overleftarrow{\mathbf{h}} =  \{\overleftarrow{\mathbf{h}}^{1}, ...,  \overleftarrow{\mathbf{h}}^{|\mathcal{N}|}  \}$;
+%   \STATE {\bfseries Return}   $ \overleftarrow{\mathbf{h}} $ ;
+%\end{algorithmic}
+%\end{algorithm}
+
+\subsubsection{Implementation Details}
+
+The nodes are connected with flow-based models. Different from VAE~\cite{Kingma14}, variational flow-graph~(VFG) uses the same network for both encoding and decoding. We assume the latent variables are following Gaussian distribution. We use the empirical variance as the conditional variance to compute the entropy and KL terms. Besides the aggregation nodes, we also use concatenation nodes to increase the flexibility of the structure. Each node can use part of its variables to connect with its parents. 
+
+%\textcolor{red}{need a lemma here}
+
+\section{Experiments}
+
+\subsection{ Evaluation with Synthetic  Data  }
+%SEM
+%\subsubsection{}
+\subsubsection{Likelihood Testing}
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{fig/elbo.png}
+    \caption{ELBO on the synthetic data}
+    \label{fig:elbo}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fig/mse.png}
+    \caption{Imputation with $\mathsf{Mask}$ on the child nodes [0, 1, 2, 3] indicated by colored legends. }
+    \label{fig:mse}
+\end{figure}
+%\subsubsection{}
+
+
+
+\subsubsection{Graph Structure Recovery}
+
+
+\subsection{Causality Detection }
+
+
+
+\subsection{Image Generation}
+
+Generation Based on Partial Data
+
+Hierarchy Disentanglement
+
+Image imputation!
+
+%\subsection{Multi-Modal  Data Analysis}
+
+
+
+
+
+\clearpage
+%\section*{References}
+%References follow the acknowledgments. Use unnumbered first-level heading for
+%the references. Any choice of citation style is acceptable as long as you are
+%consistent. It is permissible to reduce the font size to \verb+small+ (9 point)
+%when listing the references.
+%\bf Note that the Reference section does not count towards the eight pages of content that are allowed.}
+
+\bibliographystyle{unsrt}
+\bibliography{ref}
+
+
+
+\newpage
+\section*{Appendix A.  ELBO of Hierarchy Model}\label{appd:elbo}
+
+The hierarchy generative network,
+\begin{align*}
+p(\mathbf{x}| \mathbf{\theta}) = \sum_{\mathbf{h}^1, ..., \mathbf{h}^L} p(\mathbf{h}^L | \theta)p(\mathbf{h}^{L-1} | \mathbf{h}^{L},\theta) \cdot \cdot  \cdot  p(\mathbf{x} | \mathbf{h}^{1} \theta) .
+\end{align*}
+
+The hierarchy of recognition network
+\begin{align*}
+q(\mathbf{h}| \mathbf{x}) = q(\mathbf{h}^1 | \mathbf{x})  q(\mathbf{h}^2 | \mathbf{h}^1) \cdot \cdot  \cdot  q(\mathbf{h}^{L} | \mathbf{h}^{L-1}) .
+\end{align*}
+
+
+
+\begin{align*}
+\log p(\mathbf{x}) &=  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{p(\mathbf{h}|\mathbf{x})} \bigg] \\
+&=  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}   \frac{q(\mathbf{x}, \mathbf{h})}{p(\mathbf{h}|\mathbf{x})} \bigg] \\
+&=  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg] +  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \frac{q(\mathbf{h} |\mathbf{x})}{p(\mathbf{h}|\mathbf{x})} \bigg] \\
+& \geq  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg]  \\
+& =  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x} | \mathbf{h}^{1:L}) p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg]  \\
+& =  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[  p(\mathbf{x} | \mathbf{h}^{1:L})  \bigg]  +  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg]  \\
+& =  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[  p(\mathbf{x} | \mathbf{h}^{1})  \bigg]  +  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg]  \\
+& =  \mathbb{E}_{q(\mathbf{h}^{1} | \mathbf{x})} \bigg[  p(\mathbf{x} | \mathbf{h}^{1})  \bigg]  +  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg]   
+\end{align*}
+
+
+
+\begin{align*}
+& \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg] \\
+= &   \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{q(\mathbf{h}^{1}|\mathbf{x}) q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg] \\
+=&   \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]  +  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log \frac{1}{q(\mathbf{h}^{1}|\mathbf{x}) } \bigg]  \\
+%&    \textcolor{red}{ \text{Not sure about next step!}}  \\
+=&   \mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]  +  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log \frac{1}{q(\mathbf{h}^{1}|\mathbf{x}) } \bigg] \\
+=&   \mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]  +  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log \frac{1}{q(\mathbf{h}^{1}|\mathbf{x}) } \bigg]  \\
+%&    \textcolor{red}{ \text{Not sure about next step!}}  \\
+=&   \mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]  +  \mathbb{E}_{q(\mathbf{h}^{1} | \mathbf{x})} \bigg[ \log \frac{1}{q(\mathbf{h}^{1}|\mathbf{x}) } \bigg]  \\
+%&    \textcolor{red}{ \text{Not sure about next step!}}  \\
+=&   \mathbb{E}_{q(\mathbf{h}^{2}|\mathbf{h}^1)} \bigg[ \log p( \mathbf{h}^{1}|  \mathbf{h}^{2})   \bigg]  +  \mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \bigg[ \log  \frac{ p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]+  H(\mathbf{h}^1 | \mathbf{x})  \\
+=&   \mathbb{E}_{q(\mathbf{h}^{2}|\mathbf{h}^1)} \bigg[ \log p( \mathbf{h}^{1}|  \mathbf{h}^{2})   \bigg]  +  H(\mathbf{h}^1 | \mathbf{x})   +  \mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \bigg[ \log  \frac{ p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg] \\
+ \end{align*}
+ 
+We can recursively expand the last term,  thus we get
+\begin{align*}
+& \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg] \\
+=&  \sum_{l=1}^{L-1} \bigg\{   \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \mathbf{h}^{l+1})   \bigg]  +    H(\mathbf{h}^l | \mathbf{h}^{l-1} )  \bigg\} +  \mathbb{E}_{q(\mathbf{h}^L|\mathbf{h}^{L-1})} \bigg[ \log p( \mathbf{h}^{L-1}|  \mathbf{h}^L)   p( \mathbf{h}^L)  \bigg]  +    H(\mathbf{h}^L | \mathbf{h}^{L-1} )  \\
+=& \sum_{l=1}^{L-1} \bigg\{   \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \mathbf{h}^{l+1})   \bigg]  +    H(\mathbf{h}^l | \mathbf{h}^{l-1} )  \bigg\} +  \mathbb{E}_{q(\mathbf{h}^L|\mathbf{h}^{L-1})} \bigg[ \log p( \mathbf{h}^{L-1}|  \mathbf{h}^L) )  \bigg]   -   \text{KL}\big(q(\mathbf{h}^L | \mathbf{h}^{L-1} )   | p(\mathbf{h}^L)  \big)
+ \end{align*}
+
+ With $\mathbf{h}^0 = \mathbf{x}$,  the ELBO can be written as 
+\begin{align*}
+\log p(\mathbf{x}) \geq   \sum_{l=0}^{L-1}  \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \mathbf{h}^{l+1})   \bigg] +  \sum_{l=1}^{L-1}   H_q(\mathbf{h}^l | \mathbf{h}^{l-1} ) -   \text{KL}\big(q(\mathbf{h}^L | \mathbf{h}^{L-1} )   | p(\mathbf{h}^L)  \big) . 
+ \end{align*}
+%For vanilla VAE models, $L=1$, $\mathbf{h}^0 = \mathbf{x}$, and $\mathbf{h}^1 = \mathbf{z}$. %, and $\mathbf{h}^2 = (\mu_{\mathbf{z}}, \sigma_{\mathbf{z}})$
+
+\subsection*{Appendix B.  Proof of Theorem 1}
+\noindent\textbf{Lemma 2.}
+{\it (\textbf{Limit of Variance Ratio})
+The following holds
+\begin{align*} 
+\lim_{\alpha \to 0} \frac{\mathbb{E}[ \text{Var} [\mathcal{C} | \tilde{\mathcal{E}}_{\alpha}]]}{\mathbb{E}[ \text{Var} [\tilde{\mathcal{E}}_{\alpha}  | \mathcal{C} ]]} = \int_0^1 \frac{1}{\phi^{'}(c)^2}Var[N|c]p_{\mathcal{C}}(c)dc.
+\end{align*}
+}
+
+%\textcolor{red}{Here it is different from the single flow model.}
+
+\noindent\textbf{Proof}:
+For two random variables $\mathcal{B}$ and $\mathcal{G}$ the conditional variance of $\mathcal{B}$, given $g$ is defined by 
+\begin{align*} 
+\text{Var}[\mathcal{B}|g] := \mathbb{E}[(\mathcal{B} - \mathbb{E}[\mathcal{B}|g])^2|g].
+\end{align*}
+Var$[\mathcal{B}|\mathcal{G}]$ is the random variable attaining Var$[\mathcal{B}|g]$ when $\mathcal{G}$ attains $g$. Its expectation is given by 
+
+\begin{align*} 
+\mathbb{E}[\text{Var}[\mathcal{B}|\mathcal{G}]] = \int \text{Var}[\mathcal{B}|g] p_{\mathcal{G}}(g) d g .
+\end{align*}
+
+For an invertable function $h$, we have 
+\begin{align*} 
+&\text{Var}(h(G)|g) = 0, \text{and} \\
+& \text{Var}(\mathcal{B}|h(q))  = \text{Var}(\mathcal{B}|q) .
+\end{align*}
+
+We first observe that 
+\begin{align*} 
+&\mathbb{E}[\text{Var}[\mathcal{E}_{\alpha}|\mathcal{C}]] \\
+=& \mathbb{E}[\text{Var}[\phi(\mathcal{C})+\alpha \mathcal{N}|\mathcal{C}]] \\
+=&\alpha^2\mathbb{E}[\text{Var}[ \mathcal{N}|\mathcal{C}]] = \alpha^2 .
+\end{align*}
+We have
+\begin{align*} 
+&\lim_{\alpha \to 0} \frac{\mathbb{E}[ \text{Var} [\mathcal{C} | \tilde{\mathcal{E}}_{\alpha}]]}{\mathbb{E}[ \text{Var} [\tilde{\mathcal{E}}_{\alpha}  | \mathcal{C} ]]} =\lim_{\alpha \to 0} \frac{\mathbb{E}[ \text{Var} [\mathcal{C} | \mathcal{E}_{\alpha}]]}{\mathbb{E}[ \text{Var} [\mathcal{E}_{\alpha}  | \mathcal{C} ]]}\\
+=&\lim_{\alpha \to 0} \frac{\mathbb{E}[ \text{Var} [\mathcal{C} | \mathcal{E}_{\alpha}]]}{\alpha^2} = \lim_{\alpha \to 0} \mathbb{E} \bigg[\text{Var}\bigg[\frac{\mathcal{C}}{\alpha} | \mathcal{E}_\alpha\bigg]\bigg] \\
+=&\lim_{\alpha \to 0}  \mathbb{E} \bigg[\text{Var}\bigg[ \frac{\phi^{-1}(\mathcal{E} - \alpha \mathcal{N})}{\alpha} | \mathcal{E}_{\alpha} \bigg]\bigg] \\
+=& \lim_{\alpha \to 0}  \int^{\phi(1) + \alpha n_{+}}_{\phi(0) - \alpha n_{-}} \text{Var}\bigg[ \frac{\phi^{-1}(e- \alpha \mathcal{N})}{\alpha} \bigg|e \bigg] p_{\mathcal{E}_{\alpha}}(e)d e \\
+=& \lim_{\alpha \to 0}  \int^{\phi(1) }_{\phi(0) } \text{Var}\bigg[ \frac{\phi^{-1}(e- \alpha \mathcal{N})}{\alpha} \bigg|e \bigg] p_{\mathcal{E}_{\alpha}}(e)d e
+\end{align*}
+
+In the latter step, $\alpha n_{+}$ and $\alpha n_{-}$ vanishes in the limit due to 
+\begin{align*} 
+e \mapsto  \text{Var} [ \phi^{-1} (e - \alpha \mathcal{N})/\alpha |e ] p_{\mathcal{E}_\alpha}(e)
+\end{align*} 
+is uniformly bounded by $\alpha$, and the variance is bounded by 1. $p_{\mathcal{E}_\alpha}(e)$ is uniformly bounded due to 
+
+\begin{align*} 
+p_{\mathcal{E}_\alpha}(e) &= \int ^{n_{+}}_{n_-} p_{\phi(\mathcal{C}), \mathcal{N}}(e-\alpha n, n) d n \\
+&= \int ^{n_{+}}_{n_-} p_{\mathcal{C}, \mathcal{N}}(\phi^{-1}(e-\alpha n), n)  \phi^{-1'}(e-\alpha n)d n  \\
+&=|| \phi^{-1'}||_{\infty} ||  p_{\mathcal{C}, \mathcal{N}} || {\infty} (n_+ - n_-) .
+\end{align*} 
+
+Accordingly, the bounded convergence theorem stats that
+\begin{align*} 
+& \lim_{\alpha \to 0}  \int^{\phi(1) }_{\phi(0) } \text{Var}\bigg[ \frac{\phi^{-1}(e- \alpha \mathcal{N})}{\alpha} |e \bigg] p_{\mathcal{E}_{\alpha}}(e)d e\\
+ =   & \int^{\phi(1) }_{\phi(0) } \lim_{\alpha \to 0} \bigg(\text{Var}\bigg[ \frac{\phi^{-1}(e- \alpha \mathcal{N})}{\alpha} |e \bigg] p_{\mathcal{E}_{\alpha}}(e) \bigg) d e 
+\end{align*} 
+
+With Taylor's theorem, 
+\begin{align*} 
+&  \lim_{\alpha \to 0} \text{Var}\bigg[ \frac{\phi^{-1}(e- \alpha \mathcal{N})}{\alpha} |e \bigg] \\
+=& \lim_{\alpha \to 0} \text{Var}\bigg[ - \mathcal{N}\phi^{-1'}(e) - \frac{1}{2}\alpha \mathcal{N}^2 \phi^{-1''}(\bar{E}) \bigg| e \bigg] \\
+=& \phi^{-1'}(e)^2 \text{Var}(\mathcal{N}|e).
+\end{align*} 
+Here $\bar{E}$ is a value in $[e-\alpha n, e]$.
+Moreover, we have 
+
+\begin{align*} 
+& \lim_{\alpha \to 0} p_{\mathcal{E}_{\alpha}}(e) = p_{\mathcal{E}_{0}}(e).
+\end{align*} 
+
+\begin{align*} 
+&\lim_{\alpha \to 0} \mathbb{E} \bigg[\text{Var}\bigg[\frac{\mathcal{C}}{\alpha} | \mathcal{E}_\alpha\bigg]\bigg] \\
+= &  \int^1_0 \phi^{-1'}(e)^2 \text{Var}(\mathcal{N}|e) P_{\mathcal{E}_0}(e) d e \\
+= &  \int^1_0 \phi^{-1'}(\phi(c))^2 \text{Var}(\mathcal{N}|\phi(c)) P_{\mathcal{C}}(c) d c \\
+= &   \int^1_0 \frac{1}{\phi^{'}(c)^2}\text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c .
+\end{align*} 
+
+%\end{proof}
+
+%\section*{Appendix C. Proof of Theorem 1}
+%\begin{theorem}%\label{thm:error_asym}
+\noindent\textbf{Theorem 1.}
+{\it For a pair of causal and effect variables   $\{\mathcal{C}, \mathcal{E}\}$ , the following limit holds 
+\begin{align*} 
+\lim_{\alpha \to 0} \frac{\mathbb{E}[\text{Var} [\mathcal{C} | \tilde{\mathcal{E}}_{\alpha}]]}{\mathbb{E}[\text{Var} [\tilde{\mathcal{E}}_{\alpha}  | \mathcal{C} ]]} \geq 1.
+\end{align*}
+}
+% (\textbf{Error Asymmetry}) 
+%\begin{proof}
+\noindent\textbf{Proof}:
+Lemma 1 stats
+\begin{align}\notag
+& \int^1_0 \frac{1}{\phi^{'}(c)^2}\text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c \\ \notag
+=&\int^1_0 \frac{1}{\phi^{'}(c)^2}\text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c  \cdot \int^1_0 \text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c \\ \notag
+= & \int^1_0 \sqrt{\frac{1}{\phi^{'}(c)^2}\text{Var}[\mathcal{N}|c]}^2p_{\mathcal{C}}(c) d c  \cdot \int^1_0 \sqrt{\text{Var}[\mathcal{N}|c]}^2p_{\mathcal{C}}(c) d c 
+\\ \notag
+\geq & \bigg( \int^1_0\sqrt{\frac{1}{\phi^{'}(c)^2}\text{Var}[\mathcal{N}|c]} \sqrt{\text{Var}[\mathcal{N}|c]}p_{\mathcal{C}}(c) d c \bigg)^2 \\ \label{eq:lowerbd1}
+=& \bigg( \int^1_0 \frac{1}{\phi^{'}(c)}\text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c   \bigg)^2
+\end{align}
+
+Here the inequality is because of Cauchy Schwartz inequality . If $\phi$ is linear, then~\eqref{eq:lowerbd1} will become 1, as $\phi^{'} =1$. We can make a statement about~\eqref{eq:lowerbd1}
+
+\begin{align}\notag
+& \int^1_0 \frac{1}{\phi'(c)}\text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c \\ \notag
+=&\int^1_0 \frac{1}{\phi'(c)}\text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c  \cdot \int^1_0 \phi'(c) \text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c \\ \notag
+= & \int^1_0 \sqrt{\frac{1}{\phi'(c)}\text{Var}[\mathcal{N}|c]}^2p_{\mathcal{C}}(c) d c  \cdot \int^1_0 \sqrt{ \phi'(c) \text{Var}[\mathcal{N}|c]}^2p_{\mathcal{C}}(c) d c 
+\\ \label{eq:lowerbd2}
+\geq & \bigg( \int^1_0\sqrt{\frac{1}{\phi'(c)}\text{Var}[\mathcal{N}|c]} \sqrt{\text{Var}[\mathcal{N}|c]}p_{\mathcal{C}}(c) d c \bigg)^2 \\
+=& \bigg( \int^1_0 \text{Var}[\mathcal{N}|c]p_{\mathcal{C}}(c) d c   \bigg)^2 =1 .
+\end{align}
+
+
+
+\end{document}

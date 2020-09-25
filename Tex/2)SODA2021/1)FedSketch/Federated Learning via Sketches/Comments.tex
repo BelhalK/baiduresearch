@@ -1,0 +1,883 @@
+%\subsection{Localized Federated Optimization}
+
+\begin{comment}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%
+
+
+\begin{algorithm}[H]
+\caption{\texttt{CFL}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning with Sketching for homogeneous setting. }\label{Alg:ce-h}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}^{(r)}=\boldsymbol{w}^{(r-1)}-\gamma\underline{\mathbf{S}}^{(r)}$
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^n\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ %and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+\State $\qquad\qquad$ Sever runs $\underline{\mathbf{S}}^{(r)}= \texttt{HEAVYMIX}(\mathbf{S}^{(r)})$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{CFL}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning with Sketching and gradient tracking. }\label{Alg:one-shot-using data samoples-b}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r-1)}-\gamma\underline{\mathbf{S}}^{(r)}$ 
+\State $\qquad\quad$ Set $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left(\underline{\mathbf{S}}^{(r)}-\underline{\mathbf{S}}^{(r)}_j\right)$
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ back to the server.
+\State $\qquad$Server \textbf{runs} 
+\State $\qquad\qquad\underline{\mathbf{S}}_j^{(r)}= \texttt{HEAVYMIX}(\mathbf{S}_j^{(r)})$ and returns $\underline{\mathbf{S}}_j^{(r)}$ to server $j$.
+\State $\qquad\qquad \underline{\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^n\underline{\mathbf{S}}_j^{(r)}$ %and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+\State $\qquad\qquad$ Sever broadcasts $\underline{\mathbf{S}}^{(r)}$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{comment}
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Assumptions%%%%%%%%%%%%%%%%%%%%%%
+\begin{comment}
+\begin{assumption}[Contraction \cite{stich2018sparsified}]
+A randomized function $\texttt{Comp}_k:\mathbb{R}^d\rightarrow\mathbb{R}^d$ is called a compression operator, if there exists a constant $c\in(0,1]$ (that may depend on $k$ and $d$), such that for every $\mathbf{x}\in\mathbb{R}^d$, we have $\mathbb{E}\left[\left\|\mathbf{x}-\texttt{Comp}_k(\mathbf{x})\right\|^2_2\right]\leq(1-c)\left\|\mathbf{x}\right\|^2_2$ where expectation is taken over $\texttt{Comp}_k$. 
+\end{assumption}
+We note that for the contraction operators (see~ \cite{stich2018sparsified} for more examples) we have $c=\frac{k}{d}$.
+\end{comment}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCH-III}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning via Sketching with memory. }\label{Alg:ce-h-wm}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}^{(r)}=\boldsymbol{w}^{(r-1)}-\gamma\underline{\mathbf{S}}^{(r)}$ \belhal{This should be out of the local loops right?} \textcolor{blue}{FH: Good point, but in order to save communication cost each worker store both local and global models, so this should be here!}
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}+\mathbf{m}_j^{(r)}\right)$ back to the server.
+\State $\qquad\quad\quad$Device $j$ computes $\mathbf{m}_j^{(r)}=\mathbf{m}_j^{(r-1)}+\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)-\mathbf{S}_j^{(r)}$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^p\mathbf{S}^{(r)}_j$ %and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+\State $\qquad\qquad$ Sever runs $\underline{\mathbf{S}}^{(r)}= \texttt{HEAVYMIX}(\mathbf{S}^{(r)})$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{theorem}[Strongly convex or \pl]
+Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
+and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:1.5},and the choice of learning rate $\eta=\frac{1}{L\gamma (\frac{\mu^2d}{p}+1) \tau}$ with probability at least $1-\delta$, we have:
+\begin{align}
+                \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq \exp{-\left(\frac{ R}{\kappa (\frac{\mu^2d}{p}+1)}\right)}\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\left(\frac{1}{2\gamma^2 {(\frac{\mu^2d}{p}+1)}^2 }+\frac{1}{2p}\right)\frac{\sigma^2}{\mu\tau}
+\end{align}
+\end{theorem}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Convergence result for \texttt{FEDSKETCH-III}}
+For this part we use standard perturbed iterate analysis. With short hand notation of 
+
+\begin{align}
+\Delta_j^{(r)}&\triangleq\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\nonumber\\
+\tilde{\mathbf{g}}^{(r)}_j&=\Delta_j^{(r)}+\mathbf{m}_j^{(r)}\nonumber\\
+\mathbf{m}_j^{(r+1)}&=\mathbf{m}_j^{(r)}+\left[\Delta_j^{(r)}-\underline{\mathbf{S}}_j^{(r)}\right]\nonumber\\
+&=\sum_{r=0}^{R-1}\left[\Delta_j^{(r)}-\underline{\mathbf{S}}_j^{(r)}\right]\nonumber\\
+\tilde{\mathbf{g}}^{(r)}&\triangleq\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_j^{(r)}\nonumber\\
+\underline{\mathbf{S}}^{(r)}&=\frac{1}{p}\sum_{j=1}^p\underline{\mathbf{S}}^{(r)}_j
+\end{align}
+
+
+Before proceeding to the proof we need a few short hand notation. We have:
+\begin{align}
+     \sum_{r=0}^{r-1}\left(\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\right)&{=} \frac{1}{p}\sum_{r=0}^{r-1}\sum_{j=1}^p\left(\Delta_j^{(r)}-\underline{\mathbf{S}}^{(r)}_j\right)\nonumber\\
+    &= \frac{1}{p}\sum_{j=1}^p\left[\sum_{r=0}^{r-1}\left(\Delta_j^{(r)}-\underline{\mathbf{S}}^{(r)}_j\right)\right]\nonumber\\
+    &= \frac{1}{p}\sum_{j=1}^p\mathbf{m}_j^{(r)}\nonumber\\
+    &\triangleq\mathbf{m}^{(r)}
+\end{align}
+
+Based on Algorithm~\ref{} and the update rules:
+\begin{align}
+\mathbf{S}_j^{(r)}&=\mathbf{S}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}+\mathbf{m}_j^{(r)}\right)\nonumber\\
+\mathbf{m}_j^{(r)}&=\mathbf{m}_j^{(r-1)}+\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)-\mathbf{S}_j^{(r)}
+\end{align}
+
+\todo{Continue from here....>}
+
+
+
+\begin{property}[\cite{ivkin2019communication}]\label{prop:2}
+Based on Lemma~\ref{} in \cite{ivkin2019communication}, for all $1\leq j\leq p$ we have
+\begin{align}
+    \mathbb{E}_{\mathbf{S}_j}\left[\left\|\mathbf{m}_j^{(r+1)}\right\|^2_2\right]\leq\left(1-\frac{k}{d}\right)\left\|\mathbf{m}_j^{(r)}+\mathbf{\Delta}_j^{(r)}\right\|_2^2\label{eq:sketch_var}
+\end{align}
+\end{property}
+Based on Property~\ref{prop:2} we have tha following Lemma:
+\begin{lemma}\label{lmm:bndng-m}
+\begin{align}
+        \mathbb{E}\left\|\mathbf{m}^{(r+1)}\right\|^2\leq\frac{2d}{k}\sum_{c=0}^{r+1}\left(1-\frac{k}{2d}\right)^{c}\left\|\mathbf{\Delta}_j^{(r+1-c)}\right\|_2^2
+\end{align}
+\end{lemma}
+\begin{proof}
+\begin{align}
+   \mathbb{E}_{\mathbf{S}_j}\left[\left\|\mathbf{m}_j^{(r+1)}\right\|^2_2\right]&\leq\left(1-\frac{k}{d}\right)\left\|\mathbf{m}_j^{(r)}+\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &\stackrel{(a)}{\leq}\left(1-\frac{k}{d}\right)\left[\left(1+\frac{k}{2d}\right)\left\|\mathbf{m}_j^{(r)}\right\|_2^2+\left(1+\frac{2d}{k}\right)\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\right]\nonumber\\
+  &\leq \left(1-\frac{k}{2d}\right)\mathbb{E}\left[\left\|\mathbf{m}_j^{(r)}\right\|_2^2\right]+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &\leq \left(1-\frac{k}{2d}\right)\left[\left(1-\frac{k}{2d}\right)\mathbb{E}\left[\left\|\mathbf{m}_j^{(r-1)}\right\|_2^2\right]+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r-1)}\right\|_2^2\right]+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &=\left(1-\frac{k}{2d}\right)^2\mathbb{E}\left[\left\|\mathbf{m}_j^{(r-1)}\right\|_2^2\right]+\left(1-\frac{k}{2d}\right)\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r-1)}\right\|_2^2+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &\leq \left(1-\frac{k}{2d}\right)^3\mathbb{E}\left[\left\|\mathbf{m}_j^{(r-2)}\right\|_2^2\right]+\left(1-\frac{k}{2d}\right)^2\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r-2)}\right\|_2^2+\left(1-\frac{k}{2d}\right)\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r-1)}\right\|_2^2+\frac{2d}{k}\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2\nonumber\\
+  &\leq \dots\leq\nonumber\\
+  &\leq \left(1-\frac{k}{2d}\right)^{r+1}\mathbb{E}\left[\left\|\mathbf{m}_j^{(0)}\right\|_2^2\right]+\frac{2d}{k}\sum_{c=0}^{r+1}\left(1-\frac{k}{2d}\right)^{c}\left\|\mathbf{\Delta}_j^{(r+1-c)}\right\|_2^2\nonumber\\
+  &\stackrel{(b)}{=}\frac{2d}{k}\sum_{c=0}^{r+1}\left(1-\frac{k}{2d}\right)^{c}\left\|\mathbf{\Delta}_j^{(r+1-c)}\right\|_2^2
+\end{align}
+\end{proof}
+
+Next, taking expectation with respect to $\xi$ (random mini-batches) we obtain:
+\begin{align}
+    \mathbb{E}_{\xi}\left[\mathbb{E}_{\mathbf{S}_j}\left[\left\|\mathbf{m}_j^{(r+1)}\right\|^2_2\right]\right]\leq \frac{2d}{k}\sum_{c=0}^{r+1}\left(1-\frac{k}{2d}\right)^{c}\mathbb{E}_{\xi}\left[\left\|\mathbf{\Delta}_j^{(r+1-c)}\right\|_2^2 \right]
+\end{align}
+Next step is to bound the term $\mathbb{E}_{\xi}\left[\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2 \right]$:
+\begin{lemma}\label{lmm:bndng-delta}
+\begin{align}
+    \mathbb{E}_{\xi}\left[\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2 \right]\leq\tau\sigma^2\eta^2+\tau\eta^2\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2
+\end{align}
+\end{lemma}
+\begin{proof}
+\begin{align}
+    \mathbb{E}_{\xi}\left[\left\|\mathbf{\Delta}_j^{(r)}\right\|_2^2 \right]&=\mathbb{E}_{\xi}\left[\left\|-\eta\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 \right]\nonumber\\
+    &=\eta^2\mathbb{E}_{\xi}\left[\left\|\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 \right]\nonumber\\
+    &=\eta^2 \text{Var}\left(\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(r,\ell)}\right)+\eta^2\left[\left\|\sum_{\ell=0}^{\tau-1}\mathbb{E}_{\xi}\left[\tilde{\mathbf{g}}_j^{(r,\ell)}\right]\right\|_2^2 \right]\nonumber\\
+    &\stackrel{(a)}{=}\eta^2 \sum_{\ell=0}^{\tau-1}\text{Var}\left(\tilde{\mathbf{g}}_j^{(r,\ell)}\right)+\eta^2\left[\left\|\sum_{\ell=0}^{\tau-1}{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 \right]\nonumber\\
+        &\stackrel{(b)}{\leq}\eta^2 \sum_{\ell=0}^{\tau-1}\sigma^2+\eta^2\left\|\sum_{\ell=0}^{\tau-1}{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 \nonumber\\
+        &\stackrel{(c)}{\leq} \tau\sigma^2\eta^2+\tau\eta^2\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r,\ell)}\right\|_2^2 
+\end{align}
+where (a) is due to independent mini-batch sampling, (b) comes from Assumption~\ref{} and (c) holds because of $\left\|\sum_{i=1}^s\mathbf{b}_i\right\|^2\leq s\sum_{i=1}^s\left\|\mathbf{b}_i\right\|^2$.
+\end{proof}
+Now, mixing Lemmas~\ref{lmm:bndng-delta} and \ref{lmm:bndng-m} we obtain:
+\begin{align}
+    \mathbb{E}_{\xi}\left[\mathbb{E}_{\mathbf{S}_j}\left[\left\|\mathbf{m}_j^{(r)}\right\|^2_2\right]\right]&\leq \frac{2d}{k}\sum_{c=0}^{r}\left(1-\frac{k}{2d}\right)^{c}\left(\tau\sigma^2\eta^2+\tau\eta^2\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r-c,\ell)}\right\|_2^2\right)\nonumber\\
+    &\leq \frac{2d}{k}\sum_{c=0}^{r}\left(\tau\sigma^2\eta^2+\tau\eta^2\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r-c,\ell)}\right\|_2^2\right)\nonumber\\
+    &=\frac{2d}{k}\left((r+1)\tau\sigma^2\eta^2+\tau\eta^2\sum_{c=0}^{r}\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(r-c,\ell)}\right\|_2^2\right)
+\end{align}
+
+From the $L$-smoothness gradient assumption on global objective, by using  $\underline{\mathbf{S}}^{(r)}$ we have:
+\begin{align}
+    f(&{\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\nonumber\\ 
+    &\leq -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\underline{\mathbf{S}}^{(r)}\big\rangle+\frac{\gamma^2 L}{2}\|\underline{\mathbf{S}}^{(r)}\|^2\nonumber\\
+    &=-\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle+\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\big\rangle+\frac{\gamma^2 L}{2}\|\underline{\mathbf{S}}^{(r)}-\tilde{\mathbf{g}}^{(r)}+\tilde{\mathbf{g}}^{(r)}\|^2\nonumber\\
+    &\leq -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle+\gamma\alpha\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2+\frac{\gamma}{\alpha}\left\|\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\right\|^2+{\gamma^2 L}\left\|\underline{\mathbf{S}}^{(r)}-\tilde{\mathbf{g}}^{(r)}\right\|^2+{\gamma^2 L}\left\|\tilde{\mathbf{g}}^{(r)}\right\|^2\nonumber\\
+    &=-\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle+\gamma\alpha\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2+\left(\frac{\gamma}{\alpha}+{\gamma^2 L}\right)\left\|\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\right\|^2+\gamma^2 L\left\|\tilde{\mathbf{g}}^{(r)}\right\|^2\label{eq:wit_exp}
+\end{align}
+Next, we take expectation from both side of Eq.~(\ref{eq:wit_exp}) as follows:
+\begin{align}
+    \mathbb{E}\left[f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\right]\leq \underbrace{-\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}^{(r)}\right]\big\rangle}_{(\mathrm{I})}+\gamma\alpha\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2+\underbrace{\left(\frac{\gamma}{\alpha}+{\gamma^2 L}\right)\mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}-\underline{\mathbf{S}}^{(r)}\right\|^2\right]}_{(\mathrm{II})}+\underbrace{\gamma^2 L\mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}\right\|^2\right]}_{(\mathrm{III})}
+\end{align}
+In the rest of the proof we bound the terms $(\mathrm{I},\mathrm{II},\mathrm{III})$ as follows:
+Now, we start bounding these terms:
+
+\paragraph{Bounding $(\mathrm{I})$:}
+\begin{lemma}
+\begin{align}
+    -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}^{(r)}\right]\big\rangle\leq ...
+\end{align}
+\end{lemma}
+\begin{proof}
+\begin{align}
+    -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}^{(r)}\right]\big\rangle&=-\gamma \left\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_j^{(r)}\right]\right\rangle\nonumber\\
+    &=-\gamma\frac{1}{p}\sum_{j=1}^p \left\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}_j^{(r)}\right]\right\rangle\nonumber\\
+    &=-\gamma\frac{1}{p}\sum_{j=1}^p \left\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\mathbf{g}}_j^{(r)}\right]\right\rangle\nonumber\\
+    &=-\gamma\frac{1}{p}\sum_{j=1}^p \left\langle\nabla f({\boldsymbol{x}}^{(r)}),\mathbb{E}\left[\tilde{\Delta}_j^{(r)}+\mathbf{m}_j^{(r)}\right]\right\rangle\nonumber\\
+\end{align}
+\end{proof}
+
+\todo{To be continued from here...}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Deferentially private algorithm}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Communication-efficient algorithm}
+Here we propose the communication-efficient algorithm:
+
+
+
+
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCH-II}($R$, $\tau, \eta, \gamma$): Communication-efficient Federated Learning via Sketching.  
+}\label{Alg:ce-h}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{w}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{w}^{(r)}=\boldsymbol{w}^{(r-1)}-\gamma{\mathbf{S}}^{(r)}$
+\State $\qquad\quad$ Set $\boldsymbol{w}_j^{(0,r)}=\boldsymbol{w}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $\ell=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{w}^{(\ell,r)}_j,\xi_j^{(\ell,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{w}^{(\ell+1,r)}_{j}=\boldsymbol{w}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(\ell,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $\mathbf{S}_j^{(r)}=\texttt{HEAVYMIX}\left(\boldsymbol{w}_j^{(0,r)}-~{\boldsymbol{w}}_{j}^{(\tau,r)}\right)$ back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}^n\mathbf{S}_j$ and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+%\State $\qquad\qquad$ Sever runs $\underline{\mathbf{S}}^{(r)}= (\mathbf{S}^{(r)})$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{w}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Private and Communication-efficient algorithm}
+
+
+\subsection{Communication-efficient and differential private algorithm based on induced compressor}
+
+\begin{algorithm}[H]
+\caption{\texttt{FEDSKETCH}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching. }\label{Alg:combined}
+\begin{algorithmic}[1]
+\State \textbf{Inputs:} $\boldsymbol{x}^{(0)}$ as an initial  model shared by all local devices, the number of communication rounds $R$, the the number of local updates $\tau$, and global and local learning rates $\gamma$ and $\eta$, respectively
+%\State Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
+\State \textbf{for $r=0, \ldots, R-1$ do}
+\State $\qquad$\textbf{parallel for device $j=1,\ldots,n$ do}:
+\State $\qquad\quad$ Set $\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma{\mathbf{S}}^{(r-1)}$
+\State $\qquad\quad$ Set $\boldsymbol{x}_j^{(0,r)}=\boldsymbol{x}^{(r)}$ 
+\State $\qquad\quad $\textbf{for} $c=0,\ldots,\tau-1$ \textbf{do}
+\State $\qquad\quad\quad$ Sample a mini-batch $\xi_j^{(\ell,r)}$ and compute $\tilde{\mathbf{g}}_{j}^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}^{(\ell,r)}_j,\xi_j^{(c,r)})$
+\State $\qquad\quad\quad$ $\boldsymbol{x}^{(\ell+1,r)}_{j}=\boldsymbol{x}^{(\ell,r)}_j-\eta~ \tilde{\mathbf{g}}_{j}^{(c,r)}$ \label{eq:update-rule-alg}
+\State $\qquad\quad$\textbf{end for}
+\State $\qquad\quad\quad$Device $j$ sends $$\mathbf{g}^{(\text{ind},r)}_j\triangleq \texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)+\mathbf{S}\left[\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)-\texttt{HEAVYMIX}\left(\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right)\right]$$ 
+back to the server.
+\State $\qquad$Server \textbf{computes} 
+\State $\qquad\qquad {\mathbf{S}}^{(r)}=\frac{1}{p}\sum_{j=1}\mathbf{g}^{(\text{ind},r)}_j$ and \textbf{broadcasts} ${\mathbf{S}}^{(r)}$ to all devices.
+%\State $\qquad$Sever chooses a set of devices  $\mathcal{P}_t$ with distribution $q_j$.
+%\State $\qquad\quad$ \textbf{end if}
+\State $\qquad$\textbf{end parallel for}
+\State \textbf{end}
+\State \textbf{Output:} ${\boldsymbol{x}}^{(R-1)}$
+\vspace{- 0.1cm}
+%\State \todo{How about we call the algorithm local SGD with decoupled rates (LSDR) and specialize the analysis for IID and non-IID cases}
+\end{algorithmic}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%removed proofs%%%%%%%%%%%%%%%%%%
+
+
+\begin{theorem}[General non-convex]
+Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
+and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:1.5}, if 
+\begin{align}
+   1\geq {\tau L^2\eta^2\tau}+(\frac{\mu^2 d}{p}+1)\eta\gamma L{\tau}\label{eq:cnd-lrs-h} 
+\end{align}
+with probability at least $1-\delta$, we have:
+\begin{align}\label{eq:thm1-result}
+    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \frac{2\left(f(\boldsymbol{x}^{(0)})-f(\boldsymbol{x}^{*})\right)}{\eta\gamma\tau R}+\frac{L\eta\gamma(\frac{\mu^2 d}{p}+1)}{p}\sigma^2+{L^2\eta^2\tau }\sigma^2
+\end{align}
+\end{theorem}
+
+
+\begin{corollary}[Linear speed up] 
+In Eq.~(\ref{eq:thm1-result}) by letting $\eta\gamma=O\left(\frac{1}{L}\sqrt{\frac{p}{R\tau\left(\frac{\mu^2 d}{p}+1\right)}}\right)$, and for $\gamma\geq p$  convergence rate reduces to:
+\begin{align}
+    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2&\leq O\left(\frac{L\sqrt{\left(\frac{\mu^2 d}{p}+1\right)}\left(f(\boldsymbol{w}^{(0)})-f(\boldsymbol{w}^{*})\right)}{\sqrt{pR\tau}}+\frac{\left(\sqrt{\left(\frac{\mu^2 d}{p}+1\right)}\right)\sigma^2}{\sqrt{pR\tau}}+\frac{p\sigma^2}{R\left(\frac{\mu^2 d}{p}+1\right)\gamma^2}\right)\label{eq:convg-error}
+\end{align}
+Note that according to Eq.~(\ref{eq:convg-error}), if we pick  a fixed constant value for  $\gamma$, in order to achieve an $\epsilon$-accurate solution, $R=O\left(\frac{1}{\epsilon}\right)$ communication cost and $\tau=O\left(\frac{\left(\frac{\mu^2 d}{p}+1\right)}{p\epsilon}\right)$ are necessary.
+
+\end{corollary}
+
+
+
+
+\begin{remark}\label{rmk:cnd-lr}
+
+Condition in Eq.~(\ref{eq:cnd-lrs-h}) can be rewritten as 
+\begin{align}
+    \eta&\leq \frac{-\gamma L\tau\left(\frac{\mu^2 d}{p}+1\right)+\sqrt{\gamma^2 \left(L\tau\left(\frac{\mu^2 d}{p}+1\right)\right)^2+4L^2\tau^2}}{2L^2\tau^2}\nonumber\\
+    &= \frac{-\gamma L\tau\left(\frac{\mu^2 d}{p}+1\right)+L\tau\sqrt{\left(\frac{\mu^2 d}{p}+1\right)^2\gamma^2 +4}}{2L^2\tau^2}\nonumber\\
+    &=\frac{\sqrt{\left(\frac{\mu^2 d}{p}+1\right)^2\gamma^2 +4}-\left(\frac{\mu^2 d}{p}+1\right)\gamma}{2L\tau}\label{eq:lrcnd}
+\end{align}
+So based on Eq.~(\ref{eq:lrcnd}), if we set $\eta=O\left(\frac{1}{L\gamma}\sqrt{\frac{p}{R\tau\left(\frac{\mu^2 d}{p}+1\right)}}\right)$, this implies that:
+\begin{align}
+    R\geq \frac{\tau p}{\left(\frac{\mu^2 d}{p}+1\right)\gamma^2\left(\sqrt{\left(\frac{\mu^2 d}{p}+1\right)^2\gamma^2+4}-\left(\frac{\mu^2 d}{p}+1\right)\gamma\right)^2}\label{eq:iidexact}
+\end{align}
+We note that $\gamma^2\left(\sqrt{\left(\frac{\mu^2 d}{p}+1\right)^2\gamma^2+4}-\left(\frac{\mu^2 d}{p}+1\right)\gamma\right)^2=\Theta(1)\leq 5 $ therefore even for $\gamma\geq p$ we need to have 
+\begin{align}
+    R\geq \frac{\tau p}{5\left(\frac{\mu^2 d}{p}+1\right)}=O\left(\frac{\tau p}{\left(\frac{\mu^2 d}{p}+1\right)}\right)
+\end{align}
+\textbf{Therefore for the choice of $\tau=O\left(\frac{\frac{\mu^2 d}{p}+1}{p\epsilon}\right)$ we need to have $R=O\left(\frac{1}{\epsilon}\right)$.}
+\end{remark}
+
+
+
+\section{Convergence proofs of Algorithm~\ref{Alg:PFLHom}}
+
+Before proceeding to the proof, we would like to highlight that 
+\begin{align}
+    \boldsymbol{x}^{(r)}- ~{\boldsymbol{x}}_{j}^{(\tau,r)}=\eta\sum_{\ell=0}^{\tau-1}\tilde{g}_j^{(\ell,r)}\label{eq:decent-smoothe}
+\end{align}
+
+From the updating rule of Algorithm~\ref{Alg:PFLHom} we have
+
+
+\begin{align}
+     {\boldsymbol{x}}^{(r+1)}=\boldsymbol{x}^{(r)}-\gamma\underline{\mathbf{S}}^{(r)}&=\boldsymbol{x}^{(r)}-\gamma\left[\frac{1}{p}\sum_{j=1}^n\mathbf{S}\left[\boldsymbol{x}_j^{(0,r)}-~{\boldsymbol{x}}_{j}^{(\tau,r)}\right]\right]\nonumber\\
+     &=\boldsymbol{x}^{(r)}-\gamma\left[\frac{1}{p}\sum_{j=1}^n\mathbf{S}\left[\eta\sum_{\ell=0}^{\tau-1}\tilde{g}_j^{(\ell,r)}\right]\right]\nonumber\\
+     &\stackrel{(a)}{=}\boldsymbol{x}^{(r)}-\gamma\left[\eta\frac{1}{p}\sum_{j=1}^n\mathbf{S}\left[\sum_{\ell=0}^{\tau-1}\tilde{g}_j^{(\ell,r)}\right]\right]\label{eq:update-rule-dec}
+\end{align}
+where (a) comes from linearity of sketches.
+
+
+In what follows, we use the following notation to denote the stochastic gradient used to update the global model at $r$th communication round $$\tilde{\mathbf{g}}_{\mathbf{S}}^{(r)}=\frac{\eta}{p}\sum_{j=1}^{p}\mathbf{S}\left[\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(c,r)}\right].$$ 
+and notice that $\boldsymbol{x}^{(r)} = \boldsymbol{x}^{(r-1)} - \gamma \tilde{\mathbf{g}}_{\mathbf{S}}^{(r)}$.
+
+
+Then using the Assumption~\ref{} we have:
+\begin{align}
+  \mathbb{E}_{\mathbf{S}}\left[\tilde{\mathbf{g}}_{\mathbf{S}}^{(r)}\right]=\frac{1}{p}\sum_{j=1}\left[-\eta\mathbb{E}_{\mathbf{S}}\left[ \mathbf{S}\left[\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(c,r)}\right]\right]\right]=\frac{1}{p}\sum_{j=1}\left(-\eta\left[\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(c,r)}\right]\right)\triangleq \tilde{\mathbf{g}}^{(r)}\label{eq:unbiased_gd} 
+\end{align}
+
+The proof of theorem relies on the following key lemmas. For ease of exposition, we defer the proof of lemmas to latter section and only focus on proving the main theorem. 
+
+\begin{lemma}\label{lemma:tasbih1-iid}
+Under Assumption~\ref{Assu:2}, we have the following bound: 
+\begin{align}
+\mathbb{E}_{\mathbf{S},\xi}\Big[\|\tilde{\mathbf{g}}_\mathbf{S}^{(r)}\|^2\Big]&=\mathbb{E}_{\xi}\mathbb{E}_{\mathbf{S}}\Big[\|\tilde{\mathbf{g}}_\mathbf{S}^{(r)}\|^2\Big]\nonumber\\
+&\leq \tau(\frac{\mu^2 d}{p}+1)\frac{1}{p}\sum_{j=1}^p\left[\sum_{c=0}^{\tau-1}\|\mathbf{g}_j^{(c,r)}\|^2+\sigma^2\right] \label{eq:lemma1}
+\end{align}
+\end{lemma}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{lemma}\label{lemma:cross-inner-bound-unbiased}
+  Under Assumptions \ref{Assu:1}, and according to the \texttt{FLDL} Algorithm the expected inner product between stochastic gradient and full batch gradient can be bounded with:
+
+\begin{align}
+    - \mathbb{E}\left[\left\langle\nabla f({\boldsymbol{x}}^{(r)}),{{\tilde{\mathbf{g}}}^{(r)}}\right\rangle\right]&\leq \frac{1}{2}\eta\frac{1}{p}\sum_{j=1}^p\sum_{c=0}^{\tau-1}\left[-\|\nabla f({\boldsymbol{x}}^{(r)})\|_2^2-\|\nabla{f}(\boldsymbol{x}_j^{(c,r)})\|_2^2+L^2\|{\boldsymbol{x}}^{(r)}-\boldsymbol{x}_j^{(c,r)}\|_2^2\right]\label{eq:lemma3-thm2}
+\end{align}
+\todo{fix this!}
+\end{lemma}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The following lemmas bounds the distance of local solutions from global solution at $r$th communication round.
+\begin{lemma}\label{lemma:dif-under-pl-sgd-iid}
+Under Assumptions~\ref{Assu:2} we have:
+\begin{align}
+      \mathbb{E}\left[\|{\boldsymbol{x}}^{(r)}-\boldsymbol{x}_j^{(\ell,r)}\|_2^2\right]&\leq \eta^2\sum_{\ell=0}^{\tau-1}\left[\tau\left\|{\mathbf{g}}_j^{(\ell,r)}\right\|_2^2+\tau\sigma^2\right]\nonumber\\
+      &=\eta^2\tau\sum_{\ell=0}^{\tau-1}\left\|{\mathbf{g}}_j^{(c,r)}\right\|_2^2+\eta^2\tau\sigma^2
+\end{align}
+\todo{fix this!}
+\end{lemma}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{proof}(of Theorem~\ref{thm:lsgwd-lr})
+From the $L$-smoothness gradient assumption on global objective, by using  $\tilde{\mathbf{g}}^{(r)}$ in inequality (\ref{eq:decent-smoothe}) we have:
+\begin{align}
+    f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\leq -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle+\frac{\gamma^2 L}{2}\|\tilde{\mathbf{g}}^{(r)}\|^2\label{eq:Lipschitz-c1}
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+By taking expectation on both sides of above inequality over sampling, we get:
+\begin{align}
+    \mathbb{E}\left[\mathbb{E}_\mathbf{S}\Big[f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\Big]\right]&\leq -\gamma\mathbb{E}\left[\mathbb{E}_\mathbf{S}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}_\mathbf{S}^{(r)}\big\rangle\right]\right]+\frac{\gamma^2 L}{2}\mathbb{E}\left[\mathbb{E}_\mathbf{S}\|\tilde{\mathbf{g}}_\mathbf{S}^{(r)}\|^2\right]\nonumber\\
+    &\stackrel{(a)}{=}-\gamma\underbrace{\mathbb{E}\left[\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle\right]\right]}_{(\mathrm{I})}+\frac{\gamma^2 L}{2}\underbrace{\mathbb{E}\left[\mathbb{E}_\mathbf{S}\Big[\|\tilde{\mathbf{g}}_\mathbf{S}^{(r)}\|^2\Big]\right]}_{\mathrm{(II)}}\label{eq:Lipschitz-c-gd}
+\end{align}
+We proceed to use Lemma~\ref{lemma:tasbih1-iid}, Lemma~\ref{lemma:cross-inner-bound-unbiased}, and Lemma~\ref{lemma:dif-under-pl-sgd-iid}, to bound  terms $(\mathrm{I})$ and $(\mathrm{II})$ in right hand side of (\ref{eq:Lipschitz-c-gd}), which gives
+\begin{align}
+     \mathbb{E}\left[\mathbb{E}_\mathbf{S}\Big[f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\Big]\right]&\leq \gamma\frac{1}{2}\eta\frac{1}{p}\sum_{j=1}^p\sum_{c=0}^{\tau-1}\left[-\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2-\left\|\mathbf{g}_j^{(\ell,r)}\right\|_2^2+L^2\eta^2\sum_{\ell=0}^{\tau-1}\left[\tau\left\|{\mathbf{g}}_j^{(\ell,r)}\right\|_2^2+\sigma^2\right]\right]\nonumber\\
+     &\qquad+\frac{(\frac{\mu d^2}{p}+1)\gamma^2 L}{2}\left[\frac{\eta^2\tau}{p}\sum_{j=1}^p\sum_{\ell=0}^{\tau-1}\|\mathbf{g}^{(\ell,r)}_{j}\|^2+\frac{\tau\eta^2 \sigma^2}{p}\right]\nonumber\\
+     &\stackrel{\text{\ding{192}}}{\leq}\frac{\gamma\eta}{2p}\sum_{j=1}^p\sum_{\ell=0}^{\tau-1}\left[-\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2-\left\|\mathbf{g}_j^{(\ell,r)}\right\|_2^2+\tau L^2\eta^2\left[\tau\left\|{\mathbf{g}}_j^{(c,r)}\right\|_2^2+\sigma^2\right]\right]\nonumber\\
+     &\qquad+\frac{\gamma^2 L(\frac{\mu ^2d}{p}+1)}{2}\left[\frac{\eta^2\tau}{p}\sum_{j=1}^p\sum_{\ell=0}^{\tau-1}\|\mathbf{g}^{(c,r)}_{j}\|^2+\frac{\tau\eta^2 \sigma^2}{p}\right]\nonumber\\
+     &=-\eta\gamma\frac{\tau}{2}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\nonumber\\
+     &-\left(1-{\tau L^2\eta^2\tau}-{(\frac{\mu^2 d}{p}+1)\eta\gamma L}{\tau}\right)\frac{\eta\gamma}{2p}\sum_{j=1}^p\sum_{\ell=0}^{\tau-1}\|\mathbf{g}^{(\ell,r)}_{j}\|^2+\frac{L\tau\gamma\eta^2 }{2p}\left(pL\tau\eta+\gamma(\frac{\mu^2d}{p}+1)\right)\sigma^2\nonumber\\
+     &\stackrel{\text{\ding{193}}}{\leq} -\eta\gamma\frac{\tau}{2}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2+\frac{L\tau\gamma\eta^2 }{2p}\left(pL\tau\eta+\gamma(\frac{\mu^2d}{p}+1)\right)\sigma^2\label{eq:finalll}
+\end{align}
+
+where in \ding{192} we incorporate outer summation $\sum_{c=0}^{\tau-1}$, \ding{193} follows from condition 
+\begin{align}
+   1\geq {\tau L^2\eta^2\tau}+(\frac{\mu^2 d}{p}+1)\eta\gamma L{\tau}. 
+\end{align}
+Summing up for all $R$ communication rounds and  rearranging the terms gives:
+\begin{align}
+    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \frac{2\left(f(\boldsymbol{x}^{(0)})-f(\boldsymbol{x}^{*})\right)}{\eta\gamma\tau R}+\frac{L\eta\gamma{(\frac{\mu^2 d}{p}+1)}}{p}\sigma^2+{L^2\eta^2\tau }\sigma^2
+\end{align}
+From above inequality, is it easy to see that in order to achieve a linear speed up, we need to have $\eta\gamma=O\left(\frac{\sqrt{p}}{\sqrt{R \tau}}\right)=O\left(\frac{\sqrt{p}}{\sqrt{T}}\right)$
+
+\todo{fix this!}
+\end{proof}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Proof of Lemmas}
+\subsection{Proof of Lemma~\ref{}}
+\begin{align}
+\mathbb{E}_{{\color{blue}\xi^{(r)}|\boldsymbol{x}^{(r)}}}\mathbb{E}_{{\color{blue}\mathbf{S}}}\Big[\|\frac{1}{p}\sum_{j=1}^p \mathbf{S}\left(\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}^{(c,r)}_j\right)\|^2\Big]&{=} \mathbb{E}_{{\color{blue}\xi}}\left[\mathbb{E}_{{\color{blue}\mathbf{S}}}\Big[\|\frac{1}{p}\sum_{j=1}^p\underbrace{\mathbf{S}\left(\overbrace{\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}^{(c,r)}_j}^{\tilde{\mathbf{g}}_j^{(r)}}\right)}_{\tilde{\mathbf{g}}_{\mathbf{S}j}^{(r)}}\|^2\Big]\right]\nonumber\\
+&\stackrel{(a)}{=}\mathbb{E}_{{\color{blue}\xi}}\left[\mathbb{E}_{{\color{blue}\mathbf{S}}}\left[\left[\|\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_{\mathbf{S}j}^{(r)}-\frac{1}{p}\sum_{j=1}^p\mathbb{E}_{{\color{blue}\mathbf{S}}}\left[\tilde{\mathbf{g}}_{\mathbf{S}j}^{(r)}\right]\|^2\right]+\|\mathbb{E}_{{\color{blue}\mathbf{S}}}\left[\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_{\mathbf{S}j}^{(r)}\right]\|^2\right]\right]\nonumber\\
+&\stackrel{(b)}{=}\mathbb{E}_{{\color{blue}\xi}}\left[\mathbb{E}_{{\color{blue}\mathbf{S}}}\left[\frac{1}{p^2}\sum_{j=1}^p\left[\left\|\tilde{\mathbf{g}}_{\mathbf{S}j}^{(r)}-\tilde{\mathbf{g}}^{(r)}_j\right\|^2\right]\right]+\left\|\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_j^{(r)}\right\|^2\right]\nonumber\\
+&\stackrel{(c)}{\leq}\mathbb{E}_{{\color{blue}\xi}}\left[\frac{1}{p}\sum_{j=1}^p\left[\frac{\mu^2 d}{p}\left\|\tilde{\mathbf{g}}_j^{(r)}\right\|^2+\left\|\tilde{\mathbf{g}}_j^{(r)}\right\|^2\right]\right]\nonumber\\
+&=(\frac{\mu^2 d}{p}+1)\frac{1}{p}\sum_{j=1}^p\mathbb{E}_{{\color{blue}\xi}}\left[\left\|\tilde{\mathbf{g}}_j^{(r)}\right\|^2\right]\nonumber\\
+&=(\frac{\mu^2 d}{p}+1)\frac{1}{p}\sum_{j=1}^p\left[\mathbb{E}_{{\color{blue}\xi}}\left[\left\|\tilde{\mathbf{g}}_j^{(r)}-\mathbb{E}_{{\color{blue}\xi}}\left[\tilde{\mathbf{g}}_j^{(r)}\right]\right\|^2\right]+\left\|\mathbb{E}_{{\color{blue}\xi}}\left[\tilde{\mathbf{g}}_j^{(r)}\right]\right\|^2\right]\nonumber\\
+&=(\frac{\mu^2 d}{p}+1)\frac{1}{p}\sum_{j=1}^p\left[\mathbb{E}_{{\color{blue}\xi}}\left[\left\|\tilde{\mathbf{g}}_j^{(r)}-{\mathbf{g}}_j^{(r)}\right\|^2\right]+\left\|{\mathbf{g}}_j^{(r)}\right\|^2\right]\label{eq:lemma1}
+\end{align}
+where (a) holds due to $\mathbb{E}\left[\left\|\mathbf{x}\right\|^2\right]=\text{Var}[\mathbf{x}]+\left\|\mathbb{E}[\mathbf{x}]\right\|^2$, (b) is due to $\mathbb{E}_{{\color{blue}\mathbf{S}}}\left[\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_{\mathbf{S}j}^{(r)}\right]=\frac{1}{p}\sum_{j=1}^p\tilde{\mathbf{g}}_{j}^{(r)}$ and (c) follows from Assumption~\ref{Assu:09}.
+
+
+
+The following lemma is a middle step in proving Lemma~\ref{lemma:tasbih1-iid}.
+
+\begin{lemma}\label{lemma:variance-bound-for-prrof1}
+Under Assumptions \ref{Assu:2}, we have the following variance bound from the averaged stochastic gradient:
+\begin{align}
+    \mathbb{E}_{\xi}\left[\Big[\|{\tilde{\mathbf{g}}_j^{(r)}}-{\mathbf{g}_j^{(r)}}\|^2\Big]\right]\leq \tau \sigma^2
+\end{align}
+\end{lemma}
+%%%%%%%
+
+\begin {proof}
+We have
+\begin{align}
+    \mathbb{E}\left[\left\|{\tilde{\mathbf{g}}_j^{(t)}}-{\mathbf{g}_j^{(t)}}\right\|^2\right]&\stackrel{(a)}{=}\mathbb{E}\left[\left\|\sum_{c=0}^{\tau-1}\left[\tilde{\mathbf{g}}_j^{(c,r)}-\mathbf{g}_j^{(c,r)}\right]\right\|^2\right]\nonumber\\
+    &{=}\text{Var}\left(\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(c,r)}\right)\nonumber\\
+    &\stackrel{(b)}{=}\sum_{c=0}^{\tau-1}\text{Var}\left(\tilde{\mathbf{g}}_j^{(c,r)}\right)\nonumber\\
+    &{=}\sum_{c=0}^{\tau-1}\mathbb{E}\left[\left\|\tilde{\mathbf{g}}_j^{(c,r)}-\mathbf{g}_j^{(c,r)}\right\|^2\right]\nonumber\\
+    &\stackrel{(c)}{\leq}\tau\sigma^2\label{eq:var_b_mid}
+    \end{align}
+where in (a) we use the definition of ${\tilde{\mathbf{g}}}^t$ and ${{\mathbf{g}}}^t$, in (b) we use the fact that mini-batches are chosen in i.i.d. manner at each local machine, and (c) immediately follows from Assumptions~\ref{Assu:2}.
+\end{proof}
+%%%%%%%%%%%%%%%%%%%%%
+Equipped with Lemma~\ref{lemma:variance-bound-for-prrof1}, we now turn to proving Lemma~\ref{lemma:tasbih1-iid}. First we note that i.i.d. data distribution implies $\mathbb{E}[{\tilde{\mathbf{g}}}_j^{(c,r)}]=\mathbf{g}_j^{(c,r)}=\nabla{f}(\boldsymbol{x}_j^{(c,r)})$, from which we have
+\begin{align}
+\left\|{\mathbf{g}}_j^{(r)}\right\|^2&=\|\sum_{c=0}^{\tau-1}\mathbf{g}_j^{(c,r)}\|^2\nonumber\\
+&\stackrel{(a)}{\leq} \tau\sum_{c=0}^{\tau-1}\|\mathbf{g}_j^{(c,r)}\|^2\label{eq:mid-bounding-absg}
+\end{align} 
+where (a) is due to $\left\|\sum_{j=1}^n\mathbf{a}_i\right\|^2\leq n\sum_{j=1}^n\left\|\mathbf{a}_i\right\|^2$, which leads to the following bound:
+\begin{align}
+    \mathbb{E}_{\xi^{(r)}|\boldsymbol{x}^{(r)}}\mathbb{E}_{\mathbf{S}}\Big[\|\frac{1}{p}\sum_{j=1}^p \mathbf{S}\left(\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}^{(c,r)}_j\right)\|^2\Big]\leq\tau(\frac{\mu d}{p}+1)\frac{1}{p}\sum_{j=1}^p\left[\sum_{c=0}^{\tau-1}\|\mathbf{g}_j^{(c,r)}\|^2+\sigma^2\right] 
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Proof of Lemma~\ref{}}
+We have:
+
+\begin{align}
+    -\mathbb{E}_{\{{\xi}^{(t)}_{1}, \ldots, {\xi}^{(t)}_{p}|{\boldsymbol{x}}^{(t)}_{1},\ldots,  {\boldsymbol{x}}^{(t)}_{p}\}} &\mathbb{E}_\mathbf{S}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}_\mathbf{S}^{(r)}\big\rangle\right]\nonumber\\
+    &=-\mathbb{E}_{\{{\xi}^{(t)}_{1}, \ldots, {\xi}^{(t)}_{p}|{\boldsymbol{x}}^{(t)}_{1},\ldots,  {\boldsymbol{x}}^{(t)}_{p}\}}\left[\left\langle \nabla f({\boldsymbol{x}}^{(r)}),\eta\frac{1}{p}\sum_{j=1}^p\sum_{\ell=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(\ell,r)}\right\rangle\right]\nonumber\\
+    &=-\left\langle \nabla f({\boldsymbol{x}}^{(r)}),\eta\frac{1}{p}\sum_{j=1}^p\sum_{\ell=0}^{\tau-1}\mathbb{E}\left[\tilde{\mathbf{g}}_j^{(c,r)}\right]\right\rangle\nonumber\\
+        &=-\eta\sum_{\ell=0}^{\tau-1}\frac{1}{p}\sum_{j=1}^p\left\langle \nabla f({\boldsymbol{x}}^{(r)}),{\mathbf{g}}_j^{(\ell,r)}\right\rangle\nonumber\\ 
+     &\stackrel{\text{\ding{192}}}{=}\frac{1}{2}\eta\sum_{\ell=0}^{\tau-1}\frac{1}{p}\sum_{j=1}^p\left[-\|\nabla f({\boldsymbol{x}}^{(r)})\|_2^2-\|\nabla{f}_j(\boldsymbol{x}_j^{(\ell,r)})\|_2^2+\|\nabla f({\boldsymbol{x}}^{(r)})-\nabla{f}(\boldsymbol{x}_j^{(\ell,r)})\|_2^2\right]\nonumber\\
+    &\stackrel{\text{\ding{193}}}{\leq}\frac{1}{2}\eta\sum_{\ell=0}^{\tau-1}\frac{1}{p}\sum_{j=1}^p\left[-\|\nabla f({\boldsymbol{x}}^{(r)})\|_2^2-\|\nabla{f}(\boldsymbol{x}_j^{(\ell,r)})\|_2^2+L^2\|{\boldsymbol{x}}^{(r)}-\boldsymbol{x}_j^{(\ell,r)}\|_2^2\right]
+   \label{eq:bounding-cross-no-redundancy}
+\end{align}
+
+where \ding{192} is due to $2\langle \mathbf{a},\mathbf{b}\rangle=\|\mathbf{a}\|^2+\|\mathbf{b}\|^2-\|\mathbf{a}-\mathbf{b}\|^2$, and \ding{193} follows from Assumption \ref{Assu:1}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Proof of Lemma~\ref{}}
+
+\begin{align}
+ \mathbb{E}\left[\left\|\boldsymbol{x}^{(r)}-\boldsymbol{x}_j^{(c,r)}\right\|_2^2\right]&=\mathbb{E}\left[\left\|\boldsymbol{x}^{(r)}-\left(\boldsymbol{x}^{(r)}-\eta\sum_{k=0}^{c}\tilde{\mathbf{g}}_j^{(k,r)}\right)\right\|_2^2\right]\nonumber\\
+ &=\mathbb{E}\left[\left\|\eta\sum_{k=0}^{c}\tilde{\mathbf{g}}_j^{(k,r)}\right\|_2^2\right]\nonumber\\
+ &\stackrel{\text{\ding{192}}}{=}\mathbb{E}\left[\left\|\eta\sum_{k=0}^{c}\left(\tilde{\mathbf{g}}_j^{(k,r)}-{\mathbf{g}}_j^{(k,r)}\right)\right\|_2^2\right]+\left[\left\|\eta\sum_{k=0}^{c}{\mathbf{g}}_j^{(k,r)}\right\|_2^2\right]\nonumber\\
+ &\stackrel{\text{\ding{193}}}{\leq}\eta^2c\sum_{k=0}^{c}\mathbb{E}\left[\left\|\left(\tilde{\mathbf{g}}_j^{(k,r)}-{\mathbf{g}}_j^{(k,r)}\right)\right\|_2^2\right]+\left(c+1\right)\eta^2\sum_{k=0}^{c}\left[\left\|{\mathbf{g}}_j^{(k,r)}\right\|_2^2\right]\nonumber\\
+  &{\leq}\eta^2\tau\sum_{k=0}^{\tau-1}\mathbb{E}\left[\left\|\left(\tilde{\mathbf{g}}_j^{(k,r)}-{\mathbf{g}}_j^{(k,r)}\right)\right\|_2^2\right]+\tau\eta^2\sum_{k=0}^{\tau-1}\left[\left\|{\mathbf{g}}_j^{(k,r)}\right\|_2^2\right]\nonumber\\
+  &\stackrel{\text{\ding{194}}}{\leq}\tau\eta^2\sum_{k=0}^{\tau-1}\sigma^2+\tau\eta^2\sum_{k=0}^{\tau-1}\left[\left\|{\mathbf{g}}_j^{(k,r)}\right\|_2^2\right]\nonumber\\
+ &{=}\eta^2\sum_{k=0}^{\tau-1}\left[\tau\left\|{\mathbf{g}}_j^{(k,r)}\right\|_2^2+\tau\sigma^2\right]
+\end{align}
+
+where \ding{192} comes from $\mathbb{E}\left[\mathbf{x}^2\right]=\text{Var}\left[\mathbf{x}\right]+\left[\mathbb{E}\left[\mathbf{x}\right]\right]^2$ and \ding{193} holds because $\text{Var}\left(\sum_{j=1}^n\mathbf{x}_j\right)=\sum_{j=1}^n\text{Var}\left(\mathbf{x}_j\right)$ for i.i.d. vectors $\mathbf{x}_i$ (and i.i.d. assumption comes from i.i.d. sampling), and finally \ding{194} follows from Assumption~\ref{Assu:2}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Proof of Theorem~\ref{thm:pl-iid}}
+From Eq.~(\ref{eq:finalll}) under condition:
+\begin{align}
+       1\geq {\tau L^2\eta^2\tau}+{(\frac{\mu^2d}{p}+1)\eta\gamma L}{\tau} 
+\end{align}
+we obtain:
+\begin{align}
+         \mathbb{E}\Big[f({\boldsymbol{w}}^{(r+1)})-f({\boldsymbol{w}}^{(r)})\Big]&\leq -\eta\gamma\frac{\tau}{2}\left\|\nabla f({\boldsymbol{w}}^{(r)})\right\|_2^2+\frac{L\tau\gamma\eta^2 }{2p}\left(pL\tau\eta+\gamma(\frac{\mu^2d}{p}+1)\right)\sigma^2\nonumber\\
+         &\leq -\eta\mu\gamma{\tau} \left(f({\boldsymbol{w}}^{(r)})-f({\boldsymbol{w}}^{(r)})\right)+\frac{L\tau\gamma\eta^2 }{2p}\left(pL\tau\eta+\gamma(\frac{\mu^2d}{p}+1)\right)\sigma^2 
+\end{align}
+which leads to the following bound:
+\begin{align}
+            \mathbb{E}\Big[f({\boldsymbol{w}}^{(r+1)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq \left(1-\eta\mu\gamma{\tau}\right) \Big[f({\boldsymbol{w}}^{(r)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{L\tau\gamma\eta^2 }{2p}\left(pL\tau\eta+(\frac{\mu^2d}{p}+1)\gamma\right)\sigma^2
+\end{align}
+which leads to the following bound by setting $\Delta=1-\eta\mu\gamma{\tau}$:
+\begin{align}
+            \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq \Delta^R \Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{1-\Delta^R}{1-\Delta}\frac{L\tau\gamma\eta^2 }{2p}\left(pL\tau\eta+(\frac{\mu^2d}{p}+1)\gamma\right)\sigma^2\nonumber\\
+            &\leq \Delta^R \Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{1}{1-\Delta}\frac{L\tau\gamma\eta^2 }{2p}\left(pL\tau\eta+(\frac{\mu^2d}{p}+1)\gamma\right)\sigma^2\nonumber\\
+            &={\left(1-\eta\mu\gamma{\tau}\right)}^R \Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{1}{\eta\mu\gamma{\tau}}\frac{L\tau\gamma\eta^2 }{2p}\left(pL\tau\eta+(\frac{\mu^2d}{p}+1)\gamma\right)\sigma^2\nonumber\\
+            &\leq \exp{-\left(\eta\mu\gamma{\tau} R\right)}\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\left(\frac{L\kappa\eta^2 \tau}{2}+\frac{\kappa\eta }{2p}(\frac{\mu^2d}{p}+1)\gamma\right)\sigma^2
+\end{align}
+Then for the choice of $\eta=\frac{1}{L\gamma (\frac{\mu^2d}{p}+1) \tau}$ we obtain:
+\begin{align}
+                \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq \exp{-\left(\frac{ R}{\kappa (\frac{\mu^2d}{p}+1)}\right)}\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\left(\frac{1}{2\gamma^2 {(\frac{\mu^2d}{p}+1)}^2 }+\frac{1}{2p}\right)\frac{\sigma^2}{\mu\tau}
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The following Lemma will be useful in our proof. 
+\begin{lemma}
+If you define $Q\triangleq3\sqrt[3]{\frac{ad^2}{2}}\sqrt{1+\sqrt{1+\frac{256 a}{27e^3d^4}}}$ and $$x\leq -\frac{1}{2}\sqrt{\frac{1}{3a}\left(Q-\frac{12a}{eQ}\right)}+\frac{1}{2}\sqrt{\frac{4}{eQ}-\frac{Q}{3a}+\frac{2d\sqrt{3}}{\sqrt{a}\sqrt{Q-\frac{12a}{e Q}}}}$$ then for positive constants $a,d,c\geq 0$, we have:
+\begin{align}
+    ax^{4}+dx-\frac{1}{e}\leq 0
+\end{align}
+\end{lemma}
+\begin{proof}
+We use the results in \cite{wiki:xxx} with $b=c=0$ and $p=0, q=\frac{d}{a}$. In this case, the only real valued root is 
+\begin{align}
+x&=-S+\frac{1}{2}\sqrt{-4S^2+\frac{d}{aS}},\:\text{and}\:S=\frac{1}{2}\sqrt{\frac{1}{3a}\left(Q-\frac{12a}{eQ}\right)}\nonumber\\
+\implies x&=-\frac{1}{2}\sqrt{\frac{1}{3a}\left(Q-\frac{12a}{eQ}\right)}+\frac{1}{2}\sqrt{\frac{4}{eQ}-\frac{Q}{3a}+\frac{2d\sqrt{3}}{\sqrt{a}\sqrt{Q-\frac{12a}{e Q}}}} \nonumber\\
+Q&=\sqrt[3]{\frac{{27a}{d^2}+\sqrt{\left({27a}{d^2}\right)^2+4\left(\frac{12a}{e}\right)^3}}{2}}=3\sqrt[3]{\frac{ad^2}{2}}\sqrt{1+\sqrt{1+\frac{256 a}{27e^3d^4}}}
+\end{align} 
+Therefore, we have with $Q=3\sqrt[3]{\frac{ad^2}{2}}\sqrt{1+\sqrt{1+\frac{256 a}{27e^3d^4}}}$:
+\begin{align}
+    x\leq -\frac{1}{2}\sqrt{\frac{1}{3a}\left(Q-\frac{12a}{eQ}\right)}+\frac{1}{2}\sqrt{\frac{4}{eQ}-\frac{Q}{3a}+\frac{2d\sqrt{3}}{\sqrt{a}\sqrt{Q-\frac{12a}{e Q}}}}
+\end{align}
+\end{proof}
+
+Next, consider the following condition in~\cite{haddadpour2020federated}: 
+\begin{align}
+    \left(10\gamma^2L^4\tau^4\right)\eta^4+\left(L\gamma\tau\right)\eta-\frac{1}{q+1}\leq 0
+\end{align}
+where $a=10\gamma^2L^4\tau^4, d=L\gamma\tau$ and $e=q+1$, in this case 
+\begin{align}
+    Q=3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{4}{3}} L^2\tau^2\underbrace{\sqrt{1+\sqrt{1+\frac{2560}{27\gamma^2(q+1)^3}}}}_{\triangleq C}=3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{4}{3}} L^2\tau^2 C
+\end{align}
+
+Then we have:
+\begin{align}
+    x&\leq -\frac{1}{2}\sqrt{\frac{1}{3a}\left(Q-\frac{12a}{eQ}\right)}+\frac{1}{2}\sqrt{\frac{4}{eQ}-\frac{Q}{3a}+\frac{2d\sqrt{3}}{\sqrt{a}\sqrt{Q-\frac{12a}{e Q}}}}\nonumber\\
+    &=-\frac{1}{2}\sqrt{\frac{3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{4}{3}} L^2\tau^2 C}{30\gamma^2L^4\tau^4}-\frac{4}{(q+1)3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{4}{3}} L^2\tau^2 C}}\nonumber\\
+    &\quad+\frac{1}{2}\sqrt{\frac{4}{(q+1)3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{4}{3}} L^2\tau^2 C}-\frac{3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{4}{3}} L^2\tau^2 C}{30\gamma^2L^4\tau^4}+\frac{2L\gamma\tau\sqrt{3}}{\sqrt{10\gamma^2L^4\tau^4}\sqrt{3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{4}{3}} L^2\tau^2 C-\frac{120 \gamma^2L^4\tau^4}{(q+1) 3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{4}{3}} L^2\tau^2 C}}}}\nonumber\\
+    &=\frac{1}{2L\tau\gamma^{\frac{1}{3}}}\Big(\sqrt{\frac{4}{(q+1)3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{2}{3}} C}-\frac{\sqrt[3]{\frac{10}{2}} C}{10}+\frac{2\sqrt{3}}{\sqrt{10}\sqrt{3\sqrt[3]{\frac{10}{2}} C-\frac{40 }{(q+1)\gamma^{\frac{2}{3}} \sqrt[3]{\frac{10}{2}} C}}}}-\sqrt{\frac{\sqrt[3]{\frac{10}{2}} C}{10}-\frac{4}{(q+1)3\sqrt[3]{\frac{10}{2}}\gamma^{\frac{2}{3}} C}}\Big)\nonumber\\
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Convergence of \texttt{FEDSKETCH} in data homogeneous setting.} 
+
+We note that the main issue with Assumption~\ref{} is that since $d\neq 0$, you can not improve the convergence analysis. For this purpose, we propose Algorithm~\ref{}, where the proposed algorithm is not differentially private.
+
+In this case, we use a different assumption as follows:
+
+\begin{remark}
+Main distinction of Assumption~\ref{} from~\ref{} is that first we do not need unbiased estimation of compression. Additionally, unlike Assumption~\ref{}, if you let $k=d$, we have $\boldsymbol{x}=\text{Comp}_{k=d}(\boldsymbol{x})$.    
+\end{remark}
+
+
+
+
+We note that Algorithm~\ref{} satisfies this Assumption~\ref{} as shown in ~\cite{ivkin2019communication}.
+
+\begin{theorem}[General non-convex]
+Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
+and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:2.5}, if 
+\begin{align}
+       L^2\eta^2\tau^2+mL\tau\eta\left(1-\frac{k}{d}\right)+2\gamma L\eta\tau\left(2-\frac{k}{d}\right)-1\leq 0,\:\eta> \frac{1}{mL\tau},\label{eq:cnd-lrs-h-ii} 
+\end{align}
+with probability at least $1-\delta$, we have:
+\begin{align}
+    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \frac{2 \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{R\tau \gamma \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{2\eta^2\gamma L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}}{ \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{\eta^3L^2\tau}{\left({\eta}-\frac{1}{\tau mL}\right)}\sigma^2 
+\end{align}
+\end{theorem}
+\begin{remark}[$k=d$]
+\todo{TBA...}
+\end{remark}
+
+\begin{corollary}[Learning rate range]
+Condition in Eq.~(\ref{}) can further simplified as 
+\begin{align}
+    \frac{1}{mL\tau}<\eta\leq \frac{-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}}{2L\tau}
+\end{align}
+We note that $m$ is a hyperparameter that we choose to pick the feasible range for learning rate. Now, if you set $\eta=\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}}$ which implies the following:
+\begin{itemize}
+    \item  $\frac{1}{mL\tau}<\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}} \implies R <\frac{m^2 p \tau}{\gamma^2\left(2-\frac{k}{d}\right)}$
+    \item$\frac{1}{\gamma L}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}}\leq \frac{-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}}{2L\tau} \implies R\geq \frac{p\tau}{\gamma^2\left(2-\frac{k}{d}\right)\left(-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}\right)^2}$
+\end{itemize}
+Therefore, we have the following range for the choice of $R$:
+\begin{align}
+    \frac{p\tau}{\gamma^2\left(2-\frac{k}{d}\right)\left(-\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)+\sqrt{\left(m-\frac{mk}{d}+4\gamma-\frac{2\gamma k}{d}\right)^2+4}\right)^2}\leq R<\frac{m^2 p \tau}{\gamma^2\left(2-\frac{k}{d}\right)}
+\end{align}
+\end{corollary}
+\begin{corollary}
+Based on Corollary~\ref{}, if we choose $\eta=\frac{1}{\gamma}\sqrt{\frac{p}{R\tau\left(2-\frac{k}{d}\right)}}=\frac{n}{mL\tau}$ which also  implies $R=\frac{m^2p\tau}{\gamma^2n^2\left(2-\frac{k}{d}\right)}$ with $1<n<m$, then we have:
+\begin{align}
+        \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2&\leq \frac{2 \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{R\tau \gamma \left(\frac{n-1}{m\tau L}\right)}+\frac{2n^2\gamma L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}}{m^2\tau^2L^2 \left(\frac{n-1}{m\tau L}\right)}+\frac{n^3L^2\tau}{m^3\tau^3L^3\left(\frac{n-1}{m\tau L}\right)}\sigma^2\nonumber\\
+        &=\frac{2mL \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{\left(n-1\right)R \gamma }+\frac{2n^2\gamma \left(2-\frac{k}{d}\right)\sigma^2}{m\left(n-1\right) p\tau  }+\frac{n^3\sigma^2}{m^2\left(n-1\right)\tau}
+\end{align}
+Based on relation $R=\frac{m^2p\tau}{\gamma^2n^2\left(2-\frac{k}{d}\right)}$ if we choose $\tau=\frac{\left(2-\frac{k}{d}\right)}{p\epsilon}$ and $m=np$ and $\gamma=m$ we have:
+$$R=\frac{1}{n^2\epsilon}$$ and 
+\begin{align}
+     \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2&\leq \frac{2\epsilon L \mathbb{E}\left[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\right]}{\left(n-1\right)}+\frac{2n\epsilon \sigma^2}{p\left(n-1\right)}+\frac{n\epsilon\sigma^2}{p\left(n-1\right)\left(2-\frac{k}{d}\right)}
+\end{align}
+\end{corollary}
+
+\begin{theorem}[PL/strongly-convex]
+Given $0<k=O\left(\frac{e}{\mu^2}\right)\leq d$
+and running Algorithm~\ref{Alg:PFLHom} with sketch of size $c=O\left(k\log \frac{d R}{\delta}\right)$,  under Assumptions~\ref{Assu:1} and \ref{Assu:2.5}, if 
+\begin{align}
+       L^2\eta^2\tau^2+mL\tau\eta\left(1-\frac{k}{d}\right)+2\gamma L\eta\tau\left(2-\frac{k}{d}\right)-1\leq 0,\:\eta> \frac{1}{mL\tau},\label{eq:cnd-lrs-h-ii} 
+\end{align}
+with probability at least $1-\delta$, Then for the choice of $\eta=\frac{n}{mL\tau}$, for $m>n>1$, and the choice of $ d\left(1-\frac{1}{3n}\right)\leq k\leq d$ with probability $1-\delta$,  we obtain:
+
+
+\begin{align}
+                \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq\exp{-\left(\frac{\gamma\left(n-1\right) R}{m\kappa}\right) }\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{\left(\frac{ n^3}{2m^2}+\frac{n^2}{p}\gamma L\left(2-\frac{k}{d}\right)\frac{1}{p} \right)}{\mu\tau\left(n-1\right)}\sigma^2
+\end{align}
+
+\end{theorem}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Convergence result for \texttt{FEDSKETCH} without memory}
+From the $L$-smoothness gradient assumption on global objective, by using  $\underline{\mathbf{S}}^{(r)}=\tilde{\mathbf{g}}^{(r)}$ in inequality (\ref{eq:decent-smoothe}) we have:
+\begin{align}
+    f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\leq -\gamma \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle+\frac{\gamma^2 L}{2}\|\tilde{\mathbf{g}}^{(r)}\|^2\label{eq:Lipschitz-c1}
+\end{align}
+We define the following:
+\begin{align}
+    \tilde{\mathbf{g}}_{\mathbf{S}}^{(r)}=\frac{\eta}{p}\sum_{j=1}^{p}\mathbf{S}\left[\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(c,r)}\right]
+\end{align}
+Additionally, we define an auxiliary variable as 
+\begin{align}
+    \tilde{\mathbf{g}}^{(r)}=\frac{\eta}{p}\sum_{j=1}^{p}\left[\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(c,r)}\right]
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+By taking expectation on both sides of above inequality over sampling, we get:
+\begin{align}
+    \mathbb{E}\left[\mathbb{E}_\mathbf{S}\Big[f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\Big]\right]&\leq -\gamma\mathbb{E}\left[\mathbb{E}_\mathbf{S}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}_\mathbf{S}^{(r)}\big\rangle\right]\right]+\frac{\gamma^2 L}{2}\mathbb{E}\left[\mathbb{E}_\mathbf{S}\|\tilde{\mathbf{g}}_\mathbf{S}^{(r)}\|^2\right]\nonumber\\
+    &=-\gamma\mathbb{E}\left[\mathbb{E}_\mathbf{S}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle\right]\right]+\gamma\mathbb{E}\left[\mathbb{E}_\mathbf{S}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}-\tilde{\mathbf{g}}_{\mathbf{S}}^{(r)}\big\rangle\right]\right]\nonumber\\
+    &\qquad+\frac{\gamma^2 L}{2}\mathbb{E}\left[\mathbb{E}_\mathbf{S}\|\tilde{\mathbf{g}}_\mathbf{S}^{(r)}-\tilde{\mathbf{g}}^{(r)}+\tilde{\mathbf{g}}^{(r)}\|^2\right] \nonumber\\
+    &\stackrel{(a)}{=}-\gamma\mathbb{E}\left[\mathbb{E}_\mathbf{S}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle\right]\right]+\gamma\left[\mathbb{E}_\mathbf{S}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),{\mathbf{g}}^{(r)}-{\mathbf{g}}_{\mathbf{S}}^{(r)}\big\rangle\right]\right]\nonumber\\
+    &\qquad+\frac{\gamma^2 L}{2}\mathbb{E}\left[\mathbb{E}_\mathbf{S}\|\tilde{\mathbf{g}}_\mathbf{S}^{(r)}-\tilde{\mathbf{g}}^{(r)}+\tilde{\mathbf{g}}^{(r)}\|^2\right]\nonumber\\
+    &\stackrel{(b)}{\leq}-\gamma\mathbb{E}\left[\mathbb{E}_\mathbf{S}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle\right]\right]+\frac{\gamma}{2}\left[ \frac{1}{mL}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2_2+mL\mathbb{E}_\mathbf{S}\left[\left\|{\mathbf{g}}^{(r)}-{\mathbf{g}}_{\mathbf{S}}^{(r)}\right\|^2_2\right]\right]\nonumber\\
+    &\qquad+{\gamma^2 L}\mathbb{E}\left[\mathbb{E}_\mathbf{S}\left\|\tilde{\mathbf{g}}_\mathbf{S}^{(r)}-\tilde{\mathbf{g}}^{(r)}\right\|+\left\|\tilde{\mathbf{g}}^{(r)}\right\|^2\right] \nonumber\\
+    &\stackrel{(c)}{\leq}-\gamma\mathbb{E}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle\right]+\frac{\gamma}{2}\left[ \frac{1}{mL}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2_2+mL\left(1-\frac{k}{d}\right)\left\|{\mathbf{g}}^{(r)}\right\|^2_2\right]\nonumber\\
+    &\qquad+{\gamma^2 L}\mathbb{E}\left[\left(1-\frac{k}{d}\right)\left\|\tilde{\mathbf{g}}^{(r)}\right\|_2^2+\left\|\tilde{\mathbf{g}}^{(r)}\right\|_2^2\right]\nonumber\\
+    &\stackrel{(d)}{=}-\gamma\underbrace{\mathbb{E}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle\right]}_{(\mathrm{I})}+ \frac{\gamma}{2mL}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2_2+\frac{mL\gamma}{2}\left(1-\frac{k}{d}\right)\underbrace{\left\|{\mathbf{g}}^{(r)}\right\|^2_2}_{(\mathrm{II})}\nonumber\\
+    &\qquad+{\gamma^2 L}\left(2-\frac{k}{d}\right)\underbrace{\mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}\right\|_2^2\right]}_{(\mathrm{III})}\label{eq:Lipschitz-c-gd-alt}
+\end{align}
+To bound term ($\mathrm{I}$) in Eq.~(\ref{eq:Lipschitz-c-gd-alt}) we use the combination of Lemmas~\ref{} and \ref{} we obtain:
+\begin{align}
+    -\gamma\mathbb{E}\left[ \big\langle\nabla f({\boldsymbol{x}}^{(r)}),\tilde{\mathbf{g}}^{(r)}\big\rangle\right]\leq \frac{\gamma}{2}\eta\frac{1}{p}\sum_{j=1}^p\sum_{c=0}^{\tau-1}\left[-\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2-\left\|\mathbf{g}_j^{(\ell,r)}\right\|_2^2+L^2\eta^2\sum_{\ell=0}^{\tau-1}\left[\tau\left\|{\mathbf{g}}_j^{(\ell,r)}\right\|_2^2+\sigma^2\right]\right]
+\end{align}
+Term $(\mathrm{II})$ can be bounded simply as follows:
+\begin{align}
+    \left\|{\mathbf{g}}^{(r)}\right\|^2_2&=\left\|\frac{\eta}{p}\sum_{j=1}^{p}\left[\sum_{c=0}^{\tau-1}{\mathbf{g}}_j^{(c,r)}\right]\right\|^2_2\nonumber\\
+    &\leq\frac{\tau\eta^2}{p}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\left\|\mathbf{g}_j^{(c,r)}\right\|^2_2
+\end{align}
+
+Next we bound term $(\mathrm{III})$ using the following lemma:
+\begin{lemma}
+\begin{align}
+    \mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}\right\|_2^2\right]\leq \frac{\eta^2\tau}{p}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\left\|\mathbf{g}_j^{(c,r)}\right\|^2_2+\frac{\eta^2\tau}{p}\sigma^2
+\end{align}
+\end{lemma}
+\begin{proof}
+\begin{align}
+    \mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}\right\|_2^2\right]&=\mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}-\mathbb{E}\left[\tilde{\mathbf{g}}^{(r)}\right]\right\|_2^2\right]+\left\|\mathbb{E}\left[\tilde{\mathbf{g}}^{(r)}\right]\right\|^2_2\nonumber\\
+    &= \mathbb{E}\left[\left\|\tilde{\mathbf{g}}^{(r)}-{\mathbf{g}}^{(r)}\right\|_2^2\right]+\left\|{\mathbf{g}}^{(r)}\right\|^2_2\nonumber\\
+    &= \mathbb{E}\left[\left\|\frac{\eta}{p}\sum_{j=1}^{p}\left[\sum_{c=0}^{\tau-1}\tilde{\mathbf{g}}_j^{(c,r)}\right]-\frac{\eta}{p}\sum_{j=1}^{p}\left[\sum_{c=0}^{\tau-1}\mathbf{g}_j^{(c,r)}\right]\right\|_2^2\right]+\left\|\frac{\eta}{p}\sum_{j=1}^{p}\left[\sum_{c=0}^{\tau-1}\mathbf{g}_j^{(c,r)}\right]\right\|^2_2\nonumber\\
+&=\frac{\eta^2}{p^2}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\mathbb{E}\left[\left\|\tilde{\mathbf{g}}_j^{(c,r)}-\mathbf{g}_j^{(c,r)}\right\|_2^2\right]+\left\|\frac{\eta}{p}\sum_{j=1}^{p}\left[\sum_{c=0}^{\tau-1}\mathbf{g}_j^{(c,r)}\right]\right\|^2_2 \nonumber\\
+&\leq \frac{\eta^2}{p^2}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\mathbb{E}\left[\left\|\tilde{\mathbf{g}}_j^{(c,r)}-\mathbf{g}_j^{(c,r)}\right\|_2^2\right]+\frac{\eta^2\tau}{p}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\left\|\mathbf{g}_j^{(c,r)}\right\|^2_2\nonumber\\
+&\leq \frac{\eta^2}{p^2}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\sigma^2+\frac{\eta^2\tau}{p}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\left\|\mathbf{g}_j^{(c,r)}\right\|^2_2\nonumber\\
+&=\frac{\eta^2\tau}{p}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\left\|\mathbf{g}_j^{(c,r)}\right\|^2_2+\frac{\eta^2\tau}{p}\sigma^2
+\end{align}
+\end{proof}
+Next, we put all the pieces together as follows:
+\begin{align}
+    \mathbb{E}\left[\mathbb{E}_\mathbf{S}\Big[f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\Big]\right]&\leq \frac{\gamma}{2}\eta\frac{1}{p}\sum_{j=1}^p\sum_{\ell=0}^{\tau-1}\left[-\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2-\left\|\mathbf{g}_j^{(\ell,r)}\right\|_2^2+L^2\eta^2\sum_{\ell=0}^{\tau-1}\left[\tau\left\|{\mathbf{g}}_j^{(\ell,r)}\right\|_2^2+\sigma^2\right]\right]\nonumber\\
+    &\quad+ \frac{\gamma}{2mL}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2_2+\frac{mL\gamma}{2}\left(1-\frac{k}{d}\right)\frac{\tau\eta^2}{p}\sum_{j=1}^{p}\sum_{\ell=0}^{\tau-1}\left\|\mathbf{g}_j^{(\ell,r)}\right\|^2_2\nonumber\\
+    &\quad+\gamma^2 L\left(2-\frac{k}{d}\right)\left[\frac{\eta^2\tau}{p}\sum_{j=1}^{p}\sum_{c=0}^{\tau-1}\left\|\mathbf{g}_j^{(\ell,r)}\right\|^2_2+\frac{\eta^2\tau}{p}\sigma^2\right]\nonumber\\
+    &=-\frac{\tau\eta\gamma}{2}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2+\frac{\gamma}{2}\eta\frac{1}{p}\sum_{j=1}^p\sum_{\ell=0}^{\tau-1}\left[-\left\|\mathbf{g}_j^{(\ell,r)}\right\|_2^2+L^2\eta^2\tau^2\left\|{\mathbf{g}}_j^{(\ell,r)}\right\|_2^2\right]+\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2\nonumber\\
+    &\quad+ \frac{\gamma}{2mL}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|^2_2+\frac{mL\gamma}{2}\left(1-\frac{k}{d}\right)\frac{\tau\eta^2}{p}\sum_{j=1}^{p}\sum_{\ell=0}^{\tau-1}\left\|\mathbf{g}_j^{(\ell,r)}\right\|^2_2\nonumber\\
+    &\quad+\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\eta^2\tau}{p}\sum_{j=1}^{p}\sum_{\ell=0}^{\tau-1}\left\|\mathbf{g}_j^{(\ell,r)}\right\|^2_2+\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\eta^2\tau}{p}\sigma^2\nonumber\\
+    &=-\left(\frac{\tau\eta\gamma}{2}-\frac{\gamma}{2mL}\right)\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\nonumber\\
+    &\quad-\left(\frac{\eta\gamma}{2}-\frac{\eta\gamma}{2}\left(L^2\eta^2\tau^2\right)-\frac{mL\eta\gamma}{2}\left(1-\frac{k}{d}\right)\tau\eta-\gamma^2 L\eta^2\tau\left(2-\frac{k}{d}\right)\right)\frac{1}{p}\sum_{j=1}^{p}\sum_{\ell=0}^{\tau-1}\left\|\mathbf{g}_j^{(\ell,r)}\right\|^2_2\nonumber\\
+    &\quad+\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2+\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\eta^2\tau}{p}\sigma^2\nonumber\\
+    &\stackrel{(a)}{\leq}-\left(\frac{\tau\eta\gamma}{2}-\frac{\gamma}{2mL}\right)\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2+\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2+\tau\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}\label{eq:ncvx-mid-step}
+\end{align}
+where (a) follows from the learning rate choices of 
+\begin{align}
+    \frac{\eta\gamma}{2}-\frac{\eta\gamma}{2}\left(L^2\eta^2\tau^2\right)-\frac{mL\eta\gamma}{2}\left(1-\frac{k}{d}\right)\tau\eta-\gamma^2 L\eta^2\tau\left(2-\frac{k}{d}\right)\geq 0
+\end{align}
+which can be simplified further as follows:
+\begin{align}
+    1-L^2\eta^2\tau^2-mL\tau\eta\left(1-\frac{k}{d}\right)-2\gamma L\eta\tau\left(2-\frac{k}{d}\right)\geq 0
+\end{align}
+Then using Eq.~(\ref{eq:ncvx-mid-step}) we obtain:
+\begin{align}
+  \frac{\tau\gamma}{2} \left({\eta}-\frac{1}{\tau mL}\right)\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \mathbb{E}\left[\mathbb{E}_\mathbf{S}\Big[f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\Big]\right]+\tau\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}+\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2
+\end{align}
+which leads to the following bound:
+\begin{align}
+     \left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \frac{2 \mathbb{E}\left[\mathbb{E}_\mathbf{S}\Big[f({\boldsymbol{x}}^{(r+1)})-f({\boldsymbol{x}}^{(r)})\Big]\right]}{\tau \gamma \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{2\eta^2\gamma L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}}{ \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{\eta^3L^2\tau}{\left({\eta}-\frac{1}{\tau mL}\right)}\sigma^2 
+\end{align}
+Now averaging over $r$ communication rounds we achieve:
+\begin{align}
+    \frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq \frac{2 \mathbb{E}\left[\mathbb{E}_\mathbf{S}\Big[f({\boldsymbol{x}}^{(0)})-f({\boldsymbol{x}}^{(*)})\Big]\right]}{R\tau \gamma \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{2\eta^2\gamma L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}}{ \left({\eta}-\frac{1}{\tau mL}\right)}+\frac{\eta^3L^2\tau}{\left({\eta}-\frac{1}{\tau mL}\right)}\sigma^2 
+\end{align}
+We note that for this case we have the following conditions over learning rate:
+\begin{align}
+    L^2\eta^2\tau^2+mL\tau\eta\left(1-\frac{k}{d}\right)+2\gamma L\eta\tau\left(2-\frac{k}{d}\right)\leq 1,\:\eta> \frac{1}{mL\tau},
+\end{align}
+
+\subsection{Proof of Theorem~\ref{thm:pl-iid}}
+From Eq.~(\ref{eq:ncvx-mid-step}) under condition with:
+\begin{align}
+       L^2\eta^2\tau^2+mL\tau\eta\left(1-\frac{k}{d}\right)+2\gamma L\eta\tau\left(2-\frac{k}{d}\right)\leq 1, \label{eq:step_size_cnd_mmr}
+\end{align}
+we obtain:
+\begin{align}
+         \mathbb{E}\left[f({\boldsymbol{w}}^{(r+1)})-f({\boldsymbol{w}}^{(r)})\right]&\leq -\left(\frac{\tau\eta\gamma}{2}-\frac{\gamma}{2mL}\right)\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2+\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2+\tau\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p}\nonumber\\
+         &\stackrel{(PL)}{\leq} -\left({\tau\mu\eta\gamma}-\frac{\mu\gamma}{mL}\right)\left[f({\boldsymbol{w}}^{(r)})-f({\boldsymbol{w}}^{(*)})\right]+\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2+\tau\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p} 
+\end{align}
+which leads to the following bound:
+\begin{align}
+            \mathbb{E}\Big[f({\boldsymbol{w}}^{(r+1)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq \left(1-\eta\mu\gamma{\tau}+\frac{\mu\gamma}{mL}\right) \Big[f({\boldsymbol{w}}^{(r)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2+\tau\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p} 
+\end{align}
+which leads to the following bound by setting $\Delta\triangleq1-\eta\mu\gamma{\tau}+\frac{\mu\gamma}{mL}=1-\mu\gamma\tau\left(\eta-\frac{1}{mL\tau}\right)$:
+\begin{align}
+            \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq \Delta^R \Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{1-\Delta^R}{1-\Delta}\left(\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2+\tau\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p} \right)\nonumber\\
+            &\leq \Delta^R \Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{1}{1-\Delta}\left(\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2+\tau\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p} \right)\nonumber\\
+            &={\left(1-\mu\gamma\tau\left(\eta-\frac{1}{mL\tau}\right)\right)}^R \Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{\left(\frac{\gamma\eta^3L^2\tau^2}{2}\sigma^2+\tau\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p} \right)}{\mu\gamma\tau\left(\eta-\frac{1}{m L\tau}\right)}\nonumber\\
+            &\leq \exp{-\left(\mu\gamma\tau\left(\eta-\frac{1}{m L\tau}\right)R\right)}\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{\left(\frac{\gamma\eta^3L^2\tau}{2}\sigma^2+\eta^2\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p} \right)}{\mu\gamma\left(\eta-\frac{1}{mL\tau}\right)}
+\end{align}
+Then for the choice of $\eta=\frac{n}{mL\tau}$, for $m>n>1$, we obtain:
+
+
+\begin{align}
+                \mathbb{E}\Big[f({\boldsymbol{w}}^{(R)})-f({\boldsymbol{w}}^{(*)})\Big]&\leq \exp{-\left(\frac{\gamma\left(n-1\right) R}{m\kappa}\right) }\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{\left(\frac{\gamma n^3L^2\tau}{2m^3L^3\tau^3}\sigma^2+\frac{n^2}{m^2L^2\tau^2}\gamma^2 L\left(2-\frac{k}{d}\right)\frac{\sigma^2}{p} \right)}{\mu\gamma\left(\frac{n-1}{mL\tau}\right)}\nonumber\\
+                &=\exp{-\left(\frac{\gamma\left(n-1\right) R}{m\kappa}\right) }\Big[f({\boldsymbol{w}}^{(0)})-f({\boldsymbol{w}}^{(*)})\Big]+\frac{\left(\frac{ n^3}{2m^2}+\frac{n^2}{m}\gamma L\left(2-\frac{k}{d}\right)\frac{1}{p} \right)}{\mu\tau\left(n-1\right)}\sigma^2
+\end{align}
+
+We note that regarding condition in Eq.~(\ref{eq:step_size_cnd_mmr}), if we let $\eta=\frac{n}{m L\tau}$ for $m>n>1$, we need to satisfy the following condition:
+\begin{align}
+    \frac{n^2}{m^2}+n\left(1-\frac{k}{d}\right)+\frac{2n\gamma\left(1-\frac{k}{d}\right)}{m}\leq 1
+\end{align}
+Now if you let $\gamma=\frac{m}{2}$, we need to impose the following condition over $k$ and $d$ as follows:
+\begin{align}
+    n\left(1-\frac{k}{d}\right)\leq \frac{1}{3}\implies d\left(1-\frac{1}{3n}\right)\leq k\leq d
+\end{align}
+\todo{Will fix these later!}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+{\color{blue}
+\begin{corollary}[Total communication cost]
+As a consequence of Remark~\ref{rmk:cnd-lr}, the total communication cost per-worker becomes \begin{align}
+O\left(RB\right)&=O\left(Rk\log \left(\frac{d R}{\delta}\right)\right)=O\left(\frac{k }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
+\end{align}
+We note that this result in addition to improving over the communication complexity of federated learning of the state-of-the-art from $O\left(\frac{d}{\epsilon}\right)$ in \cite{karimireddy2019scaffold,wang2018cooperative,liang2019variance} to $O\left(\frac{k p}{\epsilon}\log \left(\frac{d p}{\epsilon\delta}\right)\right)$, it also implies differential privacy. As a result, total communication cost is 
+$$BpR=O\left(\frac{k p}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right).$$ 
+
+We note that the state-of-the-art in \cite{karimireddy2019scaffold} the total communication cost is 
+\begin{align}
+    BpR&=O\left(pd\left(\frac{1}{\epsilon}\right) \right)=O\left(\frac{pd}{\epsilon}\right) 
+\end{align}
+We improve this result, in terms of dependency to $d$, to 
+\begin{align}
+    BpR=O\left(\frac{k p}{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)
+\end{align}
+In comparison to \cite{ivkin2019communication}, we improve the total communication per worker from $RB=O\left(\frac{k }{\epsilon^2}\log \left(\frac{d }{\epsilon^2\delta}\right)\right)$ to $RB=O\left(\frac{k }{\epsilon}\log \left(\frac{d }{\epsilon\delta}\right)\right)$.
+\end{corollary}
+
+\begin{remark}
+It is worthy to note that most of the available communication-efficient algorithm with quantization or compression only consider communication-efficiency from devices to server. However, Algorithm~\ref{Alg:PFLHom} also improves the communication efficiency from server to devices as well. 
+\end{remark}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{corollary}[Total communication cost for PL or strongly convex]
+To achieve the convergence error of $\epsilon$, we need to have $R=O\left(\kappa(\frac{\mu^2d}{p}+1)\log\frac{1}{\epsilon}\right)$ and $\tau=\left(\frac{1}{\epsilon}\right)$. This leads to the total communication cost per worker of 
+\begin{align}
+BR&=O\left(k\kappa(\frac{\mu^2d}{p}+1)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+\end{align}
+As a consequence, the total communication cost becomes:
+\begin{align}
+BpR&=O\left(k\kappa(\mu^2d+p)\log\left(\frac{\kappa(\frac{\mu^2d^2}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+\end{align}
+We note that the state-of-the-art in \cite{karimireddy2019scaffold} the total communication cost is 
+\begin{align}
+    BpR=O\left(\kappa pd\log\left(\frac{1}{\epsilon}\right) \right)=O\left(\kappa pd\log\left(\frac{1}{\epsilon}\right)\right) 
+\end{align}
+We improve this result, in terms of dependency to $d$, to 
+\begin{align}
+    BpR=O\left(k\kappa(\mu^2d+p)\log\left(\frac{\kappa(\frac{\mu^2d}{p}+d)\log\frac{1}{\epsilon}}{\delta}\right)\log\frac{1}{\epsilon} \right)
+\end{align}
+Improving from $pd$ to $p+d$.
+\end{corollary}
+
+}
+
