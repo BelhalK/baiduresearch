@@ -138,7 +138,7 @@ In the sequel, we develop an improvement over baseline SGD, invoking averaging v
 The method, called Hyperparameters Weight Averaging (HWA), aims at improving the generalization property of the trained model on unseen data.
 
 
-\subsection{Averaging snapshots through hyperparameter loss landscapes.}
+\subsection{Averaging snapshots through hyperparameters loss landscapes}
 
 We now recall the classical SWA method developed in~\citep{izmailov2018averaging}. 
 Consider a deterministic deep neural network, the idea behind the Stochastic Weight Averaging procedure is to run several iterates of the classical SGD procedure, starting from a pre-trained model.
@@ -171,8 +171,8 @@ where for all $\ell \in [L]$, $\mu_{\ell}^{k+1}$ and $\sigma^{k+1}$ are both obt
 %$\mu_{\ell} = \hat{\mu}_{\ell}$ and $\mu^{HWA}_{\ell} = \mu_{\ell}$.
 \STATE $\gamma \leftarrow \gamma(k)$ (Cyclical LR for the iteration)
 \STATE \textbf{SVI updates:}
-\STATE \quad $\mu_{\ell}^{k+1} \leftarrow \mu_{\ell}^{k} - \gamma_k \nabla \mathcal{L}_{i_{k}}(\mu_{\ell}^{k})$  \label{line:svi}
-\STATE \quad $\sigma^{k+1} \leftarrow \sigma^{k} - \gamma_k \nabla \mathcal{L}_{i_{k}}(\sigma^{k})$ \label{line:svisigma}
+\STATE \quad $\mu_{\ell}^{k+1} \leftarrow \mu_{\ell}^{k} - \gamma_k \nabla_{\mu_{\ell}} \mathcal{L}_{i_{k}}(\mu_{\ell}^{k})$  \label{line:svi}
+\STATE \quad $\sigma^{k+1} \leftarrow \sigma^{k} - \gamma_k \nabla_{\sigma} \mathcal{L}_{i_{k}}(\sigma^{k})$ \label{line:svisigma}
 \IF{$\textrm{mod}(k,c) = 0$}
 	\STATE \quad $n_{\textrm{m}} \leftarrow k/c$ \quad (Number of models to average over)
 \begin{equation}\notag
@@ -194,6 +194,18 @@ The standard learning rate $\gamma_k$ plays a key role and is either equal to a 
 The cycle length $c$ which monitors the number of times snapshots of the model estimates are being averaged is also of utmost importance and needs careful tuning.
 
 
+\subsection{Comparison with other classical averaging procedures in nonconvex optimization}
+From Algorithm~\ref{alg:hwa}, we note that the averaging procedure happens once at each cycle $c$, a tuning hyperparameter, on the parameter estimates resulting from a simple stochastic gradient descent update.
+Yet, another natural averaging step would be to keep $K$ snapshots of the past stochastic gradients and compute an aggregated sum used as the drift term in the general update rule, see \citep{zhou2017convergence}.
+Nevertheless, in our setting, the objective function while being nonconvex is (possibly) parameterized by a high dimensional neural network making it computationally involved to store those $K$ gradients.
+
+
+\textbf{Incremental Aggregated Gradients methods:} Popular optimization methods, such as SAG~\citep{schmidt2017minimizing} or SAGA~\citep{defazio2014saga}, make use of the past individual gradient and compute a moving average of those vectors as the final drift term. Those methods are proven to be faster than plain SGD in both convex and nonconvex cases, leveraging among other reasons variance reduction effect, but suffer from a high storage cost. Indeed the drift term is composed of the sum of the $n$ past individual gradient where $n$ is equal to the size of the training set.
+
+
+\textbf{MISO~\citep{mairal2015incremental}:}
+
+
 \subsection{Variational Inference with HWA}
 Note that in the above procedure, the variational candidate $q(w, \param)$ has a diagonal covariance matrix where the scalar standard deviations are obtained through Algorithm~\ref{alg:hwa}.
 One parameter estimates are updated via \eqref{eq:hwa_updates}, the neural network weights are then sampled according to the updated variational candidate distributions in order to compute the next iteration approximate stochastic gradient $\nabla \mathcal{L}_{i_{k}}(\theta)$.
@@ -209,6 +221,14 @@ where $\mu^{HWA} = (\mu_{\ell}^{HWA}, \ell \in [L])$, $R$ is the maximum number 
 
 Then the covariance of the proposal $q(\cdot)$ in Algorithm~\ref{alg:trainingbnn} is either set to \eqref{eq:hwa_updates} or \eqref{eq:lowrankcov}.
 
+\textbf{Discussion on the choice of the variational candidate distribution:} 
+The general aim of the update rules presented above is to construct an efficient variational candidate distribution that would provide an approximate shape of the true posterior. Our method acts on the mean and covariance of a simple Gaussian distribution where the covariance matrix is either diagonal or low rank.
+Nevertheless, other choice of proposal can be employed such as the spike and slab variational distribution, in \citep{gal2016dropout}, leveraging dropout mechanism in VI. 
+The other similar idea, namely concrete dropout in \citep{gal2017concrete} not only optimizes the hyperparameters of the weights but also the dropout probabilities.
+We do not consider those variants as our work focuses on Gaussian approximations of the posterior distribution and how their parameters are updated, see Section~\ref{sec:numerical} for a description of baseline methods used in our numerical experiments.
+
+
+We now give in Algorithm~\ref{alg:trainingbnn}, the overall training algorithm of the Bayesian Neural Network using the proposed HWA algorithm to update the parameters.
 \begin{algorithm}[H]
 \algsetup{indent=0.25em}
 \begin{algorithmic}[1]
@@ -226,9 +246,8 @@ $$ \nabla \mathcal{L}_{i_{k}}(\theta^{k}) \approx \frac{1}{M_k} \sum_{m=1}^{M_k}
 \label{alg:trainingbnn}
 \end{algorithm}
 
-\subsection{Through the Lens of Loss Landscapes}
-\textcolor{red}{PCA plot of the loss landscape and visualization of HWA iterates.}
-
+%\subsection{Through the Lens of Loss Landscapes}
+%\textcolor{red}{PCA plot of the loss landscape and visualization of HWA iterates.}
 
 
 
@@ -274,65 +293,23 @@ In conclusion, \textsc{HWA} achieves state-of-the-art results for either small o
 \mbox{
 %\includegraphics[width=0.5\textwidth]{figs/trainhwamnist_bvgg.png}
 %\includegraphics[width=0.5\textwidth]{figs/testhwamnist_bvgg.png}
-\includegraphics[width=0.24\textwidth]{figs/trainlossmnist.eps}
-\includegraphics[width=0.27\textwidth]{figs/trainaccmnist.eps}
-\includegraphics[width=0.24\textwidth]{figs/testlossmnist.eps}
-\includegraphics[width=0.26\textwidth]{figs/testaccmnist.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/trainlossmnist.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/trainaccmnist.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/testlossmnist.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/testaccmnist.eps}
 }
 \mbox{
 %\includegraphics[width=0.5\textwidth]{figs/trainhwacifar_bvgg.png}
 %\includegraphics[width=0.5\textwidth]{figs/testhwacifar_bvgg.png}
-\includegraphics[width=0.24\textwidth]{figs/trainlosscifar.eps}
-\includegraphics[width=0.27\textwidth]{figs/trainacccifar.eps}
-\includegraphics[width=0.24\textwidth]{figs/testlosscifar.eps}
-\includegraphics[width=0.26\textwidth]{figs/testacccifar.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/trainlosscifar.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/trainacccifar.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/testlosscifar.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/testacccifar.eps}
 }
 \caption{Comparison for Bayesian LeNet CNN architecture on MNIST dataset (top) and Bayesian VGG architecture on CIFAR-10 dataset (bottom). The plots are averaged over 5 repetitions.}
     \label{fig:all}
 \end{figure}
 
-%
-%\begin{figure}[H]
-%\mbox{
-%\includegraphics[width=0.49\textwidth]{figs/trainlossmnist.eps}
-%\includegraphics[width=0.51\textwidth]{figs/testlossmnist.eps}
-%}
-%\mbox{
-%\hspace{-0.2in}\includegraphics[width=0.56\textwidth]{figs/trainaccmnist.eps}\hspace{-0.3in}
-%\includegraphics[width=0.56\textwidth]{figs/testaccmnist.eps}
-%}
-%\caption{Comparison for Bayesian LeNet CNN architecture on MNIST dataset. The plots are averaged over 5 repetitions.}
-%    \label{fig:mnist}
-%\end{figure}
-%
-%
-%\begin{figure}[H]
-%\mbox{
-%\includegraphics[width=0.49\textwidth]{figs/trainlosscifar.eps}
-%\includegraphics[width=0.51\textwidth]{figs/testlosscifar.eps}
-%}
-%\mbox{
-%\hspace{-0.2in}\includegraphics[width=0.56\textwidth]{figs/trainacccifar.eps}\hspace{-0.3in}
-%\includegraphics[width=0.56\textwidth]{figs/testacccifar.eps}
-%}
-%\caption{Comparison for Bayesian VGG architecture on CIFAR-10 dataset (bottom). The plots are averaged over 5 repetitions.}
-%    \label{fig:cifar}
-%\end{figure}
-
-
-
-
-%
-%\begin{figure}[H]
-%\mbox{
-%\includegraphics[width=0.5\textwidth]{figs/trainhwacifar_bvgg.png}
-%}
-%\mbox{
-%\includegraphics[width=0.5\textwidth]{figs/testhwacifar_bvgg.png}
-%}
-%	\caption{Comparison for Bayesian VGG architecture on CIFAR-10 dataset.}
-%    \label{fig:cifar}
-%\end{figure}
 
 \section{Conclusion}\label{sec:conclusion}
 
