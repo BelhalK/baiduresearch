@@ -1,0 +1,163 @@
+Response to meta reviewer:
+
+Thank you very much for handling our paper. We are glad that reviewer 2 thinks our idea is sound and the paper could compelling after some clarifications. We want to point out a few wrong and unfair comments of reviewer 3 and 4. 
+
+1. Reviewer 3 claims that the delayed estimation of the adaptive learning rate guarantees convergence. 
+It does not help with convergence proof.
+
+2. Reviewer 3 thinks we directly incorporated adaptive gradient methods with a decentralized training technique. 
+Our main point is the modification to decentralized training techniques but the reviewer did not see it. 
+
+3. Reviewer 4 asks for convex analysis and thinks the gradient bounded assumption is strong. 
+Both nonconvex analysis and the assumption are standard in the literature. 
+
+4. Reviewer 4 questions the motivation of adaptive gradient methods.
+The motivation is well established in the literature.
+
+We hope you consider these points when making the decision. Again, thank you so much for your efforts!
+
+
+--------------------------------
+
+
+General response:  Our motivation is to bring benefits of adaptive gradient methods into decentralized optimization. Although many adaptive gradient methods have rate of O(1/sqrt(T)) or worse, they usually have good empirical performance. Especially, their stepsizes are usually easier to tune. We expect these benefits to persist in decentralized optimization and compared different algorithms under different stepsizes in A.4 supplemental material. It is clear that decentralized AMSGrad achieves a reasonable performance on a wider range of stepsize than DGD.  Similar to MNIST, experimental results on CIFAR10 also confirmed effectiveness of proposed algorithm; and we will be happy to include them. Thank you for the suggestions
+
+Reviewer #2
+
+Q1: Claim should be toned down. 
+R:  Thanks. We will explicitly state that we only convert adaptive gradient methods that satisfy our condition and will also discuss what other algorithms satisfy our condition
+
+Q2: Explore the effect of adaptive learning rate consensus on larger networks
+R: We have completed the suggested experiments on a 10-node ring graph and observe decentralized AMSGrad consistently outperformed DGD and DADAM. We will include these results
+
+Q3: How much gain is from the decentralized method
+R:  In our experiment, DADAM is exactly decentralized AMSGrad without learning rate consensus. We set \beta_3=0 for Alg 1 and line 6 shows that it reduces to AMSGrad without learning rate consensus. Thus, all gains of Alg 3 over DADAM come from learning rate consensus
+
+Finally, thank you for our typos and suggesting us to highlight the main idea. Points are well-taken
+
+Reviewer #3 
+
+Q1: The independence between adaptive learning rate and m_{t} with stochastic variable \xi_{t} makes Alg 2 converge. How to guarantee the delayed \hat{v}_{t-1} can contribute to faster convergence results?
+
+R: We feel there might be a misunderstanding, which we hope to clarify. The delay is to ensure parallel execution of the computation and communication to reduce runtime. The independence is a byproduct and does not contribute much to convergence. Specifically, line 3-5 in Alg 2 can be executed in parallel with line 6-7, if line 5 involves g_{t,i}, line 7 must run after line 5 which prohibits overlapping communication and computation
+
+The independence will not ensure convergence. There is significant correlation between m_{t} and \hat{v}_{t-1} due to g_{[1:t-1]}, removing correlation brought by g_t will not help much
+For convergence speed, Alg 3 performs similarly to AMSGrad in practice, since \beta_2 is usually set to 0.99 or 0.999 which makes \hat{v}_{t-1} and \hat{v}_{t} similar
+
+
+Q2: The name of Alg 3 is inappropriate.
+R: Thanks. We will consider a new name
+
+Q3: Apply the proposed algorithm to solve the counter-examples in (Reddi et al 2019) to show the sensitivity of \epsilon.
+R: We have applied Alg 3 to example of Fig. 1 in (Reddi et al 2019) with N=1 to check the sensitivity. In short, our algorithm is not too sensitive to $\epsilon$ in this example. 
+We set \beta_2 = 0.99, \beta_1 = 0.9 following (Reddi et al 2019) and compare trajectories of the two algorithms in 1e6 iterations for \alpha from 1e-6 to 1e0 and \epsilon from 1e-8 to 1e6. We found Alg 3 and AMSGrad have almost same trajectory for \epsilon <= 1e3. This is because \hat{v}_{t} becomes O(1e3) in 1000 iterations and the effect of $\epsilon$ goes away. In this case, Alg 3 becomes AMSGrad with a delayed  \hat{v}_{t-1}. Because \beta_2 = 0.99, \hat{v}_{t-1} is very similar to \hat{v}_{t} and the two algorithms behave similarly. When \epsilon is really large (eg 1e6), Alg 3 behaves like SGD with small learning rate which converges slower
+
+Reviewer #4
+
+Q1:  Advantage in using adaptive methods
+R: See general response 
+
+Q2: No results for the convex/strongly convex case
+R: Adaptive gradient methods are used mostly for training nonconvex neural nets, so we only included nonconvex analysis. It seems that this particular (deep learning) community  mostly cares about the non-convex case, in part because the convex/strongly convex case is in a sense standard and the results may not be surprising. But you do raise a good point that this community probably should also pay more attention to the classical analysis. 
+
+Q3: Theoretical result on the consensus term itself and its rate of convergence? 
+R: Yes, we have the results. Thanks for checking. The consensus error is bounded in (41) in the supplemental material. With \alpha =O(1/\sqrt{T}), the consensus error will go to 0 with a rate of O(1/T)
+
+Q4: The gradient bounded assumption is too strong
+R: The assumption is usually used in recent analyses of adaptive gradient methods (Reddi et al 2019, Chen et al 2018, Ward et al 2018, Zaheer et al 2018). Relaxing this assumption makes it difficult to bound the adaptive learning rate, there a few efforts in the community of adaptive gradient methods trying to address this problem but they mostly weaken convergence claims.
+
+
+
+
+
+
+
+#########################unshorttened rebuttal and original reviewer questions#####################
+
+
+
+
+
+
+
+
+Review 2 questions:
+
+1. In Theorem 2, convergence requires that the last term in (3) grows sub-linearly with respect to iterations. It is expected that this is satisfied for AMSgrad due to decreasing effective learning rate, but it is not clear that this will be satisfied for Adam or RMSprop (most likely it won't). This means that the authors' claim that this is a general framework for converting any adaptive gradient method to its decentralized counterpart seems unsubstantiated, and should be toned down.
+
+R: Thanks for pointing this out. Indeed, our key requirement is that the last term in (3) grows sub-linearly. This is satisfied by many existing algorithms like AMSGrad, AdaGrad, SWATS or AdaBound. However, some algorithms do not satisfy it, e.g. RMSprop and Adam. Though these two algorithms are proven to diverge in [1], it is possible that some algorithms that do not satisfy our condition may converge. We will tone this down to avoid confusion. Specifically, we will explicitly state that we can convert adaptive gradient methods that satisfy our condition to their decentralized counterparts. We will also provide a discussion on what algorithms satisfy our condition.
+
+[1] Reddi, Sashank J., Satyen Kale, and Sanjiv Kumar. "On the convergence of adam and beyond." arXiv preprint arXiv:1904.09237 (2019).
+
+
+2. Experiments should definitely be expanded. First, the 5-node ring (the current experiment setup) might be too small to truly see the effect of consensus of adaptive learning rates, since the effect of the update on one node will propagate to all the others in at most two steps, which makes things easier. On a larger network, learning rate consensus might be slower and hurt convergence. This effect should be explored better. 
+
+R: Thank you for the constructive suggestion. We can definitely include experimental results on larger networks to check the effect of consensus on learning rate. We did some preliminary experiments during the rebuttal period and decentralized AMSGrad is consistently more stable than DGD and DADAM. We will include these results in the next version. 
+
+3. Second, since plain AMSGrad ensures monotonic decrease of the adaptive learning rate, it implicitly brings the adaptive learning rates closer together. It is not clear how much of the gain that the authors are observing under heterogeneous data is due to the switch from Adam to AMSGrad, and how much of it is due to their decentralized method. The plain decentralized AMSGrad (without learning rate consensus) as well as authors' method + Adam should be explored empirically, for the paper to be convincing.
+
+R: In our experiment, DADAM is exactly decentralized AMSGrad (without learning rate consensus). We set $\beta_3=0$ in our experiment and it can be seen from line 6 of Algorithm 1 that it reduces to AMSGrad without learning rate consensus. Thus, all gains of our algorithm over DADAM actually come from learning rate consensus. We will state this explicitly to avoid confusion in the future.
+
+4.  The main idea in the paper (consensus of adaptive learning rates) should be emphasized from the beginning, and the DADAM divergence example should clearly be placed in this context, along with a demonstration of how learning rate consensus would have fixed the convergence problem.
+
+R: Thank you for the great suggestion, we will emphasize the idea and give examples of divergence caused by not having learning rate consensus and how learning rate consensus can fix it in our next version.
+
+5. The language throughout the paper is very poor, and hampers readability. The grammatical errors should be fixed.
+
+R: We will do one more round of grammar check and fix grammar issues.
+
+
+
+Reviewer 3 questions:
+
+1. This paper directly incorporates the adaptive stochastic gradient with a decentralized training technique, which limits the novelty of this work. In particular, In Algorithm 2, the adaptive learning rate (in line 9 ) is estimated with a delayed $\hat{v}_{t-1}$. Hence, the adaptive learning rate $1/\sqrt{ \hat{u}_{t-1}}$ is independent with $m_{t}$ with stochastic variable $\xi_{t}$, which makes the convergence of Algorithm 2. However, how did the authors guarantee the delayed $\hat{v}_{t-1}$ can contribute to faster convergence results?
+
+R: The reviewer may have misunderstood the reason to use $\hat{v}_{t-1}$ instead of $\hat{v}_{t}$. This design ensures the gradient computation can be done in parallel with communication at the same iteration to reduce total runtime. More specifically, the computation steps line 3-5 in Algorithm 2 can be executed in parallel with communication steps line 6-7, if line 9 uses a $\hat{v}_{t}$ instead of $\hat{v}_{t-1}$, the communication step line 7 must be run after the gradient computation step line 3 which prohibit overlapping communication and computation. In addition, we allow $\beta_1$ to be a non-zero constant in our proof so $m_{t}$ is a function of gradients from iteration 1 to t, there is still a huge correlation between it and  $\hat{v}_{t-1}$ and the proof need to take care of this correlation. The proof won’t change much if we do not use the delayed estimate but the algorithm could be slower in terms of runtime per iteration. We will add this discussion in our paper. In practice, $\hat{v}_{t-1}$ will not be too different from $\hat{v}_{t}$ since $\beta_2$ is usually set to 0.99 or even 0.999. As for faster convergence, we encourage the reviewer to check section A.4 in the supplemental material. We compared the performance of algorithms under different learning rates. Our algorithm has a relatively good performance under a wider range of learning rate compared with DGD. This means if the learning rate is not very well tuned, our algorithm is more likely to perform better.
+
+
+
+2. In Algorithm 3 the adaptive learning rate $1/\sqrt{ \hat{u}_{t-1}}$ is estimated with delayed $\hat{v}_{t-1}$. When the number of nodes reduces to 1 (N=1), the proposed algorithms cannot reduce to AMSGrad. Hence, it is not appropriate to call Algorithm 3 as decentralized AMSGrad. 
+
+R: As mentioned in the answer to the last question, our proof and guarantees will not change much if we do not use the delayed estimate. But we can definitely give a new name to our algorithm. 
+
+
+3. To establish the convergence of Algorithm 2 and Algorithm 3, hyperparameters $\epsilon$ are introduced (Algorithm 2 line 8, Algorithm 9). Actually, the adaptive learning rate is highly affected by $\epsilon$. For example, if $\epsilon$ is sufficiently large, both Algorithm 2 and Algorithm 3 reduce to standard decentralized SGD. If $\epsilon$ is sufficiently small, the convergence rates of Algorithm 2 and Algorithm 3 are poor. We recommend the authors apply the proposed algorithm to solve the counter-examples in [1] to show the sensitivity of $\epsilon$.
+
+R: We have set N=1 and applied Algorithm 3 to the counter-examples in [1] (we added a projection step in Algorithm 3 like original AMSGrad to handle the constraints $x \in [-1,1]$ in the example) to check its sensitivity. In short, we found our algorithm is not very sensitive to the choice of \epsilon in this example. The details are listed below.
+We set \beta_2 = 0.99 and \beta_1 = 0.9 following the configuration in [1] and compare the trajectory of the two algorithms in 1e6 iterations for $\alpha = 1ei$ with i from -6 to 0 and  $\epsilon=1ej$ with j from [-8,6]. We found our Algorithm 3 and AMSGrad yield almost the same trajectory for $\epsilon < 1e3$. This is because $\hat{v}_{t}$ will become O(1e3) in 1000 iterations and the effect of $\epsilon=1ej$ goes away. When $\epsilon$ is small, Algorithm 3 behaves like AMSGrad with a delayed  $\hat{v}_{t-1}$. Because $\beta_2 = 0.99$, $\hat{v}_{t-1}$ is very similar to $\hat{v}_{t}$ and the two algorithms behave similarly. When  $\epsilon$ is really large (e.g. 1e6), Algorithm 3 behaves like SGD with a small learning rate and it indeed converges slower than AMSGrad, but this can be compensated by using a larger $\alpha$. Note that in the Tensorflow implementation of AMSGrad, there is a similar $\epsilon$ for numerical stability. Intuitive, the sensitivity of Algorithm 3 to its $\epsilon$ should be similar. 
+
+
+4. The experiments are too simple to show the effectiveness of the proposed algorithms.
+
+R: As mentioned above, we have some additional experiments reporting the performance of different algorithms under different learning rates. We put them in section A.4 in the supplemental material due to space limitation. The benefit of the proposed algorithm is better reflected on stability to learning rate selection, our proposed algorithm maintains a reasonable performance for a significantly wider range of learning rates compared with DGD. We are also working on experiments for CIFAR-10 and other datasets and will include them in the next version. 
+
+ 
+[1] Sashank J Reddi, Satyen Kale, and Sanjiv Kumar. On the convergence of adam and beyond. arXiv preprint arXiv:1904.09237, 2019.
+
+
+Reviewer 4 questions:
+
+1.  I don't see any advantage in using adaptive methods in decentralized optimization. The achieved rate (O(1/sqrt(T))) is still the same as DGD.
+
+R: Our motivation is the strong empirical performance of adaptive gradient methods in training neural nets. Currently, almost all adaptive gradient methods have a rate of O(1/sqrt(T)) or worse which is the same as SGD. However, this does not hurt the practical value of adaptive gradient methods. We encourage the reviewer to check section A.4 in the supplemental material where we show the proposed algorithm is more stable than DGD in terms of learning rate selection.
+
+2. There are no results for the convex/strongly convex case.
+
+R: Since adaptive gradient methods are mostly used for training neural nets which are highly nonconvex, we only included analysis for non-convex problems. It will be interesting to investigate convergence guarantees for convex/strongly convex case but it might be a bit out of scope of this paper.
+
+3. Do you have theoretical result on the consensus term itself and its rate of convergence? Without proving consensus the result is meaningless in non-convex setting. By that I mean can we show that \|x(i)_T - \bar{x}_T\| -> 0 as T gets large, and with what rate? (\bar{x} is the average of x(i)s)
+
+R: We have an upper bound on the consensus error in (41) in supplemental material. With a stepsize choice $\alpha =O(1/\sqrt{T})$, the consensus error will go to 0 with a rate of O(1/T). 
+
+4. The gradient bounded assumption is too strong for an unconstrained optimization problem. Most results in the literature try to avoid this assumption and that is indeed a major technical challenge that recent papers in decentralized optimization try to resolve.
+
+R: Although the gradient bounded assumption is not standard in decentralized optimization literature, it is standard in the literature of adaptive gradient methods. The convergence analysis of adaptive gradient methods is just developed recently and most literature uses it due to the already complicated analysis for adaptive gradient methods like Adam and AdaGrad. The assumption is mostly used to upper bound $\hat{v}_{t-1}$. Relaxing this assumption is an interesting problem but it has not been well solved in the literature of adaptive gradient methods.
+
+5.  In the experimental results as well, there seems to be no real gain compared to DGD. What is the motivation then?
+
+R: Our motivation is to bring the benefits of adaptive gradient methods into decentralized optimization. The true benefit of adaptive gradient methods is theoretically well understood in the community, but it is well known that adaptive gradient methods like Adam or AMSGrad are easier to tune compared with SGD. Also, on many datasets, people observe if one tunes every algorithm really well, their performance tends to be the same. Our experiments are consistent with these observations. In the experiment section, the result for each algorithm is best tuned over 6 stepsizes on a log scale grid and decentralized AMSgrad only outperforms DGD by a tiny margin. However, there could be a huge performance gap if the stepsizes are not perfectly tuned (this is usually the case when people are prototyping their models or when they do not have a large amount of computational resources).  We showed the performance of different algorithms under different stepsizes in section A.4 in the supplemental material. It is clear that decentralized AMSGrad achieves a reasonable performance on a wider range of stepsize than DGD. 
+
+
+6.  MNIST data set is too simple. For a conference like ICML, it is better to use CIFAR or ImageNet 
+
+R: In the experiments, we try to show the effectiveness of our algorithm on training neural nets. MNIST can be a good example to demonstrate it. We agree with the reviewer that more complicated datasets could be useful, we are working on CIFAR 10 now and will include them in our next version. Since our framework does not change an algorithm too much when converting it to its decentralized counterpart, we expect most benefit of the algorithm to carry over in decentralized optimization.  We hope the reviewer takes into consideration that the performance of adaptive gradient methods is already strongly supported by numerous empirical evidence when evaluating our paper overall. 
