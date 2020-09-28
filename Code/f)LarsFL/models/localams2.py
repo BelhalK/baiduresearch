@@ -44,8 +44,9 @@ class LocalAMSGrad(Optimizer):
         betas=(0.9, 0.999),
         eps=1e-8,
         weight_decay=0,
-        amsgrad=False,
-        LAMB=False
+        amsgrad=True,
+        LAMB=False,
+        lambda0=0.01
     ):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
@@ -59,7 +60,7 @@ class LocalAMSGrad(Optimizer):
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
         defaults = dict(
             lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, amsgrad=amsgrad, 
-            v_hat=v_hat, m=m, v=v, num_round=num_round, LAMB = LAMB
+            v_hat=v_hat, m=m, v=v, num_round=num_round, LAMB = LAMB, lambda0=lambda0
         )
         super(LocalAMSGrad, self).__init__(params, defaults)
 
@@ -125,15 +126,17 @@ class LocalAMSGrad(Optimizer):
                 if amsgrad:
                     # Maintains the maximum of all 2nd moment running avg. till now
                     if group["num_round"]==0:
-                        denom = exp_avg_sq.sqrt().add_(group['eps'])
+                        sqv = exp_avg_sq.sqrt().add_(group['eps'])
                     else:                            
-                        denom = max_exp_avg_sq.sqrt().add_(group['eps'])
+                        sqv = max_exp_avg_sq.sqrt().add_(group['eps'])
                     step_size = group["lr"]
+                    lambda0 = group["lambda0"]
                     if group["LAMB"]:
-                        numer = exp_avg * torch.norm(p)/torch.norm(exp_avg)
+                        r= exp_avg/sqv
+                        scale=torch.norm(p)/torch.norm(r+lambda0*p)                           
+                        p.addcmul_(scale, r+lambda0*p, value=-step_size)
                     else:                    
-                        numer = exp_avg
-                    p.addcdiv_(numer, denom, value=-step_size)
+                        p.addcdiv_(exp_avg, sqv, value=-step_size)
                 else:
                     denom = np.maximum(torch.sqrt(state["adp_u"]),0.001)
                     step_size = group["lr"] / bias_correction1

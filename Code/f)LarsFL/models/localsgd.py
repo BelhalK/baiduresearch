@@ -49,7 +49,7 @@ class LocalSGD(Optimizer):
         The Nesterov version is analogously modified.
     """
 
-    def __init__(self, params, LAMB, lr=1e-2, momentum=0, dampening=0,
+    def __init__(self, params, LAMB, lambda0, lr=1e-2, momentum=0, dampening=0,
                  weight_decay=0, nesterov=False):
         if lr < 0.0:
             raise ValueError("Invalid learning rate: {}".format(lr))
@@ -59,7 +59,7 @@ class LocalSGD(Optimizer):
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
 
         defaults = dict(lr=lr, momentum=momentum, dampening=dampening,
-                        weight_decay=weight_decay, nesterov=nesterov, LAMB=LAMB)
+                        weight_decay=weight_decay, nesterov=nesterov, LAMB=LAMB, lambda0=lambda0)
         if nesterov and (momentum <= 0 or dampening != 0):
             raise ValueError("Nesterov momentum requires a momentum and zero dampening")
         super(LocalSGD, self).__init__(params, defaults)
@@ -105,8 +105,8 @@ class LocalSGD(Optimizer):
                         d_p = buf
                 
                 if group["LAMB"]:
-                    d_p = d_p*torch.norm(p)/torch.norm(d_p)
-
-                p.data.add_(-group['lr'], d_p)
+                    m = d_p+group['lambda0']*p
+                    A = m*torch.norm(p)/torch.norm(m)
+                    p.data.add_(-group['lr'], A)
 
         return loss

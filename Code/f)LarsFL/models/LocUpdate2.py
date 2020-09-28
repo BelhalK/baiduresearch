@@ -38,7 +38,8 @@ class LocalUpdate(object):
     def train(self, net):
         net.train()
         # train and update
-        optimizer = LocalSGD(net.parameters(), lr=self.args.lr, momentum=0, LAMB=self.args.LAMB)
+        optimizer = LocalSGD(net.parameters(), lr=self.args.lr, momentum=0, LAMB=self.args.LAMB, 
+                             lambda0=self.args.lambda0)
         
         epoch_loss = []
         for iter in range(self.args.local_ep):
@@ -73,7 +74,8 @@ class LocalUpdateAMS(object):
         optimizer = LocalAMSGrad(net.parameters(), lr=self.args.lr, 
                                             betas=(self.args.momentum, self.args.beta2), 
                                             eps=1e-8, weight_decay=self.args.wdecay, amsgrad=True, 
-                                            v_hat=v_hat, v=v, m=m, num_round=self.num_round, LAMB=self.args.LAMB)
+                                            v_hat=v_hat, v=v, m=m, num_round=self.num_round, LAMB=self.args.LAMB,
+                                            lambda0=self.args.lambda0)
 
         epoch_loss = []
         for iter in range(self.args.local_ep):
