@@ -51,9 +51,6 @@ from gossip import NPeerDynamicDirectedExponentialGraph as NPDDEGraph
 from gossip import RingGraph
 from gossip import UniformMixing
 
-
-from optimizers.damsgrad_u import DAMSGrad
-
 GRAPH_TOPOLOGIES = {
 	0: DDEGraph,	# Dynamic Directed Exponential
 	1: DBEGraph,	# Dynamic Bipartite Exponential
@@ -73,21 +70,6 @@ MIXING_STRATEGIES = {
 # Parse command line arguments (CLAs):
 # --------------------------------------------------------------------------- #
 parser = argparse.ArgumentParser(description='Playground')
-
-parser.add_argument(
-	"--optimizer",
-	type=str,
-	default="sgd",
-	help="optimizer to use (sgd, damsgrad)",
-	choices=["sgd", "damsgrad"],
-)
-parser.add_argument(
-	"--beta1", default=0.9, type=float, help="AMSGrad coefficients beta_1"
-)
-parser.add_argument(
-	"--beta2", default=0.999, type=float, help="AMSGrad coefficients beta_2"
-)
-
 parser.add_argument('--all_reduce', default='False', type=str,
 					help='whether to use all-reduce or gossip')
 parser.add_argument('--batch_size', default=32, type=int,
@@ -194,86 +176,33 @@ def main():
 
 	# init model, loss, and optimizer
 	model = init_model()
+	if args.all_reduce:
+		model = torch.nn.parallel.DistributedDataParallel(model)
+	else:
+		model = GossipDataParallel(model,
+								   graph=args.graph,
+								   mixing=args.mixing,
+								   comm_device=args.comm_device,
+								   push_sum=args.push_sum,
+								   overlap=args.overlap,
+								   synch_freq=args.synch_freq,
+								   verbose=args.verbose,
+								   use_streams=not args.no_cuda_streams)
 
-
-	# moved the definition of optimizer before the model wapper so that we can input it into the wapper
-	if args.optimizer == "sgd":
-		optimizer = torch.optim.SGD(
-			model.parameters(),
-			lr=args.lr,
-			momentum=args.momentum,
-			weight_decay=args.weight_decay,
-			nesterov=args.nesterov,
-		)
-	elif args.optimizer == "damsgrad":
-		optimizer = DAMSGrad(
-			model.parameters(),
-			lr=args.lr,
-			betas=(args.beta1, args.beta2),
-			weight_decay=args.weight_decay,
-			amsgrad=True,
-		)
-
-	# create distributed data loaders, moved loader creation before optimizer initialization
-	loader, sampler = make_dataloader(args, train=True)
-	if not args.train_fast:
-		val_loader = make_dataloader(args, train=False)
-		
-	# moved definition of loss here
 	core_criterion = nn.KLDivLoss(reduction='batchmean').cuda()
 	log_softmax = nn.LogSoftmax(dim=1)
-
 
 	def criterion(input, kl_target):
 		assert kl_target.dtype != torch.int64
 		loss = core_criterion(log_softmax(input), kl_target)
 		return loss
 
-	# get first batch and do one step of backward to initilize gradients
-	model.train()
-	_train_loader = loader.__iter__()
-
-
-	log.debug('train loader initialized')
-		
-	for i, (batch, target) in enumerate(_train_loader, start=0):
-		
-		batch = batch.cuda()
-		target = target.cuda(non_blocking=True)
-		# create one-hot vector from target
-		kl_target = torch.zeros(target.shape[0], 1000, device='cuda').scatter_(
-			1, target.view(-1, 1), 1)
-				
-		# ----------------------------------------------------------- #
-		# Forward/Backward pass
-		# ----------------------------------------------------------- #
-		output = model(batch)
-		loss = criterion(output, kl_target)
-		loss.backward()
-		
-		optimizer.zero_grad()
-		# initialize adp_u params for damsgrad
-		if args.optimizer == "damsgrad":
-			optimizer.step()
-		break
-
-
-	if args.all_reduce:
-		model = torch.nn.parallel.DistributedDataParallel(model)
-	else:
-                model = GossipDataParallel(
-                    model,
-                    graph=args.graph,
-                    mixing=args.mixing,
-                    comm_device=args.comm_device,
-                    optimizer=optimizer,
-                    optimizer_type = args.optimizer,
-                    push_sum=args.push_sum,
-                    overlap=args.overlap,
-                    synch_freq=args.synch_freq,
-                    verbose=args.verbose,
-                    use_streams=not args.no_cuda_streams,
-                )
+	optimizer = torch.optim.SGD(model.parameters(),
+								lr=args.lr,
+								momentum=args.momentum,
+								weight_decay=args.weight_decay,
+								nesterov=args.nesterov)
+	optimizer.zero_grad()
 
 	# dictionary used to encode training state
 	state = {}
@@ -344,7 +273,10 @@ def main():
 						  nw=args.num_dataloader_workers,
 						  bs=args.batch_size), file=f)
 
-
+	# create distributed data loaders
+	loader, sampler = make_dataloader(args, train=True)
+	if not args.train_fast:
+		val_loader = make_dataloader(args, train=False)
 
 	start_itr = state['itr']
 	start_epoch = state['epoch']
@@ -607,7 +539,7 @@ def update_learning_rate(optimizer, epoch, itr=None, itr_per_epoch=None,
 def make_dataloader(args, train=True):
 	""" Returns train/val distributed dataloaders (cf. ImageNet in 1hr) """
 
-	data_dir = args.dataset_dir
+	data_dir = "dummy_download_cifar10"
 	train_dir = os.path.join(data_dir, 'train')
 	val_dir = os.path.join(data_dir, 'val')
 
@@ -616,8 +548,8 @@ def make_dataloader(args, train=True):
 
 	if train:
 		log.debug('fpaths train {}'.format(train_dir))
-		train_dataset = datasets.ImageFolder(
-			train_dir, transforms.Compose([
+		train_dataset = datasets.CIFAR10(root='/mnt/home/weijie/cifar10',
+			train=True, download=True,transform=transforms.Compose([
 				transforms.RandomResizedCrop(224),
 				transforms.RandomHorizontalFlip(), transforms.ToTensor(),
 				normalize]))
@@ -640,7 +572,8 @@ def make_dataloader(args, train=True):
 		log.debug('fpaths val {}'.format(val_dir))
 
 		val_loader = torch.utils.data.DataLoader(
-			datasets.ImageFolder(val_dir, transforms.Compose([
+			datasets.CIFAR10(root='/mnt/home/weijie/cifar10',
+			train=False, download=True,transform=transforms.Compose([
 				transforms.Resize(256),
 				transforms.CenterCrop(224),
 				transforms.ToTensor(),
@@ -681,7 +614,6 @@ def parse_args():
 		+ args.tag \
 		+ 'out_r' + str(args.rank) \
 		+ '_n' + str(args.world_size) \
-		+ "_opt" + str(args.optimizer) \
 		+ '.csv'
 	args.resume = True if args.resume == 'True' else False
 	args.verbose = True if args.verbose == 'True' else False
@@ -772,7 +704,7 @@ def init_model():
 		Fully connected layer <-- Gaussian weights (mean=0, std=0.01)
 		gamma of last Batch norm layer of each residual block <-- 0
 	"""
-	model = models.resnet50()
+	model = models.resnet18()
 	for m in model.modules():
 		if isinstance(m, Bottleneck):
 			num_features = m.bn3.num_features

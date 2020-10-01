@@ -274,6 +274,7 @@ class RingGraph(GraphManager):
 
     def is_bipartite_graph(self): return False
 
-    def is_passive(self, rank=None): return False
-
+    def is_passive(self, rank=None): 
+        rank = self.rank if rank is None else rank
+        return (rank % 2) == 0
     def is_dynamic_graph(self, graph_type=None): return False

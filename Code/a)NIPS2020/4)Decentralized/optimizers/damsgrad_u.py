@@ -85,25 +85,25 @@ class DAMSGrad(Optimizer):
                     state["step"] = 0
                     # Exponential moving average of gradient values
                     state["exp_avg"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
+                        p
                     )
                     # Exponential moving average of squared gradient values
                     state["exp_avg_sq"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
+                        p
                     )
                     # The true adaptive learning rate used for update, value should be changed outside of the optimizer
                     state["adp_u"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
+                        p
                     )
                     state["old_max_exp_avg_sq"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
+                        p
                     )
                     if amsgrad:
                         # Maintains max of all exp. moving avg. of sq. grad. values
-                        state["old_max_exp_avg_sq"] = state["max_exp_avg_sq"]
                         state["max_exp_avg_sq"] = torch.zeros_like(
-                            p, memory_format=torch.preserve_format
+                            p
                         )
+                        state["old_max_exp_avg_sq"] = state["max_exp_avg_sq"]
 
                 exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
                 if amsgrad:
@@ -126,18 +126,18 @@ class DAMSGrad(Optimizer):
                     # Use the max. for normalizing running avg. of gradient
                 #      denom = (max_exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(group['eps'])
 
-                else:
+#                else:
                     # denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(group['eps'])
                     # use adpative learning rate consensused outside of the optimizer to update
                     
-                    # keep the true adaptive learning positive, line 10
-                    # denom = np.maximum(math.sqrt(state["adp_u"],0.001))
-                    denom = np.maximum(torch.sqrt(state["adp_u"]),0.001)
-                    step_size = group["lr"] / bias_correction1
-                    # parameter update, line 11
-                    p.addcdiv_(exp_avg, denom, value=-step_size)
-                    # update u when parameter is finished, line 12
-                    state["adp_u"] =  state["adp_u"] + max_exp_avg_sq - state["old_max_exp_avg_sq"]
+                # keep the true adaptive learning positive, line 10
+                #denom = np.maximum(math.sqrt(state["adp_u"]),0.001)
+                denom = torch.max(torch.sqrt(state["adp_u"]),torch.ones_like(state["adp_u"]) * 0.001)
+                step_size = group["lr"] / bias_correction1
+                # parameter update, line 11
+                p.addcdiv_(exp_avg, denom, value=-step_size)
+                # update u when parameter is finished, line 12
+                state["adp_u"] =  state["adp_u"] + max_exp_avg_sq - state["old_max_exp_avg_sq"]
 
 
         return loss

@@ -222,7 +222,7 @@ class PushSum(Gossiper):
 class PushPull(Gossiper):
     """ Doubly-stochastic consensus averaging module """
 
-    def mix(self, out_msg, ps_weight, residual=False):
+    def mix(self, out_msg, ps_weight, residual=False, logger=None):
         # out_msg must be on the correct device
         assert out_msg.device.type == self.device.type
         if self.logger is not None:
@@ -234,19 +234,43 @@ class PushPull(Gossiper):
 
         # send-recv w/ some code optimization to avoid buffer prep overhead
         if len(self.in_edges) == 1 and len(self.out_edges) == 1 and residual:
+          
+            if logger is not None:
+                logger.warning('one edge communication') 
+                
             out_edge, in_edge = self.out_edges[0], self.in_edges[0]
             msg = next(mixed_out_msgs)
             if not self.passive:
+                if logger is not None:
+                    logger.warning('not passive')
+                    
                 dist.broadcast(tensor=msg, src=out_edge.src,
                                group=out_edge.process_group)
+                
+                if logger is not None:
+                    logger.warning('gossip line 1 finished')
+                
                 dist.broadcast(tensor=self.in_msg_buffer, src=in_edge.src,
                                group=in_edge.process_group)
+                
+                if logger is not None:
+                    logger.warning('gossip line 2 finished')
+                    
             else:
+                if logger is not None:
+                    logger.warning('passive')
+                    
                 dist.broadcast(tensor=self.in_msg_buffer, src=in_edge.src,
                                group=in_edge.process_group)
+                
+                if logger is not None:
+                    logger.warning('gossip line 1 finished')
+                    
                 dist.broadcast(tensor=msg, src=out_edge.src,
                                group=out_edge.process_group)
-
+                
+                if logger is not None:
+                    logger.warning('gossip line 2 finished')
         # regular send-recv
         else:
             # prepare in-msg buffer
@@ -256,19 +280,44 @@ class PushPull(Gossiper):
                 self.in_msg_buffer.zero_()
 
             # send-recv
+            edge_id = 0
             for out_edge, in_edge in zip(self.out_edges, self.in_edges):
+                if logger is not None:
+                    logger.warning('communication with edge ' + str(edge_id)) 
                 msg = next(mixed_out_msgs)
                 if not self.passive:
+                    if logger is not None:
+                        logger.warning('not passive')
+                        
                     dist.broadcast(tensor=msg, src=out_edge.src,
                                    group=out_edge.process_group)
+                    
+                    if logger is not None:
+                        logger.warning('gossip line 1 finished')
+                        
                     dist.broadcast(tensor=self.placeholder, src=in_edge.src,
                                    group=in_edge.process_group)
+                    
+                    if logger is not None:
+                        logger.warning('gossip line 2 finished')
                 else:
+                    if logger is not None:
+                        logger.warning('is passive')
+                        
                     dist.broadcast(tensor=self.placeholder, src=in_edge.src,
                                    group=in_edge.process_group)
+                    
+                    if logger is not None:
+                        logger.warning('gossip line 1 finished')
+                        
                     dist.broadcast(tensor=msg, src=out_edge.src,
                                    group=out_edge.process_group)
+                    
+                    if logger is not None:
+                        logger.warning('gossip line 2 finished')
+                        
                 self.in_msg_buffer.add_(self.placeholder)
+                edge_id += 1
 
         self.refresh_peers_()
         self.clean_msg_buffers_()

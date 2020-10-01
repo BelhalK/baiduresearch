@@ -607,7 +607,7 @@ def update_learning_rate(optimizer, epoch, itr=None, itr_per_epoch=None,
 def make_dataloader(args, train=True):
 	""" Returns train/val distributed dataloaders (cf. ImageNet in 1hr) """
 
-	data_dir = args.dataset_dir
+	data_dir = "dummy_download_cifar10"
 	train_dir = os.path.join(data_dir, 'train')
 	val_dir = os.path.join(data_dir, 'val')
 
@@ -616,8 +616,8 @@ def make_dataloader(args, train=True):
 
 	if train:
 		log.debug('fpaths train {}'.format(train_dir))
-		train_dataset = datasets.ImageFolder(
-			train_dir, transforms.Compose([
+		train_dataset = datasets.CIFAR10(root='/mnt/home/weijie/cifar10',
+			train=True, download=True,transform=transforms.Compose([
 				transforms.RandomResizedCrop(224),
 				transforms.RandomHorizontalFlip(), transforms.ToTensor(),
 				normalize]))
@@ -640,7 +640,8 @@ def make_dataloader(args, train=True):
 		log.debug('fpaths val {}'.format(val_dir))
 
 		val_loader = torch.utils.data.DataLoader(
-			datasets.ImageFolder(val_dir, transforms.Compose([
+			datasets.CIFAR10(root='/mnt/home/weijie/cifar10',
+			train=False, download=True,transform=transforms.Compose([
 				transforms.Resize(256),
 				transforms.CenterCrop(224),
 				transforms.ToTensor(),
@@ -772,7 +773,7 @@ def init_model():
 		Fully connected layer <-- Gaussian weights (mean=0, std=0.01)
 		gamma of last Batch norm layer of each residual block <-- 0
 	"""
-	model = models.resnet50()
+	model = models.resnet18()
 	for m in model.modules():
 		if isinstance(m, Bottleneck):
 			num_features = m.bn3.num_features

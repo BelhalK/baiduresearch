@@ -155,6 +155,7 @@ class GossipDataParallel(Module):
         self.gossip_device_buffer = []
         self.gossip_params_u = []
         self.gossip_device_buffer_u = []
+        count_param_grad = 0
         for p in module.parameters():
             cp = p.clone().detach_()
             cp = cp.cpu().pin_memory() if self.__cpu_comm else cp.cuda()
@@ -162,11 +163,18 @@ class GossipDataParallel(Module):
             self.gossip_device_buffer.append(cp)
             # do learning rate consensus only for damsgrad
             if optimizer_type == 'damsgrad':
-                u = self.optimizer.state_dict()['state'][id(p)]['adp_u']
-                cp_u = u.clone().detach_()
-                cp_u = cp_u.cpu().pin_memory() if self.__cpu_comm else cp_u.cuda()
-                self.gossip_params_u.append(cp_u)
-                self.gossip_device_buffer_u.append(cp_u)
+                opt_state = self.optimizer.state_dict()['state']
+                if id(p) in opt_state:
+                    #self.logger.warning('has grad')
+                    u = opt_state[id(p)]['adp_u']
+                    cp_u = u.clone().detach_()
+                    cp_u = cp_u.cpu().pin_memory() if self.__cpu_comm else cp_u.cuda()
+                    self.gossip_params_u.append(cp_u)
+                    self.gossip_device_buffer_u.append(cp_u)
+                    count_param_grad += 1
+        self.logger.warning("number of params with grad " + str(count_param_grad))
+                #else:
+                    #self.logger.warning('no grad')
             
         # # add optimizer's adp_u also to gossip.params and the buffer    
         # for p in module.parameters():
@@ -178,15 +186,26 @@ class GossipDataParallel(Module):
 
         # prepare gossip process control objects
         self.gossip_lock = threading.Lock()
+        #self.gossip_lock_u = threading.Lock()
+
         self.gossip_flag = threading.Event()
         self.train_flag = threading.Event()
+        # adding a gossip process control for adp_u
+        self.gossip_flag_u = threading.Event()
+        self.train_flag_u = threading.Event()
 
         if self.dist_config['comm_device'].type != 'cpu' and use_streams:
             self.gossip_stream = torch.cuda.Stream()
+            #self.gossip_stream_u = torch.cuda.Stream()
         else:
             self.gossip_stream = torch.cuda.current_stream()
 
         if self.process_rank % self.nprocs_per_node == 0:
+            # wait until train_flag set true, then transmit 
+            if self.optimizer_type == 'damsgrad':
+                self.set_flag = True
+            else:
+                self.set_flag = True
             self.gossip_thread = threading.Thread(
                 target=GossipDataParallel._gossip_target,
                 args=(self.dist_config,
@@ -197,7 +216,9 @@ class GossipDataParallel(Module):
                       self.gossip_device_buffer,
                       self.gossip_ps_weight,
                       self.gossip_ps_factor,
-                      self.gossip_stream))
+                      self.gossip_stream,
+                      self.set_flag,
+                      0))
             self.gossip_thread.daemon = True
             self.gossip_thread.name = 'Gossip-Thread'
             self.gossip_thread.start()
@@ -206,6 +227,35 @@ class GossipDataParallel(Module):
         # wait for thread to complete initialization
         self.gossip_flag.wait()
         self.gossip_flag.clear()
+        
+        # add a daemon thread for transmission of adp_u
+        # wait until gossip_flag set true, then transmit 
+        if self.process_rank % self.nprocs_per_node == 0:
+            if self.optimizer_type == 'damsgrad':
+                self.gossip_thread_u = threading.Thread(
+                    target=GossipDataParallel._gossip_target,
+                    args=(self.dist_config,
+                          self.gossip_flag_u,
+                          self.gossip_flag,
+                          self.gossip_lock,
+                          self.gossip_params_u,
+                          self.gossip_device_buffer_u,
+                          self.gossip_ps_weight,
+                          self.gossip_ps_factor,
+                          self.gossip_stream,
+                          True,
+                          1))
+                self.gossip_thread_u.daemon = True
+                self.gossip_thread_u.name = 'Gossip-Thread-u'
+                self.gossip_thread_u.start()       
+        else:
+            if self.optimizer_type == 'damsgrad':
+                self.gossip_flag_u.set()
+                
+        # wait for adp_u gossip thread to complete initialization
+        if self.optimizer_type == 'damsgrad':
+            self.gossip_flag_u.wait()
+            self.gossip_flag_u.clear()
         # lazy mixing avoids additional bias/de-bias steps
         self.lazy_mixing = (
             not self.asynch and self.dist_config['mixing'].is_regular() and
@@ -369,17 +419,34 @@ class GossipDataParallel(Module):
             return False
 
         if not non_blocking:
-            if not self.gossip_flag.wait(timeout=HEARTBEAT_TIMEOUT):
+            # damsgrad will have gossip_flag_u set true after gossiping
+            # d-psgd will have gossip_flag set true after gossiping
+            if self.optimizer_type == 'damsgrad':
+                if not self.gossip_flag_u.wait(timeout=HEARTBEAT_TIMEOUT):
+                    raise NameError('Gossip-u flag timeout')
+                    sys.exit()  # HEARTBEAT monitor
+            elif not self.gossip_flag.wait(timeout=HEARTBEAT_TIMEOUT):
                 raise NameError('Gossip flag timeout')
                 sys.exit()  # HEARTBEAT monitor
-
+          #  if self.optimizer_type == 'damsgrad':
+          #      if not self.gossip_flag_u.wait(timeout=HEARTBEAT_TIMEOUT):
+          #          raise NameError('Gossip-u flag timeout')
+          #          sys.exit()  # HEARTBEAT monitor
         # query gossip thread
-        if self.gossip_flag.is_set():
+        if self.optimizer_type == 'damsgrad':
+            gossip_set = self.gossip_flag_u.is_set()
+        else:
+            gossip_set = self.gossip_flag.is_set()
+            
+        if gossip_set:
             self.logger.debug('received gossip flag')
 
             # atomic gossip was interrupted so try again
             if self.gossip_ps_weight[0] == -1:
-                self.gossip_flag.clear()
+                if not self.optimizer_type == 'damsgrad':
+                    self.gossip_flag.clear()
+                elif self.optimizer_type == 'damsgrad':
+                    self.gossip_flag_u.clear()
                 self.params_mixed = True
                 self.gossiping = False
                 self.transfer_params(mix=False)
@@ -402,18 +469,33 @@ class GossipDataParallel(Module):
                 if self.lazy_mixing:
                     p.data.mul_(self.lazy_ps_factor.type(p.data.dtype))
             # fetch learning rate buffer for dmasgrad
+            
             if self.optimizer_type == 'damsgrad':
-                for p, r in zip(self.module.parameters(),
-                                self.gossip_device_buffer_u):
-                    u = self.optimizer.state_dict()['state'][id(p)]['adp_u']
-                    u.data.add_(r)
-                    if self.lazy_mixing:
-                        u.data.mul_(self.lazy_ps_factor.type(u.data.dtype))
+                idx = 0
+                opt_state = self.optimizer.state_dict()['state']
+                for p in self.module.parameters():
+                    if id(p) in opt_state:
+                        u = opt_state[id(p)]['adp_u']
+                        r = self.gossip_device_buffer_u[idx]
+                        u.data.add_(r)
+                        if self.lazy_mixing:
+                            u.data.mul_(self.lazy_ps_factor.type(u.data.dtype))
+                        idx += 1
+           # if self.optimizer_type == 'damsgrad':
+           #     for p, r in zip(self.module.parameters(),
+           #                     self.gossip_device_buffer_u):
+           #         u = self.optimizer.state_dict()['state'][id(p)]['adp_u']
+           #         u.data.add_(r)
+           #         if self.lazy_mixing:
+           #             u.data.mul_(self.lazy_ps_factor.type(u.data.dtype))
 
             # update flags
             self.logger.debug('updated ps-weight {}'.format(self.ps_weight))
             self.logger.debug('updated model params')
-            self.gossip_flag.clear()
+            if not self.optimizer_type == 'damsgrad':
+                self.gossip_flag.clear()
+            elif self.optimizer_type == 'damsgrad':
+                self.gossip_flag_u.clear()
             self.params_mixed = True
             self.gossiping = False
             return True
@@ -448,6 +530,25 @@ class GossipDataParallel(Module):
             if mix:
                 p.data.mul_(self.gossip_ps_factor.type(p.data.dtype))
             gossip_device_buffer_elem.data.copy_(p)
+        # --    
+        # adp_u gpu-gpu copy
+        # --
+        if self.optimizer_type == 'damsgrad':
+            idx = 0
+            opt_state = self.optimizer.state_dict()['state']
+            for p in self.module.parameters():
+                if id(p) in opt_state:
+                    u = opt_state[id(p)]['adp_u']
+                    gossip_device_buffer_u_elem = self.gossip_device_buffer_u[idx]
+                    gossip_device_buffer_u_elem.data.copy_(u)
+                    idx += 1
+                
+        #    for p, gossip_device_buffer_u_elem in zip(self.module.parameters(),
+        #                    self.gossip_device_buffer_u):
+        #        u = self.optimizer.state_dict()['state'][id(p)]['adp_u']
+        #        gossip_device_buffer_u_elem.data.copy_(u)
+
+
         # --
         # buffer to gossip-thread copy (potentially slow, but asynchronous)
         # --
@@ -455,7 +556,14 @@ class GossipDataParallel(Module):
         with torch.cuda.stream(self.gossip_stream):
             for b, gp in zip(self.gossip_device_buffer, self.gossip_params):
                 gp.copy_(b, non_blocking=True)
+            # --
+            # copy adp_u to buffer for damsgrad
+            # --
+            if self.optimizer_type == 'damsgrad':
+                for b, gu in zip(self.gossip_device_buffer_u, self.gossip_params_u):
+                    gu.copy_(b, non_blocking=True)
 
+                
         # --
 
         # update flags
@@ -463,21 +571,33 @@ class GossipDataParallel(Module):
         self.params_mixed = False
         self.gossiping = True
         self.train_flag.set()
+    #    if self.optimizer_type == 'damsgrad':
+    #        self.train_flag_u.set()
         return True
 
     @staticmethod
     def _gossip_into_receive_buffer(send_buffer, gossiper, receive_buffer,
                                     gossip_ps_weight, gossip_lock,
-                                    dist_config):
+                                    dist_config, logger=None):
         # flatten parameters before sending
         out_msg = flatten_tensors(send_buffer)
+        
 
         # send and receive parameters
-        with gossip_lock:
+        with gossip_lock: 
+            if logger is not None:
+                logger.warning('gossiper locked') 
+                
             in_msg, ps_weight = gossiper.mix(out_msg, gossip_ps_weight,
-                                             residual=True)
+                                             residual=True, logger=logger)
+            if logger is not None:
+                logger.warning('weight mixed') 
+                
             ps_factor = gossiper.mixing_weights['lo']
-
+            
+                
+        if logger is not None:
+            logger.warning('gossiper unlocked') 
         # unflatten parameters
         for r, g in zip(unflatten_tensors(in_msg, send_buffer),
                         receive_buffer):
@@ -491,7 +611,7 @@ class GossipDataParallel(Module):
     @staticmethod
     def _gossip_target(dist_config, gossip_flag, train_flag, gossip_lock,
                        gossip_params, gossip_device_buffer,
-                       gossip_ps_weight, gossip_ps_factor, gossip_stream):
+                       gossip_ps_weight, gossip_ps_factor, gossip_stream, set_flag, thread_id):
         """ Gossip thread, which performs push-sum on model params """
         logger = make_logger(dist_config['rank'], dist_config['verbose'])
 
@@ -514,19 +634,26 @@ class GossipDataParallel(Module):
         dist_config['gossipers'] = gossipers
         gossip_ps_factor.data.copy_(
             gossipers[list(gossipers)[0]].mixing_weights['lo'])
-        gossip_flag.set()
+        if set_flag:
+            gossip_flag.set()
 
         # gossip loop
         while True:
+            logger.warning('waiting for flag set, thread ' + str(thread_id))
             train_flag.wait()
+            logger.warning('wait flag is set, thread ' + str(thread_id))
             logger.debug('received train-flag')
+            logger.warning('number of gossipers ' + str(len(gossip_params_by_dtype))) 
             try:
                 with torch.cuda.stream(gossip_stream):
+                    count_finished = 0
                     for dtype in gossip_params_by_dtype:
                         ps_weight, ps_factor = GossipDataParallel._gossip_into_receive_buffer(
                             gossip_params_by_dtype[dtype], gossipers[dtype],
                             gossip_device_buffer_by_dtype[dtype],
-                            gossip_ps_weight, gossip_lock, dist_config)
+                            gossip_ps_weight, gossip_lock, dist_config, logger)
+                        count_finished += 1
+                        logger.warning('gossiper finished: ' + str(count_finished)) 
                     gossip_ps_weight.copy_(ps_weight)
                     gossip_ps_factor.copy_(ps_factor)
             except RuntimeError as e:
@@ -536,10 +663,13 @@ class GossipDataParallel(Module):
                 gossip_ps_weight.fill_(-1)
             finally:
                 # Make sure all queued operations are complete
+                logger.warning('trying to synchronize stream, thread ' + str(thread_id))
                 gossip_stream.synchronize()
+                logger.warning('communication completed, thread ' + str(thread_id))
                 # give main thread go-ahead to read our gossip buffer
                 train_flag.clear()
                 gossip_flag.set()
+                logger.warning('complete flag is set , thread ' + str(thread_id))
 
     def __register_hooks(self):
         """
