@@ -107,6 +107,9 @@ class LocalSGD(Optimizer):
                 if group["LAMB"]:
                     m = d_p+group['lambda0']*p
                     A = m*torch.norm(p)/torch.norm(m)
-                    p.data.add_(-group['lr'], A)
+                else:
+                    A =d_p
+
+                p.data.add_(-group['lr'], A)
 
         return loss
