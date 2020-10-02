@@ -160,20 +160,20 @@ Designing adaptive methods in such settings is highly non-trivial due to the alr
 This paper is an attempt at bridging the gap between both realms in nonconvex optimization. 
 Our contributions are summarized as follows:
 \begin{itemize}
-\item In this paper, we investigate the possibility of using any adaptive gradient methods in the decentralized training paradigm, where nodes have only a local view of the whole communication graph. We develop a general technique that converts an adaptive gradient method from a centralized method to its decentralized variant.
+\item In this paper, we investigate the possibility of using adaptive gradient methods in the decentralized training paradigm, where nodes have only a local view of the whole communication graph. We develop a general technique that converts an adaptive gradient method from a centralized method to its decentralized variant.
 \item By using our proposed technique, we present a new decentralized optimization algorithm, called decentralized AMSGrad, as the decentralized counterpart of AMSGrad.
 \item We provide a theoretical verification interface, in Theroem~\ref{thm: dagm_converge}, for analyzing the behavior of decentralized adaptive gradient methods obtained as a result of our technique.
 Thus, we characterize the convergence rate of decentralized AMSGrad, which is the first convergent decentralized adaptive gradient method, to the best of our knowledge.
 \end{itemize}
 A \emph{novel technique} in our framework is a mechanism to enforce a \emph{consensus on adaptive learning rates} at different nodes. 
-We show the importance of consensus on adaptive learning rates by proving a divergent problem instance for a recently proposed decentralized adaptive gradient method, namely DADAM~\citep{nazari2019dadam}, a decentralized version of ADAM. 
-Though consensus is performed on the model parameter, DADAM lacks of consensus principles on \emph{the nodes} adaptive learning rates.
+We show the importance of consensus on adaptive learning rates by proving a divergent problem instance for a recently proposed decentralized adaptive gradient method, namely DADAM~\citep{nazari2019dadam}, a decentralized version of AMSGrad. 
+Though consensus is performed on the model parameter, DADAM lacks consensus principles on adaptive learning rates.
 
 After having presented existing related work and important concepts of decentralized adaptive methods in Section~\ref{sec:prelim}, we develop our general framework for converting any adaptive gradient algorithm in its decentralized counterpart along with their rigorous finite-time convergence analysis in Section ~\ref{sec:main} concluded by some illustrative examples of our framework's behavior in practice. 
 % Section~\ref{sec:conclusion} concludes our work.
 
- \textbf{Notations}: $x_{t,i}$ denotes variable $x$ at node $i$ and iteration $t$. $\|\cdot \|_{abs}$ denotes the entry-wise $L_1$ norm of a matrix, i.e. $\|A\|_{abs}= \sum_{i,j} A_{i,j}$. 
-We introduce important notations used throughout the paper: for any $t>$, $G_t := [g_{t,N}]$ where $[g_{t,N}]$ denotes the vector $[g_{t,1}, g_{t,2}, \cdots, g_{t,N}]$, $M_t := [m_{t,N}]$, $X_t := [x_{t,N}]$, $\overline {\nabla f}(X_t) := \frac{1}{N}\sum_{i=1}^N \nabla f_i(x_{t,i})$, $U_t := [u_{t,N}]$, $ \tilde U_t := [\tilde u_{t,N}]$, $ V_t := [ v_{t,N}]$, $\hat V_t := [\hat v_{t,N}]$, $\overline X_t := \frac{1}{N}\sum_{i=1}^N x_{t,i} $, $\overline U_t := \frac{1}{N}\sum_{i=1}^N u_{t,i} $ and $\overline {\tilde U_t} := \frac{1}{N}\sum_{i=1}^N  \tilde u_{t,i} $. 
+ \textbf{Notations}: $x_{t,i}$ denotes variable $x$ at node $i$ and iteration $t$. $\|\cdot \|_{abs}$ denotes the entry-wise $L_1$ norm of a matrix, i.e. $\|A\|_{abs}= \sum_{i,j} |A_{i,j}|$. 
+We introduce important notations used throughout the paper: for any $t>0$, $G_t := [g_{t,N}]$ where $[g_{t,N}]$ denotes the matrix $[g_{t,1}, g_{t,2}, \cdots, g_{t,N}]$ (where $g_{t,i}$ is a column vector), $M_t := [m_{t,N}]$, $X_t := [x_{t,N}]$, $\overline {\nabla f}(X_t) := \frac{1}{N}\sum_{i=1}^N \nabla f_i(x_{t,i})$, $U_t := [u_{t,N}]$, $ \tilde U_t := [\tilde u_{t,N}]$, $ V_t := [ v_{t,N}]$, $\hat V_t := [\hat v_{t,N}]$, $\overline X_t := \frac{1}{N}\sum_{i=1}^N x_{t,i} $, $\overline U_t := \frac{1}{N}\sum_{i=1}^N u_{t,i} $ and $\overline {\tilde U_t} := \frac{1}{N}\sum_{i=1}^N  \tilde u_{t,i} $. 
 
 
  
@@ -188,10 +188,10 @@ More recent algorithms include Extra \citep{shi2015extra}, Next \citep{di2016nex
 While these algorithms are commonly used in applications other than deep learning, recent algorithmic advances in the machine learning community have shown that decentralized optimization can be useful for training deep models such as neural networks as well. 
 \citet{lian2017can} demonstrate that a stochastic version of Decentralized Subgradient Descent can outperform parameter server-based algorithms when the communication cost is high. 
 \citet{tang2018d} propose the D$^2$ algorithm improving the convergence rate over Stochastic Subgradient Descent.
-\citet{assran2018stochastic} propose the Stochastic Gradient Push that is more robust to network failures for training neural networks. 
+\citet{assran2019stochastic} propose the Stochastic Gradient Push that is more robust to network failures for training neural networks. 
 The study of decentralized training algorithms in the machine learning community is only at its initial stage. 
 No existing work, to our knowledge, has seriously considered integrating \emph{adaptive gradient methods} in the setting of decentralized learning.
-One noteworthy work~\citep{nazari2019dadam} propose a decentralized version of AMSGrad \citep{reddi2019convergence} and is proven to satisfy some non-standard regret.
+One noteworthy work~\citep{nazari2019dadam} propose a decentralized version of AMSGrad \citep{reddi2019convergence} and it is proven to satisfy some non-standard regret.
 
 
 \textbf{Adaptive gradient methods:}  
@@ -249,7 +249,7 @@ It is proven in \citet{nazari2019dadam} that DADAM admits a non-standard regret 
 In the following, we show the DADAM may fail to converge in the offline optimization settings.
 
 \begin{theorem}\label{thm: dadam_diverge}
-There exist a problem satisfying A\ref{a:diff}-A\ref{a:matrixW} where DADAM fails to converge.   
+There exist a problem satisfying A\ref{a:diff}-A\ref{a:matrixW} where DADAM fails to converge to a stationary points with $\nabla f(\bar X_t) = 0$.   
 \end{theorem}
 \begin{proof}
 % \textbf{Proof}: 
@@ -286,13 +286,13 @@ Since $f'$ has a unique optima $x'$, the above bound implies $\bar x_t$ is conve
 \end{minipage}\end{wrapfigure}
 Theorem \ref{thm: dadam_diverge} claims that even though DADAM is proven to satisfy some regret bounds , see \citep{nazari2019dadam}, it can fail to converge to stationary points in the nonconvex offline setting, which is a common setting for training neural networks. 
 We conjecture that this inconsistency in the convergence behavior of DADAM is due to the definition of the regret in \citet{nazari2019dadam}. 
-In the next section, we design decentralized adaptive gradient methods that are guaranteed to converge to stationary points of some defined objective and provide a characterization of that convergence in finite-time and independently of the initialization.
+In the next section, we design decentralized adaptive gradient methods that are guaranteed to converge to stationary points under some assumptions and provide a characterization of that convergence in finite-time and independently of the initialization.
 
 \vspace{-0.05in}
 \section{Convergence of Decentralized Adaptive Gradient Methods}\label{sec:main}
 \vspace{-0.05in}
 
-In this section, we discuss the difficulties of designing adaptive gradient methods in decentralized optimization and introduce an algorithmic framework that turns existing convergent adaptive gradient methods to their decentralized counterparts. 
+In this section, we discuss the difficulties of designing adaptive gradient methods in decentralized optimization and introduce an algorithmic framework that can turn some existing convergent adaptive gradient methods to their decentralized counterparts. 
 We also develop the first convergent decentralized adaptive gradient method, converted from AMSGrad, as an instance of this proposed framework.
 
 \vspace{-0.05in}
@@ -345,13 +345,12 @@ We now develop this exact idea within the existing adaptive methods stressing on
 \end{minipage}
 \end{wrapfigure}
 We now develop a method thats implement consensus of adaptive learning rates.
-While each node can have different $\hat v_{t,i}$ in DADAM, one can keep track of the min/max/average of these adaptive learning rates and use this quantity to update the adaptive learning rates. 
+While each node can have different $\hat v_{t,i}$ in DADAM (Algoithm~\ref{alg: dadam}), one can keep track of the min/max/average of these adaptive learning rates and use the tracking quantities as adaptive learning rates. 
 The predefinition of some convergent lower and upper bounds may also lead to a gradual synchronization of the adaptive learning rates on different nodes as developed for AdaBound in \citet{luo2019adaptive}.
-In this paper, we opt for the average consensus on $\hat v_{t,i}$, see consensus update in line 8 and 11 of Algorithm~\ref{alg: dadaptive}.
-Since for adaptive gradient methods such as AdaGrad or Adam, $\hat v_{t,i}$ approximates the second moment of the gradient estimator, the average of the estimations of those second moments from different nodes is an estimation of second moment on the whole network.  
+In this paper, we present an algorithm framework for decentralized adaptive gradient methods as Algorithm~\ref{alg: dadaptive}, which uses average consensus of $\hat v_{t,i}$ (see consensus update in line 8 and 11) to help convergence.  Algorithm~\ref{alg: dadaptive} can become different adaptive gradient methods by specifying $r_t$ as different functions. E.g., when we choose $\hat v_{t,i} = {\frac{1}{t}\sum_{k=1}^t g_{k,i}^2}$ , Algorithm~\ref{alg: dadaptive} becomes a decentralized version of AdaGrad. When one choose $\hat v_{t,i}$ to be the adaptive learning rate for AMSGrad, we get decentralized AMSGrad (Algorithm~\ref{alg: damsgrad}).
+The intuition of using average consensus is that for adaptive gradient methods such as AdaGrad or Adam, $\hat v_{t,i}$ approximates the second moment of the gradient estimator, the average of the estimations of those second moments from different nodes is an estimation of second moment on the whole network.  
 Also, this design will not introduce any extra hyperparameters that can potentially complicate the tuning process ($\epsilon$ in line 9 is important for numerical stability as in vanilla Adam).  
-Our method is presented Algorithm~\ref{alg: dadaptive}.
-The main convergence result for our class of methods reads as follows:
+The main convergence result for the framework Algorithm~\ref{alg: dadaptive} reads as follows:
 \begin{theorem}\label{thm: dagm_converge}
 Assume A\ref{a:diff}-A\ref{a:matrixW}.
 Set $\alpha = 1/
@@ -371,8 +370,7 @@ where $\| \cdot\|_{abs}$  denotes the entry-wise $L_1$ norm of a matrix (i.e $\|
 	$C_5 =   2/ (\epsilon^{2}(1-\lambda))   L  (\lambda + \beta_1/(1-\beta_1)) G_{\infty}^2  + 4/ (\epsilon^{2}(1-\lambda))   L    G_{\infty}^2$ are independent of $d$, $T$ and $N$. In addition, $\frac{1}{N}\sum_{i=1}^N\left\| {  x_{t,i} -   \overline X_{t}}  \right\|^2   \leq \alpha^2 \left (\frac{1}{1-\lambda} \right)^2 d G_{\infty}^2 \frac{1}{\epsilon}$ which quantifies the consensus error.
 \end{theorem}
 Theorem~\ref{thm: dagm_converge} shows that if $\mathbb E [ \sum_{t=1}^{T} \|(- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} ]  = o(T)$ and $\bar U_t$ is upper bounded, then Algorithm~\ref{alg: dadaptive} is guaranteed to converge to stationary points of the regret function. 
-Intuitively, this means that if the adaptive learning rates on different nodes do not change too fast, the algorithm can converge. 
-This assertion is backed in \citet{chen2018convergence} where it is shown that if such condition is violated, the algorithm may diverge. 
+Intuitively, this means that if the adaptive learning rates on different nodes do not change too fast, the algorithm can converge. It is shown in \citet{chen2018convergence} that such a condition can be satisfied by AdaGrad and AMSGrad and if it is violated, the algorithm may diverge (e.g. Adam). 
 Furthermore, Theorem~\ref{thm: dagm_converge} conveys the benefits of using more nodes in the communication graph. 
 Indeed, as $N$ becomes larger, the term $\sigma^2/N$ will be small. 
 This is also strengthened by the fact that with a larger $N$, the training process tends to be more stable. 
@@ -405,9 +403,9 @@ The consensus of adaptive learning rates is the key difference between decentral
 	\end{algorithmic}
 \end{algorithm}\vspace{-0.1in}
 \end{minipage}\end{wrapfigure}
-One may notice that decentralized AMSGrad does not deduce to AMSGrad since the quantity $u_{t,i}$ in line 10 is calculated based on $v_{t-1,i}$ instead of $v_{t,i}$.
-This encourages the execution of gradient computation and communication in a parallel manner. 
-Specifically, line 4-7 in Algorithm \ref{alg: damsgrad} and Algorithm \ref{alg: dadaptive} can be executed in parallel with line 8-9 to overlap communication and computation time. 
+One may notice that decentralized AMSGrad does not reduce to AMSGrad for $N=1$ since the quantity $u_{t,i}$ in line 10 is calculated based on $v_{t-1,i}$ instead of $v_{t,i}$.
+This design encourages the execution of gradient computation and communication in a parallel manner. 
+Specifically, line 4-7 (line 4-6) in Algorithm \ref{alg: damsgrad} (Algorithm \ref{alg: dadaptive}) can be executed in parallel with line 8-9 (line 7-8) to overlap communication and computation time. 
 If $u_{t,i}$ depends on $v_{t,i}$ which in turn depends on $g_{t,i}$, the gradient computation must finish before the consensus step of the adaptive learning rate in line 9. 
 This can slow down the running time per-iteration of the algorithm. 
 To avoid such delayed adaptive learning, adding $\tilde u_{t-\frac{1}{2},i} = \tilde u_{t,i} - \hat v_{t-1,i} + \hat v_{t,i}$ before line 9 and get rid of line 12 in Algorithm \ref{alg: dadaptive} is an option.
@@ -466,7 +464,7 @@ Such an auxiliary sequence can help us deal with the bias brought by the momentu
  
  {\small
  \begin{align} \label{eq: exp_telescope_sketch}
- \frac{1}{T}\sum_{t=1}^T  \mathbb E \left [\left\|\frac{\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2  \right] \leq \frac{2}{T\alpha} ( \mathbb E  [\Delta_f]) + \frac{L}{T\alpha} \sum_{t=1}^T\mathbb E\left[\| Z_{t+1}-  Z_{t}\|^2 \right]+ \frac{2}{T}\frac{\beta_1}{1-\beta_1} D_1 + \frac{2}{T} D_2 + \frac{3}{T} D_3 \, ,
+ \frac{1}{T}\sum_{t=1}^T  \mathbb E \left [\left\|\frac{\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2  \right] \leq \frac{2}{T\alpha}  \mathbb E  [\Delta_f] + \frac{L}{T\alpha} \sum_{t=1}^T\mathbb E\left[\| Z_{t+1}-  Z_{t}\|^2 \right]+ \frac{2}{T}\frac{\beta_1 D_1}{1-\beta_1}  + \frac{2 D_2}{T}  + \frac{3 D_3}{T} \, ,
  \end{align}
  }%
 where $\Delta_f : = \mathbb E [f( Z_{1})] - \mathbb E [f( Z_{T+1})]$ $D_1, D_2$ and $D_3$ are three terms, defined in the supplementary material, and which can be tightly bounded from above. 

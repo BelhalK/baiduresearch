@@ -13,7 +13,8 @@ from utils import download_flowers_data, plot_ims, plot_diagnostics
 # directory for experiment results
 EXP_DIR = './out_data/flowers_convergent_1/'
 # json file with experiment config
-CONFIG_FILE = './config_locker/flowers_convergent.json'
+CONFIG_FILE = './config_locker/flowers_convergent.json' #flowers data
+# CONFIG_FILE = './config_locker/mnist_convergent.json' #mnist data
 
 
 #######################
