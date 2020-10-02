@@ -18,12 +18,16 @@ with open(CONFIG_FILE) as file:
 
 # directory for experiment results
 mcmcmethod = config["mcmcmethod"] #can be anilangevin, langevin, laplace
-EXP_DIR = f'./out_toy/rings_convergent_{mcmcmethod}/'
+if mcmcmethod == "anilangevin":
+    EXP_DIR = f'./out_toy/rings_convergent_{mcmcmethod}_{config["anithreshold"]}/'
+else: 
+    EXP_DIR = f'./out_toy/rings_convergent_{mcmcmethod}/'
 
 # make directory for saving results
 if os.path.exists(EXP_DIR):
     # prevents overwriting old experiment folders by accident
-    raise RuntimeError('Experiment folder "{}" already exists. Please use a different "EXP_DIR".'.format(EXP_DIR))
+    pass
+    # raise RuntimeError('Experiment folder "{}" already exists. Please use a different "EXP_DIR".'.format(EXP_DIR))
 else:
     os.makedirs(EXP_DIR)
     for folder in ['checkpoints', 'landscape', 'plots', 'code']:
@@ -108,19 +112,22 @@ def sample_s_t(batch_size, L=config['num_mcmc_steps'], init_type=config['init_ty
             f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
             x_s_t.data += - f_prime + config['epsilon'] * t.randn_like(x_s_t)
             r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
+            
         elif mcmcmethod == "anilangevin":
             # Langevin with Anisotropic stepsize and noise covariance
             f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
 
             th = config["anithreshold"] #threshold value
             normofgrad = t.norm(t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0], dim=1)
-            thtensor = t.Tensor(np.repeat(th, len(normofgrad))).reshape([100, 1, 1])
+            thtensor = t.Tensor(np.repeat(th, len(normofgrad))).reshape(normofgrad.shape)
 
             stepsize = thtensor/t.max(thtensor, normofgrad)
             stepsize = stepsize.repeat(1,2,1).reshape(f_prime.shape)
             
-            x_s_t.data += - t.mul(stepsize, f_prime) + t.mul(t.sqrt(stepsize), t.randn_like(x_s_t))
+            randomnoise = t.randn_like(x_s_t)
+            x_s_t.data += - t.mul(stepsize, f_prime) + t.mul(stepsize, randomnoise)+ config['epsilon']*randomnoise
             r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
+
         elif mcmcmethod == "laplace":
             # MCMC with laplace approximation
             f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
@@ -134,6 +141,39 @@ def sample_s_t(batch_size, L=config['num_mcmc_steps'], init_type=config['init_ty
 
     return x_s_t.detach(), r_s_t.squeeze() / L
 
+
+
+def sample_s_t_kde(batch_size, L=config['num_mcmc_steps'], init_type=config['init_type'], update_s_t_0=True):
+    # get initial mcmc states for langevin updates ("persistent", "data", "uniform", or "gaussian")
+    def sample_s_t_0():
+        if init_type == 'persistent':
+            return sample_state_set(s_t_0, batch_size)
+        elif init_type == 'data':
+            return sample_q(batch_size), None
+        elif init_type == 'uniform':
+            return config['noise_init_factor'] * (2 * t.rand([batch_size, 2, 1, 1]) - 1).to(device), None
+        elif init_type == 'gaussian':
+            return config['noise_init_factor'] * t.randn([batch_size, 2, 1, 1]).to(device), None
+        else:
+            raise RuntimeError('Invalid method for "init_type" (use "persistent", "data", "uniform", or "gaussian")')
+
+    # initialize MCMC samples
+    x_s_t_0, s_t_0_inds = sample_s_t_0()
+
+    # iterative langevin updates of MCMC samples
+    x_s_t = t.autograd.Variable(x_s_t_0.clone(), requires_grad=True)
+    r_s_t = t.zeros(1).to(device)  # variable r_s_t (Section 3.2) to record average gradient magnitude
+    for ell in range(L):
+        # regular langevin update constant LR
+        f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
+        x_s_t.data += - f_prime + config['epsilon'] * t.randn_like(x_s_t)
+        r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
+
+    if init_type == 'persistent' and update_s_t_0:
+        # update persistent state bank
+        s_t_0.data[s_t_0_inds] = x_s_t.detach().data.clone()
+
+    return x_s_t.detach(), r_s_t.squeeze() / L
 
 #######################
 # ## TRAINING LOOP ## #
@@ -179,6 +219,7 @@ for i in range(config['num_train_iters']):
     # visualize density and log-density for groundtruth, learned energy, and short-run distributions
     if (i + 1) % config['log_viz_freq'] == 0:
         print('{:>6}   Visualizing true density, learned density, and short-run KDE.'.format(i+1))
-        x_kde = sample_s_t(batch_size=config['batch_size_kde'], update_s_t_0=False)[0]
+        x_kde = sample_s_t_kde(batch_size=config['batch_size_kde'], update_s_t_0=False)[0]
+        # x_kde = sample_s_t(batch_size=config['batch_size_kde'], update_s_t_0=False)[0]
         q.plot_toy_density(True, f, config['epsilon'], x_kde, EXP_DIR+'landscape/'+'toy_viz_{:>06d}.pdf'.format(i+1))
         print('{:>6}   Visualizations saved.'.format(i + 1))
