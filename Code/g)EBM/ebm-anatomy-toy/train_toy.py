@@ -4,6 +4,9 @@ import os
 from nets import ToyNet
 from utils import plot_diagnostics, ToyDataset
 
+import numpy as np
+import pdb
+
 # json file with experiment config
 CONFIG_FILE = './config_locker/rings_nonconvergent.json' #short run MCMC
 #CONFIG_FILE = './config_locker/rings_convergent.json' #long run MCMC
@@ -108,7 +111,15 @@ def sample_s_t(batch_size, L=config['num_mcmc_steps'], init_type=config['init_ty
         elif mcmcmethod == "anilangevin":
             # Langevin with Anisotropic stepsize and noise covariance
             f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
-            x_s_t.data += - f_prime + config['epsilon'] * t.randn_like(x_s_t)
+
+            th = config["anithreshold"] #threshold value
+            normofgrad = t.norm(t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0], dim=1)
+            thtensor = t.Tensor(np.repeat(th, len(normofgrad))).reshape([100, 1, 1])
+
+            stepsize = thtensor/t.max(thtensor, normofgrad)
+            stepsize = stepsize.repeat(1,2,1).reshape(f_prime.shape)
+            
+            x_s_t.data += - t.mul(stepsize, f_prime) + t.mul(t.sqrt(stepsize), t.randn_like(x_s_t))
             r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
         elif mcmcmethod == "laplace":
             # MCMC with laplace approximation
