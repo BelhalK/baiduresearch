@@ -2,7 +2,7 @@
 
 \usepackage{aistats2021}
 \usepackage{natbib}
-\setcitestyle{round,aysep={},yysep={;}}
+\usepackage[colorlinks,linkcolor=blue,filecolor=blue,citecolor=magenta,urlcolor=blue]{hyperref}%
 \usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem}
 \usepackage{wrapfig,lipsum}
 \usepackage[textwidth=1cm,textsize=footnotesize]{todonotes}
@@ -132,9 +132,9 @@ Then an action is played exploiting these predictors.
 By capitalizing on this (possibly) arbitrary process, algorithms in \textsc{Optimistic Online learning} enjoy smaller regret than the ones without gradient predictions.
 We combine the \textsc{Optimistic Online learning} idea with the adaptivity and the momentum ideas to design a new algorithm --- \textsc{OPT-AMSGrad}. 
 
-A single work along that direction stands out. \citet{DISZ18} develop \textsc{Optimistic-Adam} leveraging optimistic online mirror descent \citep{RS13b}.
+A single work along that direction stands out. \cite{DISZ18} develop \textsc{Optimistic-Adam} leveraging optimistic online mirror descent \citep{RS13b}.
 Yet, \textsc{Optimistic-Adam} is specifically designed to optimize two-player games, e.g. GANs \citep{goodfellow2014generative} which is in particular a two-player zero-sum game. There have been some related works in \textsc{Optimistic Online learning} \citep{CJ12,RS13b,SALS15} showing that if both players use an $\textsc{Optimistic}$ type of update, then accelerating the convergence to the equilibrium of the game is possible.
-\citet{DISZ18} build on these related works and show that \textsc{Optimistic-Mirror-Descent} can avoid the cycle behavior in a bilinear zero-sum game accelerating the convergence. 
+\cite{DISZ18} build on these related works and show that \textsc{Optimistic-Mirror-Descent} can avoid the cycle behavior in a bilinear zero-sum game accelerating the convergence. 
 In contrast, in this paper, the proposed algorithm is designed to accelerate nonconvex optimization (e.g. empirical risk minimization).
 To the best of our knowledge, this is the first work exploring towards this direction and bridging the unfilled \emph{theoretical} gap at the crossroads of online learning and stochastic optimization.
 The contributions of this paper are as follows:
@@ -210,7 +210,7 @@ More specifically, the learning rate of \textsc{AdaGrad} at time $T$ for dimensi
 
 
 This adaptive learning rate helps accelerating the convergence when the gradient vector is sparse \citep{DHS11} but, when applying \textsc{AdaGrad} to train deep neural networks, it is observed that the learning rate might decay too fast \citep{KB15}.
-Therefore, \citet{KB15} propose \textsc{Adam} that uses a moving average of the gradients divided by the square root of the second moment of the moving average (element-wise multiplication), for updating the model parameter $w$.
+Therefore, \cite{KB15} propose \textsc{Adam} that uses a moving average of the gradients divided by the square root of the second moment of the moving average (element-wise multiplication), for updating the model parameter $w$.
 A variant, called \textsc{AMSGrad} and detailed in Algorithm~\ref{alg:amsgrad}, has been developed in \citep{RKK18} to fix \textsc{Adam} failures.
 The difference between \textsc{Adam} and \textsc{AMSGrad} lies in Line~\ref{line:maxop} of Algorithm~\ref{alg:amsgrad}.
 The \textsc{AMSGrad} algorithm \citep{RKK18} applies the $\texttt{max}$ operation on the second moment to guarantee a non-increasing learning rate $\eta_t / \sqrt{\hat{v}}_t $, which helps for the convergence (i.e. average regret $\mathcal{R}_T/T \rightarrow 0$).
@@ -348,14 +348,23 @@ For any $t >0$, the estimated parameter $w_t$ stays within a $\ell_{\infty}-$bal
 The function $f$ is $L$-smooth (has $L$-Lipschitz gradients) w.r.t. the parameter w.
 There exists some constant $L > 0$ such that for $(w, \vartheta) \in \Theta^2$, $f(w) - f(\vartheta) - \nabla f(\vartheta)^\top(w - \vartheta) \leq \frac{L}{2} \norm{w - \vartheta}^2\eqsp.$
 \end{assumption}
-We assume that the optimistic guess $m_t$ at iteration $t$ and the true gradient $g_t$ are correlated:
+We assume that the optimistic guess is in general reasonable:
 \begin{assumption}\label{ass:guessbound}
-There exists a constant $a \in \rset $ such that for any $t >0$, $0 < \pscal{m_t}{ g_t}  \leq a \|g_t\|^2$, where $\pscal{}{}$ denotes the inner product.
+For any $t >0$, $0 < \pscal{m_t}{ g_t} = a_t \|g_t\|^2$ with some $0<a_t\leq 1$, and $\Vert m_t\Vert\leq \Vert g_t\Vert$, where $\pscal{}{}$ denotes the inner product.
 \end{assumption}
-We make a classical assumption in nonconvex optimization \citep{ghadimi2013stochastic} on the magnitude of the gradient:
+H\ref{ass:guessbound} says that the predicted gradient has acute angle with the true gradient and bounded norm, as the shadowed area in Figure \ref{fig:assumption}. We bound it by $\Vert g_t\Vert$ mainly for convenience, and our result will hold with arbitrary norm bound (by also changing the range of $a_t$ properly), and the scale of $m_t$ can indeed be offset by adjusting the learning rate. Lastly, We make a classical assumption in nonconvex optimization \citep{ghadimi2013stochastic} on the magnitude of the gradient:
 \begin{assumption}\label{ass:bounded}
 There exists a constant $\major >0$ such that for any $w$ and $\xi$, it holds $\norm{\nabla f(w, \xi)} < \major$.
 \end{assumption}
+
+\begin{figure}[H]
+\captionsetup{justification=centering}
+    %\hspace{-0.15in}
+    \includegraphics[width=3.2in]{plot_prediction.pdf}
+    \caption{Assumption H\ref{ass:guessbound} on gradient prediction.}
+     \label{fig:assumption}
+\end{figure}
+
 We now derive important auxiliary Lemmas for our global analysis.
 The first one ensures bounded norms of quantities of interests (resulting from the bounded stochastic gradient assumption):
 \begin{Lemma}\label{lem:bound}\vspace{0.05in}
@@ -373,7 +382,7 @@ where $T$ is a random termination number distributed according \eqref{eq:random}
 The constants are defined as:
 \begin{align*}
 &\tilde{C}_1 =\frac{\major \left[ \frac{a(1 - \beta_1)^2}{1-\beta_2} + 2L \frac{1}{1-\beta_2} +  \Delta f  +   \frac{4L \beta_1^2(1 + \beta_1^2) }{(1 - \beta_1)(1 - \beta_2)(1-\gamma)} \right]}{(1 - a\beta_1) + (\beta_1 + a)}\\
-&\tilde{C}_2 = \frac{ (a\beta_1^2 -2 a \beta_1 + \beta 1)\major^2 }{(1 - \beta_1) \left((1 - a\beta_1) + (\beta_1 + a)\right)}  \EE\left[ \norm{\hat{v}_{0}^{-1/2}}    \right]  \eqsp,
+&\tilde{C}_2 = \frac{ (a\beta_1^2 -2 a \beta_1 + \beta_1)\major^2 }{(1 - \beta_1) \left((1 - a\beta_1) + (\beta_1 + a)\right)}  \EE\left[ \norm{\hat{v}_{0}^{-1/2}}    \right]  \eqsp,
 \end{align*}
 where $\Delta f = f(\overline{w}_{1}) - f(\overline{w}_{T_{\sf M}+1})$
 \end{Theorem}
@@ -400,7 +409,7 @@ Given the multilayer model \eqref{eq:dnnmodel}, assume the boundedness of the in
 \end{Lemma}
 
 
-\section{Comparison to some related methods} \label{sec:related}
+\section{Comparison to related methods} \label{sec:related}
 
 \textbf{Comparison to nonconvex optimization works.}\hspace{0.1in}
 Recently, \citep{ZRSKK18,CLSH19,WWB18,ZTYCG18,ZS18,LO18} provide some theoretical analysis of \textsc{Adam}-type algorithms when applying them to smooth nonconvex optimization problems. 
@@ -414,7 +423,7 @@ They provide a modular approach to convert algorithms with adaptive data depende
 \textbf{Comparison to AO-FTRL \citep{MY16}.}\hspace{0.1in}In \citep{MY16}, the authors propose AO-FTRL, which update reads $w_{t+1} = \arg\min_{{w \in \Theta}} ( \sum_{s=1}^t g_s )^{\top}  w + m_{t+1}^\top w + r_{0:t}(w) $, where $r_{0:t}(\cdot)$ is a 1-strongly convex loss function with respect to some norm $\| \cdot\|_{(t)}$ that may be different for different iteration $t$. 
 Data dependent regret bound was provided in the paper, which is $r_{{0:T}}(w^*) + \sum_{t=1}^T \| g_t - m_t \|_{(t)^*}$ for any benchmark $w^{*} \in \Theta$. We see that if one selects $r_{0:t}(w) := \langle w, \text{diag}\{\hat{v}_t\}^{1/2} w \rangle$  and $\| \cdot \|_{(t)}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$, then the update might be viewed as an optimistic variant of $\textsc{AdaGrad}$. However, no experiments were provided in \citep{MY16}. 
 
-\textbf{Comparison to \textsc{Optimistic-Adam}~\citep{DISZ18}.}\hspace{0.1in} \citet{DISZ18} develop an optimistic variant of ADAM, namely \textsc{Optimistic-Adam}. 
+\textbf{Comparison to \textsc{Optimistic-Adam}~\citep{DISZ18}.}\hspace{0.1in} \cite{DISZ18} develop an optimistic variant of ADAM, namely \textsc{Optimistic-Adam}. 
 A slightly modified version is summarized in Algorithm~\ref{OPT-DISZ}. 
 Here, \textsc{Optimistic-Adam$+\hat{v}_t$} is \textsc{Optimistic-Adam} with the additional max operation $\hat{v}_t = \max ( \hat{v}_{t-1}, v_t)$ to guarantee that the weighted second moment is monotone increasing.
 \begin{algorithm}[H]
@@ -543,56 +552,54 @@ We are also curious about the long-term performance and generalization of the pr
 In Figure~\ref{fig:testandtrain}, we plot the results when the model is trained until the test accuracy stabilizes. 
 We observe: \textsf{(1)} in the long term, \textsc{OPT-AMSGrad} algorithm may converge to a better point with smaller objective function value, and \textsf{(2)} in these three applications, the proposed \textsc{OPT-AMSGrad} also outperforms the competing methods in terms of test accuracy. \vspace{-0.1in}
 
-\begin{figure}[t]
+\begin{figure*}
 \mbox{\hspace{-0.2in}
 \includegraphics[width=1.7in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_disz_2.eps}\hspace{-0.12in}
 \includegraphics[width=1.7in]{new_figure/new_mnist_img_figure/mnist_img_train_acc_disz_2.eps}\hspace{-0.12in}
-}
-\mbox{\hspace{-0.2in}
+%}
+%\mbox{\hspace{-0.2in}
 \includegraphics[width=1.7in]{new_figure/mnist_img_test_loss_disz.eps}\hspace{-0.12in}
 \includegraphics[width=1.7in]{new_figure/mnist_img_test_acc_disz.eps}
 }
 \mbox{\hspace{-0.2in}
 \includegraphics[width=1.7in]{new_figure/cifar10_train_loss_disz.eps}\hspace{-0.12in}
 \includegraphics[width=1.7in]{new_figure/cifar10_train_acc_disz.eps}\hspace{-0.12in}
-}
-\mbox{\hspace{-0.2in}
+%}
+%\mbox{\hspace{-0.2in}
 \includegraphics[width=1.7in]{new_figure/cifar10_test_loss_disz.eps}\hspace{-0.12in}
 \includegraphics[width=1.7in]{new_figure/cifar10_test_acc_disz.eps}
 }
 \mbox{\hspace{-0.2in}
 \includegraphics[width=1.7in]{new_figure/cifar100_train_loss_disz.eps}\hspace{-0.12in}
 \includegraphics[width=1.7in]{new_figure/cifar100_train_acc_disz.eps}\hspace{-0.12in}
-}
-\mbox{\hspace{-0.2in}
+%}
+%\mbox{\hspace{-0.2in}
 \includegraphics[width=1.7in]{new_figure/cifar100_test_loss_disz.eps}\hspace{-0.12in}
 \includegraphics[width=1.7in]{new_figure/cifar100_test_acc_disz.eps}
 }
-\vspace{-0.15in}
+
 \caption{\textit{MNIST-back-image} + CNN, \textit{CIFAR10} + Res-18 and \textit{CIFAR100} + Res-50 . We compare three methods in terms of training (cross-entropy) loss and accuracy, testing loss and accuracy.} \label{fig:testandtrain}\vspace{-0.15in}
+\end{figure*}
+
+\subsection{Choice of parameter $r$}\label{sec:choicer}
+
+
+\begin{figure}[H]
+\mbox{
+\includegraphics[width=1.5in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_r3510_2.eps}\hspace{-0.1in}
+\includegraphics[width=1.5in]{new_figure/cifar10_train_loss_r3510.eps}
+}
+\vspace{-0.05in}
+\caption{Training loss w.r.t. $r$.}\label{fig:compare}\vspace{-0.1in}
 \end{figure}
 
-%\vspace{-0.05in}
-%\subsection{Choice of parameter $r$}\label{sec:choicer}
-%\vspace{-0.05in}
-%
-%
-%\begin{figure}[H]
-%\mbox{
-%\includegraphics[width=1.5in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_r3510_2.eps}\hspace{-0.1in}
-%\includegraphics[width=1.5in]{new_figure/cifar10_train_loss_r3510.eps}
-%}
-%\vspace{-0.05in}
-%\caption{Training loss w.r.t. $r$.}\label{fig:compare}\vspace{-0.1in}
-%\end{figure}
-%
-%Since the number of past gradients $r$ is important in our algorithm, we compare Figure~\ref{fig:compare} the performance under different values $r=3,5,10$ on two datasets. 
-%From the results we see that the choice of $r$ does not have significant impact on the training loss.
-%Taking into consideration both quality of gradient prediction and computational cost, $r=5$ is a good choice for most applications. 
-%We remark that, empirically, the performance comparison among $r=3,5,10$ is not absolutely consistent (i.e. more means better) in all cases. 
-%One possible reason is that for deep neural networks, the high diversity of computed gradients through the iterations, due to the highly nonconvex loss, makes them inefficient for sequentially building the predictable process $\{m_t\}_{t>0}$. 
-%Thus, only recent ones ($r \leq 5$) are used.
-%% Only recent ones ($r \leq 5$) are useful.
+Since the number of past gradients $r$ is important in our algorithm, we compare Figure~\ref{fig:compare} the performance under different values $r=3,5,10$ on two datasets. 
+From the results we see that the choice of $r$ does not have significant impact on the training loss.
+Taking into consideration both quality of gradient prediction and computational cost, $r=5$ is a good choice for most applications. 
+We remark that, empirically, the performance comparison among $r=3,5,10$ is not absolutely consistent (i.e. more means better) in all cases. 
+One possible reason is that for deep neural networks, the high diversity of computed gradients through the iterations, due to the highly nonconvex loss, makes them inefficient for sequentially building the predictable process $\{m_t\}_{t>0}$. 
+Thus, only recent ones ($r \leq 5$) are used.
+% Only recent ones ($r \leq 5$) are useful.
 
 \vspace{-0.05in}
 \section{Conclusion}
@@ -607,7 +614,7 @@ Experiments on various deep learning problems demonstrate the effectiveness of t
 
 \clearpage
 
-\bibliographystyle{abbrvnat}
+\bibliographystyle{plain}
 \bibliography{reference}
 
 \clearpage

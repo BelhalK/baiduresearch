@@ -84,24 +84,33 @@
 
 \begin{abstract}\vspace{-0.1in}
 Communication complexity and privacy are the two key challenges in Federated Learning where the goal is to perform a distributed learning through a large volume of devices. 
-In this work, we introduce \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} algorithms to address jointly both challenges.
-These algorithms are intended to be used for homogeneous and heterogeneous data distribution settings respectively. 
+In this work, to address jointly both challenges, we introduce \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} algorithms, which are, respectively, intended to be used for homogeneous and heterogeneous data distribution settings. 
 The key idea is to compress the accumulation of local gradients using count sketch, therefore, the server does not have access to the gradients themselves thus providing privacy. 
-Furthermore, due to the lower dimension of sketching used, our method exhibits communication-efficiency property as well. 
-We provide, for the aforementioned schemes, sharp convergence guarantees and back up our theory with various set of experiments.
+Furthermore, due to the lower dimension of sketches, our method exhibits communication-efficiency property as well. 
+We provide sharp convergence guarantees of our schemes and back up the theory with experimental results. 
 \end{abstract}
 
 \vspace{-0.2in}
 \section{Introduction}
 \vspace{-0.05in}
-
 Federated Learning (FL) is a recently emerging setting for distributed large scale machine learning problems. 
 In FL, data is distributed across devices~\cite{mcmahan2016communication,konevcny2016federated} and due to privacy concerns, users are only allowed to communicate with the parameter server. 
-The latter orchestrates optimization among devices by aggregating gradient-related information of devices and broadcasts the average of received vectors. 
+Formally, the optimization problem across $p$ distributed devices is defined as follows:
+\begin{align}\label{eq:main}
+   \min_{\boldsymbol{x}\in \mathbb{R}^{d},\: \sum_{j=1}^pq_j=1} f(\boldsymbol{x})\triangleq \left[\sum_{j=1}^{p}q_jF_j(\boldsymbol{x})\right] \, , 
+\end{align}
+where $F_j(\boldsymbol{x})=\mathbb{E}_{\xi\in\mathcal{D}_j}\left[L_j\left(\boldsymbol{x},\xi\right)\right]$ is the local cost function at device $j$, $q_j\triangleq\frac{n_j}{n}$, $n_j$ is the number of data shards at device $j$ and $n=\sum_{j=1}^pn_j$ the total number of data samples.
+$\xi$ is a random variable distributed according to probability distribution $\mathcal{D}_j$, and $L_j$ is a loss function that measures the performance of model $\boldsymbol{x}$ at device $j$. 
+We note that, while for the homogeneous setting we assume $\mathcal{D}_j$ for $1\leq j\leq p$ have the same distribution across devices and $L_1=L_2=\ldots=L_p$, in the heterogeneous setting these data distributions and loss functions $L_j$ can be different from a device to another. 
+The parameter server orchestrates optimization among devices by aggregating gradient-related information of devices and broadcasts the average of received vectors. 
 Moving data across the devices for the purpose of learning a global model can be impractical and could violate the privacy of users/devices~\cite{carlini2019secret,mcmahan2017learning}. 
 There are several challenges to be addressed in FL in order to efficiently learn a global model that performs well in average for all devices. 
 The first one is the \emph{communication-efficiency}, as there could be a million of devices communicating iteratively with the server, thus incurring huge communication overhead. 
-One approach to deal with communication cost is the idea of \emph{local SGD with periodic averaging}~\cite{zhou2018convergence,stich2019local,yu2019parallel,wang2018cooperative} which instead of taking the average within each iteration, like baseline SGD~\cite{bottou-bousquet-2008}, the average is taken periodically and performs local update, see local SGD~\cite{lin2019don}. 
+One approach to deal with communication cost is the idea of \emph{local SGD with periodic averaging}~\cite{zhou2018convergence,stich2019local,yu2019parallel,wang2018cooperative} which instead of taking the average within each iteration, like baseline SGD~\cite{bottou-bousquet-2008}, the average is taken periodically and performs local update, see~\cite{lin2019don}. 
+Local SGD has been proposed in~\cite{mcmahan2016communication,konevcny2016federated} under the Federated Learning setting and its convergence analysis is studied in~\cite{zhou2018convergence,yu2019parallel,stich2019local,wang2018cooperative}. 
+The convergence analysis of Local SGD is improved in the follow up works~\cite{haddadpour2019local,haddadpour2019trading,basu2019qsparse,haddadpour2019convergence,bayoumi2020tighter,stich2019error} mainly for homogeneous setting. 
+It is further extended to heterogeneous setting, wherein studied under the title of \emph{Federated Learning}, with improved rates in~\cite{yu2019linear,li2019convergence,sahu2018convergence,liang2019variance,haddadpour2019convergence,karimireddy2019scaffold}. 
+Additionally, a few recent Federated Learning/Local SGD with adaptive gradient methods can be found in~\cite{reddi2020adaptive,chen2020toward}.
 The second approach to deal with communication cost aims at reducing the size of communicated message per communication round, see local gradients quantization~\cite{alistarh2017qsgd,bernstein2018signsgd,tang2018communication,wen2017terngrad,wu2018error} or sparsification~\cite{alistarh2018convergence,lin2017deep,stich2018sparsified,stich2019error}.%, or combination of both~\cite{basu2019qsparse}.
 The second challenge is \emph{data heterogeneity}. 
 Since the data in in each device is generated locally in the setting of FL, it may be distributed according to various probability distributions. 
@@ -126,64 +135,30 @@ Focusing on privacy,  in~\cite{li2019privacy} derives a single framework in orde
 Yet,~\cite{li2019privacy} does not provide the convergence analysis for the \texttt{DiffSketch} in Federated setting, and additionally the estimation error of the \texttt{DiffSketch} is relatively higher than the sketching scheme in~\cite{ivkin2019communication} which might end up in a poor convergence error. 
 \cite{rothchild2020fetchsgd} considers using sketching technique in heterogeneous setting from a communication-efficiency perspective. 
 The proposed sketching schemes in~\cite{ivkin2019communication,rothchild2020fetchsgd} are based on a deterministic procedure which requires having access to the exact values of the gradient-related information, thus not meeting the crucial privacy-preserving criteria.   
-In this work, we provide a thorough convergence analysis for Federated Learning using sketching for both homogeneous and heterogeneous settings. 
-Additionally, all of our sketching algorithms including a novel scheme, do not need to obtain exact values of gradient, hence are privacy preserving. 
-%Therefore, our proposed algorithms based on sketching address all the aforementioned main challenges jointly.  
-The main contributions of this paper are summarized as follows:
-\begin{itemize}
-    \item We provide a new algorithm -- \texttt{HEAPRIX} -- that displays an unbiased estimator of the full gradient we ought to communicate to the central parameter server. We theoretically show that \texttt{HEAPRIX} jointly reduces the cost of communication between devices and server, preserves privacy and is unbiased.
-    \item We develop a general algorithm for communication-efficient and privacy preserving FL based on \texttt{HEAPRIX}, namely \texttt{FedSKETCH} and \texttt{FedSKETCHGATE}, derived under both data distribution settings.
-    \item We establish non asymptotic convergence bounds for convex, \pl\: (generalization of strongly-convex) and non-convex functions in Theorem~\ref{thm:homog_case} and Theorem~\ref{thm:hetreg_case} for respectively  homogeneous and heterogeneous case,  and highlight an improvement in the number of iteration to achieve a stationary point.
-    \item We illustrate the benefits of \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} over baseline methods through a set of experiments. 
-%    In particular, we plot training loss and accuracy curves depending on the method used for training, the size of the sketches employed and the number of local updates performed at each round of communication. 
-    Numerical experiments show the advantages of the \texttt{FedSKETCH-HEAPRIX} algorithm that achieves comparable test accuracy as Federated SGD (\texttt{FedSGD}) while compressing the information exchanged between devices and server.
-\end{itemize}
-The rest of the paper is organized as follows.
-Section~\ref{sec:related} presents the formal setting of the general problem we tackle in this paper and the corresponding related work.
-Section~\ref{sec:compression} focuses on the various existing compression methods, as key components of communication-efficient and privacy-preserving  algorithms, and introduces our new compression method.
-Section~\ref{sec:algos} introduces the main algorithms we propose and their convergence respective analysis.
-Section~\ref{sec:experimnt} presents numerical results.
-
-\vspace{-0.05in}
-\section{Problem Setting and Related Work}\label{sec:related}
-\vspace{-0.05in}
-
-%\todo{Replace $k$ with $m$ in main body!}
-
-The federated learning optimization problem across $p$ distributed devices is defined as follows:
-\begin{align}\label{eq:main}
-   \min_{\boldsymbol{x}\in \mathbb{R}^{d},\: \sum_{j=1}^pq_j=1} f(\boldsymbol{x})\triangleq \left[\sum_{j=1}^{p}q_jF_j(\boldsymbol{x})\right] \, , 
-\end{align}
-where $F_j(\boldsymbol{x})=\mathbb{E}_{\xi\in\mathcal{D}_j}\left[L_j\left(\boldsymbol{x},\xi\right)\right]$ is the local cost function at device $j$, $q_j\triangleq\frac{n_j}{n}$, $n_j$ is the number of data shards at device $j$ and $n=\sum_{j=1}^pn_j$ the total number of data samples.
-$\xi$ is a random variable distributed according to probability distribution $\mathcal{D}_j$, and $L_j$ is a loss function that measures the performance of model $\boldsymbol{x}$ at device $j$. 
-We note that, while for the homogeneous setting we assume $\mathcal{D}_j$ for $1\leq j\leq p$ have the same distribution across devices and $L_1=L_2=\ldots=L_p$, in the heterogeneous setting these data distributions and loss functions $L_j$ can be different from a device to another. 
-
-%We focus on solving \eqref{eq:main} for the homogeneous data distribution. 
-%In the heterogeneous setting we consider the special case of $q_1=\ldots=q_p=\frac{1}{p}$. 
-
-\vspace{-0.05in}
-\subsection{Related Work}
-\vspace{-0.05in}
-
-Prior related research efforts includes the following:
-
-\noindent\textbf{Local SGD with Periodic Averaging:}
-Compared to baseline SGD where model averaging happens in every iteration, \emph{Local SGD with periodic averaging} leverages variance reduction by periodic model averaging~\cite{zhang2016parallel} in order to reduce communication rounds. 
-Local SGD has been proposed in~\cite{mcmahan2016communication,konevcny2016federated} under the Federated Learning setting and its convergence analysis is studied in~\cite{zhou2018convergence,yu2019parallel,stich2019local,wang2018cooperative}. 
-The convergence analysis of Local SGD is improved in the follow up works~\cite{haddadpour2019local,haddadpour2019trading,basu2019qsparse,haddadpour2019convergence,bayoumi2020tighter,stich2019error} mainly for homogeneous setting. 
-It is further extended to heterogeneous setting, wherein studied under the title of \emph{Federated Learning}, with improved rates in~\cite{yu2019linear,li2019convergence,sahu2018convergence,liang2019variance,haddadpour2019convergence,karimireddy2019scaffold}. 
-Additionally, a few recent Federated Learning/Local SGD with adaptive gradient methods can be found in~\cite{reddi2020adaptive,chen2020toward}.
-
-% \todo{Add Fods paper here!}
-
-\vspace{0.05in}
-\noindent\textbf{Gradient Compression Based Algorithms for Distributed Setting:}~\cite{ivkin2019communication} develop a solution for leveraging sketches of full gradients in a distributed setting while training a global model using SGD~\cite{robbins1951stochastic, bottou-bousquet-2008}. 
+Aiming atjointly tackling communication efficiency and data privacy, \cite{ivkin2019communication} develop a solution for leveraging sketches of full gradients in a distributed setting while training a global model using SGD~\cite{robbins1951stochastic, bottou-bousquet-2008}. 
 They introduce \texttt{Sketched-SGD} and establish a communication complexity of order $\mathcal{O}(\log(d))$ (per round) where $d$ is the dimension of the vector of parameters, i.e. the dimension of the gradient.
 Compression methods such as quantized gradients are developed in~\cite{alistarh2017qsgd,lin2017deep,stich2018sparsified,horvath2019stochastic}. 
 Yet, their dependence on the number of devices $p$ makes them harder to be used practice. 
 Additionally, several works~\cite{haddadpour2020federated,reisizadeh2020fedpaq,basu2019qsparse,horvath2019stochastic} exploit compression in FL or distributed communication-efficient optimization. 
 Recently,~\cite{horvath2020better} jointly exploits variance reduction technique with compression in distributed optimization.
-
+In this work, we provide a thorough convergence analysis for Federated Learning using sketching for both homogeneous and heterogeneous settings. 
+Additionally, all of our sketching algorithms including a novel scheme, do not need to obtain exact values of gradient, hence are privacy preserving. 
+%Therefore, our proposed algorithms based on sketching address all the aforementioned main challenges jointly.  
+%In particular, prior related research efforts includes the following:
+%\noindent\textbf{Local SGD with Periodic Averaging:}
+%Compared to baseline SGD where model averaging happens in every iteration, \emph{Local SGD with periodic averaging} leverages variance reduction by periodic model averaging~\cite{zhang2016parallel} in order to reduce communication rounds. 
+%Local SGD has been proposed in~\cite{mcmahan2016communication,konevcny2016federated} under the Federated Learning setting and its convergence analysis is studied in~\cite{zhou2018convergence,yu2019parallel,stich2019local,wang2018cooperative}. 
+%The convergence analysis of Local SGD is improved in the follow up works~\cite{haddadpour2019local,haddadpour2019trading,basu2019qsparse,haddadpour2019convergence,bayoumi2020tighter,stich2019error} mainly for homogeneous setting. 
+%It is further extended to heterogeneous setting, wherein studied under the title of \emph{Federated Learning}, with improved rates in~\cite{yu2019linear,li2019convergence,sahu2018convergence,liang2019variance,haddadpour2019convergence,karimireddy2019scaffold}. 
+%Additionally, a few recent Federated Learning/Local SGD with adaptive gradient methods can be found in~\cite{reddi2020adaptive,chen2020toward}.
+% \todo{Add Fods paper here!}
+%\vspace{0.05in}
+%\noindent\textbf{Gradient Compression Based Algorithms for Distributed Setting:}~\cite{ivkin2019communication} develop a solution for leveraging sketches of full gradients in a distributed setting while training a global model using SGD~\cite{robbins1951stochastic, bottou-bousquet-2008}. 
+%They introduce \texttt{Sketched-SGD} and establish a communication complexity of order $\mathcal{O}(\log(d))$ (per round) where $d$ is the dimension of the vector of parameters, i.e. the dimension of the gradient.
+%Compression methods such as quantized gradients are developed in~\cite{alistarh2017qsgd,lin2017deep,stich2018sparsified,horvath2019stochastic}. 
+%Yet, their dependence on the number of devices $p$ makes them harder to be used practice. 
+%Additionally, several works~\cite{haddadpour2020federated,reisizadeh2020fedpaq,basu2019qsparse,horvath2019stochastic} exploit compression in FL or distributed communication-efficient optimization. 
+%Recently,~\cite{horvath2020better} jointly exploits variance reduction technique with compression in distributed optimization.
 %\vspace{0.1in}\noindent\textbf{Privacy-preserving Setting:} 
 %We recall the mathematical formalism of privacy-preserving method.
 %\begin{definition}
@@ -194,18 +169,52 @@ Recently,~\cite{horvath2020better} jointly exploits variance reduction technique
 %\end{definition}
  %For smaller $\epsilon$, it will become more difficult to specify what is the input for the algorithm $\mathcal{O}$. Hence, smaller $\epsilon$ implies stronger privacy, and we desire to have $\epsilon$ as small as possible to impose stronger privacy guarantees. 
 %Differentially private methods for federated learning have been extensively developed and studied in~\cite{li2019privacy,liu2019enhancing} recently. 
+The main contributions are summarized as follows:
+\begin{itemize}
+    \item We provide a new algorithm -- \texttt{HEAPRIX} -- that displays an unbiased estimator of the full gradient we ought to communicate to the central parameter server. We theoretically show that \texttt{HEAPRIX} jointly reduces the {\color{blue}cost of communication between devices and server,is unbiased and does not require exchanging exact values of gradients with server to ensure privacy.}
+    \item We develop a general algorithm for communication-efficient and privacy preserving FL based on \texttt{HEAPRIX}, namely \texttt{FedSKETCH} and \texttt{FedSKETCHGATE}, derived under both data distribution settings.
+    \item We establish non asymptotic convergence bounds for convex, \pl\: (generalization of strongly-convex) and non-convex functions in Theorem~\ref{thm:homog_case} and Theorem~\ref{thm:hetreg_case} for respectively  homogeneous and heterogeneous case,  and highlight an improvement in the number of iteration to achieve a stationary point.
+    \item We illustrate the benefits of \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} over baseline methods through a set of experiments. 
+%    In particular, we plot training loss and accuracy curves depending on the method used for training, the size of the sketches employed and the number of local updates performed at each round of communication. 
+    Numerical experiments show the advantages of the \texttt{FedSKETCH-HEAPRIX} algorithm that achieves comparable test accuracy as Federated SGD (\texttt{FedSGD}) while compressing the information exchanged between devices and server.
+\end{itemize}
+%The rest of the paper is organized as follows.
+%Section~\ref{sec:related} presents the formal setting of the general problem we tackle in this paper and the corresponding related work.
+%Section~\ref{sec:compression} focuses on the various existing compression methods, as key components of communication-efficient and privacy-preserving  algorithms, and introduces our new compression method.
+%Section~\ref{sec:algos} introduces the main algorithms we propose and their convergence respective analysis.
+%Section~\ref{sec:experimnt} presents numerical results.
 
+%\vspace{-0.05in}
+%\section{Problem Setting and Related Work}\label{sec:related}
+%\vspace{-0.05in}
+
+%\todo{Replace $k$ with $m$ in main body!}
+
+%The federated learning optimization problem across $p$ distributed devices is defined as follows:
+%\begin{align}\label{eq:main}
+%   \min_{\boldsymbol{x}\in \mathbb{R}^{d},\: \sum_{j=1}^pq_j=1} f(\boldsymbol{x})\triangleq \left[\sum_{j=1}^{p}q_jF_j(\boldsymbol{x})\right] \, , 
+%\end{align}
+%where $F_j(\boldsymbol{x})=\mathbb{E}_{\xi\in\mathcal{D}_j}\left[L_j\left(\boldsymbol{x},\xi\right)\right]$ is the local cost function at device $j$, $q_j\triangleq\frac{n_j}{n}$, $n_j$ is the number of data shards at device $j$ and $n=\sum_{j=1}^pn_j$ the total number of data samples.
+%$\xi$ is a random variable distributed according to probability distribution $\mathcal{D}_j$, and $L_j$ is a loss function that measures the performance of model $\boldsymbol{x}$ at device $j$. 
+%We note that, while for the homogeneous setting we assume $\mathcal{D}_j$ for $1\leq j\leq p$ have the same distribution across devices and $L_1=L_2=\ldots=L_p$, in the heterogeneous setting these data distributions and loss functions $L_j$ can be different from a device to another. 
+
+%We focus on solving \eqref{eq:main} for the homogeneous data distribution. 
+%In the heterogeneous setting we consider the special case of $q_1=\ldots=q_p=\frac{1}{p}$. 
+
+%\vspace{-0.05in}
+%\subsection{Related Work}
+%\vspace{-0.05in}
 
 \vspace{0.05in}\noindent\textbf{Notation:} 
 We denote by $R$ and $B$ the number of communication rounds and bits per round per device respectively. 
 The count sketch of any vector $\boldsymbol{x}$ is denoted by $\mathbf{S}(\boldsymbol{x})$. We also denote $[p] =\{1,\dots,p\}$.
 
 \vspace{-0.05in}
-\section{Count Sketch as a Compression Operation}\label{sec:compression}
+\section{Compressions using Count Sketch}\label{sec:compression}
 \vspace{-0.05in}
 
 A common sketching method to tackle \eqref{eq:main}, namely \texttt{Count Sketch}~\cite{DBLP:journals/tcs/CharikarCF04}, is described Algorithm~\ref{alg:csketch}.
-\begin{algorithm}[H]
+\begin{algorithm}[t]
 \caption{\texttt{CS}~\cite{kleinberg2003bursty}: Count Sketch to compress ${\boldsymbol{x}}\in\mathbb{R}^{d}$. }\label{alg:csketch}
 \begin{algorithmic}[1]
 \State{\textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, k, \mathbf{S}_{m\times t}, h_j (1\leq i\leq t), sign_j (1\leq i\leq t)$}
@@ -223,8 +232,9 @@ Pairwise independent hash functions $\{h_{j,1\leq j\leq t }:[d]\rightarrow m\}$ 
 %These steps are summarized in Algorithm~\ref{alg:csketch}.  
 
 \vspace{-0.05in}
-\subsection{Sketching Based Unbiased Compressor}
+\subsection{Sketching based Unbiased Compressor}
 \vspace{-0.05in}
+
 
 
 We define an unbiased compressor as follows:
@@ -460,14 +470,14 @@ We note that for this variant, we need to have an additional communication round
 %\end{align}
 %where $\boldsymbol{S}^{(r)}$ is computed using (\ref{eq:average-skestching}) and then updates its  global model using $\boldsymbol{x}^{(r+1)}=\boldsymbol{x}^{(r)}-\gamma{\mathbf{\Phi}}^{(r)}$.
 
-\begin{remark}[Comparision  with~\cite{haddadpour2020federated}]\label{rmrk:bidirect}
+\begin{remark}[Comparison  with~\cite{haddadpour2020federated}]\label{rmrk:bidirect}
 An important feature of our algorithm is that due to a lower dimension of the count sketch, the resulting averages ($\mathbf{S}^{(r)}$ and  $\tilde{\mathbf{S}}^{(r)}$) received by the server, are also of lower dimension. 
 Therefore, these algorithms exploit bidirectional compression in communication from server to device back and forth. 
 As a result, due to this bidirectional property of communicating sketching for the case of large quantization error shown by $\omega=\theta(\frac{d}{m})$ in~\cite{haddadpour2020federated}, our algorithms can outperform \texttt{FedCOM} and \texttt{FedCOMGATE} developed in~\cite{haddadpour2020federated} if bigger hash tables are used and the uplink communication cost is expensive. 
 Furthermore, while in \cite{haddadpour2019convergence} server stores a global model and aggregates the partial gradients from devices which can enable server to extract some information regarding the device's data, in contrast, in our algorithm server does not store global model and only take the average of sketching of gradient and broadcast it. Therefore, sketching-based server-devices communication algorithm such as ours also provides privacy as a by-product.
 \end{remark}
 
-\begin{algorithm}[H]
+\begin{algorithm}[t]
 \caption{\texttt{FedSKETCH}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching. }\label{Alg:PFLHom}
 \begin{algorithmic}[1]
 \State{\textbf{Inputs:} $\boldsymbol{x}^{(0)}$: initial  model shared by all local devices, global and local learning rates $\gamma$ and $\eta$, respectively}
@@ -537,7 +547,6 @@ We also highlight that these algorithms are  applicable to cross-silo and cross-
 \vspace{-0.05in}
 
 
-
 In this section, we focus on the optimization problem in (\ref{eq:main}) in the special case of $q_1=\ldots=q_p=\frac{1}{p}$ with full device participation ($k=p$). 
 We also note that these results can be extended to the scenario where devices are sampled.
 % \textcolor{blue}{yet for simplicity we do provide the analysis of this special case}. 
@@ -545,7 +554,7 @@ In the previous section, we discussed Algorithm~\texttt{FedSKETCH}, which is ori
 However, in a heterogeneous setting, the aforementioned algorithms may fail to perform well in practice. 
 The main reason is that in Federated learning, devices are using local stochastic descent direction which could be different than global descent direction when the data distribution are non-identical. 
 Therefore, to mitigate the effect of data heterogeneity, we introduce a new algorithm called \texttt{FedSKETCHGATE} described in Algorithm~\ref{Alg:PFLHet}. 
-\begin{algorithm}[H]
+\begin{algorithm}[t]
 \caption{\texttt{FedSKETCHGATE}($R$, $\tau, \eta, \gamma$): Private Federated Learning with Sketching and gradient tracking. }\label{Alg:PFLHet}
 \begin{algorithmic}[1]
 \State{\textbf{Inputs:} $\boldsymbol{x}^{(0)}=\boldsymbol{x}^{(0)}_j$ shared by all local devices, global and local learning rates $\gamma$ and $\eta$.}
@@ -641,7 +650,7 @@ A function $f(\boldsymbol{x})$ satisfies the \pl (PL)~ condition with constant $
 We note that Assumption~\ref{Assu:1} is a common assumption in the literature of stochastic optimization. Additionally, it is shown in \cite{karimi2016linear} that PL condition implies strong convexity property with same module. Additionally, PL objectives could also be non-convex, hence strong convexity does not imply PL condition necessarily.  
 
 \vspace{-0.05in}
-\subsection{Convergence of  \texttt{FEDSKETCH} for Homogeneous Setting} 
+\subsection{Convergence of  \texttt{FEDSKETCH} } 
 \vspace{-0.05in}
 
 Now we focus on the homogeneous case where data is distributed i.i.d. among local devices. In this case, the stochastic local gradient of each worker is an unbiased estimator of the global gradient. We will need the following additional common assumption on the stochastic gradients.
@@ -769,11 +778,9 @@ leading to an improvement from $kd$ to $k+d$. These results are summarized in Ta
     \caption{Comparison of results with compression and periodic averaging in the homogeneous setting. Here, $m$ is the number of devices, $\mu$ is the PL constant, $m$ is the number of bins of hash tables, $d$ is the dimension of the model, $\kappa$ is the condition number, $\epsilon$ is the target accuracy, $R$ is the number of communication rounds, and $\tau$ is the number of local updates. UG and PP stand for Unbounded Gradient and Privacy Property respectively.}
 \label{table:1}
     \resizebox{0.95\linewidth}{!}{
-    \begin{tabular}{lllll}
+    \begin{tabular}{llll}
         \toprule
-                    &  \multicolumn{3}{c}{Objective function} &
-        \\ \cmidrule(r){2-4}
-        Reference        & non-convex      & PL/Strongly Convex                                 & UG & PP
+        Reference        & PL/Strongly Convex   & UG & PP
         \\
         %\midrule
         %\makecell{\cite{li2019privacy}}  & \makecell[l]{$-$}   & \makecell[l]{$-$}               & \makecell{$R\!=\!O\left(\frac{\mu^2 d}{\epsilon^{2}}\right)$ \\ $\tau\!=\!1\\
@@ -782,7 +789,7 @@ leading to an improvement from $kd$ to $k+d$. These results are summarized in Ta
         %\\
 
         \midrule
-        \makecell{\textbf{Ivkin et al.~\cite{ivkin2019communication}}}  & \makecell[l]{$-$}   & \makecell[l]{$R=O\left(\frac{\mu^2 d}{\epsilon}\right)$\\  $\tau=1$\\ $B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)$\\
+        \makecell{\textbf{Ivkin et al.~\cite{ivkin2019communication}}}  &  \makecell[l]{$R=O\left(\frac{\mu^2 d}{\epsilon}\right)$,\: $\tau=1$,\: $B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)$\\
         $pRB=O\left(\frac{p\mu^2 d}{\epsilon}m\log\left(\frac{\mu^2d^2}{\epsilon\delta}\right)\right)$}                                                                                           & \makecell{\ding{55}} & \makecell{\ding{55}}
         \\
         
@@ -796,17 +803,11 @@ leading to an improvement from $kd$ to $k+d$. These results are summarized in Ta
         %$pRB=O\left(\frac{pd}{\epsilon}\right)$}                                                                            & \makecell{\ding{52}} & \makecell{\ding{55}}
         %\\
         \midrule
-       \makecell{\textbf{Theorem~\ref{thm:homog_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\mu^2d+1}{k\epsilon}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{kBR=O\left(\frac{mk}{\epsilon}\log\left(\frac{d}{\epsilon\delta}\right)\right)}$}   & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\frac{\mu^2 d}{k}+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\left(\mu^2 d+1\right)}{k\left(\frac{\mu^2 d}{k}+1\right)\epsilon}\right)}$\\$\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{kBR=O\left({m}\kappa(\mu^2d+k)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(\frac{\mu^2d^2}{k}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}                                               & \makecell{\ding{52}} & \makecell{\ding{52}}
-   \\
-        \midrule
-              \makecell{\textbf{Theorem~\ref{thm:homog_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\mu^2d}{k\epsilon}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{kBR=O\left(\frac{mk}{\epsilon}\log\left(\frac{d}{\epsilon\delta}\right)\right)}$}   & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\frac{\mu^2 d-1}{k}+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\left({\mu^2 d}\right)}{k\left(\frac{\mu^2 d}{k}+1\right)\epsilon}\right)}$\\$\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{kBR=O\left({m}\kappa(\mu^2d-1+k)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(d\frac{\mu^2d-1}{k}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}                                                                                   & \makecell{\ding{52}} & \makecell{\ding{52}}
-   \\
+    \makecell{\textbf{Theorem~\ref{thm:homog_case}}} %& \makecell[l]{$\boldsymbol{R=O\left(\frac{1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{\mu^2d}{k\epsilon}\right)}$\\[3pt]
+       %$\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
+       %$\boldsymbol{kBR=O\left(\frac{mk}{\epsilon}\log\left(\frac{d}{\epsilon\delta}\right)\right)}$}  
+       & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\frac{\mu^2 d-1}{k}+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$,\: $\boldsymbol{\tau=O\left(\frac{\left({\mu^2 d}\right)}{k\left(\frac{\mu^2 d}{k}+1\right)\epsilon}\right)}$,\:$\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\
+       $\boldsymbol{kBR=O\left({m}\kappa(\mu^2d-1+k)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(d\frac{\mu^2d-1}{k}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}                                                                                   & \makecell{\ding{52}} & \makecell{\ding{52}}   \\
         \bottomrule
     \end{tabular}
     }
@@ -815,7 +816,7 @@ leading to an improvement from $kd$ to $k+d$. These results are summarized in Ta
 
 
 \vspace{-0.05in}
-\subsection{Convergence of  \texttt{FedSKETCHGATE} in Data Heterogeneous Setting} 
+\subsection{Convergence of  \texttt{FedSKETCHGATE}} 
 \vspace{-0.05in}
 
 
@@ -864,11 +865,11 @@ In the \textbf{Convex} case, we have:
     \centering
     \caption{Comparison of results with compression and periodic averaging in the heterogeneous setting. Here, $p$ is the number of devices, $\mu$ is compression of hash table, $d$ is the dimension of the model, $\kappa$ is condition number, $\epsilon$ is target accuracy, $R$ is  the number of communication rounds, and $\tau$ is the number of local updates. UG and PP stand for Unbounded Gradient and Privacy Property respectively.}
 \label{table:2}
-    \resizebox{0.9\linewidth}{!}{
+    \resizebox{1.0\linewidth}{!}{
     \begin{tabular}{lllll}
         \toprule
-                    &  \multicolumn{3}{c}{Objective function} &
-        \\ \cmidrule(r){2-4}
+%                    &  \multicolumn{3}{c}{Objective function} &
+%        \\ \cmidrule(r){2-4}
         Reference        & non-convex                                        & General Convex   & UG & PP
         \\
         \midrule
@@ -891,16 +892,16 @@ In the \textbf{Convex} case, we have:
         $B=O\left(\frac{m}{\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$\\
         $BR=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$
         }       & \makecell[l]{$-$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{55}}
-        \\
-        \midrule
-       \makecell{\textbf{Theorem~\ref{thm:hetreg_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{\mu^2d+1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(m\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{BR=O\left(\frac{m\left(\mu^2d+1\right)}{\epsilon}\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$
-       }   & 
-       \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{1+\mu^2d}{\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
-       $\boldsymbol{\tau\!=\!O\left(\frac{1}{p\epsilon^2}\right)}$\\[3pt]
-       $\boldsymbol{B=O\left(m\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$
-}                                                                            & \makecell{\ding{52}} & \makecell{\ding{52}}
+%        \\
+%        \midrule
+%       \makecell{\textbf{Theorem~\ref{thm:hetreg_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{\mu^2d+1}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\[3pt]
+%       $\boldsymbol{B=O\left(m\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\right)\right)}$\\[3pt]
+%       $\boldsymbol{BR=O\left(\frac{m\left(\mu^2d+1\right)}{\epsilon}\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$
+%       }   & 
+%       \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{1+\mu^2d}{\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
+%       $\boldsymbol{\tau\!=\!O\left(\frac{1}{p\epsilon^2}\right)}$\\[3pt]
+%       $\boldsymbol{B=O\left(m\log\left(\frac{\mu^2d^2+d}{\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$
+%}                                                                            & \makecell{\ding{52}} & \makecell{\ding{52}}
    \\
         \midrule
               \makecell{\textbf{Theorem~\ref{thm:hetreg_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{\mu^2d}{\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\[3pt]
@@ -927,7 +928,7 @@ Consider two versions of \texttt{FetchSGD} in this reference. First while in our
 
 %These results are summarized in Table~\ref{table:2}.
 \vspace{-0.05in}
-\section{Numerical Example}\label{sec:experimnt}
+\section{Numerical Applications}\label{sec:experimnt}
 \vspace{-0.05in}
 
 In this section, we provide empirical results on MNIST dataset to demonstrate the effectiveness of our proposed algorithms. 
@@ -966,7 +967,7 @@ In general, as one would expect, higher compression ratio leads to worse learnin
 		\includegraphics[width=1.7in]{MNIST_figures/local5_sketch50_iid1_test_acc.eps}\hspace{-0.2in}
 		}
 	\end{center}
-	\caption{Homogeneous case: Comparison of compressed optimization methods on LeNet CNN architecture.}
+	\caption{Homogeneous case: Comparison of compressed optimization methods on LeNet CNN.}
     \label{fig:MNIST-iid1}
 \end{figure}
 %The results for multiple local updates are given in column 2 and column 3 in Figure~\ref{fig:MNIST-iid1}, where we set $\tau=2,5$. 
@@ -1000,7 +1001,7 @@ From the first column ($\tau=1$), we see that SketchSGD performs very poorly in 
 		\includegraphics[width=1.7in]{MNIST_figures/local5_sketch50_iid0_test_acc.eps}\hspace{-0.2in}
 		}
 	\end{center}
-	\caption{Heterogeneous case: Comparison of compressed optimization algorithms on LeNet CNN architecture.}
+	\caption{Heterogeneous case: Comparison of compressed optimization algorithms on LeNet CNN.}
     \label{fig:MNIST-iid0}
 \end{figure}
 Furthermore, we notice in column 2 and 3 of Figure~\ref{fig:MNIST-iid0} the advantage of FS-HEAPRIX over FS-PRIVIX with multiple local updates. However, empirically we see that in the heterogeneous setting, more local updates $\tau$ tend to undermine the learning performance, especially with small sketch size.  Nevertheless, we see that when sketch size is large, i.e. $(50,100)$, FS-HEAPRIX can still provide comparable test accuracy as FedSGD with $\tau=5$.
