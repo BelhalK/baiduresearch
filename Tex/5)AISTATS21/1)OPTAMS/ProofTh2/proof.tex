@@ -1,0 +1,356 @@
+\documentclass[11pt]{article}
+\usepackage[numbers]{natbib}
+\usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem}
+\usepackage{wrapfig,lipsum}
+\usepackage[textwidth=1cm,textsize=footnotesize]{todonotes}
+\usepackage{caption}
+% ready for submission
+\usepackage{neurips_2020}
+\usepackage[colorlinks=true,linkcolor=magenta,citecolor=orange]{hyperref}
+\usepackage{cleveref}
+\usepackage{subfigure}
+\setlength{\parskip}{.2cm}
+
+\def\M{\mathcal{M}}
+\def\A{\mathcal{A}}
+\def\Z{\mathcal{Z}}
+\def\S{\mathcal{S}}
+\def\D{\mathcal{D}}
+\def\R{\mathcal{R}}
+\def\P{\mathcal{P}}
+\def\K{\mathcal{K}}
+\def\E{\mathbb{E}}
+\def\F{\mathfrak{F}}
+\def\l{\boldsymbol{\ell}}
+
+\newtheorem{Fact}{Fact}
+\newtheorem{Lemma}{Lemma}
+\newtheorem{Prop}{Proposition}
+\newtheorem{Theorem}{Theorem} 
+\newtheorem{Def}{Definition}
+\newtheorem{Corollary}{Corollary}
+\newtheorem{Conjecture}{Conjecture}
+\newtheorem{Property}{Property}
+\newtheorem{Observation}{Observation}
+%\theorembodyfont{\rmfamily}
+\newtheorem{Exa}{Example}
+\newtheorem{assumption}{H\!\!}
+\newtheorem{Remark}{Remark}
+\newtheorem*{Lemma*}{Lemma}
+\newtheorem*{Theorem*}{Theorem}
+\newtheorem*{Corollary*}{Corollary}
+ \makeatletter
+\renewenvironment{proof}[1][\proofname]{%
+   \par\pushQED{\qed}\normalfont%
+   \topsep6\p@\@plus6\p@\relax
+   \trivlist\item[\hskip\labelsep\bfseries#1]%
+   \ignorespaces
+}{%
+   \popQED\endtrivlist\@endpefalse
+}
+\makeatother
+
+%%%%%%%%%%% Stuffs for Tikz %%%%%%%%%%%%%%%%%%
+\usepackage{pgfplots}
+\usepackage{xargs}
+\usepackage{stmaryrd}
+\usetikzlibrary{arrows,shapes,calc,tikzmark,backgrounds,matrix,decorations.markings}
+\usepgfplotslibrary{fillbetween}
+
+\pgfplotsset{compat=1.3}
+
+\usepackage{relsize}
+\tikzset{fontscale/.style = {font=\relsize{#1}}
+    }
+
+\definecolor{lavander}{cmyk}{0,0.48,0,0}
+\definecolor{violet}{cmyk}{0.79,0.88,0,0}
+\definecolor{burntorange}{cmyk}{0,0.52,1,0}
+
+\def\lav{lavander!90}
+\def\oran{orange!30}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\usepackage{shortcuts_OPT}
+
+%\renewcommand{\textwidth}{5.5in}
+
+% Here's the definition of Sb, stolen from amstex
+    \makeatletter
+    \def\multilimits@{\bgroup
+  \Let@
+  \restore@math@cr
+  \default@tag
+ \baselineskip\fontdimen10 \scriptfont\tw@
+ \advance\baselineskip\fontdimen12 \scriptfont\tw@
+ \lineskip\thr@@\fontdimen8 \scriptfont\thr@@
+ \lineskiplimit\lineskip
+ \vbox\bgroup\ialign\bgroup\hfil$\m@th\scriptstyle{##}$\hfil\crcr}
+    \def\Sb{_\multilimits@}
+    \def\endSb{\crcr\egroup\egroup\egroup}
+\makeatother
+
+\newtheoremstyle{k}         %name
+    {\baselineskip}{2\topsep}      %space above and below
+    {\rm}                   %Body font
+    {0pt}{\bfseries}  %Heading indent and font
+    {}                      %after heading
+    { }                      %head after space
+    {\thmname{#1}\thmnumber{#2}.}
+
+\theoremstyle{k}
+\newtheorem{q}{Q}
+\parindent=0pt
+
+
+\makeatletter
+\DeclareRobustCommand*\cal{\@fontswitch\relax\mathcal}
+\makeatother
+
+\begin{document}
+\title{\vspace{-0.1in}Theorem 2 proof\vspace{-0.1in}}
+%\author{}
+\date{\today}
+
+\maketitle
+
+
+\begin{abstract}\vspace{-0.1in}
+\end{abstract}
+
+
+\begin{assumption}\label{ass:boundedparam}
+For any $t >0$, the estimated parameter $w_t$ stays within a $\ell_{\infty}-$ball. There exists a constant $W >0$ such that $\norm{w_t}_{\infty} \leq W$ almost surely.
+\end{assumption}
+\begin{assumption}\label{ass:smooth}
+The function $f$ is $L$-smooth (has $L$-Lipschitz gradients) w.r.t. the parameter w.
+There exists some constant $L > 0$ such that for $(w, \vartheta) \in \Theta^2$, $f(w) - f(\vartheta) - \nabla f(\vartheta)^\top(w - \vartheta) \leq \frac{L}{2} \norm{w - \vartheta}^2\eqsp.$
+\end{assumption}
+We assume that the optimistic guess $m_t$ at iteration $t$ and the true gradient $g_t$ are correlated:
+\begin{assumption}\label{ass:guessbound}
+There exists a constant $a \in \rset $ such that for any $t >0$, $0 < \pscal{m_t}{ g_t}  \leq a \|g_t\|^2$, where $\pscal{}{}$ is the inner product notation.
+\end{assumption}
+We make a classical assumption in nonconvex optimization \citep{ghadimi2013stochastic} on the magnitude of the gradient:
+\begin{assumption}\label{ass:bounded}
+There exists a constant $\major >0$ such that for any $w$ and $\xi$, it holds $\norm{\nabla f(w, \xi)} < \major$.
+\end{assumption}
+
+\begin{Lemma}\label{lem:bound}\vspace{0.05in}
+Assume H\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:optamsgrad} satisfy for any $w \in \Theta$ and $t>0$, $ \|\nabla f(w_t)\| < \major ,~~~\|\theta_t \| < \major$ and $\|\hat{v}_t\| < \major^2$.
+\end{Lemma}
+
+\begin{Lemma}\label{lem:squarev}
+Assume H\ref{ass:bounded}, a strictly positive and a sequence of constant stepsizes $\{\eta_t \}_{t>0}$, $(\beta_1, \beta_2) \in [0,1]$, then the following holds:
+\beq
+\sum_{t=1}^{T_{\sf M}} \eta_{t}^{2} \EE \left[\left\|\hat{v}_{t}^{-1/2} \theta_{t}\right\|_{2}^{2}\right] \leq  \frac{\eta^{2} d T_{\sf M} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} \eqsp.
+\eeq
+\end{Lemma}
+
+\begin{Lemma}\label{lem:momentum}
+Assume a strictly positive and non increasing sequence of stepsizes $\{\eta_t \}_{t>0}$, $\beta_1 < \beta_2 \in [0,1)$, then the following holds:
+\beq\notag
+\overline{w}_{t+1} - \overline{w}_t \leq \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1} \left[ \eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2}\right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \eqsp,
+\eeq
+where $\tilde{\theta}_t = \theta_t + \beta_1 \theta_{t-1}$ and $\tilde{g}_t = g_t - \beta_1 m_t + \beta_1 g_{t-1} + m_{t+1} $.
+\end{Lemma}
+
+\section{Proof of Theorem~\ref{thm:boundopt}}\label{app:thmboundopt}
+
+\begin{proof}
+Using H\ref{ass:smooth} and the iterate $\overline{w}_t$ we have:
+\beq\label{eq:smoothness}
+\begin{split}
+f(\overline{w}_{t+1})  \leq & f(\overline{w}_t) + \nabla f(\overline{w}_t)^\top (\overline{w}_{t+1} - \overline{w}_t) + \frac{L}{2} \|\overline{w}_{t+1} - \overline{w}_t\|^2\\
+ \leq &f(\overline{w}_t) + \underbrace{ \nabla f(w_t)^\top (\overline{w}_{t+1} - \overline{w}_t)}_{A} \\
+&+ \underbrace{  \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t)}_{B} + \frac{L}{2} \|\overline{w}_{t+1} - \overline{w}_t\| \eqsp.
+\end{split}
+\eeq
+
+\textbf{Term A}.
+Using Lemma~\ref{lem:momentum}, we have that:
+\beq \notag
+\begin{split}
+\nabla f(w_t)^\top (\overline{w}_{t+1} - \overline{w}_t) & \leq \nabla f(w_t)^\top \left[\frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1} \left[ \eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2}\right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \right]\\
+& \leq  \frac{\beta_1}{1 - \beta_1}  \| \nabla f(w_t)\| \|\eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2} \| \|\tilde{\theta}_{t-1}\| - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \eqsp,
+\end{split}
+\eeq
+where the inequality is due to trivial inequality for positive diagonal matrix.
+Using Lemma~\ref{lem:bound} and assumption H\ref{ass:guessbound} we obtain:
+\beq\label{eq:termA1}
+\begin{split}
+\nabla f(w_t)^\top (\overline{w}_{t+1} - \overline{w}_t)  \leq  \frac{\beta_1 (1+\beta_1)}{1 - \beta_1} \major^2 [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\| - \|\eta_{t} \hat{v}_{t}^{-1/2} \|] - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t  \eqsp,
+\end{split}
+\eeq
+where we have used the fact that $\eta_{t} \hat{v}_{t}^{-1/2} $ is a diagonal matrix such that $\eta_{t-1} \hat{v}_{t-1}^{-1/2} \succcurlyeq \eta_{t} \hat{v}_{t}^{-1/2}\succcurlyeq 0$ (decreasing stepsize and $\max$ operator).
+Also note that:
+\beq\label{eq:termA2}
+\begin{split}
+ - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t  &=  - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t   -  \nabla f(w_t)^\top\left[ \eta_{t} \hat{v}_{t}^{-1/2} -\eta_{t} \hat{v}_{t}^{-1/2} \right] \bar{g}_t  \\ 
+&   - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\beta_1 g_{t-1} + m_{t+1})\\
+ & \leq  - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t +(1-a_t\beta_1)\major^2    [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\| - \|\eta_{t} \hat{v}_{t}^{-1/2} \| ] \\
+ &  - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} (\beta_1 g_{t-1} + m_{t+1}) \eqsp,
+\end{split}
+\eeq
+where we have used Lemma~\ref{lem:bound} on $\|g_t\|$ and where that $\tilde{g}_t = \bar{g}_t  + \beta_1 g_{t-1} + m_{t+1} = g_t - \beta_1 m_t + \beta_1 g_{t-1} + m_{t+1} $.
+Plugging \eqref{eq:termA2} into \eqref{eq:termA1} yields:
+\beq\label{eq:termA}
+\begin{split}
+&\nabla f(w_t)^\top (\overline{w}_{t+1} - \overline{w}_t)\\
+&  \leq   - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t + \frac{1}{1 - \beta_1} (a_t\beta_1^2 -2 a_t \beta_1 + \beta 1)\major^2 [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\| - \|\eta_{t} \hat{v}_{t}^{-1/2} \|] \\
+&  - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} (\beta_1 g_{t-1} + m_{t+1}) \eqsp .
+\end{split}
+\eeq
+
+\textbf{Term B}.
+By Cauchy-Schwarz (CS) inequality we have:
+\beq\label{eq:termB1}
+ \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq  \| \nabla f(\overline{w}_t) -  \nabla f(w_t)\|  \|\overline{w}_{t+1} - \overline{w}_t\| \eqsp.
+ \eeq
+ Using smoothness assumption H\ref{ass:smooth}:
+\beq\label{eq:termB2}
+ \begin{split}
+  \| \nabla f(\overline{w}_t) -  \nabla f(w_t)\| & \leq L \| \overline{w}_t - w_t\|\\
+  & \leq L \frac{\beta_1}{1 - \beta_1} \|w_t - \tilde{w}_{t-1}\| \eqsp.
+ \end{split}
+ \eeq
+By Lemma~\ref{lem:momentum} we also have:
+ \beq
+ \begin{split}
+\overline{w}_{t+1} - \overline{w}_t & = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1} \left[ \eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2}\right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \\
+& = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1}\eta_{t-1} \hat{v}_{t-1}^{-1/2} \left[ I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1} \right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \\
+& = \frac{\beta_1}{1 - \beta_1} \left[ I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1} \right] (\tilde{w}_{t-1} - w_t) - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \eqsp,
+ \end{split}
+ \eeq
+ where the last equality is due to $ \tilde{\theta}_{t-1}\eta_{t-1} \hat{v}_{t-1}^{-1/2} = \tilde{w}_{t-1} - w_t$ by construction of $\tilde{\theta}_t$.
+ Taking the norms on both sides, observing $\| I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1}\| \leq 1$ due to the decreasing stepsize and the construction of $\hat{v}_t$ and using CS inequality yield:
+\beq\label{eq:termB3}
+ \begin{split}
+\|\overline{w}_{t+1} - \overline{w}_t\| & \leq \frac{\beta_1}{1 - \beta_1} \|\tilde{w}_{t-1} - w_t\| + \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\| \eqsp.
+ \end{split}
+ \eeq 
+ We recall Young's inequality with a constant $\delta \in (0,1)$ as follows:
+$$
+\pscal{X}{Y} \leq \frac{1}{\delta} \|X\|^2 + \delta \|Y\|^2 \eqsp.
+$$
+
+ Plugging \eqref{eq:termB2} and \eqref{eq:termB3} into \eqref{eq:termB1} returns:
+ \beq \notag
+ \begin{split}
+ \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq & L \frac{\beta_1}{1 - \beta_1} \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|  \|w_t - \tilde{w}_{t-1}\|\\
+ & +  L\left(\frac{\beta_1}{1 - \beta_1} \right)^2 \|\tilde{w}_{t-1} - w_t\|^2 \eqsp.
+  \end{split}
+ \eeq
+ 
+Applying Young's inequality with $\delta \to \frac{\beta_1}{1 - \beta_1}$ on the product $ \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|  \|w_t - \tilde{w}_{t-1}\|$ yields:
+ \beq\label{eq:termB}
+ \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq  L \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 +  2L\left(\frac{\beta_1}{1 - \beta_1} \right)^2 \|\tilde{w}_{t-1} - w_t\|^2\eqsp.
+ \eeq
+ 
+ The last term $ \frac{L}{2} \|\overline{w}_{t+1} - \overline{w}_t\|$ can be upper bounded using \eqref{eq:termB3}:
+\beq\label{eq:term3} 
+\begin{split}
+ \frac{L}{2} \|\overline{w}_{t+1} - \overline{w}_t\|^2 & \leq  \frac{L}{2} \left[ \frac{\beta_1}{1 - \beta_1} \|\tilde{w}_{t-1} - w_t\| + \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|\right]\\
+ &  \leq L \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 + 2L  \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \|\tilde{w}_{t-1} - w_t\|^2  \eqsp.
+\end{split}
+\eeq
+
+
+Plugging \eqref{eq:termA}, \eqref{eq:termB} and \eqref{eq:term3} into \eqref{eq:smoothness} and taking the expectations on both sides give:
+\beq \notag
+\begin{split}
+& \EE\left[f(\overline{w}_{t+1})  +   \frac{1}{1 - \beta_1}\tilde{\major}^2  \|\eta_{t} \hat{v}_{t}^{-1/2} \|  - \left( f(\overline{w}_{t}) + \frac{1}{1 - \beta_1}\tilde{\major}^2 \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\| \right)        \right] \\
+& \leq \EE \left[ - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t  - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} ( \beta_1 g_{t-1} +m_{t+1})   \right]\\
+& + \EE \left[ 2L \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 + 4L  \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \|\tilde{w}_{t-1} - w_t\|^2  \right] \eqsp,
+\end{split}
+\eeq
+where $ \tilde{\major}_t^2 = (a_t\beta_1^2 + \beta_1)\major^2$.
+Note that the expectation of $ \tilde{g}_t $ conditioned on the filtration $\mathcal{F}_{t}$ reads as follows
+\beq\label{eq:expectationtildegrad}
+\begin{split}
+\EE\left[    \nabla f(w_t)^\top \bar{g}_t  \right]  = \EE\left[  \nabla  f(w_t)^\top (g_t  - \beta_1 m_{t})  \right] = (1-a_t\beta_1) \| \nabla f(w_t) \|^2 \eqsp.
+\end{split}
+\eeq
+Summing from $t=1$ to $t=T$ leads to 
+\beq\label{eq:bound1}
+\begin{split}
+& \frac{1}{\major} \sum_{t=1}^{T_{\sf M}} \left( (1 - a_t\beta_1)   \eta_{t-1} + (\beta_1 + a_t)   \eta_{t} \right) \|\nabla f(w_t)\|^2 \leq\\
+&  \EE\left[  f(\overline{w}_{1}) + \frac{1}{1 - \beta_1}\tilde{\major}_t^2 \|\eta_{0} \hat{v}_{0}^{-1/2}\|    - \left(f(\overline{w}_{T_{\sf M}+1})  +   \frac{1}{1 - \beta_1}\tilde{\major}_t^2  \|\eta_{T_{\sf M}} \hat{v}_{T_{\sf M}}^{-1/2} \| \right)      \right]\\
+& +2L  \sum_{t=1}^{T_{\sf M}}  \EE \left[  \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 \right] + 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \sum_{t=1}^{T_{\sf M}}  \EE \left[  \|\tilde{w}_{t-1} - w_t\|^2  \right]\\
+& \leq  \EE\left[  \Delta f  + \frac{1}{1 - \beta_1}\tilde{\major}^2_t \|\eta_{0} \hat{v}_{0}^{-1/2}\|    \right] +2L  \sum_{t=1}^{T_{\sf M}}  \EE \left[  \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 \right] \\
+& + 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \sum_{t=1}^{T_{\sf M}}  \EE \left[  \|\tilde{w}_{t-1} - w_t\|^2  \right]\eqsp,
+\end{split}
+\eeq
+where we denote $ \Delta f := f(\overline{w}_{1}) - f(\overline{w}_{T_{\sf M}+1})$.
+We note that by definition of $\hat{v}_t$, and a constant learning rate $\eta_t$, we have
+\beq \notag
+\begin{split}
+\|\tilde{w}_{t-1} - w_t\|^2 & =\|\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + h_{t})\|^2 \\
+& =\|\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + \beta_{1} \theta_{t-2} + (1-\beta_{1}) m_{t})\|^2\\
+& \leq \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\theta_{t-1}\|^2 + \|\eta_{t-2} \hat{v}_{t-2}^{-1/2} \beta_{1} \theta_{t-2}\|^2 + (1-\beta_{1})^2 \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|^2 \eqsp.
+\end{split}
+\eeq
+Using Lemma~\ref{lem:squarev} we have
+\beq\notag
+\begin{split}
+& \sum_{t=1}^{T_{\sf M}} \EE \left[  \|\tilde{w}_{t-1} - w_t\|^2  \right]\\ 
+& \leq (1 + \beta_1^2) \frac{\eta^{2} d T_{\sf M} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} + (1 - \beta_1)^2 \sum_{t=1}^{T_{\sf M}} \EE [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|] \eqsp.
+\end{split}
+\eeq
+And thus, setting the learning rate to a constant value $\eta$, noting that $\frac{1}{(1 - a_t\beta_1) + (\beta_1 + a_t)}$ is a decreasing function for all $t>0$ and is upper bounded by $1$, injecting in \eqref{eq:bound1} yields:
+\beq\notag
+\begin{split}
+&\EE[\|\nabla f(w_T)\|^2] = \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}  \sum_{t=1}^{T_{\sf M}} \eta_{t} \|\nabla f(w_t)\|^2 \\
+& \leq  \sum_{t=1}^{T_{\sf M}} \frac{\major}{(1 - a_t\beta_1) + (\beta_1 + a_t)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}   \EE\left[  \Delta f  + \frac{1}{1 - \beta_1}\tilde{\major}_t^2 \|\eta_{0} \hat{v}_{0}^{-1/2}\|    \right]\\
+& +   \frac{ 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \major }{\sum_{j=1}^{T_{\sf M}} \eta_j}  (1 + \beta_1^2) \frac{\eta^{2} d T_{\sf M} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)}  \sum_{t=1}^{T_{\sf M}} \frac{ 1}{(1 - a_t\beta_1) + (\beta_1 + a_t)}  \\
+& + \frac{ \major }{\sum_{j=1}^{T_{\sf M}} \eta_j} (1 - \beta_1)^2 \sum_{t=1}^{T_{\sf M}} \EE [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|] \sum_{t=1}^{T_{\sf M}} \frac{ 1}{(1 - a_t\beta_1) + (\beta_1 + a_t)}\\
+& +    \frac{ 2L\major}{\sum_{j=1}^{T_{\sf M}} \eta_j}   \sum_{t=1}^{T_{\sf M}}  \EE [  \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 ] \sum_{t=1}^{T_{\sf M}} \frac{ 1}{(1 - a_t\beta_1) + (\beta_1 + a_t)}\eqsp,
+\end{split}
+\eeq
+%\beq\notag
+%\begin{split}
+%&\EE[\|\nabla f(w_T)\|^2] = \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}  \sum_{t=1}^{T_{\sf M}} \eta_{t} \|\nabla f(w_t)\|^2 \\
+%& \leq \frac{\major}{(1 - a_t\beta_1) + (\beta_1 + a_t)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}   \EE\left[  \Delta f  + \frac{1}{1 - \beta_1}\tilde{\major}_t^2 \|\eta_{0} \hat{v}_{0}^{-1/2}\|    \right]\\
+%& +  \frac{ 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \major}{(1 - a\beta_1) + (\beta_1 + a)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}  (1 + \beta_1^2) \frac{\eta^{2} d T_{\sf M} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)}\\
+%& + \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j} (1 - \beta_1)^2 \sum_{t=1}^{T_{\sf M}} \EE [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|]\\
+%& +  \frac{2L\major}{(1 - a\beta_1) + (\beta_1 + a)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}   \sum_{t=1}^{T_{\sf M}}  \EE [  \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 ]  \eqsp,
+%\end{split}
+%\eeq
+where $T$ is a random termination number distributed according \eqref{eq:random}.
+Setting the stepsize to $\eta = \frac{1}{\sqrt{d T_{\sf M}}}$ yields :
+\beq\notag
+\begin{split}
+\EE[\|\nabla f(w_T)\|^2] \leq \sum_{t=1}^{T_{\sf M}}C_{1,t} \sqrt{\frac{d}{T_{\sf M}}} + \sum_{t=1}^{T_{\sf M}} C_{2,t} \frac{1}{T_{\sf M}} +  \frac{\eta}{T_{\sf M}} \sum_{t=1}^{T_{\sf M}}D_{1,t} \EE [ \| \hat{v}_{t-1}^{-1/2}m_{t}\|] +  \frac{\eta}{T_{\sf M}} \sum_{t=1}^{T_{\sf M}}D_{2,t} \EE [ \| \hat{v}_{t-1}^{-1/2} \tilde{g}_{t}\|]  \eqsp,
+\end{split}
+\eeq
+where
+\beq\notag
+\begin{split}
+&C_{1,t} = \frac{\major}{(1 - a_t\beta_1) + (\beta_1 + a_t)}  \Delta f + \frac{ 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \major}{(1 - a_t\beta_1) + (\beta_1 + a_t)} \frac{(1 + \beta_1^2) (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} \eqsp ,\\
+&C_{2,t} =\frac{\major}{(1 - \beta_1) \left((1 - a_t\beta_1) + (\beta_1 + a_t)\right)}  (a_t\beta_1^2 + \beta_1)\major^2   \EE[ \| \hat{v}_{0}^{-1/2}  \| ] \eqsp.
+\end{split}
+\eeq
+
+\textbf{Simple case as in \citep{ZTYCG18}:} if $\beta_1 = 0$ then $ \tilde{g}_{t} = g_t + m_{t+1}$ and $g_t = \theta_t$. Also using Lemma~\ref{lem:squarev} we have that:
+\beq\notag
+\sum_{t=1}^{T_{\sf M}} \eta_{t}^{2} \EE \left[\left\|\hat{v}_{t}^{-1/2} g_{t}\right\|_{2}^{2}\right] \leq  \frac{\eta^{2} d T_{\sf M}}{(1 - \beta_2)}  \eqsp;
+\eeq
+which leads to the final bound:
+\beq\notag
+\begin{split}
+\EE[\|\nabla f(w_T)\|^2]  \leq \sqrt{\frac{d}{T_{\sf M}}} \sum_{t=1}^{T_{\sf M}} \tilde{C}_{1,t}  + \frac{1}{T_{\sf M}} \sum_{t=1}^{T_{\sf M}} \tilde{C}_{2,t} \eqsp,
+\end{split}
+\eeq
+where
+\beq \notag
+\begin{split}
+&\tilde{C}_{1,t} = C_{1,t} +  \frac{\major}{(1 - a_t\beta_1) + (\beta_1 + a_t)} \left[ \frac{a(1 - \beta_1)^2}{1-\beta_2} + 2L \frac{1}{1-\beta_2}  \right] \eqsp, \\
+&\tilde{C}_{2,t} = C_{2,t} =\frac{\major}{(1 - \beta_1) \left((1 - a_t\beta_1) + (\beta_1 + a_t)\right)} \tilde{\major}^2   \EE[ \|\hat{v}_{0}^{-1/2} \|]\eqsp.
+\end{split}
+\eeq
+\end{proof}
+
+
+
+\end{document} 
