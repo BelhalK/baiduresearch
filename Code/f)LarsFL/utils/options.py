@@ -19,8 +19,8 @@ def args_parser():
     parser.add_argument('--momentum', type=float, default=0.9, help="SGD momentum (default: 0.9)")
     parser.add_argument('--wdecay', type=float, default=0, help="amsrgad weight decay")
     parser.add_argument('--beta2', default=0.999, type=float, help='betar2 EMA var scale for ADAM')
+    parser.add_argument('--lambda0', default=0.2, type=float, help='betar2 EMA var scale for ADAM')
     parser.add_argument('--split', type=str, default='user', help="train-test split type, user or sample")
-
     parser.add_argument('--optim', default='sgd', type=str, choices=['sgd', 'localams', 'fedavg'], help='optimization algorithm')
 
 

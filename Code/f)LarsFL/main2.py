@@ -2,6 +2,8 @@
 # python3 main2.py --dataset mnist --num_channels 1 --model cnn --epochs 2 --gpu -1 --optim localams --num_users 20 --frac 0.5 --local_ep 1 --glob_lr 0.1 --lr 0.0001 --customarg 0
 # python3 main2.py --dataset mnist --num_channels 1 --model cnn --epochs 2 --gpu -1 --optim sgd --LAMB --num_users 20 --frac 0.5 --local_ep 1 --glob_lr 0.1 --lr 0.0001 --customarg 0
 
+# python3 main2.py --dataset cifar --num_channels 3 --model cnn --epochs 2 --gpu -1 --optim sgd --num_users 20 --frac 0.5 --lr 0.1 --customarg 0
+
 import matplotlib
 import matplotlib.pyplot as plt
 import copy
@@ -81,7 +83,7 @@ if __name__ == '__main__':
     dataset = args.dataset
     title = '{}-{}'.format(dataset, logname)
     checkpoint_dir = 'checkpoints/checkpoints_{}'.format(dataset)
-    logger = Logger('{}/log{}_opt{}_LAMB{}_lr{}_ep{}_clients{}_frac{}_iid{}.txt'.format(checkpoint_dir, logname,  args.optim, args.LAMB, args.lr, args.local_ep,args.num_users, args.frac,args.customarg), title=title)
+    logger = Logger('{}/log{}_opt{}_LAMB{}_lr{}_ep{}_lambda{}_clients{}_frac{}_iid{}.txt'.format(checkpoint_dir, logname,  args.optim, args.LAMB, args.lr, args.local_ep, args.lambda0,args.num_users, args.frac,args.customarg), title=title)
     logger.set_names(['Learning Rate', 'Avg. Loss','Train Loss','Train Acc.','Test Loss','Test Acc.', 'Time'])
 
     # global parameters
