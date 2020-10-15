@@ -123,14 +123,15 @@
 
 \twocolumn[
 
-\aistatstitle{\vspace{-0.1in}\texttt{FedSKETCH}: Communication-Efficient and Private Federated Learning via Sketching\vspace{-0.1in}}
+\aistatstitle{\vspace{-0.1in}\texttt{FedSKETCH}: Communication-Efficient Federated Learning\\
+via Sketching\vspace{-0.1in}}
 
 \aistatsauthor{ Author 1 \And Author 2 \And  Author 3 }
 
 \aistatsaddress{ Institution 1 \And  Institution 2 \And Institution 3 } ]
 
 \begin{abstract}\vspace{-0.1in}
-Communication complexity and data privacy are the two key challenges in Federated Learning where the goal is to perform a distributed learning through a large volume of devices. In this work, we introduce two new algorithms, namely \texttt{FedSKETCH} and \texttt{FedSKETCHGATE}, to address jointly both challenges and which are, respectively, intended to be used for homogeneous and heterogeneous data distribution settings. Our algorithms are based on a key and novel sketching technique, called \texttt{HEAPRIX} that is unbiased, ensures privacy by compressing the accumulation of local gradients using count sketch, and exhibits communication-efficiency properties leveraging low-dimensional sketches. We provide sharp convergence guarantees of our algorithms and validate our theoretical findings with various sets of experiments. 
+Communication complexity and data privacy are the two key challenges in Federated Learning where the goal is to perform a distributed learning through a large volume of devices. In this work, we introduce two new algorithms, namely \texttt{FedSKETCH} and \texttt{FedSKETCHGATE}, to address jointly both challenges and which are, respectively, intended to be used for homogeneous and heterogeneous data distribution settings. Our algorithms are based on a key and novel sketching technique, called \texttt{HEAPRIX} that is unbiased, compresses the accumulation of local gradients using count sketch, and exhibits communication-efficiency properties leveraging low-dimensional sketches. We provide sharp convergence guarantees of our algorithms and validate our theoretical findings with various sets of experiments. 
 % Communication complexity and privacy are the two key challenges in Federated Learning where the goal is to perform a distributed learning through a large volume of devices. 
 % In this work, to address jointly both challenges, we introduce \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} algorithms, which are, respectively, intended to be used for homogeneous and heterogeneous data distribution settings. 
 % The key idea is to compress the accumulation of local gradients using count sketch, therefore, the server does not have access to the gradients themselves thus providing privacy. 
@@ -141,7 +142,7 @@ Communication complexity and data privacy are the two key challenges in Federate
 \vspace{-0.2in}
 \section{Introduction}
 \vspace{-0.05in}
-Federated Learning (FL) is a recently emerging setting for distributed large scale machine learning problems.
+Federated Learning (FL) is a recently emerging framework for distributed large scale machine learning problems.
 In FL, data is distributed across devices~\cite{mcmahan2016communication,konevcny2016federated} and due to privacy concerns, users are only allowed to communicate with the parameter server.
 Formally, the optimization problem across $p$ distributed devices is defined as follows:
 \begin{align}\label{eq:main}
@@ -155,16 +156,16 @@ We note that, while for the homogeneous setting we assume $\{\mathcal{D}_j\}_{j=
 
 
 There are several challenges that need to be addressed in FL in order to efficiently learn a global model that performs well in average for all devices:
--- \emph{Communication-efficiency}: There are often many devices communicating with the server, thus incurring huge communication overhead. 
-First approach with the purpose of reducing communication round is using \emph{local SGD with periodic averaging}~\cite{zhou2018convergence,stich2019local,yu2019parallel,wang2018cooperative} with periodical average after few local updates, unlike baseline SGD~\cite{bottou-bousquet-2008} where model averaging is performed at each iteration.
-Local SGD has been proposed in~\cite{mcmahan2016communication,konevcny2016federated} under the FL setting and its convergence analysis is studied in~\cite{stich2019local,wang2018cooperative,zhou2018convergence,yu2019parallel}, which is improved in the follow up references~\cite{haddadpour2019local,haddadpour2019trading,basu2019qsparse,haddadpour2019convergence,bayoumi2020tighter,stich2019error} for homogeneous setting. 
-It is further extended to heterogeneous setting~\cite{yu2019linear,li2019convergence,sahu2018convergence,liang2019variance,haddadpour2019convergence,karimireddy2019scaffold}. Another approach to deal with communication cost aims at reducing the size of communicated message per communication round, such as local gradient quantization~\cite{alistarh2017qsgd,bernstein2018signsgd,tang2018communication,wen2017terngrad,wu2018error} or sparsification~\cite{alistarh2018convergence,lin2017deep,stich2018sparsified,stich2019error}. 
+-- \emph{Communication-efficiency}: There are often many devices communicating with the server, thus incurring immense communication overhead. 
+One approach to reduce communication round is using \emph{local SGD with periodic averaging}~\cite{zhou2018convergence,stich2019local,yu2019parallel,wang2018cooperative} which periodically averages models after few local updates, contrary to baseline SGD~\cite{bottou-bousquet-2008} where model averaging is performed at each iteration.
+Local SGD has been proposed in~\cite{mcmahan2016communication,konevcny2016federated} under the FL setting and its convergence analysis is studied in~\cite{stich2019local,wang2018cooperative,zhou2018convergence,yu2019parallel}, later on improved in the follow up references~\cite{haddadpour2019local,haddadpour2019trading,basu2019qsparse,haddadpour2019convergence,bayoumi2020tighter,stich2019error} for homogeneous setting. 
+It is further extended to heterogeneous setting~\cite{yu2019linear,li2019convergence,sahu2018convergence,liang2019variance,haddadpour2019convergence,karimireddy2019scaffold}. Second approach to deal with communication cost aims at reducing the size of communicated message per communication round, such as local gradient quantization~\cite{alistarh2017qsgd,bernstein2018signsgd,tang2018communication,wen2017terngrad,wu2018error} or sparsification~\cite{alistarh2018convergence,lin2017deep,stich2018sparsified,stich2019error}. 
 %Additionally, similar Local SGD with adaptive gradient methods can be found in~\cite{reddi2020adaptive,chen2020toward}.
 
 
 --\emph{Data heterogeneity}: 
-Since data in each device is generated locally, its source may come from various distribution and this can lead to poor convergence error in practice~\cite{li2019federated,liang2019variance}. 
-In~\cite{haddadpour2020federated,horvath2019stochastic,liang2019variance,karimireddy2019scaffold} the impact of data heterogeneity is mitigated by exploiting variance reduction or gradient tracking techniques.
+Since locally generated data in each device may come from different distribution, local computations involved in Federated Learning setting can lead to poor convergence error in practice~\cite{li2019federated,liang2019variance}. 
+To mitigate the negative impact of data heterogeneity, \cite{haddadpour2020federated,horvath2019stochastic,liang2019variance,karimireddy2019scaffold} suggest applying variance reduction or gradient tracking techniques along local computations.
 
  --\emph{Privacy}~\cite{geyer2017differentially,hardy2017private}: Data privacy of users has been widely addressed by injecting an additional layer of random noise in order to respect differential-privacy property~\cite{mcmahan2017learning} or using cryptography-based approaches under secure multi-party computation~\cite{bonawitz2017practical}.
 %One approach to deal with communication cost is the idea of \emph{local SGD with periodic averaging}~\cite{zhou2018convergence,stich2019local,yu2019parallel,wang2018cooperative} which asserts that instead of taking the average within each iteration, like baseline SGD~\cite{bottou-bousquet-2008}, one may take the average periodically and performs local update, see local SGD~\cite{lin2019don}. 
@@ -176,37 +177,35 @@ In~\cite{haddadpour2020federated,horvath2019stochastic,liang2019variance,karimir
 %Almost all of the previous studies consider addressing the aforementioned challenges separately. 
 
 
-Sketching based algorithms~\cite{DBLP:journals/tcs/CharikarCF04,cormode2005improved,kleinberg2003bursty,Proc:Li_Church_Hastie_NIPS08} 
-are promising approaches to tackle all major aforementioned challenges in FL jointly. 
+To tackle all major aforementioned challenges in FL jointly, sketching based algorithms~\cite{DBLP:journals/tcs/CharikarCF04,cormode2005improved,kleinberg2003bursty,Proc:Li_Church_Hastie_NIPS08} 
+are promising approaches. 
 %Sketches are built from independent hash tables (functions), compressing a high dimensional vector into a lower dimensional one and the corresponding estimation error of sketching are well studied. 
-For instance, to reduce communication cost,~\cite{ivkin2019communication} develop a distributed SGD algorithm using sketching along providing its convergence analysis in the homogeneous data distribution setting, and establish a communication complexity of order $\mathcal{O}(\log(d))$ per round, where $d$ is the dimension of the vector of parameters compared to $\mathcal{O}(d)$ complexity per round of mini-batch SGD. Yet, the proposed sketching scheme in~\cite{ivkin2019communication}, built from a communication-efficiency perspective, is based on a deterministic procedure which requires access to the exact information of the gradients, thus not meeting the crucial privacy-preserving criteria.
+For instance, to reduce communication cost,~\cite{ivkin2019communication} develop a distributed SGD algorithm using sketching along providing its convergence analysis in the homogeneous setting, and establish a communication complexity of order $\mathcal{O}(\log(d))$ per round, where $d$ is the dimension of the vector of parameters compared to $\mathcal{O}(d)$ complexity per round of baseline mini-batch SGD. Yet, the proposed sketching scheme in~\cite{ivkin2019communication}, built from a communication-efficiency perspective, is based on a deterministic procedure which requires access to the exact information of the gradients, thus not meeting the crucial privacy-preserving criteria.
 This systemic flaw is partially addressed in \cite{rothchild2020fetchsgd}. 
 
 
 Focusing on privacy, \cite{li2019privacy} derive a single framework in order to tackle these issues jointly and introduces \texttt{DiffSketch} algorithm, based on the Count Sketch operator, yet does not provide its convergence analysis.
 Additionally, the estimation error of \texttt{DiffSketch} is higher than the sketching scheme in~\cite{ivkin2019communication} which may end up in poor convergence. 
 % \cite{rothchild2020fetchsgd} considers using sketching technique in heterogeneous setting from a communication-efficiency perspective.
-
 %They introduce \texttt{Sketched-SGD} and establish a communication complexity of order $\mathcal{O}(\log(d))$ (per round) where $d$ is the dimension of the vector of parameters, i.e. the dimension of the gradient.
-
-
 %Compression methods such as quantized gradients are developed in~\cite{alistarh2017qsgd,lin2017deep,stich2018sparsified,horvath2019stochastic,horvath2020better}. 
-
  
- In this paper we propose new sketching algorithms to address aforementioned challenges simultaneously, and our main contributions can be summarized as:
+ In this paper, we propose new sketching algorithms to address the aforementioned challenges simultaneously.
+ Our main contributions are summarized as:
 \begin{itemize}
-    \item We provide a new algorithm -- \texttt{HEAPRIX} -- and theoretically show that it reduces the cost of communication between devices and server, which is based on unbiased sketching and does not require exchanging exact values of gradients, hence ensuring privacy. Based on \texttt{HEAPRIX}, We develop general algorithms for communication-efficient and privacy preserving FL, namely \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} for both homogeneous and heterogeneous data distribution settings respectively.
-    \item We establish non-asymptotic convergence bounds for convex, \pl\: and non-convex functions in Theorem~\ref{thm:homog_case} and Theorem~\ref{thm:hetreg_case} in both homogeneous and heterogeneous cases, and highlight an improvement in the number of iteration to reach a stationary point.
-We also provide a tighter convergence analysis for the \texttt{PRIVIX} algorithm proposed in \cite{li2019privacy}.
-    \item We illustrate the benefits of \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} over baseline methods through a set of experiments. 
+    \item We provide a new algorithm -- \texttt{HEAPRIX} -- and theoretically show that it reduces the cost of communication between devices and server, which is based on unbiased sketching without requiring the broadcast to the server of exact values of gradients. 
+    Based on \texttt{HEAPRIX}, we develop general algorithms for communication-efficient and sketch-based FL, namely \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} for both homogeneous and heterogeneous data distribution settings respectively.
+    \item We establish non-asymptotic convergence bounds for convex, \pl\: and non-convex functions in Theorems~\ref{thm:homog_case} and~\ref{thm:hetreg_case} in both homogeneous and heterogeneous cases, and highlight an improvement in the number of iteration to reach a stationary point.
+We also provide a convergence analysis for the \texttt{PRIVIX} algorithm proposed in \cite{li2019privacy}.
+    \item We illustrate benefits of \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} over baseline methods through a set of experiments. 
     The latter shows the advantages of the \texttt{HEAPRIX} compression method achieving comparable test accuracy as Federated SGD (\texttt{FedSGD}) while compressing the information exchanged between devices and server.
 \end{itemize}
 
 
 %\vspace{0.05in}
 \noindent\textbf{Notation:} 
-We denote the number of communication rounds and bits per round per device by $R$ and $B$ respectively. 
-The count sketch of any vector $\boldsymbol{x}$ is designated by $\mathbf{S}(\boldsymbol{x})$. We also denote $[p] =\{1,\dots,p\}$.
+We denote the number of communication rounds and bits per round and per device by $R$ and $B$ respectively. 
+The count sketch of any vector $\boldsymbol{x}$ is designated by $\mathbf{S}(\boldsymbol{x})$. $[p]$ denotes the set $\{1,\dots,p\}$.
 
 \vspace{-0.05in}
 \section{Compression using Count Sketch}\label{sec:compression}
@@ -227,8 +226,8 @@ In this paper, we exploit commonly used \texttt{Count Sketch} ~\cite{DBLP:journa
 \end{algorithmic}
 \end{algorithm}
 Count Sketch uses two sets of functions that encode any input vector $\boldsymbol{x}$ \textbf{into a hash table} $\boldsymbol{S}_{m\times t}(\boldsymbol{x})$. 
-Pairwise independent hash functions $\{h_{j,1\leq j\leq t }:[d]\rightarrow m\}$ are used along with another set of pairwise independent sign hash functions $\{\text{sign}_{j,1\leq j\leq t}: [d]\rightarrow \{+1,-1\}\}$ to map entries of $\boldsymbol{x}$ ($\boldsymbol{x}_i, \:1\leq i\leq d$) into $t$ different columns of $\mathbf{S}_{m\times t}$. In order to lower the dimension of the input vector we usually have $d\gg mt$.  There are various types of sketching algorithms which are developed based on count sketching as follows:   
-%These steps are summarized in Algorithm~\ref{alg:csketch}.  
+Pairwise independent hash functions $\{h_{j,1\leq j\leq t }:[d]\rightarrow m\}$ are used along with another set of pairwise independent sign hash functions $\{\text{sign}_{j,1\leq j\leq t}: [d]\rightarrow \{+1,-1\}\}$ to map entries of $\boldsymbol{x}$ ($\boldsymbol{x}_i, \:1\leq i\leq d$) into $t$ different columns of $\mathbf{S}_{m\times t}$, wherein to lower the dimension of the input vector we usually have $d\gg mt$.  
+There are various types of sketching algorithms which are developed based on count sketching that we develop in the following subsections.   
 
 \vspace{-0.05in}
 \subsection{Sketching based Unbiased Compressor}
@@ -255,7 +254,7 @@ This property allows us to control the noise of the compression.
 
 %\textit{An Example of Unbiased Compressor via Sketching:}
 An instance of such unbiased compressor is \texttt{PRIVIX} which obtains an estimate of input $\boldsymbol{x}$ from a count sketch noted $\boldsymbol{S}(\boldsymbol{x})$. 
-In this algorithm, to query the quantity $x_i$, the $i-th$ element of the vector $\boldsymbol{x}$, we compute the median of $t$ approximated values specified by the indices of $h_j(i)$ for $1\leq j\leq t$, see \cite{li2019privacy} or Algorithm~\ref{Alg:privix} in the Appendix.
+In this algorithm, to query the quantity $x_i$, the $i-th$ element of the vector $\boldsymbol{x}$, we compute the median of $t$ approximated values specified by the indices of $h_j(i)$ for $1\leq j\leq t$, see \cite{li2019privacy} or Algorithm~\ref{Alg:privix} in the Appendix (for more details).
 %\begin{algorithm}[t]
 %\caption{\texttt{PRIVIX} \cite{li2019privacy}: Unbiased compressor based on sketching. }\label{Alg:privix}
 %\begin{algorithmic}[1]
@@ -289,7 +288,7 @@ For any $\mathbf{x}\in \mathbb{R}^{d}$, we have:
 
 \end{property}
 Thus, $\texttt{PRIVIX}\in \mathbb{U}(1+\mu^2 d)$ with probability $1-\delta$.
-We note that $\Delta=1+\mu^2d$ implies that if $m\rightarrow d$, $\Delta\rightarrow 1+1=2$, which means that the case of no compression is not covered. 
+We note that $\Delta=1+\mu^2d$ implies that if $m\rightarrow d$, $\Delta\rightarrow 1+1=2$, indicating that the case of no compression is not covered. 
 %Thus, the algorithms based on this may converge poorly.
 
 % \begin{definition}
@@ -300,16 +299,15 @@ We note that $\Delta=1+\mu^2d$ implies that if $m\rightarrow d$, $\Delta\rightar
 % \end{definition}
 %  For smaller $\epsilon$, it becomes difficult to specify the input data, hence, implying stronger privacy.
 
-\begin{remark}[Differential-privacy property]
-As shown in~\cite{li2019privacy}, if the data is normally distributed, \texttt{PRIVIX} provides differential privacy~\cite{DBLP:conf/icalp/Dwork06}.  
+\begin{remark}
+As shown in~\cite{li2019privacy}, if the data is normally distributed, \texttt{PRIVIX} is differential private~\cite{DBLP:conf/icalp/Dwork06}, up to additional assumptions and algorithmic design.  
 \end{remark}
 
 \vspace{-0.05in}
 \subsection{Sketching based Biased Compressor}
 \vspace{-0.05in}
 
-
-We define a biased compressor as follows:
+A biased compressor is defined as follows:
 \begin{definition}[Biased compressor]
 A (randomized) function,  ${\text{C}}:\mathbb{R}^{d}\rightarrow\mathbb{R}^{d}$ belongs to $\mathbb{C}(\Delta,\alpha)$, a class of compression operators with $\alpha>0$ and $\Delta\geq 1$, if
 \begin{align}\notag
@@ -322,7 +320,7 @@ The reference \cite{horvath2020better} proves that $\mathbb{U}(\Delta)\subset\ma
 %\begin{lemma}[\cite{horvath2020better}]
 %We have $\mathbb{U}(\Delta)\subset\mathbb{C}(\Delta, \alpha)$.
 %\end{lemma}
-An instance of a biased compression method based on sketching and using top$_m$ operation is given in Algorithm~\ref{alg:heavymix}:
+An instance of a biased compression method via sketching and using top$_m$ operation is given in Algorithm~\ref{alg:heavymix}:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \caption{\texttt{HEAVYMIX}  }\label{alg:heavymix}
@@ -344,15 +342,14 @@ Following \cite{ivkin2019communication}, \texttt{HEAVYMIX} with sketch size $\Th
 %\texttt{HEAVYMIX}, with sketch size $\Theta\left(m\log\left(\frac{d}{\delta}\right)\right)$ is a biased compressor with $\alpha=1$ and  $\Delta=d/m$ with probability $\geq1-\delta$. In other words, with probability $1-\delta$, $\texttt{HEAVYMIX}\in C(\frac{d}{m},1)$. 
 %\end{lemma}
 We note that Algorithm~\ref{alg:heavymix} is a variation of the sketching algorithm developed in~\cite{ivkin2019communication} with distinction that \texttt{HEAVYMIX} does not require a second round of communication to obtain the exact values of top$_m$. 
-Additionally, while a sketching algorithm exploiting \texttt{HEAVYMIX} has smaller estimation error compared to \texttt{PRIVIX}, it requires having access to the exact values of top$_m$, therefore not benefiting from differential privacy contrary to \texttt{PRIVIX}. 
-In the following we introduce our sketching scheme, enjoying from privacy property as well as smaller estimation error. 
+Additionally, while a sketching algorithm implementing \texttt{HEAVYMIX} has smaller estimation error compared to \texttt{PRIVIX}, it requires having access to the exact values of top$_m$, therefore not benefiting from privacy properties contrary to \texttt{PRIVIX}. 
+In the following we introduce our sketching scheme -- \texttt{HEAPRIX} -- as a combination of those two methods. 
 
 \vspace{-0.05in}
 \subsection{Sketching based Induced Compressor}
 \vspace{-0.05in}
 
-Using Theorem~$3$ from~\cite{horvath2020better}, which shows that we can convert the biased compressor into an unbiased one such that, for $C_1\in \mathbb{C}(\Delta_1)$ with $\alpha=1$, choose $C_2\in \mathbb{U}(\Delta_2)$, then induced compressor $C: x \mapsto C_1(\mathbf{x})+C_2\left(x-C_1\left(\mathbf{x}\right)\right)$ belongs to $\mathbb{U}(\Delta)$ with $\Delta=\Delta_2+\frac{1-\Delta_2}{\Delta_1}$.
-In Algorithm~\ref{alg:heaprix}, letting $C_1$ and $C_2$ to be \texttt{HEAVYMIX} and \texttt{PRIVIX} respectively the reconstruction of input $\mathbf{x}$ is performed using hash table $\mathbf{S}$ and $\mathbf{x}$ similar to \texttt{PRIVIX} and \texttt{HEAVYMIX}.
+Due to Theorem~$3$ in~\cite{horvath2020better}, which illustrates that we can convert the biased compressor into an unbiased one such that, for $C_1\in \mathbb{C}(\Delta_1)$ with $\alpha=1$, if you choose $C_2\in \mathbb{U}(\Delta_2)$, then induced compressor $C: x \mapsto C_1(\mathbf{x})+C_2\left(x-C_1\left(\mathbf{x}\right)\right)$ belongs to $\mathbb{U}(\Delta)$ with $\Delta=\Delta_2+\frac{1-\Delta_2}{\Delta_1}$. Based on this notion, Algorithm~\ref{alg:heaprix} proposes an induced sketching algorithm by utilizing \texttt{HEAVYMIX} and \texttt{PRIVIX} for $C_1$ and $C_2$ respectively where the reconstruction of input $\mathbf{x}$ is performed using hash table $\mathbf{S}$ and $\mathbf{x}$, similar to \texttt{PRIVIX} and \texttt{HEAVYMIX}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \caption{\texttt{HEAPRIX} }\label{alg:heaprix}
@@ -370,21 +367,21 @@ We note if $m\rightarrow d$, then $C(x)\rightarrow x$, meaning that the algorith
 Based on~\cite[Theorem 3]{horvath2020better}, \texttt{HEAPRIX} in Algorithm~\ref{alg:heaprix} satisfies $C(x)\in \mathbb{U}(\mu^2 d)$. 
 \end{corollary}
 \textit{Benefits of \texttt{HEAPRIX}:} Corollary~\ref{cor:small} states that, unlike \texttt{PRIVIX}, \texttt{HEAPRIX} compression noise can be made as small as possible using larger hash size. 
-Contrary to \texttt{HEAVYMIX}, \texttt{HEAPRIX} does not require having access to exact $\text{top}_m$ values of the input, thus preserves privacy. 
-In other words, \texttt{HEAPRIX} leverages the best of both worlds: the \emph{unbiasedness} and \emph{privacy} of \texttt{PRIVIX} while using \emph{heavy hitters} as in \texttt{HEAVYMIX}.
+Contrary to \texttt{HEAVYMIX}, \texttt{HEAPRIX} does not require having access to exact $\text{top}_m$ values of the input, thus helps preserving privacy. 
+In other words, \texttt{HEAPRIX} leverages the best of both worlds: the \emph{unbiasedness} of \texttt{PRIVIX} while using \emph{heavy hitters} as in \texttt{HEAVYMIX}.
 
 %In the following we define two general frameworks for different sketching algorithms for homogeneous and heterogeneous data distributions.
 \vspace{-0.05in}
 \section{\texttt{FedSKETCH} and \texttt{FedSKETCHGATE}}\label{sec:algos}
 \vspace{-0.05in}
-In this section we define two general frameworks for different sketching algorithms for homogeneous and heterogeneous settings.
+In this section, we define two general frameworks for different sketching algorithms for homogeneous and heterogeneous settings.
 %In this section we introduce our two new algorithms for both homogeneous and heterogeneous settings.
 \vspace{-0.05in}
 \subsection{Homogeneous Setting}
 \vspace{-0.05in}
 
 %The proposed algorithms for FL leverage sketching techniques to reduce communication costs.
-The main difference between our \texttt{FedSKETCH} and the \texttt{DiffSketch} algorithm in~\cite{li2019privacy} is that we use distinct local and global learning rates. Additionally, unlike~\cite{li2019privacy}, we do not add local Gaussian noise. 
+
 In \texttt{FedSKETCH}, the number of local updates, between two consecutive communication rounds, at device $j$ is denoted by $\tau$.
  Unlike~\cite{haddadpour2020federated}, server node does not store any global model, instead device $j$ has two models, $\boldsymbol{x}^{(r)}$ and $\boldsymbol{x}^{(\ell,r)}_j$, respectively local and global models. 
 %At communication round $r$ and device $j$, the local model $\boldsymbol{x}^{(\ell,r)}_j$ is updated using the rule $$\boldsymbol{x}_j^{(\ell+1,r)}=\boldsymbol{x}_j^{(\ell,r)}-\eta \tilde{\mathbf{g}}_j^{(\ell,r)} \qquad \text{for}\quad\ell=0,\ldots,\tau-1\, , $$
@@ -401,27 +398,10 @@ In \texttt{FedSKETCH}, the number of local updates, between two consecutive comm
 %\end{align} and broadcasts it to all devices. 
 %Devices after receiving $\mathbf{S}^{(r)}$ from server update global model $\boldsymbol{x}^{(r)}$ using rule $$\boldsymbol{x}^{(r)}=\boldsymbol{x}^{(r-1)}-\gamma \texttt{PRIVIX}\left[\mathbf{S}^{(r-1)}\right]\, .$$
 We develop \texttt{FedSKETCH} in Algorithm~\ref{Alg:PFLHom}. 
-A variant of this algorithm implementing \texttt{HEAPRIX} is also described in Algorithm~\ref{Alg:PFLHom}. 
-We note that for this variant, we need to have an additional communication round between server and worker $j$ to aggregate $\delta_j^{(r)}\triangleq \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$, see Lines~\ref{line:heaprix1} and \ref{line:heaprix2}.
-%Then, server averages all $\delta^{(r)}_j$ and broadcasts to all devices the following quantity:
-%\begin{align}
-%\tilde{\mathbf{S}}^{(r)}\triangleq \frac{1}{k}\sum_{j\in\mathcal{K}^{(r)}}\delta^{(r)}_j \, .\label{eq:glbl-updts}
-%\end{align}
-%Upon receiving $\tilde{\mathbf{S}}^{(r)}$, all devices compute
-%\begin{align}\notag
-%    {\mathbf{\Phi}}^{(r)}\triangleq \texttt{HEAVYMIX}\left[{\mathbf{S}}^{(r)}\right]+\texttt{PRIVIX}\left[{\mathbf{S}}^{(r)}- \tilde{\mathbf{S}}^{(r)}\right] \, ,
-%\end{align}
-%where $\boldsymbol{S}^{(r)}$ is computed using (\ref{eq:average-skestching}) and then updates its  global model using $\boldsymbol{x}^{(r+1)}=\boldsymbol{x}^{(r)}-\gamma{\mathbf{\Phi}}^{(r)}$.
-\paragraph{Comparison  with~\cite{haddadpour2020federated}}\label{rmrk:bidirect}
-An important feature of our algorithm is that due to a lower dimension of the count sketch, the resulting averages ($\mathbf{S}^{(r)}$ and  $\tilde{\mathbf{S}}^{(r)}$) received by the server, are also of lower dimension. 
-Therefore, these algorithms exploit a bidirectional compression during the communication from server to device back and forth. 
-As a result, due to this bidirectional property of communicating sketching for the case of large quantization error $\omega=\theta(\frac{d}{m})$ as shown in~\cite{haddadpour2020federated}, our algorithms can outperform \texttt{FedCOM} and \texttt{FedCOMGATE} developed in~\cite{haddadpour2020federated} if bigger hash tables are used and the uplink communication cost is high. 
-Furthermore, while, in \cite{haddadpour2020federated}, server stores a global model and aggregates the partial gradients from devices which can enable the server to extract some information regarding the device's data, in contrast, in our algorithms server does not store the global model and only broadcasts the average sketches. 
-Thus, sketching-based server-devices communication algorithm such as ours also provides privacy as a by-product.
-\begin{algorithm}[t]
-\DrawBoxhom[draw=white,fill=blue!7]{i}{j}
-\DrawBoxxhom[draw=white,fill=blue!7]{k}{l}
-\caption{\texttt{FedSKETCH}($R$, $\tau, \eta, \gamma$): Private Federated Learning (FL) with Sketching. }\label{Alg:PFLHom}
+\begin{algorithm}[H]
+\DrawBoxhom[draw=white,fill=blue!6]{i}{j}
+\DrawBoxxhom[draw=white,fill=blue!6]{k}{l}
+\caption{\texttt{FedSKETCH}($R$, $\tau, \eta, \gamma$) }\label{Alg:PFLHom}
 \begin{algorithmic}[1]
 \State{\textbf{Inputs:} $\boldsymbol{x}^{(0)}$: initial  model shared by all local devices, global and local learning rates $\gamma$ and $\eta$, respectively}
 %\State{Server chooses a subset $\mathcal{P}_0$ of $K$ devices at random (device $j$ is chosen with probability $q_j$);
@@ -453,6 +433,23 @@ Thus, sketching-based server-devices communication algorithm such as ours also p
 \vspace{- 0.1cm}
 \end{algorithmic}
 \end{algorithm}
+A variant of this algorithm implementing \texttt{HEAPRIX} is also described in Algorithm~\ref{Alg:PFLHom}. 
+We note that for this variant, we need to have an additional communication round between server and worker $j$ to aggregate $\delta_j^{(r)}\triangleq \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$, see Lines~\ref{line:heaprix1} and \ref{line:heaprix2}. The main difference between our \texttt{FedSKETCH} and the \texttt{DiffSketch} algorithm in~\cite{li2019privacy} is that we use distinct local and global learning rates. Additionally, unlike~\cite{li2019privacy}, we do not add local Gaussian noise. 
+%Then, server averages all $\delta^{(r)}_j$ and broadcasts to all devices the following quantity:
+%\begin{align}
+%\tilde{\mathbf{S}}^{(r)}\triangleq \frac{1}{k}\sum_{j\in\mathcal{K}^{(r)}}\delta^{(r)}_j \, .\label{eq:glbl-updts}
+%\end{align}
+%Upon receiving $\tilde{\mathbf{S}}^{(r)}$, all devices compute
+%\begin{align}\notag
+%    {\mathbf{\Phi}}^{(r)}\triangleq \texttt{HEAVYMIX}\left[{\mathbf{S}}^{(r)}\right]+\texttt{PRIVIX}\left[{\mathbf{S}}^{(r)}- \tilde{\mathbf{S}}^{(r)}\right] \, ,
+%\end{align}
+%where $\boldsymbol{S}^{(r)}$ is computed using (\ref{eq:average-skestching}) and then updates its  global model using $\boldsymbol{x}^{(r+1)}=\boldsymbol{x}^{(r)}-\gamma{\mathbf{\Phi}}^{(r)}$.
+\paragraph{Comparison  with~\cite{haddadpour2020federated}}\label{rmrk:bidirect}
+An important feature of our algorithm is that due to a lower dimension of the count sketch, the resulting averages ($\mathbf{S}^{(r)}$ and  $\tilde{\mathbf{S}}^{(r)}$) received by the server, are also of lower dimension. 
+Therefore, these algorithms exploit a bidirectional compression during the communication from server to device back and forth. 
+As a result, due to this bidirectional property of communicating sketching for the case of large quantization error $\omega=\theta(\frac{d}{m})$ as shown in~\cite{haddadpour2020federated}, our algorithms can outperform \texttt{FedCOM} and \texttt{FedCOMGATE} developed in~\cite{haddadpour2020federated} if sufficiently large hash tables are used and the uplink communication cost is high. 
+Furthermore, while, in \cite{haddadpour2020federated}, server stores a global model and aggregates the partial gradients from devices which can enable the server to extract some information regarding the device's data, in contrast, in our algorithms server does not store the global model and only broadcasts the average sketches. 
+Thus, sketching-based server-devices communication algorithms such as ours also keeps the inputs private as a by-product.
 %We also highlight that these algorithms are applicable to cross-silo and cross-device federated setting.
 \vspace{-0.05in}
 \subsection{Heterogeneous Setting}
@@ -464,9 +461,9 @@ For non i.i.d. data, the \texttt{FedSKETCH} algorithm, designed for homogeneous 
 The main reason is that in FL, devices are using local stochastic descent direction which could be different than global descent direction when the data distribution are non-identical. 
 Therefore, to mitigate the effect of data heterogeneity, we introduce a new algorithm called \texttt{FedSKETCHGATE} described in Algorithm~\ref{Alg:PFLHet}. 
 \begin{algorithm}[t]
-\DrawBox[draw=white,fill=blue!7]{a}{b}
-\DrawBoxx[draw=white,fill=blue!7]{c}{d}
-\caption{\texttt{FedSKETCHGATE}($R$, $\tau, \eta, \gamma$): Private FL with Sketching and gradient tracking. }\label{Alg:PFLHet}
+\DrawBox[draw=white,fill=blue!6]{a}{b}
+\DrawBoxx[draw=white,fill=blue!6]{c}{d}
+\caption{\texttt{FedSKETCHGATE}($R$, $\tau, \eta, \gamma$)}\label{Alg:PFLHet}
 \begin{algorithmic}[1]
 \State{\textbf{Inputs:} $\boldsymbol{x}^{(0)}=\boldsymbol{x}^{(0)}_j$ shared by all local devices, global and local learning rates $\gamma$ and $\eta$.}
 \State{\textbf{for $r=0, \ldots, R-1$ do}}
@@ -633,7 +630,7 @@ However, Algorithm~\ref{Alg:PFLHom} also improves the communication efficiency f
 \end{remark}
 
 \paragraph{Comparison with \cite{ivkin2019communication}}
-From privacy aspect, we note \cite{ivkin2019communication} requires for server to have access to the exact value of top$_m$ gradients, hence do not preserve privacy, whereas our schemes do not need those exact values. From communication cost point of view, for strongly convex objective and compared to~\cite{ivkin2019communication}, we improve the total communication per worker from 
+From privacy aspect, we note \cite{ivkin2019communication} requires for server to have access to exact values of top$_m$ gradients, hence do not preserve privacy, whereas our schemes do not need those exact values. From communication cost point of view, for strongly convex objective and compared to~\cite{ivkin2019communication}, we improve the total communication per worker from 
 $RB=O\left(\frac{\mu^2 d}{\epsilon}m\log\left(\frac{d}{\delta\sqrt{\epsilon}}\max\left({\mu^2 d},\frac{1}{\sqrt{\epsilon}}\right)\right)\right)$ to 
 \[ \Resize{8cm}{RB=O\left({m}\kappa(\frac{\mu^2d-1}{k}+1)\log\frac{1}{\epsilon}\log\left(\frac{\kappa d}{\delta}(\frac{\mu^2d-1}{k}+1)\log\frac{1}{\epsilon}\right)\right)}\]
 %Similar comparison for PL objectives is summarized in Table~\ref{table:1}. 
@@ -645,7 +642,7 @@ Regarding general non-convex objectives, our result improves the total communica
 We also highlight that we can obtain similar rates for Algorithm~\ref{Alg:PFLHom} in heterogeneous environment if we make the additional assumption of uniformly bounded gradient.
 
 \textbf{Note:}
-Such improved communication cost over prior related works, while preserving privacy, is due to both the exploitation of \emph{sketching}, to reduce the dimension of broadcast messages, and the use of \emph{local updates}, to reduce the total number of communication rounds leading to a specific convergence error.
+Such improved communication cost over prior related works is due to both the exploitation of \emph{sketching}, to reduce the dimension of broadcast messages, and the use of \emph{local updates}, to reduce the total number of communication rounds leading to a specific convergence error.
 %\begin{table*}[ht]
 %    \centering
 %    \caption{Comparison of results with compression and periodic averaging in the homogeneous setting. Here, $p$ is the number of devices, $\mu$ is the PL constant, $m$ is the number of bins of hash tables, $d$ is the dimension of the model, $\kappa$ is the condition number, $\epsilon$ is the target accuracy, $R$ is the number of communication rounds, and $\tau$ is the number of local updates. UG and PP stand for Unbounded Gradient and Privacy Property respectively.}
@@ -805,7 +802,7 @@ These results are summarized in Table~\ref{table:1}-\ref{table:2} in Section~\re
 \vspace{-0.1in}
 We now compare our results with prior works:
 
-\vspace{0.05in}\noindent\textbf{Comparison with~\cite{li2019privacy}.} We note that our convergence analysis does not rely on the bounded gradient assumption. We also improve both the number of communication rounds $R$ and the size of transmitted bits $B$ per communication round while preserving the privacy property. 
+\vspace{0.05in}\noindent\textbf{Comparison with~\cite{li2019privacy}.} Note that our convergence analysis does not rely on the bounded gradient assumption. We also improve both the number of communication rounds $R$ and the size of transmitted bits $B$ per communication round. 
 Additionally, we highlight that, while~\cite{li2019privacy} provides a convergence analysis for convex objectives, our analysis holds for PL (thus strongly convex case), general convex and general non-convex objectives.
 
 \vspace{0.05in}\noindent\textbf{Comparison with~\cite{rothchild2020fetchsgd}.}
@@ -913,6 +910,7 @@ In addition, FS-HEAPRIX ourperforms FS-PRIVIX in terms of training loss and test
 	\caption{Heterogeneous case: Comparison of compressed optimization algorithms on LeNet CNN.}
     \label{fig:MNIST-iid0}
 \end{figure}
+
 We also notice Figure~\ref{fig:MNIST-iid0} the advantage of FS-HEAPRIX over FS-PRIVIX with multiple local updates. 
 However, empirically we see that in the heterogeneous setting, more local updates $\tau$ tend to undermine the learning performance, especially with small sketch size.  
 When the sketch size is large, i.e. $(50,100)$, FS-HEAPRIX can still provide comparable test accuracy as FedSGD with $\tau=5$.
@@ -925,7 +923,7 @@ FS-HEAPRIX performs the best among all the tested compressed optimization algori
 \vspace{-0.05in}
 
 In this paper, we introduced \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} algorithms for homogeneous and heterogeneous data distribution setting respectively for Federated Learning wherein communication between server and devices is only performed using count sketch. 
-Our algorithms, thus, provide communication-efficiency and privacy. 
+Our algorithms, thus, provide communication-efficiency and privacy, through random hashes based sketches. 
 We analyze the convergence error for \emph{non-convex}, \emph{\pl} and \emph{general convex} objective functions in the scope of Federated Optimization.  
 We provide insightful numerical experiments showcasing the advantages of our \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} methods over current federated optimization algorithm. The proposed algorithms outperform competing compression method and can achieve comparable test accuracy as Federated SGD, with high compression ratio.
 \newpage
@@ -939,7 +937,11 @@ We provide insightful numerical experiments showcasing the advantages of our \te
 
 \onecolumn
 
-\noindent\textbf{\LARGE Appendix}\\
+  \hsize\textwidth
+  \linewidth\hsize \toptitlebar {\centering
+  {\Large\bfseries Appendix for \texttt{FedSKETCH}: Communication-Efficient Federated Learning
+via Sketching \par}}
+ \bottomtitlebar 
 
 
 \section{Notations and Defintions}
@@ -954,6 +956,7 @@ We provide insightful numerical experiments showcasing the advantages of our \te
 \toprule
 $p$ & $\triangleq$ & Number of devices\\
 $k$ & $\triangleq$ & Number of sampled devices for homogeneous setting\\
+$\mathcal{K}^{(r)}$ & $\triangleq$ & Set of sampled devices in communication round $r$\\
 $d$ & $\triangleq$ &  Dimension of the model \\
 $\tau$ & $\triangleq$ & Number of local updates\\
 $R$ & $\triangleq$ & Number of communication rounds\\
@@ -1002,18 +1005,7 @@ The proof simply follows from Theorem 3 in~\cite{horvath2020better} and Algorith
 \end{algorithm}
 
 
-
-
 \section{Theoretical Proofs}
-
-We will use the following fact (which is also used in \cite{li2019convergence,haddadpour2019convergence}) in proving results.
-\begin{fact}[\cite{li2019convergence,haddadpour2019convergence}]\label{fact:1}
-Let
-$\{x_i\}_{i=1}^p$ denote any fixed deterministic sequence. We sample a multiset $\mathcal{P}$ (with size $K$) uniformly at random where $x_j$ is sampled  with probability $q_j$ for $1\leq j\leq p$ with replacement.  Let $\mathcal{P} = \{i_1,\ldots, i_K\} \subset[p]$ (some $i_j$s may have the same value). Then
-\begin{align}
-    \mathbb{E}_{\mathcal{P}}\left[\sum_{i\in \mathcal{P}}x_i\right]=\mathbb{E}_{\mathcal{P}}\left[\sum_{k=1}^Kx_{i_k}\right]=K\mathbb{E}_{\mathcal{P}}\left[x_{i_k}\right]=K\left[\sum_{j=1}^pq_jx_j\right]
-\end{align}
-\end{fact}
 
 
 
@@ -1059,8 +1051,6 @@ $\{x_i\}_{i=1}^p$ denote any fixed deterministic sequence. We sample a multiset 
     \end{tabular}
     }
 \end{table}
-
-
 
 \subsubsection{Convergence for heterogeneous setting}\label{sec:gen-proof-hett}
 \begin{table}[H]
@@ -1121,6 +1111,16 @@ $\{x_i\}_{i=1}^p$ denote any fixed deterministic sequence. We sample a multiset 
 
 \textbf{Comparison with~\cite{philippenko2020artemis}.} 
 The reference~\cite{philippenko2020artemis} considers two-way compression from parameter server to devices and vice versa. They provide the convergence rate of $R=O\left(\frac{\omega^{\text{Up}}\omega^{\text{Down}}}{\epsilon^2}\right)$ for strongly-objective functions where $\omega^{\text{Up}}$ and $\omega^{\text{Down}}$ are uplink and downlink's compression noise (specializing to our case for the sake of comparison $\omega^{\text{Up}}=\omega^{\text{Down}}=\theta\left(d\right)$) for general heterogeneous data distribution. In contrast, while as pointed out in Remark~\ref{rmrk:bidirect} that our algorithms are using bidirectional compression due to use of sketching for communication, our convergence rate for strongly-convex objective is $R=O(\kappa\mu^2d\log\left(\frac{1}{\epsilon}\right))$ with probability $1-\delta$.  
+
+
+We will use the following fact (which is also used in \cite{li2019convergence,haddadpour2019convergence}) in proving results.
+\begin{fact}[\cite{li2019convergence,haddadpour2019convergence}]\label{fact:1}
+Let
+$\{x_i\}_{i=1}^p$ denote any fixed deterministic sequence. We sample a multiset $\mathcal{P}$ (with size $K$) uniformly at random where $x_j$ is sampled  with probability $q_j$ for $1\leq j\leq p$ with replacement.  Let $\mathcal{P} = \{i_1,\ldots, i_K\} \subset[p]$ (some $i_j$s may have the same value). Then
+\begin{align}
+    \mathbb{E}_{\mathcal{P}}\left[\sum_{i\in \mathcal{P}}x_i\right]=\mathbb{E}_{\mathcal{P}}\left[\sum_{k=1}^Kx_{i_k}\right]=K\mathbb{E}_{\mathcal{P}}\left[x_{i_k}\right]=K\left[\sum_{j=1}^pq_jx_j\right]
+\end{align}
+\end{fact}
 
 \subsection{Results for the Homogeneous Setting}
 \label{sec:app:sgd:undrr-pl}
@@ -1524,7 +1524,11 @@ Since the sketching methods \texttt{PRIVIX} and \texttt{HEAPRIX}, satisfy the As
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Additional Plots for the Numerical Experiments}
+
+\subsection{Additional Numerical Experiments}
+
+\subsection{Additional Plots for the MNIST Experiments}
+We are adding in this section, numerical runs for an intermediary number of local updates $\tau =2$ and confirm for both cases the trend we observe in the plots of the main text regarding increasing this number.
 
 \subsection{Homogeneous setting}
 \begin{figure}[H]
@@ -1591,6 +1595,49 @@ Since the sketching methods \texttt{PRIVIX} and \texttt{HEAPRIX}, satisfy the As
 	\caption{Heterogeneous case: Comparison of compressed optimization algorithms on LeNet CNN architecture.}
     \label{fig:MNIST-iid0-app}
 \end{figure}
+
+
+\subsection{Additional Experiments: CIFAR-10}
+\begin{figure}[H]
+	\begin{center}
+		\mbox{\hspace{-0.15in}			  
+		 \includegraphics[width=1.7in]{CIFAR_figures/cifar_local1_sketch20_iid1_train_loss.eps} \hspace{-0.12in}
+		 \includegraphics[width=1.7in]{CIFAR_figures/cifar_local1_sketch20_iid1_test_acc.eps} 
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local5_sketch20_iid1_train_loss.eps}\hspace{-0.12in}
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local5_sketch20_iid1_test_acc.eps}
+		}
+		\mbox{\hspace{-0.15in}	
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local1_sketch50_iid1_train_loss.eps} \hspace{-0.12in}
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local1_sketch50_iid1_test_acc.eps} 
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local5_sketch50_iid1_train_loss.eps}\hspace{-0.12in}
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local5_sketch50_iid1_test_acc.eps}
+		}
+	\end{center}
+	\vspace{-0.1in}
+	\caption{CIFAR10 Homogeneous case: Comparison of compressed optimization methods on LeNet CNN.}
+    \label{fig:CIFAR-iid1}
+\end{figure}
+
+\begin{figure}[H]
+	\begin{center}
+		\mbox{\hspace{-0.15in}			   
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local1_sketch20_iid0_train_loss.eps} \hspace{-0.12in}
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local1_sketch20_iid0_test_acc.eps} 
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local5_sketch20_iid0_train_loss.eps} \hspace{-0.12in}
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local5_sketch20_iid0_test_acc.eps}
+		}
+		\mbox{\hspace{-0.15in}	
+		 \includegraphics[width=1.7in]{CIFAR_figures/cifar_local1_sketch50_iid0_train_loss.eps} \hspace{-0.12in}
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local1_sketch50_iid0_test_acc.eps} 
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local5_sketch50_iid0_train_loss.eps}\hspace{-0.12in}
+		\includegraphics[width=1.7in]{CIFAR_figures/cifar_local5_sketch50_iid0_test_acc.eps}
+		}
+	\end{center}
+	\vspace{-0.1in}
+	\caption{CIFAR10 Heterogeneous case: Comparison of compressed optimization algorithms on LeNet CNN.}
+    \label{fig:CIFAR-iid0}
+\end{figure}
+
 
 \end{document}
 
