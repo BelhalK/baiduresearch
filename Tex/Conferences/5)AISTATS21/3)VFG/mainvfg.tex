@@ -617,23 +617,24 @@ Future work includes applying our VFG model to fine grained data relational stru
 
 
 
-The hierarchy generative network as given in Figure~\ref{fig:tree-d}. For each pair of connected nodes, the edge is linked with an invertible function. We use $\theta$ to represent the parameters for all the edges.
-The forward message passing starts from $\mathbf{x}$ and ends at $\mathbf{h}^L$, and backward message passing is in the reverse direction. 
- Then the
- likelihood for the data is given by
-\begin{align*}
-p(\mathbf{x}| \mathbf{\theta}) = \sum_{\mathbf{h}^1, ..., \mathbf{h}^L} p(\mathbf{h}^L | \theta)p(\mathbf{h}^{L-1} | \mathbf{h}^{L},\theta) \cdot \cdot  \cdot  p(\mathbf{x} | \mathbf{h}^{1}, \theta) .
-\end{align*}
-
-\begin{figure}[!htbp]
+We describe the hierarchical generative network in Figure~\ref{fig:tree-d}. 
+\begin{figure}[H]
     \centering
     \includegraphics[width=2.3in]{fig/tree_direct.png}
     \caption{Tree structure.}
     \label{fig:tree-d}
 \end{figure}
 
-With the flow-based ensemble model, each edge is invertible.   The hierarchy of recognition network is the procedure from top to down of the structure as shown in Figure~\ref{fig:tree-d}.  Similarly, with the Markov property of the structure, the posterior density of the latent 
-variables is given by
+For each pair of connected nodes, the edges are invertible mapping functions. 
+We use $\theta$ to represent the parameters for all the edges.
+The forward message passing starts from $\mathbf{x}$ and ends at $\mathbf{h}^L$, and backward message passing in the reverse direction. 
+ Then the likelihood term of the data reads
+\begin{align*}
+p(\mathbf{x}| \mathbf{\theta}) = \sum_{\mathbf{h}^1, ..., \mathbf{h}^L} p(\mathbf{h}^L | \theta)p(\mathbf{h}^{L-1} | \mathbf{h}^{L},\theta) \cdot \cdot  \cdot  p(\mathbf{x} | \mathbf{h}^{1}, \theta) \, .
+\end{align*}
+With the flow-based ensemble model, each edge is invertible.   
+The hierarchy of recognition network is the procedure from top to down of the structure as shown in Figure~\ref{fig:tree-d}.  
+Under independence assumption on the latent nodes, the posterior density of the latent variables is given by
 \begin{align*}
 q(\mathbf{h}| \mathbf{x}, \theta ) = q(\mathbf{h}^1 | \mathbf{x}, \theta)  q(\mathbf{h}^2 | \mathbf{h}^1, \theta) \cdot \cdot  \cdot  q(\mathbf{h}^{L} | \mathbf{h}^{L-1}, \theta) \, ,
 \end{align*}
@@ -646,7 +647,7 @@ Note that we also have
 q(\mathbf{h}| \mathbf{x}) = q(\mathbf{h}^1 | \mathbf{x})  q(\mathbf{h}^{2:L} | \mathbf{h}^1) \, .
 \end{align}
 
-To derive the ELBO of a hierarchy model, we take all  layers of latent variables as the latent vector in conventional VAE, and we have 
+To derive the ELBO of a hierarchical model, we consider all  layers of latent variables as the latent vector in conventional VAE, and we have 
 \begin{align*}
 \log p(\mathbf{x}) &=  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{p(\mathbf{h}|\mathbf{x})} \bigg] \\
 &=  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}   \frac{q(\mathbf{x}, \mathbf{h})}{p(\mathbf{h}|\mathbf{x})} \bigg] \\
@@ -662,20 +663,26 @@ Since $\textbf{\text{KL}}\big(q(\mathbf{h} |\mathbf{x}) | p(\mathbf{h}|\mathbf{x
 =&  \underbrace{ \mathbb{E}_{q(\mathbf{h}^{1} | \mathbf{x})} \bigg[ \log  p(\mathbf{x} | \mathbf{h}^{1})  \bigg] }_{  \parbox{10.5em}{Reconstruction of the data given hidden layer 1}}  +  \underbrace{  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg] }_{-\textbf{\text{KL}}^{1:L}} \, .     \label{eq:layer0_b}
 \end{align}
 
-The first term in~(\ref{eq:layer0_a}) is due to $p(\mathbf{x}|\mathbf{h}^{1:L}) =  p(\mathbf{x}|\mathbf{h}^{1})$. The first term in~(\ref{eq:layer0_b}) is due to that the expectation is regarding $\mathbf{h}^{1}$. The hidden variables $\mathbf{h}^{l+1:L}$ can be taken as the parameters for $\mathbf{h}^l$'s  prior distribution .  We expand the minus KL term in~(\ref{eq:layer0_b}) as follows
+The first term in~(\ref{eq:layer0_a}) is due to $p(\mathbf{x}|\mathbf{h}^{1:L}) =  p(\mathbf{x}|\mathbf{h}^{1})$. 
+The first term in~(\ref{eq:layer0_b}) is due to that the expectation is regarding $\mathbf{h}^{1}$. 
+The hidden variables $\mathbf{h}^{l+1:L}$ can be taken as the parameters for $\mathbf{h}^l$'s  prior distribution .  
+We expand the negated KL term in~(\ref{eq:layer0_b}) as follows
 \begin{align} \label{eq:kl_1}
 -\textbf{\text{KL}}^{1:L} =& \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg]   \\ \notag
 = &   \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{\underbrace{ q(\mathbf{h}^{1}|\mathbf{x}) q(\mathbf{h}^{2:L}|\mathbf{h}^1)}_{\text{Due to}~(\ref{eq:chain}) } }  \bigg] \\ \notag
 =&  \underbrace{  \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]  }_{(a)} +   \underbrace{\mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log \frac{1}{q(\mathbf{h}^{1}|\mathbf{x}) } \bigg] }_{(b)} \, .  \notag
 \end{align}
 
-Given a batch of data, we take the inference in each layer as encoding and decoding procedures. In forward message passing, the hidden layer $\mathbf{h}^l$  only depends on its previous layer $l-1$. 
-The logarithm term in (a) only relates to hidden states $\mathbf{h}^{1:L}$.  %With the feed message from the child layer $\overrightarrow{\mathbf{h}}^{(i)}$ and the reconstruct message $\overleftarrow{\mathbf{h}}^{(i)}$  from the parent layer, we can derive the ELBO term for the likelihood of  $\overrightarrow{\mathbf{h}}^{(i)}$ . 
+%Given a batch of data, we take the inference in each layer as encoding and decoding procedures. 
+In forward message passing, the hidden layer $\mathbf{h}^l$  only depends on its previous layer $l-1$. 
+The logarithm term in (a) only relates to hidden states $\mathbf{h}^{1:L}$.  
+%With the feed message from the child layer $\overrightarrow{\mathbf{h}}^{(i)}$ and the reconstruct message $\overleftarrow{\mathbf{h}}^{(i)}$  from the parent layer, we can derive the ELBO term for the likelihood of  $\overrightarrow{\mathbf{h}}^{(i)}$ . 
 With~(\ref{eq:chain}), given the hidden states $\mathbf{h}^1$ samples from layer 0, we have 
 \begin{align} \label{eq:kl_a}
 (a)  &=   \mathbb{E}_{q(\mathbf{h}^{1}|\mathbf{x})} \bigg[  \mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]    \bigg] \, .
 \end{align}
-The inner expectation is actually the ELBO for layer hidden variable $\mathbf{h}^1$. Hence
+The inner expectation is actually the ELBO for hidden variable $\mathbf{h}^1$ of the first layer. 
+Hence
 \begin{align} \notag
  &\mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \bigg[ \log  \frac{p( \mathbf{h}^{1}|  \mathbf{h}^{2:L}) p( \mathbf{h}^{2:L})  }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]   \\ \notag
  =&\mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \big[ \log p( \mathbf{h}^{1}|  \mathbf{h}^{2:L})    \big] + \mathbb{E}_{q(\mathbf{h}^{2:L}|\mathbf{h}^1)} \bigg[ \log  \frac{ p( \mathbf{h}^{2:L})   }{ q(\mathbf{h}^{2:L}|\mathbf{h}^1)}  \bigg]  \\  \label{eq:a_inner}
@@ -683,7 +690,7 @@ The inner expectation is actually the ELBO for layer hidden variable $\mathbf{h}
   =&  \mathbb{E}_{q(\mathbf{h}^{2}|\mathbf{h}^1)} \big[ \log p( \mathbf{h}^{1}|  \mathbf{h}^{2})    \big] - \textbf{\text{KL}}^{2:L}  \, .
 \end{align}
 
-For the term (b) we develop as follows:
+Term (b) develops as follows:
 \begin{align} \label{eq:kl_b}
  (b)  = \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log \frac{1}{q(\mathbf{h}^{1}|\mathbf{x}) } \bigg] =  \mathbb{E}_{q(\mathbf{h}^{1} | \mathbf{x})} \bigg[ \log \frac{1}{q(\mathbf{h}^{1}|\mathbf{x}) } \bigg] = \textbf{\text{H}}(\mathbf{h}^{1}|\mathbf{x}) \, .
 \end{align}
@@ -700,14 +707,15 @@ Similarly, for layer $l$, we  have
 =&    \mathbb{E}_{q(\mathbf{h}^{l}|\mathbf{h}^{l-1})} \bigg[  \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \big[ \log p( \mathbf{h}^{l}|  \mathbf{h}^{l+1})    \big]   \bigg] +  \textbf{\text{H}}(\mathbf{h}^{l}|\mathbf{h}^{l-1})  - \textbf{\text{KL}}^{l+1:L} \, .
 \end{align*}
 
-Given a batch of samples, we compute  and store the forward message and the backward message for each node in the forward and backward message passing procedures.  The above KL term can be simplified as
+Given a batch of samples, we compute  and store the forward message and the backward message for each node in the forward and backward message passing procedures.  
+The above KL term can be simplified as
 \begin{align} \label{eq:KL_tree}
 -\textbf{\text{KL}}^{l:L} 
 =&     \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \big[ \log p( \mathbf{h}^{l}|  \mathbf{h}^{l+1})    \big]  +  \textbf{\text{H}}(\mathbf{h}^{l}|\mathbf{h}^{l-1})   - \textbf{\text{KL}}^{l+1:L} \, .
 \end{align}
 
 
-For a hierarchy model with $L$ layers, we can recursively expand the KL term regarding the ELBO for each layer.  Thus 
+For a hierarchical model with $L$ layers, we can recursively expand the KL term regarding the ELBO for each layer.  Thus 
 \begin{align} \label{eq:KL_all}
 & \mathbb{E}_{q(\mathbf{h}^{1:L} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h}^{1:L})}{q(\mathbf{h}^{1:L}|\mathbf{x})}  \bigg] \\ \notag
 =& \sum_{l=1}^{L-1} \bigg\{   \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \mathbf{h}^{l+1})   \bigg]  +    \textbf{\text{H}}(\mathbf{h}^l | \mathbf{h}^{l-1} )  \bigg\} \\ \notag
@@ -717,12 +725,17 @@ For a hierarchy model with $L$ layers, we can recursively expand the KL term reg
 %&+  \mathbb{E}_{q(\mathbf{h}^L|\mathbf{h}^{L-1})} \bigg[ \log p( \mathbf{h}^{L-1}|  \mathbf{h}^L)   p( \mathbf{h}^L)  \bigg] \\
 %& +    \textbf{\text{H}}(\mathbf{h}^L | \mathbf{h}^{L-1} )  \\
 
-With $\mathbf{h}^0 = \mathbf{x}$,  with the ELBO can be written as 
+With $\mathbf{h}^0 = \mathbf{x}$,  the ELBO can be expressed as
 \begin{align*}
 \log p(\mathbf{x}) \geq &   \sum_{l=0}^{L-1}  \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \mathbf{h}^{l+1})   \bigg] +  \sum_{l=1}^{L-1}   \textbf{\text{H}}(\mathbf{h}^l | \mathbf{h}^{l-1} ) -   \textbf{\text{KL}}\big(q(\mathbf{h}^L | \mathbf{h}^{L-1} )   | p(\mathbf{h}^L)  \big) . 
  \end{align*}
 %For vanilla VAE models, $L=1$, $\mathbf{h}^0 = \mathbf{x}$, and $\mathbf{h}^1 = \mathbf{z}$. %, and $\mathbf{h}^2 = (\mu_{\mathbf{z}}, \sigma_{\mathbf{z}})$
-The hidden variables are computed with forward message passing with encoders $q(\mathbf{h}^l | \mathbf{h}^{l-1}), l = 1,..., L$. The reconstructed hidden variables are computed with decoders $p(\mathbf{h}^l | \mathbf{h}^{l+1}), l = L-1, ..., 0$. We use $\widehat{\mathbf{h}}^l$ to represent the reconstruction of $\mathbf{h}^l$. Only at the root level $L$, we have $\widehat{\mathbf{h}}^L = \mathbf{h}^L$. Each latent variable is reconstructed with messages from higher layer. Hence the ELBO can be rewritten as 
+The hidden variables are computed with forward message passing with encoders $q(\mathbf{h}^l | \mathbf{h}^{l-1}), l = 1,..., L$. 
+The reconstructed hidden variables are computed with decoders $p(\mathbf{h}^l | \mathbf{h}^{l+1}), l = L-1, ..., 0$. 
+We use $\widehat{\mathbf{h}}^l$ to represent the reconstruction of $\mathbf{h}^l$. 
+Only at the root level $L$, we have $\widehat{\mathbf{h}}^L = \mathbf{h}^L$. 
+Each latent variable is reconstructed with messages from higher layer. 
+Hence the ELBO can be rewritten as 
 \begin{align*}
 \log p(\mathbf{x}) \geq &   \sum_{l=0}^{L-1}  \mathbb{E}_{q(\mathbf{h}^{l+1}|\mathbf{h}^l)} \bigg[ \log p( \mathbf{h}^{l}|  \widehat{\mathbf{h}}^{l+1})   \bigg] +  \sum_{l=1}^{L-1}   \textbf{\text{H}}(\mathbf{h}^l | \mathbf{h}^{l-1} ) -   \textbf{\text{KL}}\big(q(\mathbf{h}^L | \mathbf{h}^{L-1} )   | p(\mathbf{h}^L)  \big) \, .
  \end{align*}
@@ -730,27 +743,32 @@ The hidden variables are computed with forward message passing with encoders $q(
 
 \subsection{ELBO for DAG Models}\label{appd:dag_elbo}
 
-If we reverse the edge directions in a DAG, the  result graph is still a DAG graph.  The nodes can be listed in a topological order regarding the DAG structure as shown in Figure~\ref{fig:dag}. By taking the topology order as the layers in tree structures, we can derive the ELBO for DAG structures.  
-Assume the DAG structure has $L$ layers, and the root nodes are in layer $L$. With $\mathbf{h}$ to represent the whole latent variables, following~(\ref{eq:tree_elbo}) we have the ELBO for the log-likelihood of  data 
-\begin{align}  \label{eq:dag_elbo}
-\log p(\mathbf{x})  \geq  \mathcal{L}_{\theta}(x)  = &  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg]  \\ \notag
-=&  \underbrace{ \mathbb{E}_{q(\mathbf{h}^{pa(\mathbf{x})} | \mathbf{x})} \bigg[ \log  p(\mathbf{x} | \mathbf{h}^{pa(\mathbf{x})})  \bigg] }_{  \parbox{10.5em}{Reconstruction of the data given the parent nodes of the data}}  +  \underbrace{  \mathbb{E}_{q(\mathbf{h}| \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg] }_{-\textbf{\text{KL}}} \, .   \notag
-\end{align}
-
-\begin{figure}[!htbp]
+Note that if we reverse the edge directions in a DAG, the  result graph is still a DAG graph.  
+The nodes can be listed in a topological order regarding the DAG structure as shown in Figure~\ref{fig:dag}. 
+\begin{figure}[H]
     \centering
     \includegraphics[width=2.3in]{fig/dag.png}
     \caption{DAG structure. The inverse topology order is \big\{ \{1,2,3\}, \{4,5\}, \{6\},  \{7\} \big\}, and it corresponds to layers 0 to 3.  }
     \label{fig:dag}
 \end{figure}
 
-Similarly the KL term can be expanded as in the tree structures. For nodes in layer $l$
+By taking the topology order as the layers in tree structures, we can derive the ELBO for DAG structures.  
+Assume the DAG structure has $L$ layers, and the root nodes are in layer $L$. 
+We denote by $\mathbf{h}$ the vector of latent variables, following~(\ref{eq:tree_elbo}) we have the ELBO for the log-likelihood of  data as
+\begin{align}  \label{eq:dag_elbo}
+\log p(\mathbf{x})  \geq  \mathcal{L}_{\theta}(x)  = &  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg]  \\ \notag
+=&  \underbrace{ \mathbb{E}_{q(\mathbf{h}^{pa(\mathbf{x})} | \mathbf{x})} \bigg[ \log  p(\mathbf{x} | \mathbf{h}^{pa(\mathbf{x})})  \bigg] }_{  \parbox{10.5em}{Reconstruction of the data given the parent nodes of the data}}  +  \underbrace{  \mathbb{E}_{q(\mathbf{h}| \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg] }_{-\textbf{\text{KL}}} \, .   \notag
+\end{align}
+Similarly the KL term can be expanded as in the tree structures. 
+For nodes in layer $l$
 \begin{align} \label{eq:KL_dag1}
 -\textbf{\text{KL}}^{l:L} 
 =&     \mathbb{E}_{q(\mathbf{h}^{pa(l)}|\mathbf{h}^l)} \big[ \log  p( \mathbf{h}^{l}|  \mathbf{h}^{pa(l)})    \big]  +  \textbf{\text{H}}(\mathbf{h}^{l}|\mathbf{h}^{ch(l)})  - \textbf{\text{KL}}^{l+1:L} \, .
 \end{align}
 The forward and backward messages or latent state of a node are stored in the message passing procedures. They can be used by the node's parents and children  to compute the ELBO.  
-It enables the calculation even the parents or children are  not  in layer~$l+1$ or $l-1$. For the node $i$ in layer $l$,   $pa(i)$ may have children in layers below $l$. Some nodes in $l$ may not have parent, and combining with the prior, the entropy term will become an KL term in this case.  Thus,  we have 
+This computation is performed even though the parents or children are not  in layer~$l+1$ or $l-1$. 
+For the node $i$ in layer $l$,  $pa(i)$ may have children in layers below $l$. Some nodes in $l$ may not have parent, and combining with the prior, the entropy term will become an KL term in this case.  
+Therefore,  we have 
 \begin{align} \label{eq:KL_dag2}
 -\textbf{\text{KL}}^{l:L} = &  \sum_{i:i\in l, i \not\in   \mathcal{R}_{ \mathcal{G}} }  \bigg\{ \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{ch(pa(i))}} \big[ \log p( \mathbf{h}^{i}|  \mathbf{h}^{pa(i)})    \big]   +  \textbf{\text{H}}_q(\mathbf{h}^{i}|\mathbf{h}^{ch(i)})  \bigg\}  \\ \notag
 & -  \sum_{i \in l \bigcap \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   | p(\mathbf{h}^{(i)})  \big)  - \textbf{\text{KL}}^{l+1:L} \, .\notag
@@ -778,24 +796,30 @@ Since $L  \subseteq   \mathcal{R}_{ \mathcal{G}} $,  with $\mathbf{h}^{(0)} = \m
 % \end{figure*}
 
 
-\begin{figure*}[!htbp]%{r{0.4\textwidth}
+\begin{figure}[H]%{r{0.4\textwidth}
 \begin{center}
  \includegraphics[width=0.5\linewidth]{fig/tree_message.png}
 \end{center}
   \caption{Message passing on a tree.} 
-\label{fig:message}
-\end{figure*}
+\end{figure}
 
 
 
 \section{Theoretical Proofs}
+We present in this section the proofs for our Lemma~\ref{lm:apprx} and Theorem~\ref{thm:identif}.
 \subsection{Proof of Lemma~\ref{lm:apprx}}\label{appd:proof_lm1}
-\textbf{Lemma 1.} {\it Let $\mathcal{G}$ be a well trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. Given observed value at node $i$, the value of node $j$ can be approximated with   $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be approximated with 
+\textbf{Lemma 1.} {\it Let $\mathcal{G}$ be a well trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. 
+Given observed value at node $i$, the value of node $j$ can be approximated with $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. 
+The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be approximated with 
 \begin{align*} %\label{eq:cond_llk}
 \log p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)}) &\approx  \log p(\widehat{\mathbf{h}}^L) -  \frac{1}{2} \log \big(\det \big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)\big) \big) \, .
 \end{align*}
 }
 %\end{lemma}
+
+\begin{proof}
+\textcolor{red}{Add the proof of this Lemma}
+\end{proof}
 
 
 \subsection{Proof of Theorem~\ref{thm:identif}}\label{appd:proof_thm1}
@@ -819,7 +843,8 @@ $\mathbf{T}(\mathbf{h}_k) = \mathbf{A}\widehat{\mathbf{T}}(\mathbf{h}_k) + \math
 }
 
 \begin{proof}
-The conditional probabilities of $p_{\mathbf{T}, \mathbf{\lambda}, \mathbf{f}_t^{-1} }\big(\mathbf{x}^{(t)} | \mathbf{u}\big)$ and $p_{\widehat{\mathbf{T}}, \widehat{\mathbf{\lambda}}, \mathbf{g} }\big(\mathbf{x}^{(t)} | \mathbf{u}\big)$ are assumed to be the same in the limit of infinity data.  By expanding two pdfs with change of variable rule, we have 
+The conditional probabilities of $p_{\mathbf{T}, \mathbf{\lambda}, \mathbf{f}_t^{-1} }\big(\mathbf{x}^{(t)} | \mathbf{u}\big)$ and $p_{\widehat{\mathbf{T}}, \widehat{\mathbf{\lambda}}, \mathbf{g} }\big(\mathbf{x}^{(t)} | \mathbf{u}\big)$ are assumed to be the same in the limit of infinite data.  
+By expanding the probability density functions with the correct change of variable, we have 
 \begin{align} \notag
 \log p_{\mathbf{T}, \mathbf{\lambda}}(\mathbf{h}^{(t)}| \mathbf{u}) + \log \big| \det \mathbf{J}_{\mathbf{f}_t}(\mathbf{x}^{(t)}) \big| = \log p_{\widehat{\mathbf{T}}, \widehat{\mathbf{\lambda}}}((\mathbf{h}^{(t)})^\top| \mathbf{u}) + \log \big| \det \mathbf{J}_{g^{-1}}(\mathbf{x}^{(t)}) \big|.
 \end{align}
@@ -827,17 +852,20 @@ The conditional probabilities of $p_{\mathbf{T}, \mathbf{\lambda}, \mathbf{f}_t^
 \begin{align} \label{eq:u_diff}
 \log p_{\mathbf{h}^{(t)}}(\mathbf{h}^{(t)}|\mathbf{u}^{(v)}) - \log p_{\mathbf{h}^{(t)}}(\mathbf{h}^{(t)}|\mathbf{u}^{(0)}) =\log p_{(\mathbf{h}^{(t)})^\top}((\mathbf{h}^{(t)})^\top|\mathbf{u}^{(v)}) - \log p_{(\mathbf{h}^{(t)})^\top}((\mathbf{h}^{(t)})^\top|\mathbf{u}^{(0)}).
 \end{align}
-Both conditional distributions of $\mathbf{h}^{(t)}$ given $\mathbf{u}$ belong to exponential family. Eq.~(\ref{eq:u_diff}) can be rewritten as 
+Both conditional distributions of $\mathbf{h}^{(t)}$ given $\mathbf{u}$ belong to the exponential family. 
+Eq.~(\ref{eq:u_diff}) thus reads
 \begin{align} \notag
 &\sum_{i=1}^l \bigg[\log \frac{Z_i(\mathbf{u}^{(0)})}{Z_i(\mathbf{u}^{(v)})} + \sum_{j=1}^m T_{i,j}(\mathbf{h}^{(t)})\big(\lambda_{i,j}(\mathbf{u}^{(v)})- \lambda_{i,j}(\mathbf{u}^{(0)})\big) \bigg] \\
 = & \sum_{i=1}^l \bigg[\log \frac{\widehat{Z}_i(\mathbf{u}^{(0)})}{\widehat{Z}_i(\mathbf{u}^{(v)})} + \sum_{j=1}^m \widehat{T}_{i,j}(\mathbf{h}^{(t)})\big(\widehat{\lambda}_{i,j}(\mathbf{u}^{(v)})- \widehat{\lambda}_{i,j}(\mathbf{u}^{(0)})\big) \bigg].
 \end{align}
-Here the base measures $Q_i$ are cancelled out as they do not depend on $\mathbf{u}$. Let $\bar{\mathbf{\lambda}}(\mathbf{u}) = \mathbf{\lambda}(\mathbf{u})-\mathbf{\lambda}(\mathbf{u}^{(0)})$. The above equation can be rewritten with inner products as
+Here the base measures $Q_i$ cancel out as they do not depend on $\mathbf{u}$. 
+Let $\bar{\mathbf{\lambda}}(\mathbf{u}) = \mathbf{\lambda}(\mathbf{u})-\mathbf{\lambda}(\mathbf{u}^{(0)})$. 
+The above equation can be expressed, with inner products, as follows
 \begin{align} \notag
 \langle \mathbf{T}(\mathbf{h}^{(t)}), \bar{\mathbf{\lambda}}	\rangle + \sum_i \log \frac{Z_i(\mathbf{u}^{(0)})}{Z_i(\mathbf{u}^{(v)})}
 =\langle \widehat{\mathbf{T}}((\mathbf{h}^{(t)})^\top), \widehat{\bar{\mathbf{\lambda}}}	\rangle + \sum_i\log \frac{\widehat{Z}_i(\mathbf{u}^{(0)})}{\widehat{Z}_i(\mathbf{u}^{(v)})}, \ \ \forall l, 1 \leq v \leq dm .
 \end{align}
-Combine $dm$ equations together and we can rewrite in matrix equation form as following
+Combine $dm$ equations together and we can writne in matrix equation form as following
 \begin{align} \notag
 \mathbf{L}^{\top}\mathbf{T}(\mathbf{h}^{(t)}) = \widehat{\mathbf{L}}^{\top}\widehat{\mathbf{T}}((\mathbf{h}^{(t)})^\top) + \mathbf{b}.
 \end{align}
@@ -846,10 +874,15 @@ Here $b_v=\sum_i\log \frac{\widehat{Z}_i(\mathbf{u}^{(0)}) Z_i(\mathbf{u}^{(v)})
 \mathbf{T}(\mathbf{h}^{(t)}) = \mathbf{A}\widehat{\mathbf{T}}((\mathbf{h}^{(t)})^\top) + \mathbf{c}.
 \end{align}
 Here $\mathbf{A} = \mathbf{L}^{-1\top} \widehat{\mathbf{L}}^{\top} $, and $\mathbf{c} = \mathbf{L}^{-1\top} \mathbf{b}$. 
-By a Lemma 1 from~\cite{Khemakhem20a}, there exist $m$ distinct values $h^{(t,i)}_{1}$ to $h^{(t,i)}_{m}$ such that $\big[ \frac{d T_i}{ d h^{(t,i)}}(h^{(t,i)}_{1}), ...,  \frac{d T_i}{ d h^{(t,i)}}(h^{(t,i)}_{m}) \big]$ are linear independent in $\mathbb{R}^m$, for all $1\leq i \leq d$. Define $m$ vectors $\mathbf{h}^{(t)}_{v}= [h^{(t,1)}_v, ..., h^{(t,d)}_v]$ from points given by this lemma. We obtain the  Jacobian $\mathbf{Q}= [\mathbf{J}_{\mathbf{T}}(\mathbf{h}^{(t)}_1), ..., \mathbf{J}_{\mathbf{T}}(\mathbf{h}^{(t)}_m)]$ with each entry as Jacobian with size $dm \times d$ from the derivative of Eq.~(\ref{eq:A_sim}) regarding these $m$ vectors. Hence $\mathbf{Q}$ is a $dm \times dm$ invertible by the lemma and the fact that each component of $\mathbf{T}$ is univariate. 
+By Lemma 1 from~\cite{Khemakhem20a}, there exist $m$ distinct values $h^{(t,i)}_{1}$ to $h^{(t,i)}_{m}$ such that $\big[ \frac{d T_i}{ d h^{(t,i)}}(h^{(t,i)}_{1}), ...,  \frac{d T_i}{ d h^{(t,i)}}(h^{(t,i)}_{m}) \big]$ are linearly independent in $\mathbb{R}^m$, for all $1\leq i \leq d$. 
+Define $m$ vectors $\mathbf{h}^{(t)}_{v}= [h^{(t,1)}_v, ..., h^{(t,d)}_v]$ from points given by this lemma. 
+We obtain the following Jacobian matrix 
+$$\mathbf{Q}= [\mathbf{J}_{\mathbf{T}}(\mathbf{h}^{(t)}_1), ..., \mathbf{J}_{\mathbf{T}}(\mathbf{h}^{(t)}_m)] \, ,$$ 
+with each entry is the Jacobian of size $dm \times d$ from the derivative of Eq.~(\ref{eq:A_sim}) regarding the $m$ vectors $\{\mathbf{h}^{(t)}_j\}_{j=1}^m$. 
+Hence $\mathbf{Q}$ is a $dm \times dm$ invertible by the lemma and the fact that each component of $\mathbf{T}$ is univariate. 
 We can construct a corresponding matrix $\widehat{\mathbf{Q}}$ with the Jacobian of $\widehat{\mathbf{T}}(\mathbf{g}^{-1}\circ \mathbf{f}_t^{-1}(\mathbf{h}^{(t)}))$ computed at the same points and get 
 \begin{align} \notag
-\mathbf{Q} = \mathbf{A}\widehat{\mathbf{Q}}.
+\mathbf{Q} = \mathbf{A}\widehat{\mathbf{Q}} \,.
 \end{align}
 Here $\widehat{\mathbf{Q}}$ and $\mathbf{A}$ are both full rank as $\mathbf{Q}$ is full rank.
 \end{proof}

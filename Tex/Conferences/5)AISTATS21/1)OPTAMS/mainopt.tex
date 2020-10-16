@@ -1410,7 +1410,7 @@ Then having this gradient \eqref{eq:gradientatell} bounded we can use the same l
 $$
 \|w^{(\ell)}\| \leq \frac{T \prod_{t > \ell} F_t}{4^{L-\ell+1}} + 2B\eqsp.
 $$
-Showing that the weights of the previous layers $\ell \in [1, L-1]$ as well as for the last layer $L$ of our fully connected feed forward neural network are bounded at each iteration, leads by induction, to the boundedness (at each iteration) assumption we want to check.
+Showing that the weights of the previous layers $\ell \in [1, L-1]$ as well as for the last layer $L$ of our fully connected feed forward neural network are bounded at each iteration, leads by induction, to the boundedness (at each iteration) assumption we want to check, thus proving Lemma~\ref{lem:dnnh2}.
 \end{proof}
 
 
@@ -1419,13 +1419,22 @@ Showing that the weights of the previous layers $\ell \in [1, L-1]$ as well as f
 \section{Additional Remarks and Runs on the Gradient Prediction Process}
 
 
-\textbf{Two illustrative examples.}\hspace{0.1in}We provide two toy examples to demonstrate how \textsc{OPT-AMSGrad} works with the chosen extrapolation method. First, consider minimizing a quadratic function $H(w) := \frac{b}{2} w^2 $  
-%The eigenvalue of matrix $B \in \mathbb R^{d \times d}$ can be negative.
-with vanilla gradient descent method $w_{t+1} = w_t - \eta_t \nabla H(w_t)$. 
-The gradient $g_{t}:= \nabla H(w_{t})$ has a recursive description as  $g_{t+1} = b w_{t+1} = b ( w_t  - \eta_t g_t ) = g_t - b \eta_t g_t  $.
-So, the update can be written in the form of $g_t = A g_{t-1}  + \mathcal{O}( \| g_{t-1} \|_2^2 ) u_{t-1}$, with $A = (1 - b \eta)$ and $u_{t-1}=0$ by setting $\eta_t=\eta$ (constant step size).
+\textbf{Two illustrative examples.}\hspace{0.1in} We provide two toy examples to demonstrate how \textsc{OPT-AMSGrad} works with the chosen extrapolation method. 
+First, consider minimizing a quadratic function $H(w) := \frac{b}{2} w^2 $ with vanilla gradient descent method $w_{t+1} = w_t - \eta_t \nabla H(w_t)$. 
+The gradient $g_{t}:= \nabla H(w_{t})$ can be recursively expressed as  $g_{t+1} = b w_{t+1} = b ( w_t  - \eta_t g_t ) = g_t - b \eta_t g_t  $.
+Thus, the update can be written in the form of 
+$$g_t = A g_{t-1}  + \mathcal{O}( \| g_{t-1} \|_2^2 ) u_{t-1}\, ,$$
+where $A = (1 - b \eta)$ and $u_{t-1}=0$ by setting $\eta_t=\eta$ (constant step size).
 Therefore, the extrapolation method should predict well.
-
+Specifically, consider optimizing $H(w) := w^2/2 $ by the following three algorithms with the same step size.
+One is Gradient Descent (GD): $w_{t+1} = w_t - \eta_t g_t$, while the other two are \textsc{OPT-AMSGrad} with $\beta_1=0$ and the second moment term $\hat{v}_t$ being dropped: $w_{t+\frac{1}{2}} = \Pi_{\Theta}\big[ w_{t-\frac{1}{2}} - \eta_t g_t \big]$, $w_{t+1} = \Pi_{\Theta}\big[ w_{t+\frac{1}{2}} - \eta_{t+1} m_{t+1} \big]$. 
+We denote the algorithm that sets $m_{t+1}= g_t$ as \textsc{Opt-1}, and denote the algorithm that uses the extrapolation method to get $m_{t+1}$ as \textsc{Opt-extra}.
+We let $\eta_t=0.1$ and the initial point $w_0=5$ for all three methods.
+The simulation results are on Figure~\ref{simu} (a) and (b). Sub-figure (a) plots update $w_t$ over iteration, where the updates should go towards the optimal point $0$.
+Sub-figure (b) displays a scaled and clipped version of $m_t$, defined as $w_t - w_{t-1/2}$, which can be viewed as $- \eta_t m_{t}$ if the projection (if exists) is lifted.
+Sub-figure (a) shows that \textsc{Opt-extra} converges faster than the other methods. 
+Furthermore, sub-figure (b) shows that the prediction by the extrapolation method is better than the prediction by simply using the previous gradient. 
+The sub-figure shows that $-m_t$ from both methods points to $0$ for each iteration and the magnitude is larger for the one produced by the extrapolation method after iteration $2$. \footnote{The extrapolation needs at least two gradients for prediction. Thus, in the first two iterations,~$m_t=0$.}
 
 \begin{figure}[t]
 \begin{center}
@@ -1455,27 +1464,18 @@ the update towards the optimal point. In this scenario, the more negative the be
 \end{figure}
 
 
-Specifically, consider optimizing $H(w) := w^2/2 $ by the following three algorithms with the same step size.
-One is Gradient Descent (GD): $w_{t+1} = w_t - \eta_t g_t$, while the other two are \textsc{OPT-AMSGrad} with $\beta_1=0$ and the second moment term $\hat{v}_t$ being dropped: $w_{t+\frac{1}{2}} = \Pi_{\Theta}\big[ w_{t-\frac{1}{2}} - \eta_t g_t \big]$, $w_{t+1} = \Pi_{\Theta}\big[ w_{t+\frac{1}{2}} - \eta_{t+1} m_{t+1} \big]$. 
-We denote the algorithm that sets $m_{t+1}= g_t$ as Opt-1, and denote the algorithm that uses the extrapolation method to get $m_{t+1}$ as Opt-extra.
-We let $\eta_t=0.1$ and the initial point $w_0=5$ for all the three methods.
-The simulation results are on Figure~\ref{simu} (a) and (b). Sub-figure (a) plots update $w_t$ over iteration, where the updates should go towards the optimal point $0$.
-Sub-figure (b) is about a scaled and clipped version of $m_t$, defined as $w_t - w_{t-1/2}$, which can be viewed as $- \eta_t m_{t}$ if the projection (if exists) is lifted.
-Sub-figure (a) shows that Opt-extra converges faster than the other methods. 
-Furthermore, sub-figure (b) shows that the prediction by the extrapolation method is better than the prediction by simply using the previous gradient. 
-The sub-figure shows that $-m_t$ from both methods all point to $0$ in all iterations and the magnitude is larger for the one produced by the extrapolation method after iteration $2$. \footnote{The extrapolation needs at least two gradients for prediction. Thus, in the first two iterations,~$m_t=0$.}
-
 Now let us consider another problem: an online learning problem proposed in \citep{RKK18}
 \footnote{\citep{RKK18} uses this example to show that \textsc{Adam} \citep{KB15} fails to converge.}.
 Assume the learner's decision space is $\Theta=[-1,1]$, and the loss function is $\ell_t(w) = 3 w$ if $t \text{ mod } 3 = 1$, and $\ell_t(w) = - w$ otherwise.
 The optimal point to minimize the cumulative loss is $w^*=-1$.
-We let $\eta_t=0.1 / \sqrt{t}$ and the initial point $w_0=1$ for all the three methods.
+We let $\eta_t=0.1 / \sqrt{t}$ and the initial point $w_0=1$ for all three methods.
 The parameter $\lambda$ of the extrapolation method is set to $\lambda=10^{-3}>0$. 
-The results are on Figure~\ref{simu} (c) and (d).
-Sub-figure (c) shows that Opt-extra converges faster than the other methods while Opt-1 is not better than GD.
+The results are reported Figure~\ref{simu} (c) and (d).
+Sub-figure (c) shows that \textsc{Opt-extra} converges faster than the other methods while \textsc{Opt-1} is not performing better than GD.
 The reason is that the gradient changes from $-1$ to $3$ at $t \text{ mod } 3 = 1$ and it changes from $3$ to $-1$ at $t \text{ mod } 3 = 2$.
-Consequently, using the current gradient as the guess for the next clearly is not a good choice, since the next gradient is in the opposite direction of the current one.
-Sub-figure (d) shows that $-m_t$ by the extrapolation method always points to $w^*=-1$, while the one by using the previous negative direction points to the opposite direction in two thirds of rounds. It shows that the extrapolation method is much less affected by the gradient oscillation and always makes the prediction in the right direction, which suggests that the method can capture the aggregate effect.
+Consequently, using the current gradient as the guess for the next is empirically not a good choice, since the next gradient is in the opposite direction of the current one, according to our experiments.
+Sub-figure (d) shows that $-m_t$, obtained with the extrapolation method, always points to $w^*=-1$, while the one obtained by using the previous negative direction points to the opposite direction in two thirds of rounds. 
+It shows that the extrapolation method is much less affected by the gradient oscillation and always makes the prediction in the right direction, which suggests that the method can capture the aggregate effect.
 
 
 

@@ -134,7 +134,7 @@ After establishing the connectivity between several modes (point estimate of min
 Several theoretical paper such as~\citep{he2019asymmetric} or \citep{keskar2016large} provide an attempt at explaining this phenomena.
 
 
-\textbf{Hyperparameters Weight Averaging:}
+\textbf{-- Hyperparameters Weight Averaging:}
 Based on the probabilistic model developed above, the loss function~\eqref{eq:VI} is defined on the space of the hyperparameters, \textit{i.e.} the mean and the variance of the variational candidate distribution.
 
 Regarding the parameterization choice of the variational candidate $q( w; \param )$, we chose for simplicity a scalar mean $\mu_{\ell}$ depending on the layer $\ell \in [L]$ and constant between each neuron. Classically, the covariance of this variational distribution is diagonal, see~\citep{kirkpatrick2017overcoming, blundell2015weight}, yet can be too restrictive.
@@ -174,12 +174,140 @@ Algorithm~\ref{alg:hwa} develops the main method of our paper.
 Stochastic Variational update is executed Line~\ref{line:svi}.
 The stochastic averaging procedure happens every $c$ iterations, and consists in computing the weight sum between the latest model estimate and the running average noted using the superscript $\textrm{HWA}$.
 
+Note that in the above procedure, the variational candidate $q(w, \param)$ has a diagonal covariance matrix where the scalar standard deviations are obtained through Algorithm~\ref{alg:hwa}.
+One parameter estimates are updated via \eqref{eq:hwa_updates}, the neural network weights are then sampled according to the updated variational candidate distributions in order to compute the next iteration approximate stochastic gradient $\nabla \mathcal{L}_{i_{k}}(\theta)$.
+Yet it is also possible build a non diagonal proposal covariance to bypass the restriction of such structure.
+Besides, given the nonconvexity and high dimensionality of the true posterior distribution, adding even a low rank non diagonal structure to the covariance of our proposal would yield a gain in efficiency in the variational inference procedure.
+Of course the ideal option would be to build a posterior curvature-informed covariance but at a higher cost.
+The trade-off between computational costs and proposal efficiency is detailed in the following.
+The low-rank plus diagonal posterior approximation matrix, noted $\Sigma$ of $q(w, \param)$ introduced in \citep{maddox2019simple} reads:
+\begin{equation}\label{eq:lowrankcov}
+\Sigma = \frac{1}{2} \Sigma_{\text {diag }}+\frac{\widehat{D} \widehat{D}^{\top}}{2(R-1)}
+\end{equation}
+where $\mu^{HWA} = (\mu_{\ell}^{HWA}, \ell \in [L])$, $R$ is the maximum number of columns in the low rank deviation matrix $\widehat{D}$ and $\Sigma_{\text {diag }}$ is the diagonal covariance defined above. The $r$-th component, where $r \in [R]$, of the  low rank deviation matrix $\widehat{D}$ is defined as the gap between the current estimate and the running average: $\widehat{D}_r = \theta_r - \theta^{HWA}_r$. It quantifies how far the current estimate parameter deviate from the current averaged parameter.
+
+Then the covariance of the proposal $q(\cdot)$ in Algorithm~\ref{alg:trainingbnn} is either set to \eqref{eq:hwa_updates} or \eqref{eq:lowrankcov}
+
 Several hyperparameters are worth highlighting here.
 The standard learning rate $\gamma_k$ plays a key role and is either equal to a constant or a cyclical learning rate.
 The cycle length $c$ which monitors the number of times snapshots of the model estimates are being averaged is also of utmost importance and needs careful tuning.
 
+%
+%\subsection{Variational Inference with HWA}
+%Note that in the above procedure, the variational candidate $q(w, \param)$ has a diagonal covariance matrix where the scalar standard deviations are obtained through Algorithm~\ref{alg:hwa}.
+%One parameter estimates are updated via \eqref{eq:hwa_updates}, the neural network weights are then sampled according to the updated variational candidate distributions in order to compute the next iteration approximate stochastic gradient $\nabla \mathcal{L}_{i_{k}}(\theta)$.
+%Yet it is also possible build a non diagonal proposal covariance to bypass the restriction of such structure.
+%Besides, given the nonconvexity and high dimensionality of the true posterior distribution, adding even a low rank non diagonal structure to the covariance of our proposal would yield a gain in efficiency in the variational inference procedure.
+%Of course the ideal option would be to build a posterior curvature-informed covariance but at a higher cost.
+%The trade-off between computational costs and proposal efficiency is detailed in the following.
+%The low-rank plus diagonal posterior approximation matrix, noted $\Sigma$ of $q(w, \param)$ introduced in \citep{maddox2019simple} reads:
+%\begin{equation}\label{eq:lowrankcov}
+%\Sigma = \frac{1}{2} \Sigma_{\text {diag }}+\frac{\widehat{D} \widehat{D}^{\top}}{2(R-1)}
+%\end{equation}
+%where $\mu^{HWA} = (\mu_{\ell}^{HWA}, \ell \in [L])$, $R$ is the maximum number of columns in the low rank deviation matrix $\widehat{D}$ and $\Sigma_{\text {diag }}$ is the diagonal covariance defined above. The $r$-th component, where $r \in [R]$, of the  low rank deviation matrix $\widehat{D}$ is defined as the gap between the current estimate and the running average: $\widehat{D}_r = \theta_r - \theta^{HWA}_r$. It quantifies how far the current estimate parameter deviate from the current averaged parameter.
+%
+%Then the covariance of the proposal $q(\cdot)$ in Algorithm~\ref{alg:trainingbnn} is either set to \eqref{eq:hwa_updates} or \eqref{eq:lowrankcov}.
+%
+%\textbf{Discussion on the choice of the variational candidate distribution:} 
+%The general aim of the update rules presented above is to construct an efficient variational candidate distribution that would provide an approximate shape of the true posterior. Our method acts on the mean and covariance of a simple Gaussian distribution where the covariance matrix is either diagonal or low rank.
+%Nevertheless, other choice of proposal can be employed such as the spike and slab variational distribution, in \citep{gal2016dropout}, leveraging dropout mechanism in VI. 
+%The other similar idea, namely concrete dropout in \citep{gal2017concrete} not only optimizes the hyperparameters of the weights but also the dropout probabilities.
+%We do not consider those variants as our work focuses on Gaussian approximations of the posterior distribution and how their parameters are updated, see Section~\ref{sec:numerical} for a description of baseline methods used in our numerical experiments.
+%
+%
+%We now give in Algorithm~\ref{alg:trainingbnn}, the overall training algorithm of the Bayesian Neural Network using the proposed HWA algorithm to update the parameters.
+%\begin{algorithm}[H]
+%\algsetup{indent=0.25em}
+%\begin{algorithmic}[1]
+%\STATE \textbf{Input:} Trained hyperparameters $\hat{\mu}_{\ell}$ and $\hat{\sigma}$. Sequence of LR $\{\gamma_k\}_{k > 0}$. Cycle length $c$. $K$ iterations.
+%\FOR {$k=0,1,...$}
+%\STATE Sample an index $i_k$ uniformly on $[n]$
+%\STATE Sample MC batch of weights $\{w^m_k\}_{m=1}^{M_k}$  from variational candidate $q(w, \theta^k)$ with $\theta^k = (\mu^k, \Sigma^k)$ and the covariance is either diagonal~\eqref{eq:hwa_updates} or low rank~\eqref{eq:lowrankcov}.
+%\STATE Compute MC approximation of the gradient vectors:
+%$$ \nabla \mathcal{L}_{i_{k}}(\theta^{k}) \approx \frac{1}{M_k} \sum_{m=1}^{M_k} \log p(y_{i_k} | x_{i_k}, w^k_m)  + \nabla KL(q(w, \theta^k)||\pi(w)) $$
+%\STATE Update the vector of parameter estimates calling Algorithm~\ref{alg:hwa}: $(\mu^K, \Sigma^K) =  \textsc{HWA}(k, c, \gamma_k, \nabla \mathcal{L}_{i_{k}}(\theta^{k}) )$
+%\ENDFOR
+%\STATE \textbf{Return} Fitted parameters $(\mu^K, \Sigma^K)$.
+%\end{algorithmic}
+%\caption{Variational Inference with HWA for BNNs}
+%\label{alg:trainingbnn}
+%\end{algorithm}
 
-\subsection{Comparison with other classical averaging procedures in nonconvex optimization}
+
+
+\section{Numerical Experiments}\label{sec:numerical}
+In this section, we provide experiments on classification tasks with various neural network architectures and datasets to demonstrate the effectiveness of our hyperparameter averaging method, namely HWA.
+
+\textbf{Methods.}\hspace{0.1in}
+We consider two baselines. 
+The first one is the standard \textsc{BayesByBackprop} method developed in~\citep{blundell2015weight}. 
+This optimization is achieving state-of-the-art results when training Bayesian Neural Network.
+The second method is the Stochastic Gradient Langevin Dynamics (SGLD) optimization method introduced in~\citep{welling2011bayesian}.
+The algorithms are initialized at the same point and the results are averaged over 5 repetitions.
+
+
+\textbf{Datasets.}\hspace{0.1in}
+We compare different algorithms on \textit{MNIST}~\citep{lecun-mnisthandwrittendigit-2010} and \textit{CIFAR10}~\citep{krizhevsky2009learning} datasets.
+The \textit{MNIST} training set is composed of $n=55\,000$ handwritten digits, $28 \times 28$ images. Each image is labelled with its corresponding number (from zero to nine).
+\textit{CIFAR10} is a popular computer-vision datasets of $50\,000$ training images and $10\,000$ test images, of size $32\times 32$. 
+
+\textbf{Network architectures.} \hspace{0.1in}
+(MNIST) We train a Bayesian variant of LeNet-5 convolutional neural network on the MNIST dataset. 
+Under the prior distribution $\prior$, see \eqref{eq:vi}, the weights are assumed  independent and identically distributed according to ${\cal N}(0,1)$.
+We also assume a Gaussian variational candidate distribution such that $q(\cdot; \param) \equiv  \mathcal{N}(\mu,\sigma^2 \Id )$.
+The variational posterior parameters are thus $\param = (\mu, \sigma) $ where $\mu = (\mu_\ell, \ell \in [d])$ where $d$ is the number of weights in the neural network. 
+(CIFAR-10) We train here the Bayesian variant of the VGG neural network introduced in~\citep{simonyan2014very} on the CIFAR-10 dataset.
+As in the previous example, the weights are assumed  independent and identically distributed according to ${\cal N}(0,\Id)$.
+Standard hyperparameters values found in the literature, such as the annealing constant or the number of MC samples, were used for the benchmark methods. 
+For better efficiency and lower variance, the Flipout estimator~\citep{wen2018flipout} is used.
+
+\textbf{Results.} \hspace{0.1in} 
+Results for both datasets and network architectures are reported Figure~\ref{fig:all}.
+While for the MNIST dataset the runs for \textsc{HWA} and \textsc{SGLD} are com:parage both in terms of train and testing loss and accuracy, they both highlights better convergence properties compared to \textsc{BayesByBackprop} (BBB).
+It is worth mentioning that our method \textsc{HWA} displays a similar behavior as a gradient based method, such as \textsc{SGLD}, by only leveraging the average of past snapshots of the variational candidate hyperparameters. 
+
+Regarding the CIFAR10 experiment, our method shows overfitting on training data with respect to the loss objective but seems to generalize better to unseen data (cf. last figure on bottom line in Figure~\ref{fig:all}).
+In conclusion, \textsc{HWA} achieves state-of-the-art results for either small or large bayesian variants of standard network architectures while using a simple and efficient averaging update at each \textit{cycle}.
+
+\begin{figure}[H]
+\mbox{
+\includegraphics[width=0.25\textwidth]{newfigs/trainlossmnist.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/trainaccmnist.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/testlossmnist.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/testaccmnist.eps}
+}
+\mbox{
+\includegraphics[width=0.25\textwidth]{newfigs/trainlosscifar.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/trainacccifar.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/testlosscifar.eps}
+\includegraphics[width=0.25\textwidth]{newfigs/testacccifar.eps}
+}
+\caption{Comparison for Bayesian LeNet CNN architecture on MNIST dataset (top) and Bayesian VGG architecture on CIFAR-10 dataset (bottom). The plots are averaged over 5 repetitions.}
+    \label{fig:all}
+\end{figure}
+
+
+\section{Conclusion}\label{sec:conclusion}
+We present in this paper an averaging procedure on the hyperparameters of the weights of a Bayesian Neural Network architecture.
+Based on both empirical and theoretical results regarding stochastic averaging, we propose HWA in order to increase the generalization ability of a BNN.
+The procedure is easily implementable on top of any vanilla optimizer with standard design choices for prior and candidate distributions, crucial in variational inference.
+Numerical runs show the advantage of our method matching and sometimes beating SOTA methods such as SGLD, which requires additional expensive gradient computation.
+
+%\acks{Acknowledgements go here.}
+
+\clearpage
+
+\bibliography{ref}
+
+\clearpage
+\appendix
+
+  \hsize\textwidth
+  \linewidth\hsize \toptitlebar {\centering
+  {\Large\bfseries Appendix for HWA: Hyperparameters Weight Averaging in Bayesian Neural Networks \par}}
+ \bottomtitlebar 
+ 
+\section{Comparison with other classical averaging procedures in nonconvex optimization}
 From Algorithm~\ref{alg:hwa}, we note that the averaging procedure happens once at each cycle $c$, a tuning hyperparameter, on the parameter estimates resulting from a simple stochastic gradient descent update.
 Yet, another natural averaging step would be to keep $K$ snapshots of the past stochastic gradients and compute an aggregated sum used as the drift term in the general update rule, see \citep{zhou2017convergence}.
 Nevertheless, in our setting, the objective function while being nonconvex is (possibly) parameterized by a high dimensional neural network making it computationally involved to store those $K$ gradients.
@@ -196,7 +324,7 @@ For all those reasons, \textsc{HWA} surely combines the virtue of the accumulati
 
 
 
-\subsection{Variational Inference with HWA}
+\section{Embedding HWA in Variational Inference}
 Note that in the above procedure, the variational candidate $q(w, \param)$ has a diagonal covariance matrix where the scalar standard deviations are obtained through Algorithm~\ref{alg:hwa}.
 One parameter estimates are updated via \eqref{eq:hwa_updates}, the neural network weights are then sampled according to the updated variational candidate distributions in order to compute the next iteration approximate stochastic gradient $\nabla \mathcal{L}_{i_{k}}(\theta)$.
 Yet it is also possible build a non diagonal proposal covariance to bypass the restriction of such structure.
@@ -204,7 +332,7 @@ Besides, given the nonconvexity and high dimensionality of the true posterior di
 Of course the ideal option would be to build a posterior curvature-informed covariance but at a higher cost.
 The trade-off between computational costs and proposal efficiency is detailed in the following.
 The low-rank plus diagonal posterior approximation matrix, noted $\Sigma$ of $q(w, \param)$ introduced in \citep{maddox2019simple} reads:
-\begin{equation}\label{eq:lowrankcov}
+\begin{equation}
 \Sigma = \frac{1}{2} \Sigma_{\text {diag }}+\frac{\widehat{D} \widehat{D}^{\top}}{2(R-1)}
 \end{equation}
 where $\mu^{HWA} = (\mu_{\ell}^{HWA}, \ell \in [L])$, $R$ is the maximum number of columns in the low rank deviation matrix $\widehat{D}$ and $\Sigma_{\text {diag }}$ is the diagonal covariance defined above. The $r$-th component, where $r \in [R]$, of the  low rank deviation matrix $\widehat{D}$ is defined as the gap between the current estimate and the running average: $\widehat{D}_r = \theta_r - \theta^{HWA}_r$. It quantifies how far the current estimate parameter deviate from the current averaged parameter.
@@ -235,84 +363,5 @@ $$ \nabla \mathcal{L}_{i_{k}}(\theta^{k}) \approx \frac{1}{M_k} \sum_{m=1}^{M_k}
 \caption{Variational Inference with HWA for BNNs}
 \label{alg:trainingbnn}
 \end{algorithm}
-
-%\subsection{Through the Lens of Loss Landscapes}
-%\textcolor{red}{PCA plot of the loss landscape and visualization of HWA iterates.}
-
-\section{Numerical Experiments}\label{sec:numerical}
-In this section, we provide experiments on classification tasks with various neural network architectures and datasets to demonstrate the effectiveness of our hyperparameter averaging method, namely HWA.
-
-\textbf{Methods.}\hspace{0.1in}
-We consider two baselines. 
-The first one is the standard \textsc{BayesByBackprop} method developed in~\citep{blundell2015weight}. 
-This optimization is achieving state-of-the-art results when training Bayesian Neural Network.
-The second method is the Stochastic Gradient Langevin Dynamics (SGLD) optimization method introduced in~\citep{welling2011bayesian}.
-The algorithms are initialized at the same point and the results are averaged over 5 repetitions.
-
-
-\textbf{Datasets.}\hspace{0.1in}
-We compare different algorithms on \textit{MNIST}~\citep{lecun-mnisthandwrittendigit-2010} and \textit{CIFAR10}~\citep{krizhevsky2009learning} datasets.
-The \textit{MNIST} training set is composed of $n=55\,000$ handwritten digits, $28 \times 28$ images. Each image is labelled with its corresponding number (from zero to nine).
-\textit{CIFAR10} is a popular computer-vision datasets of $50\,000$ training images and $10\,000$ test images, of size $32\times 32$. 
-
-\textbf{Network architectures.} \hspace{0.1in}
-(MNIST) We train a Bayesian variant of LeNet-5 convolutional neural network on the MNIST dataset. 
-Under the prior distribution $\prior$, see \eqref{eq:vi}, the weights are assumed  independent and identically distributed according to ${\cal N}(0,1)$.
-We also assume a Gaussian variational candidate distribution such that $q(\cdot; \param) \equiv  \mathcal{N}(\mu,\sigma^2 \Id )$.
-The variational posterior parameters are thus $\param = (\mu, \sigma) $ where $\mu = (\mu_\ell, \ell \in [d])$ where $d$ is the number of weights in the neural network. 
-%We use the re-parametrization as $w = t(\param, z)= \mu+ \sigma  z$ with $z \sim \mathcal{N}(0, I)$.
-
-
-(CIFAR-10) We train here the Bayesian variant of the VGG neural network introduced in~\citep{simonyan2014very} on the CIFAR-10 dataset.
-As in the previous example, the weights are assumed  independent and identically distributed according to ${\cal N}(0,\Id)$.
-Standard hyperparameters values found in the literature, such as the annealing constant or the number of MC samples, were used for the benchmark methods. 
-For better efficiency and lower variance, the Flipout estimator~\citep{wen2018flipout} is used.
-
-\textbf{Results.} \hspace{0.1in} 
-Results for both datasets and network architectures are reported Figure~\ref{fig:all}.
-While for the MNIST dataset the runs for \textsc{HWA} and \textsc{SGLD} are com:parage both in terms of train and testing loss and accuracy, they both highlights better convergence properties compared to \textsc{BayesByBackprop} (BBB).
-It is worth mentioning that our method \textsc{HWA} displays a similar behavior as a gradient based method, such as \textsc{SGLD}, by only leveraging the average of past snapshots of the variational candidate hyperparameters. 
-
-Regarding the CIFAR10 experiment, our method shows overfitting on training data with respect to the loss objective but seems to generalize better to unseen data (cf. last figure on bottom line in Figure~\ref{fig:all}).
-In conclusion, \textsc{HWA} achieves state-of-the-art results for either small or large bayesian variants of standard network architectures while using a simple and efficient averaging update at each \textit{cycle}.
-
-\begin{figure}[H]
-\mbox{
-\includegraphics[width=0.33\textwidth]{newfigs/trainlossmnist.eps}
-\includegraphics[width=0.33\textwidth]{newfigs/trainaccmnist.eps}
-\includegraphics[width=0.33\textwidth]{newfigs/testlossmnist.eps}
-}
-\mbox{
-\includegraphics[width=0.33\textwidth]{newfigs/testaccmnist.eps}
-\includegraphics[width=0.33\textwidth]{newfigs/trainlosscifar.eps}
-\includegraphics[width=0.33\textwidth]{newfigs/trainacccifar.eps}
-}
-\mbox{
-\includegraphics[width=0.33\textwidth]{newfigs/testlosscifar.eps}
-\includegraphics[width=0.33\textwidth]{newfigs/testacccifar.eps}
-}
-\caption{Comparison for Bayesian LeNet CNN architecture on MNIST dataset (top) and Bayesian VGG architecture on CIFAR-10 dataset (bottom). The plots are averaged over 5 repetitions.}
-    \label{fig:all}
-\end{figure}
-
-
-\section{Conclusion}\label{sec:conclusion}
-We present in this paper
-
-%\acks{Acknowledgements go here.}
-
-%\clearpage
-
-\bibliography{ref}
-
-%\appendix
-%
-%\section{First Appendix}\label{apd:first}
-%
-%This is the first appendix.
-%
-%\section{Second Appendix}\label{apd:second}
-%
-%This is the second appendix.
 
 \end{document}
