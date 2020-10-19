@@ -43,7 +43,6 @@ While Deep Learning methods have shown increasing efficiency in various domains 
 In~\citep{neal2012bayesian}, authors develop a bayesian variant of plain feedforward multilayer neural networks in which weights and biases are considered as random variables.
 For supervised learning tasks, deterministic models are prone to overfitting and are not capable of estimating uncertainty in the training data resulting in making overly confident decisions about the correct class, \textit{i.e.} miscalibration~\citep{guo2017calibration,kendall2017uncertainties}.
 Nevertheless, representing that aforementioned uncertainty is crucial for decision making.
-
 Bayesian methods display a hierarchical probabilistic model that assume a (prior) random distribution over the parameters of the parameters and are useful for assessing the uncertainty of the model via posterior predictive distribution quantification~\citep{blundell2015weight,kingma2015variational}.
 Current training methods for Bayesian Neural Networks (BNN)~\citep{neal2012bayesian} include Variational Inference~\citep{graves2011practical, hoffman2013stochastic} or BayesByBackprop~\citep{blundell2015weight} based on Evidence Lower Bound (ELBO) maximization task.
 Naturally, Bayesian methods, and in particular BNNs, are thus highly sensitive to the parameters choice of the prior distribution and current state-of-the-art models are not as efficient and robust as traditional deep learning models.
@@ -59,13 +58,14 @@ Our main contributions read as follows:
 
 The remaining of the paper is organized as follows.
 Section~\ref{sec:related} presents the related works in the fields of optimization, Variational Inference and posterior sampling.
-Section~\ref{sec:main} introduces the HWA algorithm which is the main contribution of our paper.
-Section~\ref{sec:numerical} highlights the benefits of our averaging procedure on simple and complex numerical classification tasks.
+Section~\ref{sec:main} introduces our main contribution, namely the HWA algorithm.
+Section~\ref{sec:numerical} highlights the benefits of our procedure on various classification tasks.
 Section~\ref{sec:conclusion} concludes our work.
 
-\textbf{Notations:} We denote for all $n >1$, $[n]$ the set $ \{1, \cdots, n\}$, $\pi(w)$ denotes the prior distribution on the vector of random weights $w$.
+%\textbf{Notations:} We denote for all $n >1$, $[n]$ the set $ \{1, \cdots, n\}$, $\pi(w)$ denotes the prior distribution on the vector of random weights $w$.
  
 \section{Related Work}\label{sec:related}
+
 \textbf{Posterior Prediction.}
 Due to the nonconvexity of the loss landscapes involved in modern and complex deep learning tasks, direct sampling from the posterior distribution of the weights is not an option.
 Depending on the nature and in particular the dimensionality of the problem, Markov Chain Monte Carlo (MCMC) methods have been employed to overcome this intractability issue.
@@ -73,18 +73,19 @@ By constructing a Markov chain, the samples drawn at convergence are guaranteed 
 Hamiltonian Monte Carlo (HMC)~\citep{neal2011mcmc} or Metropolis Hastings (MH)~\citep{hastings1970monte} are two standard solutions used.
 Their stochastic gradients counterpart are extensively studied in \citep{ma2015complete}.
 
-
-\textbf{Variational Inference (VI).}
+\vspace{0.08in}
+\noindent \textbf{Variational Inference (VI).}
 When tackling an optimization problem, exact posterior sampling may be computationally involved and not even required.
 variational inference was proposed in~\citep{graves2011practical}, in the particular case of BNNs, in order to fit a Gaussian variational posterior approximation over the weights of neural networks.
 Through a simple reparameterization trick~\citep{blundell2015weight}, several methods have emerged to train BNNs leveraging the ease of use and implementation of VI~\citep{kingma2015variational,blundell2015weight,molchanov2017variational}.
 Though, those methods appear to be inefficient for large-scale datasets and newer methods were proposed to alleviate this issue such as the use of normalizing flows~\citep{louizos2017multiplicative}, deterministic VI~\citep{wu2018deterministic} or dropout VI~\citep{gal2016dropout}.
 
-\textbf{Stochastic Averaging.}
+\vspace{0.08in}
+\noindent \textbf{Stochastic Averaging.}
 Averaging methods include the seminal papers of~\citep{polyak1990sa} and~\citep{ruppert1988efficient}, both based on the combination of past iterates along a stochastic approximation trajectory.
-For nonconvex loss objectives, this averaging procedure has been adapted to Stochastic Gradient Descent (SGD) trajectory~\citep{zhou2017convergence}.
-In particular, in modern deep learning examples, \citet{izmailov2018averaging} develops a novel method that averages snapshots of a deep neural networks (DNN) through the iterations and shows empirical benefits leading to a better generalization.
-Those experimental discoveries are then backed by theoretical understanding of the DNN loss landscape and the impact of averaging successive iterates in~\citep{keskar2016large,he2019asymmetric}.
+For nonconvex objectives, this averaging procedure has been adapted to Stochastic Gradient Descent (SGD) trajectory in \citep{zhou2017convergence}.
+In particular, in modern deep learning examples, \citet{izmailov2018averaging} develops a novel method that averages snapshots of a DNN through the iterations and shows better empirical generalization.
+Those experimental discoveries are then backed by theoretical understanding of the loss landscape in~\citep{keskar2016large,he2019asymmetric}.
 
 
 \section{Hyperparameters Averaging in Bayesian Neural Networks}\label{sec:main}
@@ -104,39 +105,35 @@ In the particular case of BNN, this likelihood function is parametrized by a mul
 The latent variables $w$ are thus the weights and the biases of the model and are considered as latent (and random) variables.
 Training of such hierarchical models implies sampling from the posterior distribution of the weights $w$ conditioned on the data $(x,y)$ and noted $p(w|y,x)$.
 In most cases, this posterior distribution $p(w|y,x)$ is intractable and is approximated using a family of parametric distributions, $\{q(w, \param ), \param \in \Param \}$. 
-The variational inference (VI) problem~\citep{blei2017variational} boils down to minimizing the Kullback-Leibler (KL) divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$:
-\begin{equation} \label{eq:VI}  
-\min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp.
-\end{equation}
-Using \eqref{eq:vi}, we decompose ${\cal L}(\param) = n^{-1} \sum_{i=1}^{n}{{\cal L}_i(\param)} + {\rm const}.$ where:
+The variational inference (VI) problem~\citep{blei2017variational} boils down to minimizing the Kullback-Leibler (KL) divergence between $q(w, \param )$ and the posterior distribution $p(w|y,x)$. The tractable objective is the ELBO (Evidence Lower BOund) written as:
 \begin{equation}\label{eq:variationalobjective}
-{\cal L}_i(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y_i | x_i, w) \big]+  \frac{1}{n} \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big]  \eqsp.
+{\cal L}(\param) \eqdef -\EE_{ q( w; \param )} \big[\log p(y | x, w) \big]+  \EE_{ q( w; \param )} \big[ \log q(w; \param )/\prior(w) \big]  \eqsp.
 \end{equation}
-Directly optimizing the finite sum objective function in \eqref{eq:VI} can be difficult.
+%\begin{equation} \label{eq:VI}  
+%\min_{ \param \in \Param }~{\cal L}(\param ) \eqdef \infdiv{q(w; \param )}{p(w|y,x)} \eqdef \EE_{ q( w; \param )} \big[ \log \big( q(w; \param ) / p(w|y,x) \big) \big] \eqsp,
+%\end{equation}
+Directly optimizing the objective function in \eqref{eq:variationalobjective} can be difficult.
 First, with $n \gg 1$, evaluating the objective function ${\cal L}( \param )$ requires a full pass over the entire dataset.
 Second, for some complex models, the expectations in \eqref{eq:variationalobjective} can be intractable even if we assume a simple parametric model for $q(w; \param)$.
 Thus, the computation of the gradient requires an approximation step usually invoking Monte Carlo (MC) approximation step. 
 The full Variational inference procedure for training Bayesian Neural Networks, including \textit{the MC approximation} step and the \textit{parameter update} step, is summarized in Algorithm~\ref{alg:trainingbnn}.
 
-Solutions simply include using SGD~\citep{bottou2008tradeoffs} where the gradient of the individual ELBO~\eqref{eq:variationalobjective} is computed using Automatic Differentiation~\citep{kucukelbir2017automatic}. The final update goes in the opposite direction of that gradient up to a learning rate factor.
+Solutions simply include using SGD~\citep{bottou2008tradeoffs} where the gradient of the individual ELBO~\eqref{eq:variationalobjective} is computed using Automatic Differentiation~\citep{kucukelbir2017automatic}. 
+The final update goes in the opposite direction of that gradient up to a learning rate factor.
 In the sequel, we develop an improvement over baseline SGD, invoking averaging virtue of several successive snapshots of the gradients.
 The method, called Hyperparameters Weight Averaging (HWA), aims at improving the generalization property of the trained model on unseen data.
 
 
 \subsection{Averaging model snapshots through hyperparameters loss landscapes}
-
-We now recall the classical SWA method developed in~\citep{izmailov2018averaging}. 
-Consider a deterministic deep neural network, the idea behind the Stochastic Weight Averaging procedure is to run several iterates of the classical SGD procedure, starting from a pre-trained model.
+Consider a deterministic deep neural network, the idea behind the Stochastic Weight Averaging (SWA) procedure, developed in~\citep{izmailov2018averaging} , is to run several iterates of the classical SGD procedure, starting from a pre-trained model.
 At each timestep noted $T_{\mathsf{avg}}$, the model estimate is equal to the average of the last $T_{\mathsf{avg}}$ iterates.
-Empirically, a constant and large learning rate is more efficient given the exploration virtue that it implies.
-
+%Empirically, a constant and large learning rate is more efficient given the exploration virtue that it implies.
 After establishing the connectivity between several modes (point estimate of minimal loss) of the same deep neural network (after different training procedure) in~\citep{garipov2018loss}, being able to average all those iterates probably traversing several models or at least model estimates that belong to low loss region would make the resulting trained model more robust and thus generalize better to unseen data.
 Several theoretical paper such as~\citep{he2019asymmetric} or \citep{keskar2016large} provide an attempt at explaining this phenomena.
 
 
 \textbf{-- Hyperparameters Weight Averaging:}
-Based on the probabilistic model developed above, the loss function~\eqref{eq:VI} is defined on the space of the hyperparameters, \textit{i.e.} the mean and the variance of the variational candidate distribution.
-
+Based on the probabilistic model developed above, the loss function~\eqref{eq:variationalobjective} is defined on the space of the hyperparameters, \textit{i.e.} the mean and the variance of the variational candidate distribution.
 Regarding the parameterization choice of the variational candidate $q( w; \param )$, we chose for simplicity a scalar mean $\mu_{\ell}$ depending on the layer $\ell \in [L]$ and constant between each neuron. Classically, the covariance of this variational distribution is diagonal, see~\citep{kirkpatrick2017overcoming, blundell2015weight}, yet can be too restrictive.
 We follow the direction taken in~\citep{maddox2019simple}, where the covariance of $q(w, \param)$ is a diagonal matrix.
 As a result, the averaging procedure practically occurs on the set of hyperparameters and requires updating the mean and the variance of the variational candidate distribution, at iteration $k+1$, if $k$, the iteration index, is a multiple of the cycle length $c$,  as below:
@@ -236,36 +233,32 @@ The cycle length $c$ which monitors the number of times snapshots of the model e
 
 
 \section{Numerical Experiments}\label{sec:numerical}
-In this section, we provide experiments on classification tasks with various neural network architectures and datasets to demonstrate the effectiveness of our hyperparameter averaging method, namely HWA.
+We provide experiments on classification tasks with various neural network architectures and datasets to demonstrate the effectiveness of method, namely HWA.
 
-\textbf{Methods.}\hspace{0.1in}
-We consider two baselines. 
-The first one is the standard \textsc{BayesByBackprop} method developed in~\citep{blundell2015weight}. 
-This optimization is achieving state-of-the-art results when training Bayesian Neural Network.
-The second method is the Stochastic Gradient Langevin Dynamics (SGLD) optimization method introduced in~\citep{welling2011bayesian}.
+\noindent --\textbf{Methods.}\hspace{0.1in}
+We consider two baselines: standard \textsc{BayesByBackprop} method developed in~\citep{blundell2015weight} and the Stochastic Gradient Langevin Dynamics (SGLD) optimization method introduced in~\citep{welling2011bayesian}.
 The algorithms are initialized at the same point and the results are averaged over 5 repetitions.
 
 
-\textbf{Datasets.}\hspace{0.1in}
+\noindent --\textbf{Datasets.}\hspace{0.1in}
 We compare different algorithms on \textit{MNIST}~\citep{lecun-mnisthandwrittendigit-2010} and \textit{CIFAR10}~\citep{krizhevsky2009learning} datasets.
-The \textit{MNIST} training set is composed of $n=55\,000$ handwritten digits, $28 \times 28$ images. Each image is labelled with its corresponding number (from zero to nine).
-\textit{CIFAR10} is a popular computer-vision datasets of $50\,000$ training images and $10\,000$ test images, of size $32\times 32$. 
+%The \textit{MNIST} training set is composed of $n=55\,000$ handwritten digits, $28 \times 28$ images. Each image is labelled with its corresponding number (from zero to nine).
+%\textit{CIFAR10} is a popular computer-vision datasets of $50\,000$ training images and $10\,000$ test images, of size $32\times 32$. 
 
-\textbf{Network architectures.} \hspace{0.1in}
+\noindent --\textbf{Network architectures.} \hspace{0.1in}
 (MNIST) We train a Bayesian variant of LeNet-5 convolutional neural network on the MNIST dataset. 
 Under the prior distribution $\prior$, see \eqref{eq:vi}, the weights are assumed  independent and identically distributed according to ${\cal N}(0,1)$.
 We also assume a Gaussian variational candidate distribution such that $q(\cdot; \param) \equiv  \mathcal{N}(\mu,\sigma^2 \Id )$.
 The variational posterior parameters are thus $\param = (\mu, \sigma) $ where $\mu = (\mu_\ell, \ell \in [d])$ where $d$ is the number of weights in the neural network. 
 (CIFAR-10) We train here the Bayesian variant of the VGG neural network introduced in~\citep{simonyan2014very} on the CIFAR-10 dataset.
-As in the previous example, the weights are assumed  independent and identically distributed according to ${\cal N}(0,\Id)$.
+As in the previous example, the weights are assumed i.i.d. according to ${\cal N}(0,\Id)$.
 Standard hyperparameters values found in the literature, such as the annealing constant or the number of MC samples, were used for the benchmark methods. 
 For better efficiency and lower variance, the Flipout estimator~\citep{wen2018flipout} is used.
 
-\textbf{Results.} \hspace{0.1in} 
+\noindent --\textbf{Results.} \hspace{0.1in} 
 Results for both datasets and network architectures are reported Figure~\ref{fig:all}.
 While for the MNIST dataset the runs for \textsc{HWA} and \textsc{SGLD} are com:parage both in terms of train and testing loss and accuracy, they both highlights better convergence properties compared to \textsc{BayesByBackprop} (BBB).
 It is worth mentioning that our method \textsc{HWA} displays a similar behavior as a gradient based method, such as \textsc{SGLD}, by only leveraging the average of past snapshots of the variational candidate hyperparameters. 
-
 Regarding the CIFAR10 experiment, our method shows overfitting on training data with respect to the loss objective but seems to generalize better to unseen data (cf. last figure on bottom line in Figure~\ref{fig:all}).
 In conclusion, \textsc{HWA} achieves state-of-the-art results for either small or large bayesian variants of standard network architectures while using a simple and efficient averaging update at each \textit{cycle}.
 
