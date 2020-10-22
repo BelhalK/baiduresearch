@@ -762,7 +762,7 @@ The nodes can be listed in a topological order regarding the DAG structure as sh
 
 By taking the topology order as the layers in tree structures, we can derive the ELBO for DAG structures.  
 Assume the DAG structure has $L$ layers, and the root nodes are in layer $L$. 
-We denote by $\mathbf{h}$ the vector of latent variables, following~(\ref{eq:tree_elbo}) we have the ELBO for the log-likelihood of  data as
+We denote by $\mathbf{h}$ the vector of latent variables, then following~(\ref{eq:tree_elbo}) we develop the ELBO as
 \begin{align}  \label{eq:dag_elbo}
 \log p(\mathbf{x})  \geq  \mathcal{L}_{\theta}(x)  = &  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p(\mathbf{x}, \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg]  \\ \notag
 =&  \underbrace{ \mathbb{E}_{q(\mathbf{h}^{pa(\mathbf{x})} | \mathbf{x})} \bigg[ \log  p(\mathbf{x} | \mathbf{h}^{pa(\mathbf{x})})  \bigg] }_{  \parbox{10.5em}{Reconstruction of the data given the parent nodes of the data}}  +  \underbrace{  \mathbb{E}_{q(\mathbf{h}| \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg] }_{-\textbf{\text{KL}}} \, .   \notag
@@ -773,10 +773,12 @@ For nodes in layer $l$
 -\textbf{\text{KL}}^{l:L} 
 =&     \mathbb{E}_{q(\mathbf{h}^{pa(l)}|\mathbf{h}^l)} \big[ \log  p( \mathbf{h}^{l}|  \mathbf{h}^{pa(l)})    \big]  +  \textbf{\text{H}}(\mathbf{h}^{l}|\mathbf{h}^{ch(l)})  - \textbf{\text{KL}}^{l+1:L} \, .
 \end{align}
-The forward and backward messages or latent state of a node are stored in the message passing procedures. They can be used by the node's parents and children  to compute the ELBO.  
-This computation is performed even though the parents or children are not  in layer~$l+1$ or $l-1$. 
-For the node $i$ in layer $l$,  $pa(i)$ may have children in layers below $l$. Some nodes in $l$ may not have parent, and combining with the prior, the entropy term will become an KL term in this case.  
-Therefore,  we have 
+The forward and backward messages or latent state of a node are stored in the message passing procedures. 
+They can be used by the node's parents and children  to compute the ELBO.  
+This computation is performed even though the parents or children are not in layer~$l+1$ or $l-1$. 
+For the node $i$ in layer $l$,  $pa(i)$ may have children in layers below $l$. 
+Some nodes in $l$ may not have parent, and combining with the prior, the entropy term will become a KL term in this case.
+Therefore, we have 
 \begin{align} \label{eq:KL_dag2}
 -\textbf{\text{KL}}^{l:L} = &  \sum_{i:i\in l, i \not\in   \mathcal{R}_{ \mathcal{G}} }  \bigg\{ \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{ch(pa(i))}} \big[ \log p( \mathbf{h}^{i}|  \mathbf{h}^{pa(i)})    \big]   +  \textbf{\text{H}}_q(\mathbf{h}^{i}|\mathbf{h}^{ch(i)})  \bigg\}  \\ \notag
 & -  \sum_{i \in l \bigcap \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   | p(\mathbf{h}^{(i)})  \big)  - \textbf{\text{KL}}^{l+1:L} \, .\notag
@@ -787,7 +789,7 @@ Recurrently applying~(\ref{eq:KL_dag2}) yields
  \mathbb{E}_{q(\mathbf{h} | \mathbf{x})} \bigg[ \log  \frac{p( \mathbf{h})}{q(\mathbf{h}|\mathbf{x})}  \bigg] =& \sum_{l=1}^{L-1}   \sum_{i:i\in l, i \not\in   \mathcal{R}_{ \mathcal{G}}  }  \bigg\{ \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{(i)})} \bigg[ \log p( \mathbf{h}^{(i)}|  \mathbf{h}^{pa(i)})   \bigg]  +    \textbf{\text{H}}(\mathbf{h}^i | \mathbf{h}^{ch(i)} )  \bigg\} \\ \notag
 & -   \sum_{l=1}^{L-1}  \sum_{i \in l \bigcap \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   | p(\mathbf{h}^{(i)})  \big)   -   \textbf{\text{KL}}\big(q(\mathbf{h}^L | \mathbf{h}^{L-1} )   | p(\mathbf{h}^L)  \big) \, .
  \end{align}
-Since $L  \subseteq   \mathcal{R}_{ \mathcal{G}} $,  with $\mathbf{h}^{(0)} = \mathbf{x}$,~(\ref{eq:dag_elbo}), and~(\ref{eq:kl_dag3}) we have 
+Since $L  \subseteq   \mathcal{R}_{ \mathcal{G}} $,  with $\mathbf{h}^{(0)} = \mathbf{x}$,~(\ref{eq:dag_elbo}), and using (\ref{eq:kl_dag3}) we have 
 \begin{align*}  
  \log p(\mathbf{x}) \geqslant  \mathcal{L}(\mathbf{x}; \theta) =&   \sum_{i \in \mathcal{G}  \setminus  \mathcal{R}_{ \mathcal{G} }  }  \mathbb{E}_{q(\mathbf{h}^{pa(i)}|\mathbf{h}^{ch(pa(i))})} \bigg[ \log p( \mathbf{h}^{(i)}|  \mathbf{h}^{pa(i)})   \bigg]  \\
  & +  \sum_{i \in \mathcal{G}  \setminus  \mathcal{R}_{ \mathcal{G} }  } \textbf{\text{H}}(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   -    \sum_{i \in  \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   | p(\mathbf{h}^{(i)})  \big)  \, .
@@ -814,14 +816,20 @@ The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be ap
 \log p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)}) &\approx  \log p(\widehat{\mathbf{h}}^L) -  \frac{1}{2} \log \big(\det \big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)\big) \big) \, .
 \end{align*}
 }
-\begin{proof}
-Without loss generality, we assume there are relationships among different data sections, and the value of one section can be partially or approximately imputed by other sections. According to the aggregation rule (b) discussed in section~\ref{sec:node_aggr}, at an aggregation node  $a$, the latent value of a child node $j$ have the same reconstruction value as the parent node.  The reconstruction of the child node $j$ can be approximate with the reconstruction of the parent node,   i.e., $\widehat{\mathbf{h}}^{(j)} \approx \mathbf{f}_{(a,j)}(\widehat{\mathbf{h}}^{a)})$. With the reconstruction term in the ELBO~(\ref{eq:elbo_tree}), at each node we have $\mathbf{h}^{(a)} \approx \widehat{\mathbf{h}}^{(a)}$. Hence for node $a$'s descendant $j$, we have $\widehat{\mathbf{h}}^{(j)} \approx \mathbf{f}_{(a,j)}(\mathbf{h}^{(a)})$, and $\mathbf{f}_{(a,j)}$ is the flow function path from $a$ to $j$. The value of node $a$ can be approximated by the value of its descendant $i$ that has observation, i.e., $\mathbf{h}^{(a)} \approx \mathbf{f}_{(i,a)}(\mathbf{h}^{(i)})$. Hence, we have $\widehat{\mathbf{x}}^{(j)} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$.
 
-To compute  node $j$'s conditional density value given the observed node $i$, we can use the forward passing to compute the root's reconstruction  value $\widehat{\mathbf{h}}^L$. Node $j$'s reconstruction value $\widehat{\mathbf{x}}^{(j)}$ can be imputed by back passing the message at the root. The density value of $\widehat{\mathbf{h}}^L$ can be computed with the prior distribution of the root. The conditional density value of $\widehat{\mathbf{x}}^{(j)}$ can be computed with change of variable theorem, and it is known in the context of geometric measure theory as the smooth coarea formula ~\cite{Article:Krantz_2008,Book:Hanson_1994}. It reads 
+\begin{proof}
+Without loss generality, we assume that there are relationships among different data sections, and the value of one section can be partially or approximately imputed by other sections. 
+According to the aggregation rule (b) discussed in section~\ref{sec:node_aggr}, at an aggregation node  $a$, the latent value of a child node $j$ has the same reconstruction value as the parent node.  
+The reconstruction of the child node $j$ can be approximated with the reconstruction of the parent node, i.e., $\widehat{\mathbf{h}}^{(j)} \approx \mathbf{f}_{(a,j)}(\widehat{\mathbf{h}}^{a)})$. 
+Recalling the reconstruction term in the ELBO~(\ref{eq:elbo_tree}), at each node we have $\mathbf{h}^{(a)} \approx \widehat{\mathbf{h}}^{(a)}$. Hence for node $a$'s descendent $j$, we have $\widehat{\mathbf{h}}^{(j)} \approx \mathbf{f}_{(a,j)}(\mathbf{h}^{(a)})$, and $\mathbf{f}_{(a,j)}$ is the flow function path from $a$ to $j$. 
+The value of node $a$ can be approximated by the value of its descendent $i$ that has observation, i.e., $\mathbf{h}^{(a)} \approx \mathbf{f}_{(i,a)}(\mathbf{h}^{(i)})$. Hence, we have $\widehat{\mathbf{x}}^{(j)} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$.
+
+To compute  node $j$'s conditional distribution given the observed node $i$, we can use the forward passing to compute the root's reconstruction  value $\widehat{\mathbf{h}}^L$. 
+Node $j$'s reconstruction value $\widehat{\mathbf{x}}^{(j)}$ can be imputed by backward passing the message at the root. The density value of $\widehat{\mathbf{h}}^L$ can be computed with the prior distribution of the root. The conditional density of $\widehat{\mathbf{x}}^{(j)}$ can be computed using the change of variable theorem, and it is known in the context of geometric measure theory as the smooth coarea formula ~\cite{Article:Krantz_2008,Book:Hanson_1994}. It reads 
 \begin{align*} %\label{eq:llk_est1}
 &  p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)} ) \approx p(\widehat{\mathbf{h}}^L)\det\big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top  \mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L\big)^{-\frac{1}{2}}.
 \end{align*}
-With logarithm on both sides, we can get the formula in the lemma.
+Applying the logarithm operator on both sides concludes the proof of our Lemma.
 
 
 \end{proof}
@@ -881,9 +889,9 @@ Here $b_v=\sum_{i=1}^{d}\log \frac{\widehat{Z}_i(\mathbf{u}^{(0)}) Z_i(\mathbf{u
 Here $\mathbf{A} = \mathbf{L}^{-1\top} \widehat{\mathbf{L}}^{\top} $, and $\mathbf{c} = \mathbf{L}^{-1\top} \mathbf{b}$. 
 By Lemma 1 from~\cite{Khemakhem20a}, there exist $m$ distinct values $h^{(t),i}_{1}$ to $h^{(t),i}_{m}$ such that $\big[ \frac{d T_i}{ d h^{(t),i}}(h^{(t),i}_{1}), ...,  \frac{d T_i}{ d h^{(t),i}}(h^{(t),i}_{m}) \big]$ are linearly independent in $\mathbb{R}^m$, for all $1\leq i \leq d$. 
 Define $m$ vectors $\mathbf{h}^{(t)}_{v}= [h^{(t),1}_v, ..., h^{(t),d}_v]$ from points given by this lemma. 
-We obtain the following Jacobian matrix 
+We obtain the following Jacobian matrix
 $$\mathbf{Q}= [\mathbf{J}_{\mathbf{T}}(\mathbf{h}^{(t)}_1), ..., \mathbf{J}_{\mathbf{T}}(\mathbf{h}^{(t)}_m)] \, ,$$ 
-with each entry is the Jacobian of size $dm \times d$ from the derivative of Eq.~(\ref{eq:A_sim}) regarding the $m$ vectors $\{\mathbf{h}^{(t)}_j\}_{j=1}^m$. 
+where each entry is the Jacobian of size $dm \times d$ from the derivative of Eq.~(\ref{eq:A_sim}) regarding the $m$ vectors $\{\mathbf{h}^{(t)}_j\}_{j=1}^m$. 
 Hence $\mathbf{Q}$ is a $dm \times dm$ invertible by the lemma and the fact that each component of $\mathbf{T}$ is univariate. %% m =k, d=n, v = l. i index for d
 We can construct a corresponding matrix $\widehat{\mathbf{Q}}$ with the Jacobian of $\widehat{\mathbf{T}}(\mathbf{g}^{-1}\circ \mathbf{f}_t^{-1}(\mathbf{h}^{(t)}))$ computed at the same points and get 
 \begin{align} \notag
@@ -892,10 +900,14 @@ We can construct a corresponding matrix $\widehat{\mathbf{Q}}$ with the Jacobian
 Here $\widehat{\mathbf{Q}}$ and $\mathbf{A}$ are both full rank as $\mathbf{Q}$ is full rank.
 \end{proof}
 
-According to Theorem 1, the proposed model not only can identify global latent factors, but also may identify the latent factors for each section with enough auxiliary information. VFG provides potential approaches to learn the latent hierarchy structures from datasets.
+According to Theorem 1, the proposed model not only can identify global latent factors, but also identify the latent factors for each section with enough auxiliary information. 
+VFG provides a potential approach to learn the latent hierarchical structures from datasets.
 
 \section{Additional Numerical Experiments}
-The flow models employed by VFG in the experiments are implemented with coupling layers~\cite{Dinh2016DensityEU}. Each block of coupling layer consists of three fully connected layers separated by two RELU layers along with the coupling trick. All latent variables, $\mathbf{h}^{i}, i \in \mathcal{V}$ are forced to be non-negative with Sigmoid or RELU functions. Non-negativeness could help the model to identify sparse structures of the latent space. %If the latent variables are assumed to be Gaussian, we use Sigmoid.
+The flow models employed by VFG in the experiments are implemented with coupling layers~\cite{Dinh2016DensityEU}. 
+Each block of coupling layer consists of three fully connected layers separated by two RELU layers along with the coupling trick. 
+All latent variables, $\mathbf{h}^{i}, i \in \mathcal{V}$ are forced to be non-negative via Sigmoid or RELU functions. Non-negativeness can help the model to identify sparse structures of the latent space. 
+%If the latent variables are assumed to be Gaussian, we use Sigmoid.
 
 \subsection{Latent Representation Learning on MNIST}
 Figure~\ref{fig:z_no_Y} presents the t-SNE plot of the root latent variables from VFG trained without labels. The figure clearly shows that even without label information, different digits' representation are roughly scattered in different areas.  Compared to Figure~\ref{fig:z_tsne} in section~\ref{sec:exp:mnist}, label information indeed can improve the latent representation learning. 
@@ -907,10 +919,11 @@ Figure~\ref{fig:z_no_Y} presents the t-SNE plot of the root latent variables fro
 \end{figure}
  
 \subsection{Disentanglement on MNIST}
-We study disentanglement on MNIST with the proposed VFG model. We use the VFG structure presented in section~\ref{sec:exp:mnist}. But different from the model in section~\ref{sec:exp:mnist}, the distribution parameter $\lambda$ for all latent variables are set to be trainable across all layers.  Each digit has its trainable vector,  $\lambda \in \mathbb{R}^d$ that is used across all layers. 
-To show the disentanglement of learned latent representation, we first obtain the root latent variables of a set of images through forward message passing. Each latent variable's value are changed increasingly within a range centered at value of the latent value obtained from the last step. 
+We study disentanglement on MNIST with our proposed VFG model introduced in section~\ref{sec:exp:mnist}. But different from the model in section~\ref{sec:exp:mnist}, here, the distribution parameter $\lambda$ for all latent variables are set to be trainable across all layers.  
+Each digit has its trainable vector,  $\lambda \in \mathbb{R}^d$ that is used across all layers. 
+To show the disentanglement of learned latent representation, we first obtain the root latent variables of a set of images through forward message passing. Each latent variable's values are changed increasingly within a range centered at the value of the latent variable obtained from the last step. 
 This perturbation is performed for each image in the set.
-Figure~\ref{fig:mnist_dis} shows the change of images by increasing one latent variable from a small value to a larger one. The figure presents some of the latent variables that have obvious effects on images, and most of the $d=196$ variables do not impact the generation significantly. Latent variables $i=6$ and $i=60$ control the digit width. Variable $i=19$ affects the brightness.  $i=92, i=157$ and some of the variables not presented in the figure  control the style of the generated digits. 
+Figure~\ref{fig:mnist_dis} shows the change of images by increasing one latent variable from a small value to a larger one. The figure presents some of the latent variables that have obvious effects on images, and most of the $d=196$ variables do not impact the generation significantly. Latent variables $i=6$ and $i=60$ control the digit width. Variable $i=19$ affects the brightness.  $i=92, i=157$ and some of the variables not displayed here control the style of the generated digits. 
 
 \begin{figure}[H]
 	\begin{center}
@@ -943,46 +956,6 @@ Figure~\ref{fig:mnist_dis} shows the change of images by increasing one latent v
 	\end{center}
   \captionof{figure}{MNIST: Increasing each latent variable from a small value to a larger one.}\label{fig:mnist_dis}
 \end{figure}
-%
-%
-%\begin{figure}[H]
-%    \centering
-%    \text{i=6, Width} \\
-%       \includegraphics[width=0.45\textwidth]{fig/z6.png}
-%       %\includegraphics[width=0.45\textwidth]{fig/z19.png}
-%    %\captionof{figure}{t-SNE plot of latent variables learned with VFG without labels.}
-%\end{figure}
-% 
-% \begin{figure}[H]
-%    \centering
-%    \text{i=19, Brightness} \\
-%     \includegraphics[width=0.48\textwidth]{fig/z19.png}
-%\end{figure}
-% 
-%
-% \begin{figure}[H]
-%    \centering
-%    \text{i=60, Upper width} \\
-%     \includegraphics[width=0.48\textwidth]{fig/z60.png}
-%\end{figure}
-% 
-%  \begin{figure}[H]
-%    \centering
-%    \text{i=92} \\
-%     \includegraphics[width=0.48\textwidth]{fig/z92.png}
-%\end{figure}
-% 
-%\begin{figure}[H]
-%    \centering
-%    \text{i=119, Angle} \\
-%     \includegraphics[width=0.48\textwidth]{fig/z119.png}
-%\end{figure}
-%
-%  \begin{figure}[H]
-%    \centering
-%    \text{i=157} \\
-%     \includegraphics[width=0.48\textwidth]{fig/z157.png}
-%\end{figure}
 
 
 \end{document}
