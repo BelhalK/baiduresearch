@@ -4,6 +4,9 @@ import torch.nn as nn
 import torchvision as tv
 import torchvision.transforms as tr
 
+import numpy as np
+# import pdb
+
 seed = 1
 im_sz = 32
 sigma = 3e-2
@@ -74,10 +77,19 @@ def sample_q_new(K=K):
         f_prime=t.autograd.grad(f(x_k).sum(),[x_k],retain_graph=True)[0]
 
         #curvature informed stepsize (matrix)
-        # stepsize = 
+        th = 0.0001 #threshold value
+        normofgrad = t.norm(f_prime, dim=1)
+        # pdb.set_trace()
+        thtensor = t.Tensor(np.repeat(th, 64*32*32)).reshape(normofgrad.shape) #threshold Tensor
+        
+        stepsize = thtensor/t.max(thtensor, normofgrad)
+        # print(normofgrad)
+        stepsize = stepsize.repeat(1,3,1).reshape(f_prime.shape)
 
         #proposal
-        x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
+        epsilon = 1e-2
+        x_k.data += t.mul(stepsize, f_prime) + t.mul(stepsize, epsilon*t.randn_like(x_k) )
+        # x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
 
     return x_k.detach()
 
@@ -90,10 +102,10 @@ optim=t.optim.Adam(f.parameters(),lr=1e-4,betas=[.9,.999])
 print("==> Start Training...")
 for i in range(n_i) :
     #sample from data distribution and EBM (Langevin)
-    x_p_d,x_q=sample_p_d(),sample_q()
+    # x_p_d,x_q=sample_p_d(),sample_q()
 
     ### NEW sampling method
-    # x_p_d,x_q=sample_p_d(),sample_q_new()
+    x_p_d,x_q=sample_p_d(),sample_q_new()
     
     #log likelihood (to maximize) and before taking gradient
     #mean() to average over all samples
@@ -105,7 +117,7 @@ for i in range(n_i) :
     if i%100 == 0:
         print("==> Checkpoint")
         print('{:>6d}f(x_p_d)={:>14.9f}f(x_q)={:>14.9f}'.format(i,f(x_p_d).mean(),f(x_q).mean()))
-        plot('x_q_{:>06d}.png'.format(i),x_q)
+        plot('anila_x_q_{:>06d}.png'.format(i),x_q)
 
-print("==> Generation is Finished...")
+print("==> Task is Finished...")
 
