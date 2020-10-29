@@ -1,6 +1,5 @@
-#######################################
-# ## TRAIN EBM USING IMAGE DATASET ## #
-#######################################
+# python3 train_data.py --th 0.01 --eps 0.01 --mcmcmethod langevin
+# python3 train_data.py --th 0.01 --eps 0.01 --mcmcmethod anilangevin
 
 import torch as t
 import torchvision.transforms as tr
@@ -10,10 +9,26 @@ import os
 from nets import VanillaNet, NonlocalNet
 from utils import download_flowers_data, plot_ims, plot_diagnostics
 
-# directory for experiment results
-EXP_DIR = './out_data/flowers_convergent_1/'
+import argparse
+from logger import Logger
+import numpy as np
+import pdb
+
+
+parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
+
+parser.add_argument('--th', '--thresh', default=0.001, type=float,
+                    metavar='TH', help='threshold')
+parser.add_argument('--eps', '--epsilon', default=0.001, type=float,
+                    metavar='EP', help='epsilon')
+parser.add_argument('--mcmcmethod', default='langevin',help='mcmc to use (langevin, anilangevin)')
+
+
+args = parser.parse_args()
+
+
 # json file with experiment config
-CONFIG_FILE = './config_locker/flowers_convergent.json' #flowers data
+CONFIG_FILE = './config_locker/flowers_nonconvergent.json' #flowers data
 # CONFIG_FILE = './config_locker/mnist_convergent.json' #mnist data
 
 
@@ -25,14 +40,36 @@ CONFIG_FILE = './config_locker/flowers_convergent.json' #flowers data
 with open(CONFIG_FILE) as file:
     config = json.load(file)
 
+
+anith = args.th
+eps = args.eps
+mcmcmethod = args.mcmcmethod #can be anilangevin, langevin, laplace
+
+# directory for experiment results
+if mcmcmethod == "anilangevin":
+    EXP_DIR = f'./out_data/flowers_nonconvergent_1_{mcmcmethod}_th{anith}_eps{eps}/'
+else: 
+    EXP_DIR = f'./out_data/flowers_nonconvergent_1_{mcmcmethod}_eps{eps}/'
+
+
 # make directory for saving results
 if os.path.exists(EXP_DIR):
     # prevents overwriting old experiment folders by accident
-    raise RuntimeError('Folder "{}" already exists. Please use a different "EXP_DIR".'.format(EXP_DIR))
+    # raise RuntimeError('Folder "{}" already exists. Please use a different "EXP_DIR".'.format(EXP_DIR))
+    pass
 else:
     os.makedirs(EXP_DIR)
     for folder in ['checkpoints', 'shortrun', 'longrun', 'plots', 'code']:
         os.mkdir(EXP_DIR + folder)
+
+title = 'rings-{}'.format(mcmcmethod)
+if mcmcmethod=='anilangevin':
+    logger = Logger('./out_data/log_{}_th{}_ep{}.txt'.format(mcmcmethod,anith,eps), title=title)
+else:
+    logger = Logger('./out_data/log_{}_ep{}.txt'.format(mcmcmethod,eps), title=title)
+    
+logger.set_names(['iteration','endiff','gradmag'])
+
 
 # save copy of code in the experiment folder
 def save_code():
@@ -124,9 +161,28 @@ def sample_s_t(L, init_type, update_s_t_0=True):
     x_s_t = t.autograd.Variable(x_s_t_0.clone(), requires_grad=True)
     r_s_t = t.zeros(1).to(device)  # variable r_s_t (Section 3.2) to record average gradient magnitude
     for ell in range(L):
-        f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
-        x_s_t.data += - f_prime + config['epsilon'] * t.randn_like(x_s_t)
-        r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
+        if mcmcmethod == "langevin":
+            # regular langevin update constant LR
+            f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
+            x_s_t.data += - f_prime + eps * t.randn_like(x_s_t)
+            r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
+        elif mcmcmethod == "anilangevin":
+            # Langevin with Anisotropic stepsize and noise covariance
+            f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
+
+            th = anith #threshold value
+            normofgrad = t.norm(t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0], dim=1)
+            thtensor = t.Tensor(np.repeat(th, normofgrad.numel())).reshape(normofgrad.shape) #threshold Tensor
+            
+            # pdb.set_trace()
+            stepsize = thtensor.to(device)/t.max(thtensor.to(device), normofgrad)
+            stepsize = stepsize.repeat(3,1,1,1).reshape(f_prime.shape)
+            
+            x_s_t.data += - t.mul(stepsize.to(device), f_prime) + t.mul(stepsize.to(device), eps*t.randn_like(x_s_t))
+            # x_s_t.data += - t.mul(stepsize, f_prime) + t.mul(stepsize, t.randn_like(x_s_t))
+            r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
+
+       
 
     if init_type == 'persistent' and update_s_t_0:
         # update persistent image bank
@@ -163,6 +219,7 @@ for i in range(config['num_train_iters']):
     d_s_t_record[i] = d_s_t.detach().data
     r_s_t_record[i] = r_s_t
 
+
     # anneal learning rate
     for lr_gp in optim.param_groups:
         lr_gp['lr'] = max(config['lr_min'], lr_gp['lr'] * config['lr_decay'])
@@ -170,6 +227,7 @@ for i in range(config['num_train_iters']):
     # print and save learning info
     if (i + 1) == 1 or (i + 1) % config['log_freq'] == 0:
         print('{:>6d}   d_s_t={:>14.9f}   r_s_t={:>14.9f}'.format(i+1, d_s_t.detach().data, r_s_t))
+        logger.append([i+1, d_s_t.detach().data, r_s_t])
         # visualize synthesized images
         plot_ims(EXP_DIR + 'shortrun/' + 'x_s_t_{:>06d}.png'.format(i+1), x_s_t)
         if config['shortrun_init'] == 'persistent':

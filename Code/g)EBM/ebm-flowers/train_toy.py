@@ -1,11 +1,10 @@
-import argparse
 import torch as t
 import json
 import os
 from nets import ToyNet
 from utils import plot_diagnostics, ToyDataset
-from logger import Logger
 
+from logger import Logger
 import numpy as np
 import pdb
 
