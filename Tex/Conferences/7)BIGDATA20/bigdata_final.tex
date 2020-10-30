@@ -196,7 +196,7 @@ We provide an alternative, by developing a practical statistical diagnostic test
 \subsection{Modified Pflug diagnostic}
 
 
-\begin{algorithm}[h]
+\begin{algorithm}[ht]
 \SetKwProg{Fn}{function}{:}{}
 \SetKwFunction{fMS}{momentum\_switch}
 \SetKwProg{fn}{function}{:}{}
@@ -261,7 +261,7 @@ A gradient norm based heuristic function was used (line~\ref{line:heur_convg}).
 Often convergence heuristics are calculated in an online manner, so storage is not an issue.
 
 
-\section{The difficulty with momentum}\label{sec:momentum-stationarity}
+\section{The difficulty with momentum}\label{sec:momentum-stationarity}\label{sec:high_momentum_ip}
 
 We now provide theoretical and empirical justification for the design choices in Alg.~\ref{alg:diagnostic} regarding the challenges due to momentum.
 The overall goal is a test statistic with negative expectation to enable the use of a practical zero threshold. We first present two theorems to address the choice of what combination of gradient $\nabla \ell (\theta_n, \xi_{n+1})$ and momentum $\beta (\theta_n - \theta_{n-1})$ should be used to construct the test statistic of the convergence diagnostic. Then we provide a corollary, and theoretical and empirical results in quadratic loss to study the effects of high momentum on the expectation of the chosen test statistic.
@@ -291,11 +291,11 @@ $\exists \ \sigma_0^2 > 0$ s.t. $\Ex{ \| \nabla \ell (\theta, \xi) \|^2 } > \sig
 $\exists \ K > 1$ s.t. $\Ex{ (\theta_n - \theta_{n-1})^\top (\theta_{n-1} - \theta_{n-2}) } \geq - K \Ex{ \| \theta_n - \theta_{n-1} \|^2 }$ for large enough $n$.
 \end{assumption}
 
-\emph{Remarks.}
-Assumptions~\ref{assump:strcvx} and~\ref{assump:Lsmooth} are standard in analysis of stochastic gradient methods~\cite{Bach_NIPS13,Proc:Bach_NIPS11}. 
+%\emph{Remarks.}
+Assumptions~\ref{assump:strcvx} and~\ref{assump:Lsmooth} are standard in stochastic gradient methods analysis~\cite{Bach_NIPS13,Proc:Bach_NIPS11}. 
 Assumption~\ref{assump:Fbound} requires $\| \nabla f(\theta) \| \leq G$ and $\Ex{ \| \nabla \ell(\theta, \xi) - \nabla f(\theta) \|^2 } \leq \delta^2$~\cite{Report:Yang_arXiv16}. 
-Assumption~\ref{assump:min_noise} posits a minimum amount of noise present in the stochastic gradients.
-In Assumption~\ref{assump:scaling} it is reasonable to assume $K$ is not too large because $\| \theta_n - \theta_{n-1} \|^2 \approx \| \theta_{n-1} - \theta_{n-2} \|^2$ in the stationary phase.
+Assumption~\ref{assump:min_noise} posits a minimum amount of noise in the stochastic gradients. 
+We also assume $K$ is not too large in Assumption~\ref{assump:scaling} since $\| \theta_n - \theta_{n-1} \|^2 \approx \| \theta_{n-1} - \theta_{n-2} \|^2$ in the stationary phase.
 
 \subsection{Constructing a test statistic}
 
@@ -332,20 +332,23 @@ The expectation of the alternative test statistic is bounded
 \end{align}
 \end{theorem}
 \emph{Remarks.}
-By Theorem~\ref{thm:ip_opt} the alternative test statistic in Eq.~(\ref{eq:alt_test_stat}) is less likely to achieve a negative expectation in stationarity, and thus be able to use a zero threshold.
-This is because of the additional $\beta^3 \gamma M > 0$ term.
-A choice of another constant $t$ other than $\beta$ in the linear combination  in Eq.~(\ref{eq:alt_test_stat}) would not change this conclusion.  The sign of the bound is not controlled by $t$, and the last term would be $t^2 \beta \gamma M > 0$ and not change sign.
-The convergence threshold for a good test statistic should not depend too much on momentum, but the alternative test statistic has increased dependence due to the $2\beta, \beta^2$ terms. Also, note that the test statistic still has dependence on the momentum. Eq.~(\ref{eq:ip_loss}) can be rewritten as 
+By Theorem~\ref{thm:ip_opt} the alternative test statistic in Eq.~(\ref{eq:alt_test_stat}) is less likely to achieve a negative expectation in stationarity, and thus be able to use a zero threshold, due to the added $\beta^3 \gamma M > 0$ term.
+A choice of another constant $t \neq \beta$ in the linear combination (\ref{eq:alt_test_stat}) would not change this conclusion since its sign is not controlled by $t$.
+The last term would be $t^2 \beta \gamma M > 0$ and not change sign.
+The convergence threshold for a good test statistic should not depend too much on momentum, but the alternative test statistic has increased dependence due to the $2\beta, \beta^2$ terms. 
+Also, note that the test statistic still has dependence on the momentum. 
+Eq.~(\ref{eq:ip_loss}) reads
 \begin{align}
 \label{eq:ip_breakdown}
 \frac{\beta}{\gamma} [ \nabla \ell_{n+1}^\top (\theta_{n-1} - \theta_{n-2} ) ]
 - \frac{1}{\gamma} [ \nabla \ell_{n+1}^\top ( \theta_n - \theta_{n-1} )].
 \end{align}
 
+
 \subsection{Effect of high momentum}
 
-The test statistic in Eq.~(\ref{eq:ip_loss}) is chosen to best ensure a negative expectation in the stationary phase. 
-The next corollary guarantees this negative expectation under certain conditions~of~the~learning~rate.
+The test statistic in Eq.~(\ref{eq:ip_loss}) is chosen to ensure a negative expectation in the stationary phase. 
+The next corollary guarantees this negativity under certain conditions~on~the~learning~rate.
 \begin{corollary}
 \label{cor:ip_exp_neg}
 Consider SGDM in Eq.~(\ref{eq:sgdm}). If
@@ -355,13 +358,12 @@ the learning rate satisfies $\gamma > 2 M / c \sigma_0^2 A_\beta$, then,
 < 0
 \end{equation*}
 as $n \rightarrow \infty$.
-Thus the convergence diagnostic activates almost surely.\hfill$\Box$
+The convergence diagnostic activates a.s.\hfill$\Box$
 \end{corollary}
 \emph{Remarks.}
 Again, $A_\beta =  1 / (1 + 2 \beta K + \beta^2)$.
 $A_\beta$ is a monotonically decreasing function where $A_{\beta | \beta=0} = 1$ and $A_{\beta | \beta=1} = 1 / (2 + 2K)$.
-Higher $\beta$ reduces $A_\beta$, restricting the condition $\gamma > 2M / c \sigma_0^2 A_\beta$.\\
-
+Higher $\beta$ reduces $A_\beta$, restricting the condition $\gamma > 2M / c \sigma_0^2 A_\beta$.
 Corollary~\ref{cor:ip_exp_neg} suggests that too large momentum may make the learning rate condition too prohibitive, invalidating the negative expectation in practice.
 
 
@@ -384,7 +386,6 @@ The expected value of the test statistic at $\theta_3$ is:
 & + \gamma^2 ( 1 + \beta ) \Ex{ \epsilon_1^2 } \Ex{ ( x_2^\top x_1 ) ( x_3^\top x_1 ) ( x_3^\top x_2 ) } 
 \end{align}
 From Eq.~(\ref{eq:quad_start_star}) in the $\gamma^2 (1+\beta)$ term we see that momentum contributes positively to the test statistic, and if it is too large the expectation is positive.  $\Ex{ ( x_2^\top x_1 ) ( x_3^\top x_1 ) ( x_3^\top x_2 ) } = tr( \Ex{(x_1 x_1^\top) (x_2 x_2^\top) (x_3 x_3^\top) } ) > 0$ by application of trace and $x_1 x_1^\top$ is positive definite.
-
 The results are generalized in the following theorem. 
 \begin{theorem}
 \label{thm:quad_diag}
@@ -408,34 +409,39 @@ In the transient phase the bias dominates, resulting in an expected positive con
 In the stationary phase the variance dominates, resulting in an expected negative contribution from $- \gamma \sigma_{quad}^2 d^2$.
 Theorem~\ref{thm:quad_diag} supports that in stationarity momentum $\beta$ contributes positively to the test statistic, and $\beta$ that is too high makes the expected value of the test statistic positive.
 
-We empirically validate the effect of high momentum on the test statistic for quadratic loss. We sample $1000$ data points $x \sim N ( 0, I_{20} )$, set $y = x^\top \theta_\star + \epsilon$ with $\epsilon \sim N ( 0, 1 )$, and $\theta_{\star, i} = (-1)^{i} \ 2 \exp( -0.7 i )$ for $i = 1, \dots, 20$.
+We empirically validate the effect of high momentum on the test statistic for quadratic loss. 
+We sample $1000$ data points $x \sim N ( 0, I_{20} )$, set $y = x^\top \theta_\star + \epsilon$ with $\epsilon \sim N ( 0, 1 )$, and $\theta_{\star, i} = (-1)^{i} \ 2 \exp( -0.7 i )$ for $i = 1, \dots, 20$.
 SGDM is run with batch size $25$ for $50$ epochs.
-The stationary phase is marked when the MSE with respect to $\theta_\star$ has flattened out. Table~\ref{tab:high_momentum_ip} reports the mean test statistic in stationarity across 25 independent runs of SGDM. We set $\beta=0.2$ and $\beta=0.9$ to contrast low and high momentum. Both settings attain equivalent MSE. The  results in Table~\ref{tab:high_momentum_ip} support the observations from Corollary~\ref{cor:ip_exp_neg} and Theorem~\ref{thm:quad_diag}: the expectation of the test statistic becomes positive with too~large~momentum.
+The stationary phase is marked when the MSE with respect to $\theta_\star$ has flattened out. 
+%Table~\ref{tab:high_momentum_ip} reports the mean test statistic in stationarity across 25 independent runs of SGDM. 
+We set $\beta=0.2$ and $\beta=0.9$ to contrast low and high momentum. 
+Both settings attain equivalent MSE. 
+After 25 independent runs of SGDM we retrieve values of the test statistic in stationarity of $-6.71$ and $2.77$ for $\beta=0.2$ and $\beta=0.9$ respectively, supporting the observations from Corollary~\ref{cor:ip_exp_neg} and Theorem~\ref{thm:quad_diag}: the expectation of the test statistic becomes positive with too~large~momentum.
 
 
-\begin{table}[h]
-\caption{Mean test statistic in stationarity across 25 independent runs with $\gamma = 10^{-2}$.
-Low $\beta$ setting has $\beta=0.2$. 
-High $\beta$ setting has $\beta=0.8$. \vspace{-0.1in}
-}
-\label{tab:high_momentum_ip}
-\begin{center}
-\begin{tabular}{|c| c c|} 
-\hline
- & Low $\beta$ & High $\beta$ \\
-\hline
-Test Statistic in Stationarity & -6.71 & 2.77\\
-\hline
-\end{tabular}
-\end{center}
-\end{table}
+%\begin{table}[ht]
+%\caption{Mean test statistic in stationarity across 25 independent runs with $\gamma = 10^{-2}$.
+%Low $\beta$ setting has $\beta=0.2$. 
+%High $\beta$ setting has $\beta=0.8$. \vspace{-0.1in}
+%}
+%\label{tab:high_momentum_ip}
+%\begin{center}
+%\begin{tabular}{|c| c c|} 
+%\hline
+% & Low $\beta$ & High $\beta$ \\
+%\hline
+%Test Statistic in Stationarity & -6.71 & 2.77\\
+%\hline
+%\end{tabular}
+%\end{center}
+%\end{table}
 
 
 
 \section{Distribution  of inner products}\label{sec:distribution_IP} 
 
 The convergence diagnostic crucially relies upon the negative expectation of its test statistic. 
-An important question emerges: \textbf{what drives the expectation of the inner product negative?
+An important question emerges: \textbf{What drives the expectation of the inner product negative?
 What is its relation to momentum?}
 At a high level, there is an oscillation in the stationary phase driven by the dominating variance of the stochastic gradients.
 This oscillation interacts with the curvature of the loss function around $\theta_\star$, driving the expectation of inner products negative.
@@ -444,13 +450,13 @@ We propose a more refined view which also helps explain the observed sensitivity
 \begin{proposition}\label{prop:noise_key_iter}
 
 In the stationary phase there are a small number of key iterates which drive the expected inner product in Eq.~(\ref{eq:ip_loss}) negative.
-Consider the decomposition of the stochastic~gradient
-\begin{equation*}
-\nabla \ell ( \theta_n, \xi_{n+1} ) = \Ex{ \nabla \ell ( \theta_n, \xi_{n+1} )} + \sigma^2
-\end{equation*}
+Consider the decomposition of the stochastic~gradient $\nabla \ell ( \theta_n, \xi_{n+1} ) = \Ex{ \nabla \ell ( \theta_n, \xi_{n+1} )} + \sigma^2$
+%\begin{equation*}
+%\nabla \ell ( \theta_n, \xi_{n+1} ) = \Ex{ \nabla \ell ( \theta_n, \xi_{n+1} )} + \sigma^2
+%\end{equation*}
 into its true gradient and noise.  A majority of inner products\\ $\nabla \ell ( \theta_n, \xi_{n+1} ) ^\top \nabla \ell ( \theta_{n-1}, \xi_{n} )$ are mean zero due to the dominance of the noise term $\sigma^2$.  \textbf{The expectation is negative due to a relatively sparse number of inner products which have high magnitude and negative sign.}
-In these few key inner products the true gradient dominates because of an interaction with the loss curvature.
-This behavior depends on a sufficiently small momentum.
+%In these few key inner products the true gradient dominates because of an interaction with the loss curvature.
+%This behavior depends on a sufficiently small momentum.
 \hfill$\Box$
 \end{proposition}
 
@@ -459,49 +465,49 @@ There are some iterates $\theta_n$ in the stationary phase which get relatively 
 This would require a relatively large gradient $\nabla \ell (\theta_{n-1}, \xi_n)$ pointing generally away from $\theta_\star$.
 The following iteration would result in an also large gradient $\nabla \ell (\theta_{n}, \xi_{n+1})$ pointing generally back towards $\theta_\star$ due to the curvature of the loss. 
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \mbox{\hspace{-0.1in}
   \includegraphics[width=1.8in]{fig/HistIPTrans.pdf}\hspace{-0.12in}
   \includegraphics[width=1.8in]{fig/HistIPStat.pdf}
 }
 \vspace{-0.2in}
-  \caption{Left panel:  Histogram of the inner product of successive gradients (Eq.~(\ref{eq:ip_loss})) for SGDM in the transient phase. Right panel: 
-  Histogram of the inner products for SGDM in the stationary phase. 
+  \caption{  Histogram of the inner product of successive gradients (Eq.~(\ref{eq:ip_loss})). 
+  Left: Transient phase. 
+  Right: Stationary phase.
   Training settings from the low $\beta$ quadratic setting in Section~\ref{sec:quadratic}.
-  Note the asymmetry in the distribution of inner products in the stationary phase. 
+%  Note the asymmetry in the distribution of inner products in the stationary phase. 
   }
 \label{fig:hist_ip}
 \end{figure}
-
-\begin{figure}[h]
+\begin{figure}[ht]
 \mbox{\hspace{-0.1in}
   \includegraphics[width=1.85in]{fig/HighMomHistIPTrans.pdf}\hspace{-0.12in}
   \includegraphics[width=1.85in]{fig/HighMomHistIPStat.pdf}
 }
 \vspace{-0.2in}
   \caption{ Histogram of the inner product of successive gradients with high momentum $\beta=0.8$ and no momentum reduction. 
-  Left panel: Transient phase. 
-  Right panel: Stationary phase.
+  Left: Transient phase. 
+  Right: Stationary phase.
  Quadratic loss model from Section~\ref{sec:quadratic}.
-  Note the symmetry in the distribution of inner products in the stationary phase.
+%  Note the symmetry in the distribution of inner products in the stationary phase.
   }
 \label{fig:hist_ip_highmom}
 \end{figure}
-
-
-
-We first provide empirical evidence to support Proposition~\ref{prop:noise_key_iter}.  The low $\beta$ quadratic setting from Section~\ref{sec:quadratic} is used, and SGDM run for 20 epochs. In Fig.~\ref{fig:hist_ip} are histograms of the inner products from Eq.~(\ref{eq:ip_loss}) in the transient and stationary phase. The phase transition is chosen by monitoring MSE with respect to $\theta_\star$.
-These results have been observed to be robust across loss functions and parameter settings.  In the transient phase the inner products are majority positive and have positive skew. 
-This makes sense as when $\theta_n$ is far away from $\theta_\star$, the bias dominates and gradients are likely pointed in the same direction. In the stationary phase we observe a unimodal distribution around zero with a longer negative tail.
-\textbf{What is interesting  is the distribution of inner products in the stationary phase.}
-The expectation is  negative, and consistently so across many experiments. But the magnitude of the variance exceeds the magnitude of the mean by an order of magnitude. The  high magnitude variance indicates a high frequency of iterates with mean zero inner product.
+We first provide empirical evidence to support Proposition~\ref{prop:noise_key_iter}.  
+The low $\beta$ quadratic setting from Section~\ref{sec:quadratic} is used, and SGDM run for 20 epochs. 
+In Fig.~\ref{fig:hist_ip} are histograms of the inner products from Eq.~(\ref{eq:ip_loss}) in the transient and stationary phase. The phase transition is chosen by monitoring MSE with respect to $\theta_\star$.
+These results are robust across loss functions and parameter settings. 
+In the transient phase the inner products are in majority positive with positive skew. 
+This makes sense as when $\theta_n$ is far from $\theta_\star$, the bias dominates and gradients are likely pointed in the same direction. 
+In the stationary phase we observe a unimodal distribution around zero with a longer negative tail.
+\textbf{The distribution of inner products in the stationary phase is of utmost interest.}
+The expectation is negative consistently across many experiments. 
+Yet, the magnitude of the variance exceeds the magnitude of the mean, indicating a high frequency of iterates with mean zero inner product.
 The larger negative tail--specifically the small number of inner products around $-400$--supports the existence of a small number of key iterates as stated in Proposition~\ref{prop:noise_key_iter}.
 This empirical observation is even more striking when you compare similar histograms when the momentum is high $\beta = 0.8$ and keeping all other settings the same, in Fig.~\ref{fig:hist_ip_highmom}.
 The previously observed asymmetry in the stationary phase is now gone.
 Thus with high momentum (or without momentum reduction), the convergence diagnostic cannot work as there is no clear signal from the test statistic.
-
-
-\begin{figure}[h]
+\begin{figure}[ht]
 \mbox{
   \includegraphics[width=1.8in]{fig/4-2_AngleNorm.pdf}\hspace{-0.12in}
   \includegraphics[width=1.8in]{fig/RFig7_HMAN.pdf}
@@ -509,27 +515,26 @@ Thus with high momentum (or without momentum reduction), the convergence diagnos
 \vspace{-0.2in}
   \caption{Cosine similarity vs gradient norm for SGDM in the stationary phase.
   The red circle indicates those key inner products with negative angle and high gradient norm.
-  Left panel: Training settings from the low $\beta$ quadratic setting in Section~\ref{sec:quadratic}.
-  Right panel: high momentum $\beta = 0.8$.
+  Left: Training settings from the low $\beta$ quadratic setting in Section~\ref{sec:quadratic}.
+  Right: high momentum $\beta = 0.8$.
   The inner product distribution is symmetric in this case. 
   }
   \label{fig:angle_norm}
 \end{figure}
-
-
-
-
-Fig.~\ref{fig:angle_norm} provides the further empirical evidence  by plotting the magnitude $\| \nabla \ell (\theta_n, \xi_{n+1}) \|_2^2$ and  cosine$(\nabla \ell (\theta_n, \xi_{n+1}), \nabla \ell (\theta_{n-1}, \xi_{n}) )$ of successive gradients for SGDM in the stationary phase. Again, we first look at the low $\beta$ quadratic setting in Section~\ref{sec:quadratic}. A red circle is drawn to identify iterates with high magnitude and negative angle, exactly those key iterates described in Proposition~\ref{prop:noise_key_iter}. 
-We see such key iterates exist and drive the expectation negative.  
-These results have been observed to be robust across loss functions and parameter settings.  With high momentum we have empirically observed that these key inner products with high magnitude and negative angle disappear.
-
-Thus Proposition~\ref{prop:noise_key_iter} helps explain the observed sensitivity of the expected test statistic to high momentum.
+Fig.~\ref{fig:angle_norm} provides empirical evidence by plotting the magnitude $\| \nabla \ell (\theta_n, \xi_{n+1}) \|_2^2$ and  cosine$(\nabla \ell (\theta_n, \xi_{n+1}), \nabla \ell (\theta_{n-1}, \xi_{n}) )$ of successive gradients in the stationary phase. 
+We first look at the low $\beta$ quadratic setting in Section~\ref{sec:quadratic}. 
+A red circle is drawn to identify iterates with high magnitude and negative angle, the key iterates described in Proposition~\ref{prop:noise_key_iter}. 
+We observe such key iterates exist and drive the expectation negative, consistently across loss functions and parameter settings.  
+With high momentum we have empirically observed that these key inner products with high magnitude and negative angle disappear.
+Thus Proposition~\ref{prop:noise_key_iter} helps explaining the observed sensitivity of the expected test statistic to high momentum.
 
 
 \subsection{Variance bounds}
-We now provide theory which supports Proposition~\ref{prop:noise_key_iter}. We show that in the stationary phase, the magnitude of the variance dominates the magnitude of the mean 
-for the test statistic of the convergence diagnostic.  A relatively large variance of the inner products $\nabla \ell (\theta_n, \xi_{n+1})^\top \nabla \ell (\theta_{n-1}, \xi_n)$ suggests that a majority of iterates are dominated by the variance of the stochastic gradient.
-A relatively small mean for the inner products suggests that a minority of iterates drive the expectation. Even though in the stationary phase SGDM is trapped in a bounded region, and the expected test statistic driven by a sparse number of key iterates, there is still significant room for random motion.
+We now provide theory supporting Proposition~\ref{prop:noise_key_iter}. 
+We show that in the stationary phase, the magnitude of the variance dominates the magnitude of the mean for the test statistic. 
+A relatively large variance of the inner products $\nabla \ell (\theta_n, \xi_{n+1})^\top \nabla \ell (\theta_{n-1}, \xi_n)$ suggests that a majority of iterates are dominated by the variance of the stochastic gradients.
+A relatively small mean for the inner products suggests that a minority of iterates drive the expectation. 
+Even though in the stationary phase SGDM is trapped in a bounded region, and the expected test statistic driven by a sparse number of key iterates, there is still significant room for random motion.
 
 \begin{theorem} 
 \label{thm:ip_var_bound}
@@ -540,56 +545,52 @@ Then,
 \frac{Var [ IP ]}{\mathbb{E} [ IP ]^2} 
 &\geq \frac{ ( M - L \gamma \sigma_0^2 A_\beta )^2 }{M^2 ( 1 + 8 L / c )^2 } 
 - 1.\hspace{1in}\Box
-\end{align*}\\
+\end{align*}
 \end{theorem}
-
+\vspace{0.08in}
 \begin{corollary}
 \label{cor:set_gamma_threshold}
 Consider the SGDM procedure in Eq.~(\ref{eq:sgdm}).
 Fix a scaling factor $\lambda > 2$.
 Set the learning rate $\gamma = 2 t M / L \sigma_0^2 A_\beta$ with $t  \geq 1 + \sqrt{ \lambda } ( 1 + 4 L / c )$. 
-Then, 
-\begin{equation*}
-\hspace{0.5in}Var [IP] \geq (\lambda - 1) \ \Ex{IP}^2.\hspace{1.2in}\Box
-\end{equation*}
+Then, $Var [IP] \geq (\lambda - 1) \ \Ex{IP}^2.$
+%\begin{equation*}
+%\hspace{0.5in}Var [IP] \geq (\lambda - 1) \ \Ex{IP}^2.\hspace{1.2in}\Box
+%\end{equation*}
 \end{corollary}
 
 \emph{Remarks.}
-The results hold regardless of the sign of the expectation of inner products, and show that the variance of the test statistic upper bounds the squared mean. 
+The results hold regardless of the sign of $ \Ex{IP}$, and show that the variance of the statistic upper bounds the squared mean. 
 Corollary~\ref{cor:set_gamma_threshold} specifies that a greater learning rate increases the variance bound.
-This makes sense as a larger learning rate increases the radius of the stationary region.
-
-
+Larger learning rate indeed increases the radius of the stationary region.
 
 We have seen that Theorem~\ref{thm:ip_var_bound} and Corollary~\ref{cor:set_gamma_threshold}, along with Figures~\ref{fig:hist_ip}, \ref{fig:hist_ip_highmom} and~\ref{fig:angle_norm}, provide theoretical and empirical support for Proposition~\ref{prop:noise_key_iter}. While the bound in Theorem~\ref{thm:ip_var_bound} is more robust to $\beta$, it is still unable to provide practical guidance as  the data dependent constants $M$, $L$, $c$, $\sigma_0^2$, and $A_\beta$ must still be estimated.
-
 The convergence diagnostic monitors a certain signal in the gradients.
 In Section~\ref{sec:momentum-stationarity} we have shown that this signal can be sensitive to high momentum, and in this Section we have shown that the signal may be sparse within other gradient noise.
 Currently, we believe that an empirical mean is still the best way to capture this gradient signal, with the simple but effective automatic reduction in Alg.~\ref{alg:diagnostic} to combat the negative effects of high momentum. 
 
 
 \section{Numerical experiments}\label{sec:synth-data-experiments}
-We now evaluate the convergence diagnostic in Alg.~\ref{alg:diagnostic} on synthetic data experiments in settings of quadratic loss and phase retrieval~\cite{Article:Chen_MP19}.
-The quadratic loss setting is described in Section~\ref{sec:quadratic}. For phase retrieval let $\ell ( \theta, y, x ) = 1/4 [ ( x^\top \theta )^2 - y ]^2$ with $x \sim N ( 0, I_{20} )$ and $y = ( x^\top \theta_\star )^2$.
-$\theta_{\star,i} = (-1)^i \times 2 \exp( -0.7 i )$ for $i = 1, \dots, 20$.
-The number of data points $N = 10^3$.
+We now evaluate the convergence diagnostic in Alg.~\ref{alg:diagnostic} on synthetic data with quadratic loss, see Section~\ref{sec:quadratic}, and phase retrieval~\cite{Article:Chen_MP19}.
+For phase retrieval let $\ell ( \theta, y, x ) = 1/4 [ ( x^\top \theta )^2 - y ]^2$ with $x \sim N ( 0, I_{20} )$ and $y = ( x^\top \theta_\star )^2$.
+$\theta_{\star,i} = (-1)^i \times 2 \exp( -0.7 i )$ for $i = 1, \dots, 20$ and $N = 10^3$.
 The checking period $c$ is every epoch.
-Due to non-convexity in phase retrieval we only record the training runs where SGDM has entered a good minima to eliminate the need to tune  the parameters for our error rate procedure for different minima.
+%Due to non-convexity in phase retrieval we only record the training runs where SGDM has entered a good minima to eliminate the need to tune the parameters for our error rate procedure for different minima.
+Due to non-convexity, we record the training runs where SGDM has entered a good minima.
 
 There are two failure modes: the convergence diagnostic can activate too early, or too late.
 Let $\theta_n$ be the estimate when the convergence diagnostic has activated.
 If the diagnostic activates too early then the error is too high, i.e., $\| \theta_n - \theta_\star \|^2 > \eta$ for some threshold value.
 $\eta$ is set as a tight upper bound on the error observed in the stationary phase across many runs. 
-If the diagnostic activates too late, it can waste unnecessary computation. Let $K = (n - k) / n$ such that $\| \theta_k - \theta_n \|^2 = \eta$ and $k \leq n$.
-If the diagnostic activates too late, then we expect $\theta_n$ to be far into the stationary phase,  and thus $n-k$ to be a significant portion of  $n$, i.e., $K > \kappa$ for some threshold value. $\kappa$ is set as a tight lower bound on the $K$ calculated by running SGDM  into the stationary phase.
-
+Let $K = (n - k) / n$ such that $\| \theta_k - \theta_n \|^2 = \eta$ and $k \leq n$.
+If the diagnostic activates too late, it can waste unnecessary computation and we expect $\theta_n$ to be far into the stationary phase, and thus $n-k$ to be a significant portion of  $n$, i.e., $K > \kappa$ for some threshold value. $\kappa$ is set as a tight lower bound on the $K$ calculated by running SGDM  into the stationary phase.
 Table~\ref{tab:diag_errors} displays the results of 100 independent runs with the percentage of type I errors (too early), type II errors (too late), and good diagnostic activations.
 Low and high momentum settings are used for quadratic loss and phase retrieval.
 Empirically the type I errors are small, while the type II errors are a larger concern.
 This observation on the higher frequency of type II errors is corroborated by~\cite{Proc:Chee_AISTATS18}. Encouragingly we see that the automatic momentum reduction in Alg.~\ref{alg:diagnostic} has enabled the convergence diagnostic to be robust to momentum.
 High momentum settings have little to no effect on the Type I and II error rates of the convergence diagnostic.
-Contrast Table~\ref{tab:diag_errors} with the results in Table~\ref{tab:high_momentum_ip}, where the sign of the test statistic in the stationary phase was shown to be sensitive to momentum. 
-Additionally, in approximately $50$-$70\%$ of all Type II errors the diagnostic activated only moderately late. In approximately $10$-$20\%$ of Type II errors the diagnostic~activated~late.
+Contrast Table~\ref{tab:diag_errors} with the results in Section~\ref{sec:high_momentum_ip}, where the sign of the test statistic in the stationary phase was shown to be sensitive to momentum. 
+Additionally, in approximately $50$-$70\%$ of all Type II errors the diagnostic activated only moderately late and in $10$-$20\%$ of Type II errors the diagnostic~activated~late.
 
 
 
@@ -597,8 +598,8 @@ Additionally, in approximately $50$-$70\%$ of all Type II errors the diagnostic 
 
 \begin{table}[t]
 \caption{
-Empirical evaluation of the convergence diagnostic in Alg.~\ref{alg:diagnostic} over 100 independent runs for each experimental setting.
-SGDM run for $20$ epochs with batch size $20$. 
+Empirical evaluation of the convergence diagnostic.
+SGDM run for $20$ epochs with batch size $20$ over $100$ independent runs.
 Quadratic low $\beta$ (Q-Low) set $\beta = 0.2$, $\gamma = 10^{-2}$, $\eta = 10^{-3}$, $\kappa = 0.65$. 
 Quadratic high $\beta$ (Q-High) set $\beta = 0.8$, $\gamma = 10^{-2}$, $\eta = 2 \times 10^{-3}$, $\kappa = 0.30$. 
 Phase retrieval low $\beta$ (PR-Low) set $\beta=0.2$, $\gamma=10^{-2}$, $\eta = 10^{-2}$, $\kappa = 0.6$. 
@@ -623,48 +624,45 @@ PR-High & 0\% & 16\% & 84\% \\
 \end{center}
 \end{table}
 
-
 \section{Application: an automatic learning rate schedule}
 \label{sec:autoLR}
 The convergence diagnostic has a natural application in automating the learning rate schedule.
-Hyper-parameter tuning, especially for the learning rate, has a major effect on the performance of stochastic gradient methods.
-Tuning is typically a very manual process requiring many training re-runs. 
+Learning rate tuning has a major impact on the performance of optimization methods.
+Tuning is typically a manual process requiring many training runs. 
 The benefit of an automatic learning rate is to greatly reduce the amount of supervision and number of training runs. 
 
-\begin{algorithm}[h]
+\begin{algorithm}[ht]
 \SetKwInOut{Input}{input}
-\Input{Alg.~\ref{alg:diagnostic} {\tt SGDM}$(\theta, \gamma)$,  initial and minimum stepsize $\gamma_0$, $\gamma_{min}$, learning rate reduction $\rho \in (0,1)$ 
+\Input{Alg.~\ref{alg:diagnostic} {\tt SGDM}$(\theta, \gamma)$,  initial and minimum stepsize $\gamma_0$, $\gamma_{min}$, reduction $\rho \in (0,1)$ 
 }
 $\gamma \gets \gamma_0$ \\
 \While{$\gamma > \gamma_{min}$}{
-	$\theta \gets {\tt SGDM} ( \theta, \gamma )$ \\
-	$\gamma \gets \rho \times \gamma$ \\
+	$\theta \gets {\tt SGDM} ( \theta, \gamma ) \quad \textrm{and} \quad \gamma \gets \rho \times \gamma$ \\
 }
 \Return{ $\theta$}
 \caption{SGDM with automatic learning rate}
 \label{alg:autoLR}
 \end{algorithm}
 
-In Alg.~\ref{alg:autoLR} we present an automatic learning rate based on the convergence diagnostic in Alg.~\ref{alg:diagnostic}.
+Alg.~\ref{alg:autoLR} displays an automatic learning rate based on our diagnostic algorithm~\ref{alg:diagnostic}.
 SGDM with constant learning rate moves quickly towards $\theta_\star$ but cannot improve beyond distance $O(\gamma)$, as suggested by Theorem~\ref{thm:mom_convg_analysis}.
-The convergence diagnostic is used to detect stationarity, after which the learning rate is reduced $\gamma \gets \rho \gamma$ and a smaller radius $O(\rho \gamma)$ of stationarity achieved, with $\rho \in (0,1)$. Alg.~\ref{alg:autoLR} takes advantage of the speedup afforded to constant rate in the transient phase, while avoiding the trade-off cost of a larger stationary region by reducing the learning rate. In practice it is common to use a constant learning rate and decrease several times at hand chosen points~\cite{Proc:He_CVPR16,Article:Krizhevsky_CACM17}.
+The convergence diagnostic is used to detect stationarity, after which the learning rate is reduced $\gamma \gets \rho \gamma$ and a smaller radius $O(\rho \gamma)$ of stationarity achieved, with $\rho \in (0,1)$. Alg.~\ref{alg:autoLR} takes advantage of the speedup afforded to constant rate in the transient phase, while avoiding the trade-off cost of a larger stationary region by reducing the learning rate. 
+It is common to use a constant learning rate and manually decay several times~\cite{Proc:He_CVPR16,Article:Krizhevsky_CACM17}.
 
-
-A major benefit of automatic hyper-parameter tuning is robustness to a potentially misspecified initial setting, in this case $\gamma_0$. We train logistic regression on benchmark datasets
- MNIST and Online News Popularity (from UCI repository), 
-for a variety of initial learning rates $\gamma_0$.
+A major benefit of automatic hyper-parameter tuning is robustness to a potentially misspecified initial setting. 
+We train logistic regression on benchmark datasets MNIST and Online News Popularity (from UCI repository), for a variety of initial learning rates $\gamma_0$.
 In Fig.~\ref{fig:mnist_news_binary} the accuracy on a held out test set is compared between the automatic rate in Alg.~\ref{alg:autoLR} and a decreasing rate $\gamma = \gamma_0 / n$ for $\gamma_0^{mnist} \in \{1.0, 0.1, 0.01\}$ in MNIST and $\gamma_0^{news} \in \{10, 1.0, 0.1\}$ in Online News.
 The findings are consistent across both datasets.
-The automatic learning rate was significantly more robust to initial conditions than the decreasing rate. In addition, the automatic learning rate achieved significantly higher test accuracy than the~decreasing~rate.
+The automatic learning rate is significantly more robust to initial conditions and achieves significantly higher test accuracy than the decreasing rate. 
 
 \begin{figure}[t]
 \begin{center}
-  \includegraphics[width=2.3in]{fig/mnist_binary.pdf}
-\includegraphics[width=2.3in]{fig/news_popularity.pdf}
+  \includegraphics[width=1.7in]{fig/mnist_binary.pdf}
+\includegraphics[width=1.7in]{fig/news_popularity.pdf}
 \end{center}
 \vspace{-0.16in}
   \caption{Binary logistic regression  with SGDM using Alg.~\ref{alg:autoLR} and decreasing rate $\gamma = \gamma_0 / n$,
-  $\beta = 0.8$. Upper panel: MNIST. Bottom panel: Online News Popularity.
+  $\beta = 0.8$. Left: MNIST. Right: Online News Popularity.
   }
 \label{fig:mnist_news_binary}\vspace{-0.13in}
 \end{figure}
@@ -672,78 +670,75 @@ The automatic learning rate was significantly more robust to initial conditions 
 
 \begin{figure}[h!]
 \begin{center}
-  \includegraphics[width=2.3in]{fig/RFig1_LR_notitle.pdf}
-\includegraphics[width=2.3in]{fig/RFig2_AltMom.pdf}
+  \includegraphics[width=1.7in]{fig/RFig1_LR_notitle.pdf}
+\includegraphics[width=1.7in]{fig/RFig2_AltMom.pdf}
 \end{center}
 \vspace{-0.16in}
-  \caption{Upper: Vertical lines marks the diagnostic activation and learning rate reduction on MNIST.
-  Bottom: SGDM using Alg.~\ref{alg:autoLR} and varying momentum $\beta\in\{0.2, 0.4, 0.6, 0.8\}$.
+  \caption{Left: Vertical lines marks the diagnostic activation and learning rate reduction on MNIST.
+  Right: SGDM using Alg.~\ref{alg:autoLR} and varying momentum $\beta\in\{0.2, 0.4, 0.6, 0.8\}$.
   }
 \label{fig:mnistactivate_momvary}\vspace{-0.12in}
 \end{figure}
 
-In Fig.~\ref{fig:mnistactivate_momvary} (upper panel) we plot only SGDM using Alg.~\ref{alg:autoLR} and vertical lines to mark the convergence diagnostic's activation.
-On the bottom panel of Fig.~\ref{fig:mnistactivate_momvary} shows SGDM using Alg.~\ref{alg:autoLR} with varying initial momentum.
-From the similarity in training curves we see that Alg.~\ref{alg:autoLR} is also robust to setting the momentum.
+In Fig.~\ref{fig:mnistactivate_momvary} we plot SGDM using Alg.~\ref{alg:autoLR} and vertical lines to mark the diagnostic activation.
+Fig.~\ref{fig:mnistactivate_momvary} also shows SGDM using Alg.~\ref{alg:autoLR} with varying momentum constant and we observe that Alg.~\ref{alg:autoLR} is robust to the choice of momentum.
 The function $h()$ we used in Alg.~\ref{alg:diagnostic} to set the change in momentum was the mean squared distance between successive iterates. 
-However, any convergence heuristic can be used for $h()$ in Alg.~\ref{alg:diagnostic}.
-We show that $h()$ works consistently in the upper panel of Fig.~\ref{fig:momred_constlr}.
+However, any convergence heuristic can be used for $h()$.
+We show that $h()$ works consistently in Fig.~\ref{fig:momred_constlr}.
 Regardless of the initial momentum, SGDM using Alg.~\ref{alg:autoLR} on MNIST reduces the initial momentum at a consistent point, helping to ensure a consistent activation of the convergence diagnostic.
-
-
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{center}
-  \includegraphics[width=2.3in]{fig/RFig4_CheckStat.pdf}\hspace{-0.12in}
-\includegraphics[width=2.3in]{fig/RFig5_Const.pdf}
+  \includegraphics[width=1.7in]{fig/RFig4_CheckStat.pdf}\hspace{-0.12in}
+\includegraphics[width=1.7in]{fig/RFig5_Const.pdf}
 \end{center}
 \vspace{-0.17in}
-  \caption{Upper: Vertical line marks a consistent momentum reduction using convergence heuristic of $\| \theta_n - \theta_{n-1} \|^2$.
-  Bottom: Binary logistic regression with SGDM using Alg.~\ref{alg:autoLR} and constant learning rate $\gamma_0 \in \{1.0, 0.1, 0.01, 0.001\}$ on MNIST.
+  \caption{Left: Vertical line marks a consistent momentum reduction using convergence heuristic of $\| \theta_n - \theta_{n-1} \|^2$.
+  Right: Binary logistic regression with SGDM using Alg.~\ref{alg:autoLR} and constant learning rate $\gamma_0 \in \{1.0, 0.1, 0.01, 0.001\}$ on MNIST.
   }
 \label{fig:momred_constlr}\vspace{-0.15in}
 \end{figure}
 
 Experiments were performed with constant rate $\gamma = \gamma_0$, however the stationary region was large enough to result in significant test accuracy fluctuations for a given $\gamma_0$.
-
-\begin{figure}[b]
-\vspace{-0.15in}
-\begin{center}
-\includegraphics[width=2.4in]{fig/RFig3_Stat.pdf}
-\end{center}
-\vspace{-0.15in}
-  \caption{Test accuracy and convergence diagnostic test statistic from Alg.~\ref{alg:diagnostic} on MNIST. 
-  The vertical line marks the diagnostic's activation, which coincides with the test accuracy flattening out.
-  }
-\label{fig:mnist_teststat}%\vspace{-0.1in}
-\end{figure}
-
-The fact that SGDM using Alg.~\ref{alg:autoLR} is able to achieve competitive performance indicates that the convergence diagnostic is working well. 
-As further evidence that the convergence diagnostic in Alg.~\ref{alg:diagnostic} is working well, Fig.~\ref{fig:mnist_teststat} plots the test statistic of the convergence diagnostic along with the test accuracy for SGDM on MNIST.
+%\begin{figure}[b]
+%\vspace{-0.15in}
+%\begin{center}
+%\includegraphics[width=2.4in]{fig/RFig3_Stat.pdf}
+%\end{center}
+%\vspace{-0.15in}
+%  \caption{Test accuracy and convergence diagnostic test statistic from Alg.~\ref{alg:diagnostic} on MNIST. 
+%  The vertical line marks the diagnostic's activation, which coincides with the test accuracy flattening out.
+%  }
+%\label{fig:mnist_teststat}%\vspace{-0.1in}
+%\end{figure}
+The fact that SGDM using Alg.~\ref{alg:autoLR} is able to achieve competitive performance validates our convergence diagnostic. 
+As further evidence, Fig.~\ref{fig:mnist_ablation} plots the test statistic of the convergence diagnostic along with the test accuracy for SGDM on MNIST.
 The vertical line indicates the activation of the convergence diagnostic, when the test statistic becomes negative. 
 The diagnostic activates just as the test accuracy flattens out.
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{center}
-  \includegraphics[width=2.5in]{fig/RFig6_ablation.pdf}\hspace{-0.12in}
+\includegraphics[width=1.7in]{fig/RFig3_Stat.pdf}
+  \includegraphics[width=1.7in]{fig/RFig6_ablation.pdf}\hspace{-0.12in}
 \end{center}
 \vspace{-0.15in}
-  \caption{Test accuracy and convergence diagnostic test statistic on MNIST. The momentum reduction has been removed, and $\beta = 0.8$. The test accuracy has flattened out and SGDM has converged, but the diagnostic does not activate because the test statistic is perpetually positive.
+  \caption{Test accuracy and convergence diagnostic test statistic from Alg.~\ref{alg:diagnostic} on MNIST. 
+Left: With momentum reduction, the vertical line marks the diagnostic's activation, which coincides with the test accuracy flattening out.  
+Right: Without momentum reduction and $\beta = 0.8$, flat test accuracy and convergence of SGDM, no activation since the test is positive.
   }
 \label{fig:mnist_ablation}
 \end{figure}
 
-
-
 We conduct an ablation study to understand the negative effects of high momentum on our convergence diagnostic.
 Fig.~\ref{fig:mnist_ablation} plots the test accuracy and test statistic by removing the momentum reduction component of Alg.~\ref{alg:diagnostic} and using SGDM with high momentum $\beta = 0.8$ on MNIST. 
-SGDM has convergence because the test accuracy has plateaued, but the convergence diagnostic does not activate because its test statistic is perpetually positive.
+While the test accuracy has plateaued, the convergence diagnostic does not activate because its test statistic is perpetually positive.
+
 We plot the test statistic of Alg.~\ref{alg:diagnostic} in Fig.~\ref{fig:mnist_ablation2} with no momentum reduction and increasing momentum $\beta \in \{0.2, 0.4, 0.6, 0.8\}$.
 Momentum has a proportional relationship with the slope of the test statistic. 
 A positive slope indicates that the test statistic is not negative upon convergence, and thus the convergence diagnostic without the momentum reduction is ineffective for higher momentum $\beta \in\{ 0.6, 0.8\}$ on MNIST.
 
 
 
-\begin{figure}[h!]
+\begin{figure}[ht]
 \begin{center}
 \includegraphics[width=2.3in]{fig/RFig8_IPMom.pdf}
 \end{center}
@@ -758,20 +753,19 @@ A positive slope indicates that the test statistic is not negative upon converge
 \section{Conclusion}
 
 
-In this paper we focus on detecting the phase transition of SGDM (stochastic gradient descent with momentum) to the stationary phase.
-Inspiration is drawn from literature on stopping times in stochastic approximation. 
+In this paper we focus on detecting the transition phase of SGDM to the stationary phase, inspired by the stopping times techniques in stochastic approximation. 
 Momentum introduces challenges in the construction and operation of the test statistic for the convergence diagnostic.
-We present theory and experiments which support that high momentum alters the  trajectory of the stochastic gradients which the diagnostic monitors. In addition we show the dynamics of SGDM in stationarity are largely random with a sparse number of key iterates behaving in an informative way, which the diagnostic is able to capture.
+We present theory and experiments which support that high momentum alters the trajectory of the stochastic gradients which the diagnostic monitors. 
+In addition we show the dynamics of SGDM in stationarity are largely random with a sparse number of key iterates behaving in an informative way, captured by the diagnostic.
 The proposed automatic momentum reduction technique resolves the issues with high momentum. 
-Empirical results demonstrate that the diagnostic has few type I errors and a reasonably small number of type II errors, and thus reliably detects convergence to the stationary phase.
-We present an application to an automatic learning rate and show that it is robust to initial conditions.
+Empirical results demonstrate that the diagnostic has few type I errors and a reasonably small number of type II errors, and thus reliably detects the stationary phase.
+We present an application on automatic learning rate, robust to initial conditions.
+Future work include extensions to other stochastic gradient methods such as adaptive gradient or distributed methods such as ``local method''~\cite{Proc:Chen_FODS20} are  of great interest.
 
+\vspace{0.08in}
 
-
-Future work include extensions to other stochastic gradient methods such as adaptive gradient  or distributed methods such as ``local method''~\cite{Proc:Chen_FODS20} are  of great interest.\\
-
-
-\noindent {\bf Th proofs can be found in the technical report with the same title on \url{www.arxiv.org}, which will be submitted at the time we submit the paper to the conference.}
+\noindent {\bf Th proofs can be found in the technical report with the same title on \url{www.arxiv.org}.}
+%\noindent {\bf Th proofs can be found in the technical report with the same title on \url{www.arxiv.org}, which will be submitted at the time we submit the paper to the conference.}
 \bibliographystyle{plain}
 \bibliography{standard}
 
