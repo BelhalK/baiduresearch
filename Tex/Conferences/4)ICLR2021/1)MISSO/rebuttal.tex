@@ -193,20 +193,26 @@ Overall, I don't find the paper well-developed and doesn't meet the bar of a top
 The major flaw is that in each iteration, the algorithm requires us to find the minimizer of the updated total loss (Step 8 of algorithm 2). This step is computationally as expensive as the update step in a batched MM algorithm. For a stochastic-type algorithm, I would expect the update only finds the minimizer of the stochastically picked individual surrogate function.
 
 \textcolor{purple}{
-As the reviewer rightfully mentioned, the M-step (line 8 of Algorithm2) is as costly as the batch MM method. The advantage of our incremental method MISSO occurs in line 7 where only a mini batch of stochastic surrogate are updated (the majority remaining unchanged).
-Yet, if one considers the Variational Inference (we give page 4), the M-step is performed using stochastic VI (quadratic surrogates) and the final step yields a stochastic gradient update. Thus, the complexity is as of any stochastic method (i.e., independent of $n$, while requiring the storage of (n-1) gradients to compute the final drift term.
+As the reviewer rightfully mentioned, the M-step (line 8 of Algorithm 2) is as costly as the batch MM method. The advantage of our incremental method MISSO occurs in line 7 where only a mini batch of stochastic surrogates are updated (the majority remaining unchanged).
+Yet, if one considers the Variational Inference example (we give page 4), the M-step is performed using stochastic VI, via stochastic gradient updates due to the quadratic nature of the surrogates.
+Thus, the complexity of line 8 is similar to any stochastic method (i.e., independent of $n$, while requiring the storage of (n-1) gradients to compute the final drift term.
+Likewise for the stochastic EM example, where, since the complete log likelihood belongs to the curved exponential family, the opaque M-step (line 8) is expressed with respect to the sufficient statistics, see Section B.3 of the supplementary material. Hence, the M-step actually leverages the incremental characteristic of MISSO since the stochastic sufficient statistics used in the M-step are also incrementally updated.
+In short, line 7 of MISSO always displays the advantage of any stochastic method in terms of computation complexity. It is also the case for the maximization step in line 8 whenever the argmin operation can be explicit (either by a gradient update or by an explicit maximization function as in the EM example).
 }
 
 By minimizing a stochastically picked individual surrogate function, the convergence follows by existing literature on stochastic proximal gradient method, there Theorem 2 follows without much difficulty.
 
 \textcolor{purple}{
-While Theorem 2 is straightforward after establishing Theorem1, we must stress that without the latter, existing results on stochastic proximal gradient algorithms are not enough to prove such almost sure convergence. Indeed, we shall recall to the reviewers that our MISSO framework intends to be more general than stochastic gradient method as it also includes, among others, EM-like algorithms that can not always be casted as gradient methods.In 'Proximal-proximal-gradient method' by Ryu and Yin, the authors propose a general framework to unify proximal gradients algorithms and cast them as MM methods (for deterministic and convex objectives), yet the method uses stepsizes of order 1/L rather than n/L. Again, we believe that the study of proximal gradient in our settings is the object of another paper. }
+First of all, we emphasize that the stochasticity in our framework (and settings in general) is double. Not only is the individual surrogate function stochastically picked (as stated by the reviewer), but the latter is also approximated by Monte Carlo sampling. This double level of stochasticity makes existing theoretical convergence proofs impractical for our work. 
+While Theorem 2 is straightforward after establishing Theorem1, we must stress that without the latter, existing results on stochastic proximal gradient algorithms are not sufficient to prove such almost sure convergence. Indeed, we shall recall to the reviewers that our MISSO framework intends to be more general than stochastic gradient method as it also includes, among others, EM-like algorithms that can not always be casted as gradient methods.
+In 'Proximal-proximal-gradient method' by Ryu and Yin, the authors propose a general framework to unify proximal gradients algorithms and cast them as MM methods (for deterministic and convex objectives), yet the method uses stepsizes of order 1/L rather than n/L. 
+Hence, we believe that the study of proximal gradient methods in our settings constitutes materials for another research paper. }
 
 The convergence rate of the proposed method is not derived, which shouldn't be too difficult to derive.
 
 \textcolor{purple}{
-Theorem 1 is the non asymptotic convergence rate of our MISSO method.
-It gives a global, i.e. independent of the initialization of the algorithm, and non-asymptotic, i.e. true for any random termination number $K$, a rate on (1) how fast the gradient of the gap between the surrogate and the objective function decreases and (2) how fast the negative part of our stationary condition (equation (14)) goes to zero.We write explicitly that 'the MISSO method converges to a stationary point of (1) asymptotically and at a sublinear rate $\mathbb{E}[ g_-^{(K)} ] \leq {\cal O}( \sqrt{1 / K_{\sf max}} )$' (see page 6)
+Theorem 1 is the non asymptotic convergence rate of our MISSO method. It gives a global, i.e. independent of the initialization of the algorithm, and non-asymptotic, i.e. true for any random termination number $K$, a rate on (1) how fast the gradient of the gap between the surrogate and the objective function decreases and (2) how fast the negative part of our stationary condition (equation (14)) goes to zero.
+We explicitly write that 'the MISSO method converges to a stationary point of (1) asymptotically and at a sublinear rate $\mathbb{E}[ g_-^{(K)} ] \leq {\cal O}( \sqrt{1 / K_{\sf max}} )$' (see page 6). Hence, according to Theorem 1, MISSO requires $K = {\cal O} (n L/\epsilon)$ iterations to ensure $||g_-( \theta^{K} )|| < \epsilon$ (as a definition of $\epsilon$-stationarity in the context of constrained optimization).
 }
 
 
@@ -218,18 +224,24 @@ I am happy to see some attention put to the majorization-minimizations methods, 
 In this respect, the empirical study is crucial, however it is not completely convincing. Expressing figures 1 and 2 as a function of the number of epoch, rather than as an estimate of runtime is not meaningful: it discards the cost of running the inner loop, which varies from one approach to another. It would leed to believe that MISSO50 is the best option, which is probably not the case.
 
 \textcolor{purple}{
-The tested methods involve similar number of gradient computations per iteration (since reported every epoch), as such the wall clock time per iteration are comparable. In the revised paper, we will provide a comparison w.r.t.~the wallclock time.
+The tested methods involve similar number of gradient computations per iteration (since reported every epoch), as such the wall clock time per iteration are comparable.
 }
 
 
 Also, MC-ADAM seems to outperform MISSO for variational inference
 
 \textcolor{purple}{
-We must acknowledge that while our MISSO scheme does not beat  the SOTA (such as MC-ADAM) on every example, this paper proposes a simple yet general incremental optimization framework which encompasses several existing algorithms for large-scale data. We have tackled the challenging analysis for an algorithm with double stochasticity (index and latent variable sampling), which is not a minor contribution.
+We must acknowledge that while our MISSO scheme does not beat the SOTA (such as MC-ADAM) on every example, this paper proposes a simple yet general incremental optimization framework which encompasses several existing algorithms for large-scale data. 
+We have tackled the challenging analysis for an algorithm with double stochasticity (index and latent variable sampling), which is not a minor contribution.
 }
 
 
 With regards to the broader contribution, it is very appreciable to have a wider theory of stochastic optimization with MM methods. It would have been good, however, to have a discussion of the link of the contributed method to the follow up work by Mairal and colleagues, Stochastic Approximate MM (Mensch et al 2017).
+
+\textcolor{purple}{
+We believe the reviewer make a reference to 'Stochastic Subsampling for Factorizing Huge Matrices' by Mensch et. al. (https://arxiv.org/pdf/1701.05363.pdf). In this paper, the authors focus on the problem of matrix factorization for the purpose of dictionary learning. In the particular and challenging case of sparsity and high dimensional matrices (typical in fMRI data), the authors propose a stochastic MM scheme. The level of stochasticity occurs in the index sampling step (sampling subset of dimensions), see first step in Algorithm 3 in their paper, then compute the parameters of the surrogate function leveraging a deterministic (no added stochasticity in this step) Robbins-Monro type of update.
+Rather, in our work, two levels of stochasticity are at stake. The first one is similar as theirs, i.e. the sampling of individual indices, and the second one deals with the Monte Carlo approximation of the intractable surrogate functions (written in our illustrative examples as expectations). The theoretical and practical study of a doubly stochastic as MISSO constitute the main contributions of our paper compared to the mentioned reference, while sharing similar assumptions on the model such as smoothness and existence of directional derivative (see their assumptions (D) and (E).}
+
 
 
 \textbf{Reviewer 3 (7: good paper and 3/5 confidence):}
@@ -241,13 +253,14 @@ It gives a global, i.e. independent of the initialization of the algorithm, and 
 
 \textcolor{purple}{
 The research direction regarding second order surrogates is an interesting one.
-We can for instance think of using Newton-like updates by minimizing Hessian informed surrogates.
-In 'IQN: An incremental quasi-Newton method with local superlinear convergence rate.' by Mokhtari, Eisen, and Ribeiro, a BFGS like method using memory to reduce the variance of stochastic approximations is applied to the problem of stochastic optimization leveraging quasi-Newton functions. Their work is on (a) convex and strongly convex functions and (b) deterministic surrogates. The extension to nonconvex objective and stochastic (approximated by MC) is an interesting question.
+We can for instance think of using Newton-like updates by minimizing Hessian-informed surrogates.
+In 'IQN: An incremental quasi-Newton method with local superlinear convergence rate.' by Mokhtari, Eisen, and Ribeiro, a BFGS like method using memorized quantities to reduce the variance of stochastic approximations is applied to the problem of stochastic optimization leveraging quasi-Newton functions. Their work is on (a) convex and strongly convex functions and (b) deterministic surrogates. The extension to nonconvex objective and stochastic (approximated by MC) is an interesting question yet not trivial.
 }
 
 \textcolor{purple}{
 As for Reviewer 1: Theorem 1 is the non asymptotic convergence rate of our MISSO method.
-It gives a global, i.e. independent of the initialization of the algorithm, and non-asymptotic, i.e. true for any random termination number $K$, rate. As stated page 4 'the MISSO method converges to a stationary point of (1) asymptotically and at a sublinear rate $\mathbb{E}[ g_-^{(K)} ] \leq {\cal O}( \sqrt{1 / K_{\sf max}} )$'.
+It gives a global, i.e. independent of the initialization of the algorithm, and non-asymptotic, i.e. true for any random termination number $K$, rate. As stated page 4 'the MISSO method converges to a stationary point of (1) asymptotically and at a sublinear rate $\mathbb{E}[ g_-^{(K)} ] \leq {\cal O}( \sqrt{1 / K_{\sf max}} )$'. 
+Hence, according to Theorem 1, MISSO requires $K = {\cal O} (n L/\epsilon)$ iterations to ensure $||g_-( \theta^{K} )|| < \epsilon$ (as a definition of $\epsilon$-stationarity in the context of constrained optimization).
 }
 
 Strong Points. S1. The proposed method can be viewed as a combination of MM and stochastic gradient method with variance reduction, which explains its good performance. S2. The paper contains sufficient details of the choice of the surrogate function and all the compared methods in the experiments. S3. The authors establish asymptotic and non-asymptotic convergence of the proposed algorithm. I found the technical quality is very high. S4. Extensive experiments on binary logistic regression with missing values and Bayesian CNN have been conducted.
@@ -280,8 +293,8 @@ Provide additional feedback with the aim to improve the paper. Make it clear tha
 (i). The MISSO (and MISO) share a similar updating style with SAG, it will be better if the authors could add some discussion on their relation and difference. Or, if such discussion exists in other literature, add a reference to that.
 
 \textcolor{purple}{
-Indeed, the MISSO update, in the special case quadratic surrogates, yields to a gradient update very similar to the SAG [Le Roux, Schmidt, Bach, 2012] update. Yet, the authors would like to draw the attention on the first term of the update rather than the drift term. In our method, since the minimization occurs on the aggregate sum of the stochastic surrogates, a simple derivation of the minimization of quadratic functions gives this term as being equal to the mean of the past $n$ iterates. Whereas in SAG, as any variance reduction technique, the contribution is in the drift term (constructed through incremental update) leaving the first term unchanged vis-a-vis SGD as equal to the last iterate.
-Of course when the user designed stochastic functions are no longer quadratic, the parallel with any stochastic gradient methods is no longer available.
+Indeed, the MISSO update, in the special case of quadratic surrogates, yields to a gradient update very similar to the SAG [Le Roux, Schmidt, Bach, 2012] update. Yet, the authors would like to draw the attention on the first term of the update rather than the drift term. In our method, since the minimization occurs on the aggregate sum of the stochastic surrogates, a simple derivation of the minimization of quadratic functions gives this term as being equal to the mean of the past $n$ iterates (i.e. $1/n \sum_{i=1}^n \theta^{\tau_i^k}$). Whereas in SAG, as any variance reduction technique, the contribution is in the drift term (constructed through incremental update) leaving the first term unchanged vis-a-vis SGD as equal to the last iterate (i.e.  $\theta^{k-1}$).
+Of course when the user designed stochastic functions are no longer quadratic, the parallel with any stochastic gradient methods is no longer available making our framework more broad.
 }
 
 
@@ -289,6 +302,29 @@ Of course when the user designed stochastic functions are no longer quadratic, t
 
 
 
+\textcolor{purple}{
+We thank the reviewer for the valuable comment on sample complexity.
+We give below a clarification that we hope will bring a response to the reviewer.
+ }
+ 
+\textcolor{purple}{
+For starters, we first define what suboptimality condition we use in order to make a fair comparison with the proposed naive method.
+Let us fix that above condition as $||g_-( \theta^{K} )||^2$.
+Recall that in our case, the optimization is constrained, thus our objective function is not differentiable on the border of the constrained set $\Theta$. 
+Hence, the stationarity of the algorithm is characterized by the negative part of the directional derivative defined eq.(14). When $\Theta = \mathbb{R}^d$, $||g( \theta^{K} )||^2 = ||\nabla \mathcal{L}( \theta^{K} )||^2$ as typically found in unconstrained stochastic optimization literature.
+ }
+
+\textcolor{purple}{
+\textbf{Iteration Complexity:} Then, according to Theorem 1, MISSO requires $K = {\cal O} (n L/\epsilon)$ iterations to ensure $||g_-( \theta^{K} )|| < \epsilon$ ($\epsilon$-stationarity).
+Whereas, for the naive algorithm proposed by the reviewer, with batch setting it requires $K= L/\epsilon^{2}$ iterations to get $\epsilon$-stationarity.
+ }
+ 
+\textcolor{purple}{
+\textbf{Sample Complexity:} 
+ For the naive method, the sample complexity of $nL/\epsilon^4$ holds.
+ Yet, for MISSO, if we set $M_k = k^2/n^2$ such that $\Delta_{Kmax}$ is of order $\mathcal{O}(n*L)$, the sample complexity becomes $\sum_{k=0}^{nL/\epsilon} k^2/n^2 = (1/n^2)*(nL/\epsilon)^3 = nL^3 / \epsilon^3$.
+ In comparison with the proposed method ($nL/\epsilon^4$), we sacrifice $L^2$ to win an order of $\epsilon$.
+ }
 
 
 
