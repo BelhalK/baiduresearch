@@ -55,6 +55,8 @@
 \pgfplotsset{compat=1.3}
 \usepackage{subfig}
 \usepackage{mdframed}
+\usepackage{booktabs}
+\usepackage{siunitx}
 
 \newmdtheoremenv{theo}{Theorem}
 
@@ -209,7 +211,9 @@ To tackle the optimization problem \eqref{eq:opt}, a popular approach is to appl
 When the number of terms $n$ in \eqref{eq:opt} is large, the vanilla MM method may  be intractable because it requires to construct a surrogate function for all the $n$ terms ${\cal L}_i$ at each iteration. Here, a remedy is to apply the Minimization by Incremental Surrogate Optimization (MISO) method proposed by~\citet{mairal2015miso}, where the surrogate functions are updated incrementally. The MISO method can be interpreted as a combination of MM and ideas which have emerged for variance reduction in stochastic gradient methods~\citep{schmidt2017minimizing}.
 An extended analysis of MISO has been proposed in~\citep{qian2019miso}.
 
-The success of the MISO method rests upon the efficient minimization of surrogates such as convex functions, see~\citep[Section 2.3]{mairal2015miso}. In many applications of interest, the natural surrogate functions are intractable, yet they are defined as expectation of tractable functions. 
+The success of the MISO method rests upon the efficient minimization of surrogates such as convex functions, see~\citep[Section 2.3]{mairal2015miso}. 
+A notable application of MISO-like algorithms is described in \citep{mensch2017stochastic} where the authors builds upon the stochastic majorization-minimization framework of \cite{mairal2015miso} to introduce a method for sparse matrix factorization.
+Yet, in many applications of interest, the natural surrogate functions are intractable, yet they are defined as expectation of tractable functions. 
 For instance, this is the case for inference in latent variable models via maximum likelihood~\citep{mcLachlan2008em}. Another application is variational inference~\citep{ghahramani2015probabilistic}, in which  the goal is to approximate the posterior distribution of parameters given the observations;  see for example~\citep{neal2012bayesian,blundell2015weight,polson2017deep,rezende2014stochastic, li2017dropout}.
 
 
@@ -262,11 +266,10 @@ For any $\op_i \in \Param$, $i \in \inter$ and some $\epsilon > 0$, the differen
 \eeq
 \end{assumption}
 %We remark that H\ref{ass:sur} is a common condition used for surrogate functions, see~\citep[Section 2.3]{mairal2015miso}.
-%Note that by~\citep[Proposition 1]{razaviyayn2013unified},
 
 
 \begin{wrapfigure}[15]{r}{0.49\textwidth}
-\begin{minipage}{0.49\textwidth}\vspace{-0.12in}
+\begin{minipage}{0.49\textwidth}\vspace{-0.32in}
 \begin{algorithm}[H]
 \algsetup{indent=0.2em}
 \begin{algorithmic}[1]
@@ -482,6 +485,7 @@ To facilitate our analysis, we define $\tau_i^k$ as the iteration index where th
 \eSur{k}{\param} \eqdef \Sur{k}{\param}- {\cal L} ( \param ),~~~ \overline{M}_{(k)}\eqdef \sum_{k=0}^{K_{\sf max}-1} \Bsize{k}^{-1/2}\eqsp.
 \eeq
 We first establish a non-asymptotic convergence rate for the MISSO method:
+\vspace{0.05in}
 \begin{theo} \label{thm:main}
 Under H\ref{ass:sur}-H\ref{controlapprox}. For any $K_{\sf max} \in \NN$, let $K$ be an independent discrete r.v.~drawn uniformly from $\{0,...,K_{\sf max}-1\}$ and define the following quantity:
 \beq\notag
@@ -492,7 +496,17 @@ Then we have following non-asymptotic bounds:
  \EE \big[ \| \grd \eSur{K}{\hp{K}} \|^2 \big]  \leq \frac{\Delta_{( K_{\sf max} )}}{K_{\sf max}} \quad \textrm{and} \quad \EE[ g_-( \hp{K} ) ]  \leq \sqrt{\frac{ \Delta_{( K_{\sf max} )} }{ K_{\sf max} }} + \frac{C_{\sf gr}}{K_{\sf max}}  \overline{M}_{(k)} \eqsp.
 \end{align}
 \end{theo}
-Note that $\Delta_{( K_{\sf max} )}$ is finite for any $K_{\sf max} \in \NN$. As expected, the MISSO method converges to a stationary point of \eqref{eq:opt} asymptotically and at a sublinear rate $\EE[ g_-^{(K)} ] \leq {\cal O}( \sqrt{1 / K_{\sf max}} )$.
+\vspace{0.05in}
+Note that $\Delta_{( K_{\sf max} )}$ is finite for any $K_{\sf max} \in \NN$. 
+
+\textbf{Iteration Complexity of MISSO.}
+As expected, the MISSO method converges to a stationary point of \eqref{eq:opt} asymptotically and at a sublinear rate $\EE[ g_-^{(K)} ] \leq {\cal O}( \sqrt{\Delta_{( K_{\sf max} )}/ K_{\sf max}} )$. In other terms, MISSO requires ${\cal O} (nL/\epsilon)$ iterations to reach an $\epsilon$-stationary point when the suboptimality condition, that characterizes stationarity, is $ \EE \big[\| g_-( \hp{K} ) \|^2 \big] $.
+Note that this stationarity criterion are similar to the usual quantity used in stochastic nonconvex optimization, \ie $\EE \big[ \| \grd {\cal L}(\hp{K}) \|^2 \big] $.
+In fact, when the optimization problem \eqref{eq:opt} is unconstrained, \ie $\Param = \rset^p$, then $ \EE \big[ g( \hp{K} ) \big] = \EE \big[ \grd {\cal L}(\hp{K}) \big]$.
+
+\textbf{Sample Complexity of MISSO.}
+Regarding the sample complexity of our method, setting $\Bsize{k} = k^2/n^2$, as a non-decreasing sequence of integers satisfying $\sum_{k=0}^{\infty}{\Bsize{k}^{-1/2}} < \infty$, in order to keep $\Delta_{( K_{\sf max} )} \asymp nL$, then the MISSO method requires $\sum_{k=0}^{nL/\epsilon} k^2/n^2 = nL^3 / \epsilon^3$ samples to reach an $\epsilon$-stationary point. 
+
 Furthermore,we remark that the MISO method can be analyzed in \Cref{thm:main} as a special case of the MISSO method satisfying $C_{\sf r} = C_{\sf gr} = 0$. In this case, while the asymptotic convergence is well known from~\citep{mairal2015miso} [cf.~H\ref{controlapprox}], Eq.~\eqref{eq:misso_rate} gives a non-asymptotic rate of $\EE[ g_-^{(K)} ] \leq  {\cal O}( \sqrt{n L / K_{\sf max}} )$ which is new to our best knowledge.
 Next, we show that under an additional assumption on the sequence of batch size $\Bsize{k}$, the MISSO method converges almost surely to a stationary point:
 \begin{theo} \label{thm:mainasymp}
@@ -551,6 +565,8 @@ We compare in Figure~\ref{fig:misso_trauma} the convergence behavior of the esti
 For the MISSO method, we set the batch size to $\Bsize{k} = 10 + k^2$ and we examine with selecting different number of functions in Line~\ref{line:unif} in the method -- the default settings with 1 (MISSO), $10\%$ (MISSO10) and $50\%$ (MISSO50) minibatches per iteration.
 From Figure~\ref{fig:misso_trauma}, the MISSO method converges to a static value with less number of epochs than the MCEM, SAEM methods.
 It is worth noting that the difference among the MISSO runs for different number of selected functions demonstrates a variance-cost tradeoff.
+Though wall clock times are similar for all methods, they are reported in the appendix for completeness.
+
 
 \vspace{-0.05in}
 \subsection{Training Bayesian CNN using MISSO}
@@ -560,7 +576,8 @@ This application follows \textbf{Example 2} described in Section~\ref{sec:framew
 At iteration $k$, minimizing the sum of stochastic surrogates defined as in \eqref{eq:ssur} and \eqref{pairvi} yields the following MISSO update --- {\sf step (i)} pick a function index $i_k$ uniformly on $\inter[n]$; {\sf step (ii)} sample a Monte Carlo batch $ \{ z_{m}^{(k)} \}_{m=1}^{\Bsize{k}}$ from ${\cal N}(0,\Id)$; and {\sf step (iii)}  update the parameters, with $\tilde{w} = t(\hp{k-1},z_m^{(k)})$, as
 \beq\notag
 \begin{split}
-\mu_\ell^{(k)} = \hat{\mu}_\ell^{(\tau^{k})} -  \frac{\gamma}{n}\sum_{i=1}^{n}{\hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} } \quad \textrm{and} \quad  \hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i_k} =
+& \mu_\ell^{(k)} = \hat{\mu}_\ell^{(\tau^{k})} -  \frac{\gamma}{n}\sum_{i=1}^{n}{\hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i} }\eqsp,\\
+& \hat{{\bm{\delta}}}^{(k)}_{\mu_\ell,i_k} =
   - \frac{1}{\Bsize{k}}\sum_{m=1}^{\Bsize{k}} \nabla_{w} \log p(y_{i_k} | x_{i_k}, \tilde{w})  + \nabla_{\mu_\ell}  d(\hp{k-1})\eqsp,
 \end{split}
 \eeq
@@ -581,20 +598,24 @@ As in the previous example, the weights are assumed  independent and identically
 Standard hyperparameters values found in the literature, such as the annealing constant or the number of MC samples, were used for the benchmark methods. 
 For efficiency purpose and lower variance, the Flipout estimator~\citep{wen2018flipout} is used.
 
-\textbf{Experiment Results:}
-We compare the convergence of the \textit{Monte Carlo variants} of the following state of the art optimization algorithms --- the ADAM~\citep{kingma:adam}, the Momentum~\citep{sutskever2013importance} and the SAG~\citep{schmidt2017minimizing} methods versus the \textit{Bayes by Backprop} (BBB)~\citep{blundell2015weight} and our proposed MISSO method.
-For all these methods, the loss function \eqref{eq:variationalobjective} and its gradients were computed by Monte Carlo integration based on the re-parametrization described above.
-The mini-batch of indices and MC samples are respectively set to $128$ and $\Bsize{k} = k$. The learning rates are set to $10^{-3}$ for LeNet-5 and $10^{-4}$ for Resnet-18. \vspace{-.2cm}
-\vspace{-.3cm}
-\begin{figure}[H]
+%\vspace{-.3cm}
+\begin{figure}[t]
     \centering
     \subfloat[LeNet-5 on MNIST]{{\includegraphics[width=2.71in]{pic_paper/small_lenet.png} }}%
     \subfloat[ResNet-18 on CIFAR-10]{{\includegraphics[width=2.71in]{pic_paper/small_resnet.png} }}%
   \caption{Negated ELBO versus epochs elapsed for fitting (a) Bayesian LeNet-5 on MNIST and (b) Bayesian ResNet-18 on CIFAR-10. The solid curve is obtained from averaging over 5 independent runs of the methods, and the shaded area represents the standard deviation.}\label{fig:lenetopt}
 \end{figure}
-\vspace{-.4cm}
+%\vspace{-.4cm}
+
+
+\textbf{Experiment Results:}
+We compare the convergence of the \textit{Monte Carlo variants} of the following state of the art optimization algorithms --- the ADAM~\citep{kingma:adam}, the Momentum~\citep{sutskever2013importance} and the SAG~\citep{schmidt2017minimizing} methods versus the \textit{Bayes by Backprop} (BBB)~\citep{blundell2015weight} and our proposed MISSO method.
+For all these methods, the loss function \eqref{eq:variationalobjective} and its gradients were computed by Monte Carlo integration based on the re-parametrization described above.
+The mini-batch of indices and MC samples are respectively set to $128$ and $\Bsize{k} = k$. The learning rates are set to $10^{-3}$ for LeNet-5 and $10^{-4}$ for Resnet-18. 
+
 Figure~\ref{fig:lenetopt}(a) shows the convergence of the negated evidence lower bound against the number of passes over data (one pass represents an epoch). As observed, the proposed MISSO method outperforms \textit{Bayes by Backprop} and Momentum, while similar convergence rates are observed with the MISSO, ADAM and SAG methods for our experiment on MNIST dataset using a Bayesian variant of LeNet-5. 
 On the other hand, the experiment conducted on CIFAR-10 (Figure~\ref{fig:lenetopt}(b)) using a much larger network, \ie a Bayesian variant of ResNet-18 showcases the need of a well-tuned adaptive methods to reach lower training loss (and also faster). Our MISSO method is similar to the Monte Carlo variant of ADAM but slower than Adagrad optimizer. Recall that the purpose of this paper is to provide a common class of optimizers, such as VI, in order to study their convergence behaviors, and not to introduce a novel method outperforming the baselines methods.
+We report wall clock times for all methods in the appendix for completeness.
 
 \vspace{-0.1in}
 \section{Conclusion}
@@ -844,7 +865,7 @@ We proceed from \eqref{eq:firsteq} by re-arranging terms and observing that
 \beq\notag
 \begin{split}
  \Sur{k+1}{\hp{k+1}} & \leq \Sur{k}{\hp{k}} - {\textstyle \frac{1}{n}} \big( \sur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}} - \sur{i_k}{\hp{k}}{\hp{k}} \big)  \\
-& - \big( \sumSur{k+1}{\hp{k+1}} - \Sur{k+1}{\hp{k+1}} \big) + \big( \sumSur{k}{\hp{k}} - \Sur{k}{\hp{k}} \big) \\
+& {-} \big( \sumSur{k+1}{\hp{k+1}} - \Sur{k+1}{\hp{k+1}} \big) + \big( \sumSur{k}{\hp{k}} - \Sur{k}{\hp{k}} \big) \\
 & + {\textstyle \frac{1}{n}} \big(
 \ssur{i_k}{\hp{k}}{\hp{k}}{ \{ z_{i_k,m}^{(k)} \}_{m=1}^{\Bsize{k}} } - \sur{i_k}{\hp{k}}{\hp{k}} \big) \\
 & + {\textstyle \frac{1}{n}} \big( \sur{i_k}{\hp{k}}{\hp{\tau_{i_k}^k}}
@@ -1033,8 +1054,8 @@ We adapt it to our missing covariates problem and decompose the term depending o
 \beq \label{eq:surrogatedet}
 \begin{split}
 & \sur{i}{\param}{\op} \\
-=& - \int_{\Zset} \log f_i(z_{i,\mis},z_{i,\obs},\param) \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_{i,\mis} )\\
-=& - \int_{\Zset} \log \left[ p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) p_i(z_{i,\mis},\beta, \Omega)\right] \!~ p_i( z_i, \op ) \mu_i (\dz_{i,\mis})\\
+=& {-} \int_{\Zset} \log f_i(z_{i,\mis},z_{i,\obs},\param) \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_{i,\mis} )\\
+=& {-} \int_{\Zset} \log \left[ p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) p_i(z_{i,\mis},\beta, \Omega)\right] \!~ p_i( z_i, \op ) \mu_i (\dz_{i,\mis})\\
 =& \underbrace{ - \int_{\Zset} \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) \!~ p_i( z_i, \op ) \mu_i ( \dz_{i,\mis} )}_{ =\hat{\mathcal{L}}^{(1)}_i(\delta,\op)} \underbrace{  - \int_{\Zset} \log p_i(z_{i,\mis},\beta, \Omega) \!~ p_i( z_i, \op ) \mu_i ( \dz_{i,\mis} )}_{ =\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)} .
 \end{split}
 \eeq
@@ -1044,8 +1065,8 @@ The mean $\beta$ and the covariance $\Omega$ of the latent structure can be esti
 We thus keep the surrogate  $\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)$ as it is, and consider the following quadratic approximation of $\hat{\mathcal{L}}^{(1)}_i(\delta,\op)$ to estimate the vector of logistic parameters $\delta$:
 \beq\notag
 \begin{split}
- \hat{\mathcal{L}}^{(1)}_i(\bar{\delta},\op) & - \int_{\Zset} \nabla \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta)\big|_{\delta = \bar{\delta}} \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_{i,\mis}) (\delta- \bar{\delta}) \\
-& -  (\delta- \bar{\delta})/2 \int_{\Zset} \nabla^2 \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) \!~ p_i( z_{i,\mis}, \op ) \!~ p_i( z_{i,\mis}, \op ) \mu_i (\dz_{i,\mis}) (\delta- \bar{\delta})^\top .
+ \hat{\mathcal{L}}^{(1)}_i(\bar{\delta},\op) & {-} \int_{\Zset} \nabla \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta)\big|_{\delta = \bar{\delta}} \!~ p_i( z_{i,\mis}, \op ) \mu_i ( \dz_{i,\mis}) (\delta- \bar{\delta}) \\
+& {-}  (\delta- \bar{\delta})/2 \int_{\Zset} \nabla^2 \log p_i(y_i|z_{i,\mis},z_{i,\obs},\delta) \!~ p_i( z_{i,\mis}, \op ) \!~ p_i( z_{i,\mis}, \op ) \mu_i (\dz_{i,\mis}) (\delta- \bar{\delta})^\top .
 \end{split}
 \eeq
 Recall that:
@@ -1115,6 +1136,35 @@ At the $k$-th iteration, and after the initialization, for all $i \in \inter[n]$
 where $z_{i,m}^{(k)} = (z_{i,\mis,m}^{(k)},z_{i,\obs})$ is composed of a simulated and an observed part,  $\tilde{D}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{D}_i^{(\tau_i^k)}$, $\tilde{H}^{(k)} =\frac{1}{n}\sum_{i=1}^{n}  \tilde{H}_i^{(\tau_i^k)}$ and $w_{i,m}^{(k)} = z_{i,m}^{(k)}(z_{i,m}^{(k)})^\top  -  {\bm \beta}^{(k)} ({\bm \beta}^{(k)})^\top $.
 Besides, $\tilde{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ and $\tilde{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op, \{z_m\}_{m=1}^M)$ are defined as MC approximation of $\hat{\mathcal{L}}^{(1)}_i(\beta, \Omega,\op)$ and $\hat{\mathcal{L}}^{(2)}_i(\beta, \Omega,\op)$, for all $i \in \inter[n]$ as components of the surrogate function \eqref{eq:surrogatedet}.
 
+
+ \subsection{Wall clock time}
+
+We provide Table~\ref{tab:tablelogisitc}, the running time for each method, plotted in Figure~\ref{fig:misso_trauma}, employed to train a logistic regression with missing values on the TraumaBase dataset ($p = 16$ influential quantitative measurements, on $n = 6384$ patients).
+
+The running times are sensibly the same since for each method the computation complexity per epoch is similar.
+We remark a slight delay using the MISSO method with a batch size of $1$, as our code implemented in R, is not totally optimized and parallelized.
+Yet, when the batch size tends to $100\%$, we retrieve the duration of MCEM, which is consistent with the fact that MISSO with a full batch update boils down to the MCEM algorithm.
+
+\begin{table}[H]
+\begin{center}
+\caption{Logistic Regression with missing values: running time in seconds for $10$ epochs.}
+\begin{tabular}{SSSSSS} \toprule
+ & {SAEM} & {MCEM} & {MISSO} & {MISSO10} & {MISSO50} \\ \midrule
+{Logistic Regression}  & {$2033.2$} & {$1972.4$} & {$2244.8$} & {$2139.4$} & {$2005.2$}  \\ \bottomrule
+\end{tabular}
+\label{tab:tablelogisitc}
+\end{center}
+\end{table}
+
+We plot Figure~\ref{fig:misso_trauma_wallclock}, the updated parameters for the Logistic regression example against the time elapsed (in seconds).
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{pic_paper/traumabasenoexp_wallclock.png}\vspace{-.2cm}
+\caption{Convergence of parameters ${\bm \delta}$ and ${\bm \beta}$ for the SAEM, the MCEM and the MISSO methods. The convergence is plotted against time elapsed (in seconds).}\vspace{-.2cm}
+\label{fig:misso_trauma_wallclock}
+\end{figure}
+
+
 \vspace{0.2in}
 
  \section{Practical Details for the Incremental Variational Inference}\label{appendix:vimisso}
@@ -1178,7 +1228,10 @@ We describe in Table~\ref{table:resnet} the architecture of the Resnet-18 we tra
 \end{table}
 
 
- 
+
+
+
+
  \subsection{Algorithms updates}\label{bnn:updates}
 First, we initialize the means $\mu_\ell^{(0)}$ for $\ell \in \inter[d]$ and variance estimates $\sigma^{(0)}$.
 At iteration $k$, minimizing the sum of stochastic surrogates defined as in \eqref{eq:ssur} and \eqref{pairvi} yields the following MISSO update --- {\sf step (i)} pick a function index $i_k$ uniformly on $\inter[n]$; {\sf step (ii)} sample a Monte Carlo batch $ \{ z_{m}^{(k)} \}_{m=1}^{\Bsize{k}}$ from ${\cal N}(0,\Id)$; and {\sf step (iii)}  update the parameters as
@@ -1257,6 +1310,32 @@ and
 The hyperparameters are set as follows:  $\gamma=10^{-3}, \rho_1=0.9, \rho_2=0.999, \epsilon=10^{-8}$.
 %\linespread{1.1}
 %\normalsize
+
+
+
+ 
+ \subsection{Wall clock time}
+We provide Table~\ref{tab:tablebnn}, the running time for each method, plotted in Figure~\ref{fig:lenetopt}, used to train a Bayesian variant of LeNet-5 on MNIST.
+The incremental method as MISSO and MC-SAG displays a similar wall clock time, despite being a bit worse given (a) the initialization that requires to compute a vector of $n$ gradients kept in memory and updated through the iterations and (b) the average operation for each parameters update to compute the aggregated drift term, see \eqref{eq:missoupdate}.
+ 
+\begin{table}[H]
+\begin{center}
+\caption{Bayesian Deep Neural Network: running time in seconds for $100$ epochs.}
+\begin{tabular}{SSSSSS} \toprule
+ & {MC-Adam} & {MC-Momentum} & {BBB} & {MC-SAG} & {MISSO} \\ \midrule
+{LeNet-5 on MNIST}  & {12889} & {12816} & {12690} & {13822} & {13367}  \\ \bottomrule
+\end{tabular}
+\label{tab:tablebnn}
+\end{center}
+\end{table}
+
+We plot Figure~\ref{fig:lenetopt_wallclock}, the learning curves for the MNIST example against the time elapsed (in seconds).
+\begin{figure}[H]
+    \centering
+    \subfloat[LeNet-5 on MNIST]{{\includegraphics[width=3.31in]{pic_paper/lenet_vs_wallclock.png} }}%
+%    \subfloat[ResNet-18 on CIFAR-10]{{\includegraphics[width=2.71in]{pic_paper/small_resnet.png} }}%
+  \caption{Negated ELBO versus wall clock time for fitting a Bayesian LeNet-5 on MNIST. Plotted on the average of the 5 repetitions.}\label{fig:lenetopt_wallclock}
+\end{figure}
 
 
 
