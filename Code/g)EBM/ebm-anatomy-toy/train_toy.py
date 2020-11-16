@@ -219,8 +219,8 @@ print('==> Training has started.')
 x_kde = sample_s_t_kde(batch_size=config['batch_size_kde'], update_s_t_0=False)[0]
 for i in range(config['num_train_iters']):
     # obtain positive and negative samples
-    x_q = sample_q() #positive samples
-    x_s_t, r_s_t = sample_s_t(batch_size=config['batch_size']) #negative samples
+    x_q = sample_q() #positive samples (data)
+    x_s_t, r_s_t = sample_s_t(batch_size=config['batch_size']) #negative samples (langevin)
 
     # calculate ML computational loss d_s_t (Section 3) for data and shortrun samples
     d_s_t = f(x_q).mean() - f(x_s_t).mean()

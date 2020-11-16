@@ -169,12 +169,12 @@ def sample_s_t(L, init_type, update_s_t_0=True):
         elif mcmcmethod == "anilangevin":
             # Langevin with Anisotropic stepsize and noise covariance
             f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
+            normofgrad = t.norm(t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0], dim=1)
 
             th = anith #threshold value
-            normofgrad = t.norm(t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0], dim=1)
+            th = 0.0003
             thtensor = t.Tensor(np.repeat(th, normofgrad.numel())).reshape(normofgrad.shape) #threshold Tensor
-            
-            # pdb.set_trace()
+            pdb.set_trace()
             stepsize = thtensor.to(device)/t.max(thtensor.to(device), normofgrad)
             stepsize = stepsize.repeat(3,1,1,1).reshape(f_prime.shape)
             

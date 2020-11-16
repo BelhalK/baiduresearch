@@ -9,11 +9,9 @@ mkdir local_data
 /opt/conda/envs/py36/bin/pip install matplotlib
 /opt/conda/envs/py36/bin/pip install scipy
 
-/opt/conda/envs/py36/bin/python -u train_data.py --th 0.0001 --eps 0.01 --mcmcmethod anilangevin > log_ani.txt
-/opt/conda/envs/py36/bin/python -u train_data.py --th 0.0001 --eps 0.1 --mcmcmethod anilangevin > log_ani.txt
+/opt/conda/envs/py36/bin/python -u train_data.py --th 0.0002 --eps 0.01 --mcmcmethod anilangevin > log_ani.txt
+/opt/conda/envs/py36/bin/python -u train_data.py --th 0.0003 --eps 0.01 --mcmcmethod anilangevin > log_ani.txt
 
-/opt/conda/envs/py36/bin/python -u train_data.py --eps 0.01 --mcmcmethod langevin > log_langevin.txt
-/opt/conda/envs/py36/bin/python -u train_data.py --eps 0.05 --mcmcmethod langevin > log_langevin.txt
 
 
 tar -czvf out_data.tar.gz out_data/

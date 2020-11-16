@@ -5,7 +5,16 @@ import torchvision as tv
 import torchvision.transforms as tr
 
 import numpy as np
-# import pdb
+import argparse
+import os
+import pdb
+
+parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
+parser.add_argument('--th', '--thresh', default=0.0001, type=float,
+                    metavar='TH', help='threshold')
+parser.add_argument('--eps', '--epsilon', default=0.01, type=float,
+                    metavar='EP', help='epsilon')
+args = parser.parse_args()
 
 seed = 1
 im_sz = 32
@@ -70,25 +79,25 @@ def sample_q(K=K):
 
 
 #New MCMC method
-def sample_q_new(K=K):
+def sample_q_new(args,K=K):
     x_k=t.autograd.Variable(sample_p_0(),requires_grad=True)
     for k in range(K):
         #Anisotropic stepsize
         f_prime=t.autograd.grad(f(x_k).sum(),[x_k],retain_graph=True)[0]
 
         #curvature informed stepsize (matrix)
-        th = 0.0001 #threshold value
+        th = args.th #threshold value
         normofgrad = t.norm(f_prime, dim=1)
-        # pdb.set_trace()
         thtensor = t.Tensor(np.repeat(th, 64*32*32)).reshape(normofgrad.shape) #threshold Tensor
         
-        stepsize = thtensor/t.max(thtensor, normofgrad)
-        # print(normofgrad)
+        
+        stepsize = thtensor.to(device)/t.max(thtensor.to(device), normofgrad)
+        # pdb.set_trace()
         stepsize = stepsize.repeat(1,3,1).reshape(f_prime.shape)
 
         #proposal
-        epsilon = 1e-2
-        x_k.data += t.mul(stepsize, f_prime) + t.mul(stepsize, epsilon*t.randn_like(x_k) )
+        epsilon = args.eps
+        x_k.data += t.mul(stepsize.to(device), f_prime) + t.mul(stepsize.to(device), epsilon*t.randn_like(x_k) )
         # x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
 
     return x_k.detach()
@@ -100,12 +109,21 @@ print("==> Chosing Optimizer...")
 optim=t.optim.Adam(f.parameters(),lr=1e-4,betas=[.9,.999])
 
 print("==> Start Training...")
+
+checkdir = f'./alloutputs/anila_eps{args.eps}_th{args.th}/'
+
+if os.path.exists(checkdir):
+    pass
+else:
+    os.makedirs(checkdir)
+
+
 for i in range(n_i) :
     #sample from data distribution and EBM (Langevin)
     # x_p_d,x_q=sample_p_d(),sample_q()
 
     ### NEW sampling method
-    x_p_d,x_q=sample_p_d(),sample_q_new()
+    x_p_d,x_q=sample_p_d(),sample_q_new(args,K)
     
     #log likelihood (to maximize) and before taking gradient
     #mean() to average over all samples
@@ -114,10 +132,10 @@ for i in range(n_i) :
     #-L to minimize (SGD step)
     (-L).backward()
     optim.step()
-    if i%100 == 0:
+    if i%5000 == 0:
         print("==> Checkpoint")
         print('{:>6d}f(x_p_d)={:>14.9f}f(x_q)={:>14.9f}'.format(i,f(x_p_d).mean(),f(x_q).mean()))
-        plot('anila_x_q_{:>06d}.png'.format(i),x_q)
+        plot(checkdir+'anila_x_q_{:>06d}.png'.format(i),x_q)
 
 print("==> Task is Finished...")
 

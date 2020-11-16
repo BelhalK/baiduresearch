@@ -107,5 +107,5 @@ for i in range(n_i) :
         print('{:>6d}f(x_p_d)={:>14.9f}f(x_q)={:>14.9f}'.format(i,f(x_p_d).mean(),f(x_q).mean()))
         plot('x_q_{:>06d}.png'.format(i),x_q)
 
-print("==> Generation is Finished...")
+print("==> Task is Finished...")
 
