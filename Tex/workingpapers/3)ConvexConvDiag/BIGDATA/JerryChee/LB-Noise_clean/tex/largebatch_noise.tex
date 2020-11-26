@@ -1,0 +1,443 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2019_conference,times}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+\graphicspath{ {figures/} }
+
+\title{Even Larger Batch Size with \\Additive Gradient Noise}
+
+% Authors must not appear in the submitted version. They should be hidden
+% as long as the \iclrfinalcopy macro remains commented out below.
+% Non-anonymous submissions will be rejected without review.
+
+\author{Jerry Chee \& Ping Li \thanks{ Use footnote for providing further information
+about author (webpage, alternative address)---\emph{not} for acknowledging
+funding agencies.  Funding acknowledgements go at the end of the paper.} \\
+Cognitive Computing Lab\\
+Baidu USA\\
+Bellevue, WA 98004, USA \\
+\texttt{Jerry9567@gmail.com}, \texttt{liping11@baidu.com} \\
+}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to \LaTeX{} to determine where to break
+% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
+% puts 3 of 4 authors names on the first line, and the last on the second
+% line, try using \AND instead of \And before the third author name.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+%\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+Learning rate scaling rules have shown to be effective in allowing stochastic gradient descent with large batch sizes to attain good generalization performance.
+However there is still a maximum batch size with which these scaling rules is effective. 
+We add mean-zero noise to the gradient, and demonstrate that good generalization performance can be achieved with even larger batch sizes than previously thought. 
+Adding artificial noise to the gradient allows us to tune the signal-to-noise ratio of the stochastic gradients more precisely than with the learning rate.
+We demonstrate on several benchmark data sets that adding noise to the gradient significantly improves the performance on test for comparable to the training set size. 
+Our results indicate that there is still room for training speedup through large batch parallel implementations.% on single-machine multiple-gpu setups. 
+We take the large batch training to its logical extreme by performing full-batch gradient descent with added noise, effectively simulating stochastic gradient descent (SGD).
+We are still able to achieve good performance on test with this simulated SGD.
+\end{abstract}
+
+\section{Introduction}
+Stochastic gradient descent (SGD) is the dominant optimization algorithm in deep learning.
+It was originally developed in a serial setting, however there has been much recent interest in adapting SGD to a parallel setting due to increasing data set sizes or a desire for faster training times.
+One way to parallelize SGD is by sharing the computation of the mini-batch gradient across many workers.
+To effectively utilize the parallel resources, the batch size must be significantly increased.
+This has been dubbed Large Batch SGD in the literature, where the batch size is significantly larger than what would be normally used.
+
+However an increase in batch size has been shown to lead to a decrease in test accuracy (Keskar et al 2016, Goyal et al 2017).
+This behavior can be understood by interpreting SGD as a stochastic differential equation (Smith \& Le 2017). 
+There is a noise scale $g = \epsilon ( \frac{N}{B} - 1 )$ where $\epsilon$ is the learning rate, $N$ the training set size, and $B$ the batch size.
+There is an optimal noise scale $g$ which maximizes the test accuracy (with a constant learning rate).
+When $B \ll N$ we can approximate $g \approx \epsilon N / B$.
+This insight has motivated learning rate scaling rules, the main tool which have allowed Large Batch SGD to attain good performance on test (Smith et al 2018, Goyal et al 2017, Hoffer et al 2017, You et al 2017).
+Increasing the batch size decreases the noise scale $g$.
+Thus to maintain the optimal noise scale the learning rate is proportionally increased.
+There are several proposed scaling rules: linear, square root, log.
+
+While the learning rate scaling has had much success, there is still a limit to how much the batch size can be increased.
+For example, it is common to use a batch size $B = 64$ while training MNIST which has training set size $N = 60k$.
+Let $\epsilon$ be the tuned learning rate.
+If we calculate the noise scale, $g_{64} = 937 \epsilon$.
+But if we want to increase the batch size to $B = 30k$, using the same $\epsilon$ the noise scale becomes $g_{30k} = \epsilon$.
+If we want to maintain the noise scale, we would need to increasing the learning rate by almost $1,000$ times!
+From this simple example it is clear that simple scaling the learning rate will not work for significantly large batch sizes. 
+One could ask: is it even possible to attain good generalization performance when using batch size approximately half of the training set?
+
+Adding artificial noise to the stochastic gradients has long history in SGD.
+Stochastic gradient langevin dynamics have been used for bayesian learning (Welling \& Teh 2011).
+The noisy SGD algorithm uses uniform noise to escape saddle points (Ge et al 2015).
+Added gradient noise has been shown to improve the training for very deep networks (Neelakantan et al 2016).
+We add artificial noise to the stochastic gradients to improve deep learning training on large batch sizes. 
+Let $g_t$ be the stochastic gradient at time step $t$.
+We assume that we can decompose $g_t = f_t + e_t$ into the true gradient $f_t$ and the stochastic noise $e_t$.
+By scaling the learning rate $\epsilon g_t = \epsilon ( f_t + e_t )$, both the true gradient and stochastic noise are increased.
+With high learning rate $\epsilon$ this can cause divergence issues the true gradient will be scaled too greatly.
+Let $\sigma_t \sim N ( 0, 1 )$ be a source of artificial gaussian noise.
+If we instead add scaled artificial noise
+\begin{equation*}
+g_t = f_t + e_t + \alpha_t \sigma_t
+\end{equation*}
+we can control the noise scale \emph{independently} of the scaling on the true gradient.
+With the artificial noise we can also encourage 
+Here we show,
+\begin{itemize}
+\item Adding mean-zero noise to the gradient significantly increases the generalization performance for Large Batch SGD.
+We conduct experiments on MNIST and CIFAR10, and show an increase of up to 10\% in test accuracy and batch size up to half of the training set size.
+\item Adding mean-zero noise to the gradient significantly stabilizes the training of Large Batch SGD.
+The test set accuracy oscillates significantly at large batch sizes for high enough values of the learning rate.
+We show that by adding gradient noise removes essentially all oscillation in the training curves.
+\end{itemize}
+To the best of our knowledge, this paper is the first which combines artificial gradient noise and Large Batch SGD.
+
+\section{Method}
+We adapt the additive noise procedure from Neelakantan et al (2016).
+We add standard normal artificial noise $\sigma_t \sim N (0 , 1)$ that is scaled by a time-dependent constant,
+\begin{equation}
+\label{eq:artificial_noise}
+g_t \gets g_t +  \alpha_t \sigma_t.
+\end{equation}
+In our experiments using a decaying constant worked better than using a fixed Gaussian noise.
+The decay schedule of $\alpha_t$ is inspired from Welling \& Teh (2011)
+\begin{equation}
+\label{eq:artificial_noise_scale}
+\alpha_t = \frac{\eta}{(1 + t)^\gamma}
+\end{equation}
+with $\eta \in \{ 0.005, 0.01, 0.3 \}$ and $\gamma = 0.55$.
+Higher noise early on encourages exploration of the loss landscape.
+
+\section{Independent control of true gradient and stochastic noise}
+%\begin{equation*}
+%\min_{\theta \in \mathbb{R}^d} f ( \theta ) = \mathbb{E}_\xi [ \ell ( \theta, \xi ) ]
+%\end{equation*}
+In its most simple form the update equation for SGD is
+\begin{equation*}
+\theta_t \gets \theta_{t-1} - \epsilon_t g_t
+\end{equation*}
+with $\epsilon_t$ the learning rate and $g_t = \nabla \ell ( \theta_{t-1}, \xi_t )$ an unbiased estimate of the true gradient.
+$\xi_t$ is typically the source of randomness due to the randomly sampled mini-batch.
+We assume that the stochastic gradient can be decomposed
+\begin{equation*}
+g_t = f_t + e_t
+\end{equation*}
+into the true gradient $f_t$ and stochastic noise $e_t$.
+%We make the standard assumptions that the stochastic noise $\mathbb{E}[ e_t ] = 0$ and there exists $C > 0$ such that $e_t \leq C, \forall C$.
+As the batch size increases the variance of $g_t$ decreases.
+This translates to $e_t$ decreasing.
+The learning rate scaling rules use a larger learning rate $\epsilon'$ to compensate for the decrease in variance.
+The scaled stochastic gradient becomes $\epsilon' g_t = \epsilon' f_t + \epsilon' e_t$.
+Both the true gradient and noise are increased because the scaling is used on the stochastic gradient.
+This can be disadvantageous if the scaling $\epsilon'$ is too large.
+We can see that if $\epsilon'$ is too large the true gradient $f_t$ will be scaled too greatly, causing divergence.
+
+The issue is that the learning rate affects both true gradient and stochastic noise.
+If instead artificial noise is added as in Equation~\ref{eq:artificial_noise}, the true gradient and noise level can be controlled \emph{independently}.
+We can now write the update equation for SGD with artificial noise as 
+\begin{equation*}
+\theta_t \gets \theta_{t-1} - \epsilon_t ( f_t + e_t ) + \alpha_t \sigma_t.
+\end{equation*}
+%In the regime where
+Adding artificial noise to the gradient can be seen as controlling the signal to noise ratio (SNR) of the stochastic gradients $g_t$.
+The learning rate scaling rules can be seen as re-tuning the SNR to account for the increase in batch size.
+Increasing the batch size increases the strength of the signal, i.e. the true gradient $f_t$.
+However a certain amount of noise in the gradient is essential to find minima which generalize well.
+The learning rate scaling rules increase the noise strength by increasing the learning rate.
+But this increases both the signal and noise at the same time.
+By adding artificial noise to the gradient, the noise can be strengthened without touching the signal.
+
+\section{Related work}
+List batch sizes used by other papers (mostly on CIFAR10).
+The current literature on Large Batch SGD utilizes learning rate scaling rules to attain good generalization performance on larger batch sizes.
+Smith et al (2018) show that decaying the learning rate and increasing the batch size are equivalent.
+On their experiments on CIFAR10, the use a maximum batch size of 5120.
+Goyal et al (2017) use a linear scaling rule and warmup scheme to attain good performance for mini-batch size 8192 on the ImageNet data set.
+You et al (2017) employ a layer-wise adaptive update to train Resnet-50 on ImageNet with up to batch size 32K.
+
+\section{Experiments}
+We conduct experiments with Large Batch SGD on MNIST digit classification and CIFAR10 object recognition.
+We show that adding artificial gradient noise has two benefits.
+First, we can improve performance on the test set by as much as 10\%.
+Second, we can effectively stabilize the training curves.
+When the batch size is very large, we observe that the performance on the test set swings widely over successive iterations, by as much as 40\%.
+The addition of artificial noise to the gradients eliminates all of this oscillation.
+
+\subsection{MNIST}
+We train a standard convolutional neural network with ReLU activation function (Nair \& Hinton 2010) on the MNIST handwritten digit classification dataset (LeCun et al 1998).
+MNIST has training set with $60,000$ examples and test set with $10,000$ examples.
+The network has two convolutional layers followed by two fully connect layers.
+This network can be found in the pytorch documentation \url{https://github.com/pytorch/examples/tree/master/mnist}.
+
+We add gradient noise sampled from a standard normal distribution which is scaled by the schedule in Equation~\ref{eq:artificial_noise_scale} with $\eta = \{ 0.005, 0.01, 0.3 \}$.
+We use SGD with momentum parameter set to $0.5$, and learning rates in a range from $0.01$ to $0.60$.
+We run the training for 15 epochs and record the final test accuracy.
+At lower batch size we find it better to use smaller values of $\eta$.
+As the batch size increases, we find it to use larger values of $\eta$.
+
+\begin{table}[h]
+\label{tab:mnist_noise}
+\begin{center}
+\begin{tabular}{ c c c}
+ Batch Size & Final Test Accuracy (\%) & Artificial Noise Final (\%) \\ 
+ \hline
+% 256 & 98.92 & \\
+% 512 & 98.71 & \\
+% 1,024 & 98,87 & \\
+ 2,048 & 98.61 & 98.59 \\
+ 4,096 & 96.45 &  \\
+ 8,192 & 95.66 & 96.53 \\
+ 16,384 & 94.37 & 95.72 \\  
+ 32,768 & 86.08 & 92.51 \\
+ 45,000 & 86.48 & 92.19
+\end{tabular}
+\end{center}
+\caption{MNIST with Artificial Gradient Noise}
+\end{table}
+
+The results can be seen in Table~\ref{tab:mnist_noise}. 
+We conduct experiments up to batch size of 45k, which is three quarters of the training set size.
+These are truly large batch sizes.
+The additional gradient noise only really helps when the batch size is extremely large.
+For MNIST, this occurs when the batch size is about half that of the training set.
+Here we are able to achieve performance on test of above 90\% for up to batch size of 45k, which is three quarters of the training set!
+
+The training can be quite unstable for Large Batch SGD.
+In Figure~\ref{fig:mnist_stable} we plot the training accuracy per epoch for training runs with and without artificial gradient noise.
+We set the learning rate $\epsilon = 0.1$, batch size $B = 16,384$, and noise decay $\eta = 0.3$ if used.
+The test accuracy oscillates wildly when no artificial noise is used, where the drop is 50\%.
+The test accuracy continues to swing significantly until the accuracy settles in the low 90s.
+When artificial noise is added to the gradient, the test accuracy smoothes out completely.
+
+\begin{figure}[t]
+\begin{center}
+  \includegraphics[width=0.6\textwidth]{mnistNoise.pdf}
+\end{center}
+\caption{Test accuracy for MNIST, with and without artificial gradient noise.}
+\label{fig:mnist_stable}
+\end{figure}
+
+
+\subsection{CIFAR10}
+We train the ResNet18 model (He et al 2015) on the CIFAR10 dataset (Krizhevsky 2009). 
+The CIFAR10 dataset consists of 60,000 32x32 color images in 10 classes, with 50,000 training images and 10,000 test images.
+We add gradient noise sampled from a standard normal distribution which is scaled by the schedule in Equation~\ref{eq:artificial_noise_scale} with $\eta = \{ 0.005, 0.01, 0.3 \}$.
+We use SGD with momentum parameter set to $0.5$, and learning rates in a range from $0.01$ to $0.2$.
+In our initial experiments we run the training for 20 epochs and record the final test accuracy.
+
+The results for batch size up to 8,192 can be seen in Table~\ref{tab:cifar10_noise}.
+Like in the MNIST experiments, the benefits of artificial noise manifest when the batch size gets sufficiently big.
+The improvement in final test accuracy that artificial noise provides also increases as the batch size increases.
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{ c c c}
+ Batch Size & Final Test Accuracy (\%) & Artificial Noise Final (\%) \\ 
+ \hline
+ 1,024 & 86.36 & 84.88 \\
+ 2,048 & 84.54 & 84.16 \\
+ 4,096 & 79.33 & 82.28 \\  
+ 8,192 & 65.64 & 71.08 \\
+\end{tabular}
+\end{center}
+\caption{CIFAR10 with Artificial Gradient Noise}
+\label{tab:cifar10_noise}
+\end{table}
+
+[Still working on getting more results for CIFAR10]
+
+%Unlike for the MNIST data set, we run into a memory limit when trying to load a batch size of 16,384 into memory onto our GPUs.
+%In our pytorch implementation we develop a work-around by calling several {\tt forward()} and {\tt backward()} passes of the network before taking a step with SGD.
+%This is not strictly equivalent to using a larger batch size because the batch normalization statistics will only be computed for the batch size that fits in memory.
+%However our solution is still of interest because we wish to attain speedups from large batch parallelization, but do not want to be limited by the memory constraints of our particular setup.
+%
+%[Talk about experimental conditions, again] 
+%
+%\begin{table}[h]
+%\label{tab:cifar10_simBatch}
+%\begin{center}
+%\begin{tabular}{ c c c}
+% Batch Size & Final Test Accuracy (\%) & Artificial Noise Final (\%) \\ 
+% \hline
+% 16,384 & 57.42 & 60.98 \\
+% 24,576 & 51.96 & 52.01 \\
+%\end{tabular}
+%\end{center}
+%\caption{CIFAR10 with Artificial Gradient Noise and Simulated Large Batch}
+%\end{table}
+
+%\subsection{Penn TreeBank (?)}
+%Choose one text data set or the other.
+%
+%\subsection{WikiText-2}
+%Much of the literature on Large Batch SGD has focused on image recognition tasks using datasets.
+%We perform language modeling experiments on the WikiText-2 dataset using a LSTM model.
+%
+%[Planning on running these experiments, have not yet]
+
+\section{Full batch gradient descent with added noise}
+We take Large Batch SGD to its logical conclusion by running full-batch gradient descent with added artificial noise.
+The source of randomness of the stochastic gradient typically comes from the randomly sampled mini-batch.
+However when the full batch is used to compute the gradient, there is no more randomness with respect to the empirical loss function.
+This randomness in the gradients is important because it helps SGD to reach minima that generalize well.
+We re-introduce randomness to the gradient with artificial noise as in Equation~\ref{eq:artificial_noise}.
+This is essentially ``simulating" SGD.
+
+It is uncertain if the noise which naturally occurs in the stochastic gradients has the same structure as Gaussian noise.
+We conduct experiments on the MNIST data set, using the same network described in the previous section.
+A learning rate of $0.01$ is used, with the noise scale schedule as in Equation~\ref{eq:artificial_noise_scale} with $\eta = 1$.
+Both full batch gradient descent with and without additional noise are run for 100 epochs.
+%\begin{table}[h]
+%\label{tab:mnist_simSGD}
+%\begin{center}
+%\begin{tabular}{ c c c}
+% Epochs & Test Accuracy GD (\%) & Simulated SGD (\%) \\ 
+% \hline
+% 25 & 61.51 & 76.67 \\
+% 75 & 82.96 & 90.55 \\
+% 500 & 96.10 & 97.13 \\
+%\end{tabular}
+%\end{center}
+%\caption{MNIST with Simulated SGD}
+%\end{table}
+%We run the procedure for up to 500 epochs to allow the procedures to fully converge, and display the accuracy on test at several time slices in Table~\ref{tab:mnist_simSGD}.
+
+\begin{figure}[t]
+\begin{center}
+  \includegraphics[width=0.6\textwidth]{mnistSimSGD.pdf}
+\end{center}
+\caption{Training full-batch gradient descent with and without artificial noise on MNIST.
+By adding artificial noise to the full-batch gradient we are simulating SGD.
+}
+\label{fig:mnist_simSGD}
+\end{figure}
+
+We compare simulated SGD with regular full-batch gradient descent in Figure~\ref{fig:mnist_simSGD}. 
+Adding noise to the true gradient significantly accelerates training over the full-batch gradient descent.
+In addition the final achieved test accuracy is higher by 5\%.
+We believe that the added noise helps the optimization procedure to more efficiently explore the non-convex loss landscape.
+Because the full training set is used in each iteration, each epoch consists of exactly one iteration.
+The simulated SGD procedure is able to converge in 100 iterations.
+
+Because of the success of the simulated SGD procedure, Gaussian noise can be reasonable effective in simulating the natural noise in the stochastic gradients of SGD.
+If the simulated SGD procedure is run for 500 epochs / iterations and allowed to converge, and the test accuracy is reported in Table~\ref{tab:mnist_simSGD}.
+This accuracy is very close to the state-of-art results, which are just above 99\% depending on the network configuration~\url{http://yann.lecun.com/exdb/mnist/}.
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{ c c}
+ Epochs & Simulated SGD Test Accuracy (\%) \\ 
+ \hline
+ %25 & 61.51 & 76.67 \\
+ %75 & 82.96 & 90.55 \\
+ 500 & 97.13 \\
+\end{tabular}
+\end{center}
+\caption{Test Accuracy for Converged Simulated SGD}
+\label{tab:mnist_simSGD}
+\end{table}
+%We run the procedure for up to 500 epochs to allow the procedures to fully converge, and display the accuracy on test at several time slices in Table~\ref{tab:mnist_simSGD}.
+
+It remains to be seen if state-of-the-art results can be achieved with simulated SGD by using different types of noise, potentially conditioned on the iterates (Zhu et al 2019).
+Doing so would provide a convincing argument that the noise used to achieve such results would have a functional equivalent to the noise introduced through randomly sampled mini-batches.
+%Because we are able to achieve test accuracy close to the state of the art values, this tells us that Gaussian noise is potentially a good approximation to the noise normally present in the stochastic gradients.
+
+
+\section{Conclusion}
+[Tentative]
+
+We show that adding artificial noise to the gradient can improve the generalization performance of Large Batch SGD.
+Additive noise can tune the signal-to-noise ratio of the stochastic gradients in a more careful way than scaling the learning rate.
+We propose a simple to implement noise procedure, and present numerical experiments on image classification and language modeling tasks.
+In addition, we take Large Batch SGD to its logical conclusion and show that SGD can be effectively simulated by performing full-batch gradient descent and adding artificial noise to the gradients.
+
+
+% Story: Gradient noise stabilizes at the higher learning rates and higher batch sizes
+
+
+%\subsection{Citations within the text}
+%
+%Citations within the text should be based on the \texttt{natbib} package
+%and include the authors' last names and year (with the ``et~al.'' construct
+%for more than two authors). When the authors or the publication are
+%included in the sentence, the citation should not be in parenthesis (as
+%in ``See \citet{Hinton06} for more information.''). Otherwise, the citation
+%should be in parenthesis (as in ``Deep learning shows promise to make progress towards AI~\citep{Bengio+chapter2007}.'').
+%
+%The corresponding references are to be listed in alphabetical order of
+%authors, in the \textsc{References} section. As to the format of the
+%references themselves, any style is acceptable as long as it is used
+%consistently.
+%
+%\subsection{Footnotes}
+%
+%Indicate footnotes with a number\footnote{Sample of the first footnote} in the
+%text. Place the footnotes at the bottom of the page on which they appear.
+%Precede the footnote with a horizontal rule of 2~inches
+%(12~picas).\footnote{Sample of the second footnote}
+%
+%\subsection{Figures}
+%
+%All artwork must be neat, clean, and legible. Lines should be dark
+%enough for purposes of reproduction; art work should not be
+%hand-drawn. The figure number and caption always appear after the
+%figure. Place one line space before the figure caption, and one line
+%space after the figure. The figure caption is lower case (except for
+%first word and proper nouns); figures are numbered consecutively.
+%
+%Make sure the figure caption does not get separated from the figure.
+%Leave sufficient space to avoid splitting the figure and figure caption.
+%
+%You may use color figures.
+%However, it is best for the
+%figure captions and the paper body to make sense if the paper is printed
+%either in black/white or in color.
+%\begin{figure}[h]
+%\begin{center}
+%%\framebox[4.0in]{$\;$}
+%\fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
+%\end{center}
+%\caption{Sample figure caption.}
+%\end{figure}
+%
+%\subsection{Tables}
+%
+%All tables must be centered, neat, clean and legible. Do not use hand-drawn
+%tables. The table number and title always appear before the table. See
+%Table~\ref{sample-table}.
+%
+%Place one line space before the table title, one line space after the table
+%title, and one line space after the table. The table title must be lower case
+%(except for first word and proper nouns); tables are numbered consecutively.
+%
+%\begin{table}[t]
+%\caption{Sample table title}
+%\label{sample-table}
+%\begin{center}
+%\begin{tabular}{ll}
+%\multicolumn{1}{c}{\bf PART}  &\multicolumn{1}{c}{\bf DESCRIPTION}
+%\\ \hline \\
+%Dendrite         &Input terminal \\
+%Axon             &Output terminal \\
+%Soma             &Cell body (contains cell nucleus) \\
+%\end{tabular}
+%\end{center}
+%\end{table}
+
+
+\bibliography{iclr2019_conference}
+\bibliographystyle{iclr2019_conference}
+
+\end{document}
