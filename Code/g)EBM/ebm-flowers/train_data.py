@@ -1,5 +1,5 @@
-# python3 train_data.py --th 0.01 --eps 0.01 --mcmcmethod langevin
-# python3 train_data.py --th 0.01 --eps 0.01 --mcmcmethod anilangevin
+# python3 -u train_data.py --th 0.0001 --eps 0.01 --mcmcmethod anilangevin
+# python3 -u train_data.py --th 0.00015 --eps 0.01 --mcmcmethod anilangevin
 
 import torch as t
 import torchvision.transforms as tr
@@ -172,14 +172,14 @@ def sample_s_t(L, init_type, update_s_t_0=True):
             normofgrad = t.norm(t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0], dim=1)
 
             th = anith #threshold value
-            th = 0.0003
             thtensor = t.Tensor(np.repeat(th, normofgrad.numel())).reshape(normofgrad.shape) #threshold Tensor
-            pdb.set_trace()
             stepsize = thtensor.to(device)/t.max(thtensor.to(device), normofgrad)
+
+            # pdb.set_trace()
             stepsize = stepsize.repeat(3,1,1,1).reshape(f_prime.shape)
             
-            x_s_t.data += - t.mul(stepsize.to(device), f_prime) + t.mul(stepsize.to(device), eps*t.randn_like(x_s_t))
-            # x_s_t.data += - t.mul(stepsize, f_prime) + t.mul(stepsize, t.randn_like(x_s_t))
+            x_s_t.data += -f_prime + t.mul(stepsize.to(device), eps*t.randn_like(x_s_t))
+            # x_s_t.data += - t.mul(stepsize.to(device), f_prime) + t.mul(stepsize.to(device), t.randn_like(x_s_t))
             r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
 
        

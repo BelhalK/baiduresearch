@@ -92,12 +92,13 @@ def sample_q_new(args,K=K):
         
         
         stepsize = thtensor.to(device)/t.max(thtensor.to(device), normofgrad)
-        # pdb.set_trace()
+        pdb.set_trace()
         stepsize = stepsize.repeat(1,3,1).reshape(f_prime.shape)
 
         #proposal
         epsilon = args.eps
-        x_k.data += t.mul(stepsize.to(device), f_prime) + t.mul(stepsize.to(device), epsilon*t.randn_like(x_k) )
+        x_k.data += f_prime + t.mul(stepsize.to(device), epsilon*t.randn_like(x_k) )
+        # x_k.data += t.mul(stepsize.to(device), epsilon*f_prime) + t.mul(stepsize.to(device), epsilon*t.randn_like(x_k) )
         # x_k.data+=f_prime+1e-2*t.randn_like(x_k) 
 
     return x_k.detach()
