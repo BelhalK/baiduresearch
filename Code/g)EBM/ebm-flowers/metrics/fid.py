@@ -200,20 +200,112 @@ def calculate_fid_given_paths(paths, batch_size, cuda, dims):
 
     return fid_value
 
+class Logger(object):
+    '''Save training process to log file with simple plot function.'''
+    def __init__(self, fpath, title=None, resume=False): 
+        self.file = None
+        self.resume = resume
+        self.title = '' if title == None else title
+        if fpath is not None:
+            if resume: 
+                self.file = open(fpath, 'r') 
+                name = self.file.readline()
+                self.names = name.rstrip().split('\t')
+                self.numbers = {}
+                for _, name in enumerate(self.names):
+                    self.numbers[name] = []
+
+                for numbers in self.file:
+                    numbers = numbers.rstrip().split('\t')
+                    for i in range(0, len(numbers)):
+                        self.numbers[self.names[i]].append(numbers[i])
+                self.file.close()
+                self.file = open(fpath, 'a')  
+            else:
+                self.file = open(fpath, 'w')
+
+    def set_names(self, names):
+        if self.resume: 
+            pass
+        # initialize numbers as empty list
+        self.numbers = {}
+        self.names = names
+        for _, name in enumerate(self.names):
+            self.file.write(name)
+            self.file.write('\t')
+            self.numbers[name] = []
+        self.file.write('\n')
+        self.file.flush()
+
+
+    def append(self, numbers):
+        assert len(self.names) == len(numbers), 'Numbers do not match names'
+        for index, num in enumerate(numbers):
+            self.file.write("{0:.6f}".format(num))
+            self.file.write('\t')
+            self.numbers[self.names[index]].append(num)
+        self.file.write('\n')
+        self.file.flush()
+
+    def plot(self, names=None, scaling=None):
+        names = self.names if names == None else names
+        if scaling == None:
+            def scaling(x): return 1
+            ylab = ""
+        elif scaling == "normalized":
+            def scaling(x): return np.linalg.norm(x)
+            ylab = "normalized"
+        else:
+            scaling
+
+        numbers = self.numbers
+        for _, name in enumerate(names):
+            x = np.arange(len(numbers[name]))
+            y = np.asarray(numbers[name], dtype='float')
+            plt.plot(x, y / scaling(y))
+        #plt.legend([self.title + '(' + name + ')' for name in names])
+        plt.legend([name for name in names])
+        plt.grid(True)
+        plt.title(self.title)
+        plt.xlabel("epoch")
+        plt.ylabel(ylab)
+
+    def close(self):
+        if self.file is not None:
+            self.file.close()
+
+logger_baseline = Logger('./logs/fid_baseline.txt')
+logger_baseline.set_names(['iter', 'FID'])
+
+logger_anila = Logger('./logs/fid_anila.txt')
+logger_anila.set_names(['iter', 'FID'])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('--path', help= 'paste path to biog.txt file')
     parser.add_argument('--bs', type=int, default=128, help="test batch size")
-    parser.add_argument('--dim', type=int, default=1, help="nb of dimensions")
+    parser.add_argument('--dim', type=int, default=64, help="nb of dimensions")
     parser.add_argument('--cuda', type=str, default='False',help="GPU")
     args = parser.parse_args()
     batch_size = args.bs
     cuda = False
     dims = args.dim
-    # paths = ["../results/flowers_nonconvergent_1_anilangevin_th0.0001_eps0.1/checkpoints/net_000001.pth", "../results/flowers_nonconvergent_1_anilangevin_th0.0001_eps0.1/checkpoints/net_000001.pth"]
-    paths = ["../results/flowers_nonconvergent_1_anilangevin_th0.0001_eps0.1/shortrun/", "../results/flowers_nonconvergent_1_anilangevin_th0.0001_eps0.1/shortrun/"]
-    value = calculate_fid_given_paths(paths, batch_size, cuda, dims)
-    print(value)
+    all_fids_baseline = []
+    all_fids_anila = []
+    # for iter_th in range(1,100000, 1000):
+    for iter_th in [1000, 5000, 10000]:
+        paths_baseline = ["./results/flowers-langevin_nonconvergent_1_langevin_eps0.01/shortrun/iter_{}".format(iter_th),"./results/training_set"]
+        value_baseline = calculate_fid_given_paths(paths_baseline, batch_size, cuda, dims)
+        all_fids_baseline.append(value_baseline)
+
+        paths_anila = ["./results/flowers_nonconvergent_1_anilangevin_th0.0001_eps0.1/shortrun/iter_{}".format(iter_th), "./results/flowers_nonconvergent_1_anilangevin_th0.0001_eps0.1/shortrun/iter_{}".format(iter_th)]
+        value_anila = calculate_fid_given_paths(paths_anila, batch_size, cuda, dims)
+        all_fids_anila.append(value_anila)
+
+        logger_baseline.append([iter_th, value_baseline])
+        logger_anila.append([iter_th, value_anila])
+
+    
+    # print(value)
 
 
