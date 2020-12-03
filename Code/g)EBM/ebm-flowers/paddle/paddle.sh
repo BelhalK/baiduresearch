@@ -18,7 +18,7 @@ wall_time="1000:00:00"
 k8s_priority="normal"
 file_dir="."
 
-image_addr=registry.baidu.com/lixu13/base_image:6.2
+image_addr=registry.baidu.com/lixu13/base_image:7.1
 #image_addr=registry.baidu.com/lixu13/base_image:4.0                                                                                
 
 # registry.baidu.com/lixu13/mcts_env:2.0                                                                                            
