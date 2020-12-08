@@ -86,16 +86,21 @@ We propose a layerwise and dimensionwise local AMS algorithm in the following:
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, and learning rate $\alpha_t$. 
 \STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model shared by all devices and $v_{0} = \epsilon 1 \in \mathbb R^{d}$.
 \FOR{$r=1$ to $R$}
+\STATE Set $\theta_{r}^{i,0} = \bar{\theta}_r$
 \STATE\textbf{parallel for device $d \in D^{r}$ do}:
 \STATE Compute stochastic gradient $g_r$ at $\theta_r$.
-\STATE $m_r = \beta_1 m_{r-1} + (1 - \beta_1) g_r$.
-\STATE $m_{t}=m_{t} /\left(1-\beta_{1}^{r}\right)$.
-\STATE $v_r = \beta_2 v_{r-1} + (1 - \beta_2) g_r^2$.
-\STATE $v_r=v_r /\left(1-\beta_{2}^{r}\right)$.
-\STATE $\hat{v}_r = \max( \hat{v}_{r-1} , v_r )$.
-\STATE Compute ratio  $p_{r}=\frac{m_{r}}{\sqrt{v_{r}}+\epsilon}$.
+\quad \quad \FOR{$t=1$ to $T$}
+\STATE $m^t_r = \beta_1 m^{t-1}_{r-1} + (1 - \beta_1) g_r$.
+\STATE $m^{t}_{r}=m^{t}_{r} /\left(1-\beta_{1}^{r}\right)$.
+\STATE $v^{t}_r = \beta_2 v^{t}_{r-1} + (1 - \beta_2) g_r^2$.
+\STATE $v^{t}_r=v^{t}_r /\left(1-\beta_{2}^{r}\right)$.
+\STATE $\hat{v}^{t}_r = \max( \hat{v}^{t}_{r-1} , v_r )$.
+\STATE Compute ratio  $p_{r}=\frac{m^{t}_{r}}{\sqrt{v^{t}_{r}}+\epsilon}$.
 \STATE Update local model:
-$$\theta_{r+1}^{(i)}=\theta_{r}^{(i)}-\alpha_{r} \phi\left(\left\|x_{r}^{(i)}\right\|\right)/\left\|r_{r}^{(i)}+\lambda \theta_{r}^{(i)}\right\|\left(p_{r}^{(i)}+\lambda \theta_{r}^{(i)}\right)$$
+$$\theta_{r+1}^{i,t}=\theta_{r}^{i,t-1}-\alpha_{r} \phi(\|\theta_{r}^{i,t-1}\|)(p_{r}^{(i)}+\lambda \theta_{r}^{i,t-1}) / \|r_{r}^{(i)}+\lambda \theta_{r}^{i,t-1}\|$$
+\ENDFOR
+\STATE Devices send local model $\theta_{r+1}^{i,T}$ to the server
+\STATE Server computes the averages of the local models $\bar{\theta}_r = \frac{1}{n} \sum_{i=1}^n \theta_{r+1}^{i,T}$ and send it back to the devices.
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
@@ -116,6 +121,9 @@ The stochastic gradient is unbiased for any iteration $t>0$: $\EE[g_t] = \nabla 
 \begin{assumption}
 The variance of the stochastic gradient is bounded for any iteration $t>0$ and any dimension $p \in \llbracket d \rrbracket$: $\EE[|g_t^p|^2] < \sigma^2$.
 \end{assumption}
+
+
+
 
 \section{Numerical experiments}\label{sec:numerical}
 
