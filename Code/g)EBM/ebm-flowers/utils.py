@@ -48,6 +48,9 @@ def download_flowers_data():
 # visualize negative samples synthesized from energy
 def plot_ims(p, x): tv.utils.save_image(t.clamp(x, -1., 1.), p, normalize=True, nrow=int(x.shape[0] ** 0.5))
 
+def plot_single_ims(p, x): tv.utils.save_image(t.clamp(x, -1., 1.), p, normalize=True, nrow=1)
+
+
 # plot diagnostics for learning
 def plot_diagnostics(batch, en_diffs, grad_mags, exp_dir, fontsize=10):
     # axis tick size
