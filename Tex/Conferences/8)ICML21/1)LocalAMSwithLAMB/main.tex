@@ -84,23 +84,23 @@ We propose a layerwise and dimensionwise local AMS algorithm in the following:
 \begin{algorithmic}[1]
 %\small
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, and learning rate $\alpha_t$. 
-\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model shared by all devices and $v_{0} = \epsilon 1 \in \mathbb R^{d}$.
+\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model shared by all devices and $v_{0} = \epsilon 1 \in \mathbb R^{d}$ and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
 \FOR{$r=1$ to $R$}
-\STATE Set $\theta_{r}^{i,0} = \bar{\theta}_r$
+\STATE Set $\theta_{r,i}^{0} = \bar{\theta}_{r-1}$
 \STATE\textbf{parallel for device $d \in D^{r}$ do}:
-\STATE Compute stochastic gradient $g_r$ at $\theta_r$.
+\STATE Compute stochastic gradient $g_{r,i}$ at $\theta_r$.
 \quad \quad \FOR{$t=1$ to $T$}
-\STATE $m^t_r = \beta_1 m^{t-1}_{r-1} + (1 - \beta_1) g_r$.
-\STATE $m^{t}_{r}=m^{t}_{r} /\left(1-\beta_{1}^{r}\right)$.
-\STATE $v^{t}_r = \beta_2 v^{t}_{r-1} + (1 - \beta_2) g_r^2$.
-\STATE $v^{t}_r=v^{t}_r /\left(1-\beta_{2}^{r}\right)$.
-\STATE $\hat{v}^{t}_r = \max( \hat{v}^{t}_{r-1} , v_r )$.
-\STATE Compute ratio  $p_{r}=\frac{m^{t}_{r}}{\sqrt{v^{t}_{r}}+\epsilon}$.
-\STATE Update local model:
-$$\theta_{r+1}^{i,t}=\theta_{r}^{i,t-1}-\alpha_{r} \phi(\|\theta_{r}^{i,t-1}\|)(p_{r}^{(i)}+\lambda \theta_{r}^{i,t-1}) / \|p_{r}^{(i)}+\lambda \theta_{r}^{i,t-1}\|$$
+\STATE $m^t_{r,i} = \beta_1 m^{t-1}_{r-1,i} + (1 - \beta_1) g_{r,i}$.
+\STATE $m^{t}_{r,i}=m^{t}_{r,i} /\left(1-\beta_{1}^{r}\right)$.
+\STATE $v^{t,i}_r = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) g_{r,i}^2$.
+\STATE $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{r}\right)$.
+\STATE $\hat{v}^{t}_{r,i} = \max( \hat{v}^{t}_{r-1,i} , v_{r,i} )$.
+\STATE Compute ratio  $p^j_{r,i}=\frac{m^{t}_{r}}{\sqrt{v^{t}_{r,i}}+\epsilon}$.
+\STATE Update local model for each layer $j$:
+$$\theta_{r,i}^{j,t}=\theta_{r,i}^{j,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{j,t-1}\|)(p_{r,i}^{j}+\lambda \theta_{r,i}^{j,t-1}) / \|p_{r,i}^{j}+\lambda \theta_{r,i}^{j,t-1}\|$$
 \ENDFOR
-\STATE Devices send local model $\theta_{r+1}^{i,T}$ to the server
-\STATE Server computes the averages of the local models $\bar{\theta}_r = \frac{1}{n} \sum_{i=1}^n \theta_{r+1}^{i,T}$ and send it back to the devices.
+\STATE Devices send local model $\theta_{r,i}^{j,T}$ to the server
+\STATE Server computes the averages of the local models $\bar{\theta}_r^j = \frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{j,T}$ and send it back to the devices.
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
@@ -130,11 +130,12 @@ We first user the classical intermediate quantity, used for proving convergence 
 \eeq
 where $\bar{\theta_r}$ denotes the average of the local models at round $r$.
 Then,
-\begin{align}
-\bar{\vartheta}^i_{r+1} - \bar{\vartheta}^i_r  & = \frac{1}{1-\beta_1}(\bar{\theta}^i_{r+1} - \bar{\theta}^i_{r}) - \frac{\beta_1}{1-\beta_1}(\bar{\theta}^i_{r} - \bar{\theta}^i_{r-1})\\
-& = \frac{\alpha_{r}}{1-\beta_1} \frac{\phi(\|\theta_{r}^{i}\|)}{\|p_{r}^{(i)}+\lambda \theta_{r}^{i}\|} (p_{r}^{(i)}+\lambda \theta_{r}^{i})  - \frac{\alpha_{r-1}}{1-\beta_1} \frac{\phi(\|\theta_{r}^{i}\|)}{\|p_{r}^{(i)}+\lambda \theta_{r}^{i}\|} (p_{r}^{(i)}+\lambda \theta_{r}^{i}) \\
+\begin{align}\notag
+\bar{\vartheta}^j_{r+1} - \bar{\vartheta}^j_r  & = \frac{1}{1-\beta_1}(\bar{\theta}^j_{r+1} - \bar{\theta}^j_{r}) - \frac{\beta_1}{1-\beta_1}(\bar{\theta}^j_{r} - \bar{\theta}^j_{r-1})\\
+& = \frac{\alpha_{r}}{1-\beta_1} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{j}\|)}{\|p_{r,i}^{j}+\lambda \theta_{r,i}^{j}\|} (p_{r,i}^{j}+\lambda \theta_{r,i}^{j})  - \frac{\alpha_{r-1}}{1-\beta_1}\sum_{i = 1}^n \frac{\phi(\|\theta_{r-1,i}^{j}\|)}{\|p_{r-1,i}^{j}+\lambda \theta_{r-1,i}^{j}\|} (p_{r-1,i}^{j}+\lambda \theta_{r-1,i}^{j}) \\
 & = 
 \end{align}
+
 
 
 \section{Numerical experiments}\label{sec:numerical}
