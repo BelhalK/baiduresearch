@@ -96,8 +96,8 @@ We propose a layerwise and dimensionwise local AMS algorithm in the following:
 \STATE $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{r}\right)$.
 \STATE $\hat{v}^{t}_{r,i} = \max( \hat{v}^{t}_{r-1,i} , v_{r,i} )$.
 \STATE Compute ratio  $p^j_{r,i}=\frac{m^{t}_{r}}{\sqrt{v^{t}_{r,i}}+\epsilon}$.
-\STATE Update local model for each layer $j$:
-$$\theta_{r,i}^{j,t}=\theta_{r,i}^{j,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{j,t-1}\|)(p_{r,i}^{j}+\lambda \theta_{r,i}^{j,t-1}) / \|p_{r,i}^{j}+\lambda \theta_{r,i}^{j,t-1}\|$$
+\STATE Update local model for each layer $\ell$:
+$$\theta_{r,i}^{j,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{j}+\lambda \theta_{r,i}^{\ell,t-1}) / \|p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}\|$$
 \ENDFOR
 \STATE Devices send local model $\theta_{r,i}^{j,T}$ to the server
 \STATE Server computes the averages of the local models $\bar{\theta}_r^j = \frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{j,T}$ and send it back to the devices.
@@ -110,8 +110,8 @@ $$\theta_{r,i}^{j,t}=\theta_{r,i}^{j,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{j,t-1}
 
 In the context of nonconvex stochastic optimization for distributed devices, assume the following:
 
-\begin{assumption}
-For $i \in \inter$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta) - \nabla f_i (\vartheta)} \leq L \norm{\theta-\vartheta}$.
+\begin{assumption}\label{ass:smooth}
+For $i \in \inter$ and $\ell \in \interl$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta) - \nabla f_i (\vartheta)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
 \end{assumption}
 We add some classical assumption in the unbiased stochastic optimization realm, on the gradient of the objective function:
 \begin{assumption}
@@ -123,19 +123,33 @@ The variance of the stochastic gradient is bounded for any iteration $r>0$ and a
 \end{assumption}
 
 
-\textbf{Case with $T=1$ and $\epsilon = 0$:}
-We first user the classical intermediate quantity, used for proving convergence results of adaptive optimization methods, see \citep{}:
+\textbf{Case with $T=1$, $\epsilon = 0$ and $\lambda = 0$:}
+Using H\ref{ass:smooth}, we have:
+\begin{align}\notag
+f(\bar{\vartheta}_{r+1}) &  \leq f(\bar{\vartheta}_r) + \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r} + \sum_{\ell =1}^L \frac{L_\ell}{2} \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2\\
+&  \leq f(\bar{\vartheta}_r) + \sum_{\ell=1}^L \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j (\bar{\vartheta}^{\ell,j}_{r+1} - \bar{\vartheta}^{\ell,j}_r) + \sum_{\ell =1}^L \frac{L_\ell}{2} \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2
+\end{align}
+
+Taking expectations on both sides leads to:
+\begin{align}\label{eq:main}
+- \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2]
+\end{align}
+
+Yet, we observe that, using the classical intermediate quantity, used for proving convergence results of adaptive optimization methods, see \citep{}, we have:
 \beq
 \bar{\vartheta}_r = \bar{\theta}_r +  \frac{\beta_1}{1-\beta_1}(\bar{\theta}_{r} - \bar{\theta}_{r-1})
 \eeq
 where $\bar{\theta_r}$ denotes the average of the local models at round $r$.
-Then,
+Then for each layer $\ell$,
 \begin{align}\notag
-\bar{\vartheta}^j_{r+1} - \bar{\vartheta}^j_r  & = \frac{1}{1-\beta_1}(\bar{\theta}^j_{r+1} - \bar{\theta}^j_{r}) - \frac{\beta_1}{1-\beta_1}(\bar{\theta}^j_{r} - \bar{\theta}^j_{r-1})\\
-& = \frac{\alpha_{r}}{1-\beta_1} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{j}\|)}{\|p_{r,i}^{j}+\lambda \theta_{r,i}^{j}\|} (p_{r,i}^{j}+\lambda \theta_{r,i}^{j})  - \frac{\alpha_{r-1}}{1-\beta_1}\sum_{i = 1}^n \frac{\phi(\|\theta_{r-1,i}^{j}\|)}{\|p_{r-1,i}^{j}+\lambda \theta_{r-1,i}^{j}\|} (p_{r-1,i}^{j}+\lambda \theta_{r-1,i}^{j}) \\
-& = d
+\bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r  & = \frac{1}{1-\beta_1}(\bar{\theta}^\ell_{r+1} - \bar{\theta}^\ell_{r}) - \frac{\beta_1}{1-\beta_1}(\bar{\theta}^\ell_{r} - \bar{\theta}^\ell_{r-1})\\
+& = \frac{\alpha_{r}}{1-\beta_1} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\|p_{r,i}^{\ell}\|} p_{r,i}^{\ell}  - \frac{\alpha_{r-1}}{1-\beta_1}\sum_{i = 1}^n \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\|p_{r-1,i}^{\ell}\|} p_{r-1,i}^{\ell}
 \end{align}
 
+We note for all $\theta \in \Theta$, the majorant $G > 0$ such that $\phi(\|\theta \|) \leq G$. Then, following \eqref{eq:main}, we obtain:
+\begin{align}\label{eq:main2}
+- \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2]
+\end{align}
 
 
 \section{Numerical experiments}\label{sec:numerical}
