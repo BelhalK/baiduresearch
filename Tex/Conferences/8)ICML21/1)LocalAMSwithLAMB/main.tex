@@ -73,7 +73,13 @@ Our contributions are as follows:
 
 \section{Layerwise and Dimensionwise Adaptive Methods}\label{sec:main}
 
-%\subsection{Local SGD with LARS}
+\paragraph{Notations:} We denote by $\theta$ the vector of parameters taking values in $\rset^d$. 
+For each layer $\ell \in \llbracket \tot \rrbracket$, where $\tot$ is the total number of layers of the neural networks, and each coordinate $j \in \llbracket p_\ell \rrbracket$ where $p_\ell$ is the dimension per layer $\ell$, we note $\theta^{\ell, j}$ its $j$th coordinate.
+The gradient of $f$ with respect to $\theta^\ell$ is denoted by $\nabla_{\ell} f(\theta)$.
+The index $i \in \inter$ denotes the index of the worker $i$ in our federated framework.
+$r$ and $t$ are used as the round and local iteration numbers respectively.
+The smoothness per layer is denoted by $L_\ell$ for each layer $\ell \in \llbracket \tot \rrbracket$.
+
 
 \subsection{Local AMS with LAMB}
 
@@ -95,11 +101,11 @@ We propose a layerwise and dimensionwise local AMS algorithm in the following:
 \STATE $v^{t,i}_r = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) g_{r,i}^2$.
 \STATE $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{r}\right)$.
 \STATE $\hat{v}^{t}_{r,i} = \max( \hat{v}^{t}_{r-1,i} , v_{r,i} )$.
-\STATE Compute ratio  $p^j_{r,i}=\frac{m^{t}_{r}}{\sqrt{v^{t}_{r,i}}+\epsilon}$.
+\STATE Compute ratio  $p^j_{r,i}=\frac{m^{t}_{r,i}}{\sqrt{v^{t}_{r,i}}+\epsilon}$.
 \STATE Update local model for each layer $\ell$:
-$$\theta_{r,i}^{j,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{j}+\lambda \theta_{r,i}^{\ell,t-1}) / \|p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}\|$$
+$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{j}+\lambda \theta_{r,i}^{\ell,t-1}) / \|p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}\|$$
 \ENDFOR
-\STATE Devices send local model $\theta_{r,i}^{j,T}$ to the server
+\STATE Devices send local model $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ to the server
 \STATE Server computes the averages of the local models $\bar{\theta}_r^j = \frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{j,T}$ and send it back to the devices.
 \ENDFOR
 \end{algorithmic}
@@ -108,18 +114,20 @@ $$\theta_{r,i}^{j,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\el
 
 \subsection{Finite time convergence bounds}
 
+
+
 In the context of nonconvex stochastic optimization for distributed devices, assume the following:
 
 \begin{assumption}\label{ass:smooth}
 For $i \in \inter$ and $\ell \in \interl$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta) - \nabla f_i (\vartheta)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
 \end{assumption}
 We add some classical assumption in the unbiased stochastic optimization realm, on the gradient of the objective function:
-\begin{assumption}
+\begin{assumption}\label{ass:boundgrad}
 The stochastic gradient is unbiased for any iteration $r>0$: $\EE[g_r] = \nabla f(\theta_r)$ and is bounded from above, i.e., $\norm{g_t} \leq M$.
 \end{assumption}
 
 \begin{assumption}
-The variance of the stochastic gradient is bounded for any iteration $r>0$ and any dimension $p \in \llbracket d \rrbracket$: $\EE[|g_r^p - \nabla f(\theta_r)^p|^2] < \sigma^2$.
+The variance of the stochastic gradient is bounded for any iteration $r>0$ and any dimension $j \in \llbracket d \rrbracket$: $\EE[|g_r^j - \nabla f(\theta_r)^j|^2] < \sigma^2$.
 \end{assumption}
 
 
@@ -141,7 +149,7 @@ Yet, we observe that, using the classical intermediate quantity, used for provin
 \eeq
 where $\bar{\theta_r}$ denotes the average of the local models at round $r$.
 Then for each layer $\ell$,
-\begin{align}\notag
+\begin{align}\label{eq:gap}
 \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r  & = \frac{1}{1-\beta_1}(\bar{\theta}^\ell_{r+1} - \bar{\theta}^\ell_{r}) - \frac{\beta_1}{1-\beta_1}(\bar{\theta}^\ell_{r} - \bar{\theta}^\ell_{r-1})\\
 & = \frac{\alpha_{r}}{1-\beta_1} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\|p_{r,i}^{\ell}\|} p_{r,i}^{\ell}  - \frac{\alpha_{r-1}}{1-\beta_1}\sum_{i = 1}^n \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\|p_{r-1,i}^{\ell}\|} p_{r-1,i}^{\ell}\\
 & = \frac{\alpha \beta_1}{1-\beta_1}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1,i}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1} + \alpha \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} g_{r,i}
@@ -154,12 +162,20 @@ We note for all $\theta \in \Theta$, the majorant $G > 0$ such that $\phi(\|\the
 - \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2]
 \end{align}
 
-Developing the LHS of \eqref{eq:main2} leads to
+Developing the LHS of \eqref{eq:main2} using \eqref{eq:gap} leads to
 
 \begin{align}
 \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r} &= \sum_{\ell=1}^L \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j (\bar{\vartheta}^{\ell,j}_{r+1} - \bar{\vartheta}^{\ell,j}_r) \\
-& = \alpha \sum_{\ell=1}^L \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j \left[  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\|p_{r,i}^{\ell}\|} p_{r,i}^{\ell}  - \frac{\alpha_{r-1}}{1-\beta_1}\sum_{i = 1}^n \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\|p_{r-1,i}^{\ell}\|} p_{r-1,i}^{\ell} \right]
+& =  \frac{\alpha \beta_1}{1-\beta_1}  \sum_{\ell=1}^L \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j \left[   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1,i}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}  \right] \\
+& - \underbrace{ \alpha \sum_{\ell=1}^L \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} g_{r,i}}_{= A_1}
 \end{align}
+
+Since we have that $\|p_{r,i}^{\ell}\| \leq \sqrt{\frac{p_\ell}{1-\beta_2}}$ and $\sqrt{v^{t}_{r,i}} \leq M$, using H\ref{ass:boundgrad}, we develop the term $A_1$ as follows:
+\begin{align}
+A_1 & \leq - \alpha \sum_{\ell=1}^L \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} g_{r,i}\\
+& \leq - \alpha \sum_{\ell=1}^L  \sqrt{\frac{1-\beta_2}{M^2 p_\ell}} \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  g^{\ell, j}_{r,i}\\
+ \end{align}
+
 
 
 \section{Numerical experiments}\label{sec:numerical}
