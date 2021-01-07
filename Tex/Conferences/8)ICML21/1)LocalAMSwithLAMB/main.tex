@@ -90,7 +90,7 @@ We propose a layerwise and dimensionwise local AMS algorithm in the following:
 \begin{algorithmic}[1]
 %\small
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, and learning rate $\alpha_t$. 
-\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model shared by all devices and $v_{0} = \epsilon 1 \in \mathbb R^{d}$ and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
+\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model shared by all devices and $v_{0} = \epsilon \mathsf{1} \in \mathbb R^{d}$ and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
 \FOR{$r=1$ to $R$}
 \STATE Set $\theta_{r,i}^{0} = \bar{\theta}_{r-1}$
 \STATE\textbf{parallel for device $d \in D^{r}$ do}:
@@ -100,8 +100,8 @@ We propose a layerwise and dimensionwise local AMS algorithm in the following:
 \STATE $m^{t}_{r,i}=m^{t}_{r,i} /\left(1-\beta_{1}^{r}\right)$.
 \STATE $v^{t,i}_r = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) g_{r,i}^2$.
 \STATE $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{r}\right)$.
-\STATE $\hat{v}^{t}_{r,i} = \max( \hat{v}^{t}_{r-1,i} , v_{r,i} )$.
-\STATE Compute ratio  $p^j_{r,i}=\frac{m^{t}_{r,i}}{\sqrt{v^{t}_{r,i}}+\epsilon}$.
+\STATE $\hat{v}^{t}_{r} = \max( \hat{v}^{t}_{r-1} , \frac{1}{n} \sum_{i=1}^n v^t_{r,i} )$.
+\STATE Compute ratio  $p^j_{r,i}=\frac{m^{t}_{r,i}}{\sqrt{v^{t}_{r}}+\epsilon}$.
 \STATE Update local model for each layer $\ell$:
 $$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{j}+\lambda \theta_{r,i}^{\ell,t-1}) / \|p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}\|$$
 \ENDFOR
@@ -126,9 +126,14 @@ We add some classical assumption in the unbiased stochastic optimization realm, 
 The stochastic gradient is unbiased for any iteration $r>0$: $\EE[g_r] = \nabla f(\theta_r)$ and is bounded from above, i.e., $\norm{g_t} \leq M$.
 \end{assumption}
 
-\begin{assumption}
+\begin{assumption}\label{ass:var}
 The variance of the stochastic gradient is bounded for any iteration $r>0$ and any dimension $j \in \llbracket d \rrbracket$: $\EE[|g_r^j - \nabla f(\theta_r)^j|^2] < \sigma^2$.
 \end{assumption}
+
+\begin{assumption}\label{ass:phi}
+For any value $a \in \rset^*_+$, there exists strictly positive constants such that $\phi_m \leq  \phi(a) \leq \phi_M$.
+\end{assumption}
+
 
 
 \textbf{Case with $T=1$, $\epsilon = 0$ and $\lambda = 0$:}
@@ -151,8 +156,8 @@ where $\bar{\theta_r}$ denotes the average of the local models at round $r$.
 Then for each layer $\ell$,
 \begin{align}\label{eq:gap}
 \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r  & = \frac{1}{1-\beta_1}(\bar{\theta}^\ell_{r+1} - \bar{\theta}^\ell_{r}) - \frac{\beta_1}{1-\beta_1}(\bar{\theta}^\ell_{r} - \bar{\theta}^\ell_{r-1})\\
-& = \frac{\alpha_{r}}{1-\beta_1} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\|p_{r,i}^{\ell}\|} p_{r,i}^{\ell}  - \frac{\alpha_{r-1}}{1-\beta_1}\sum_{i = 1}^n \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\|p_{r-1,i}^{\ell}\|} p_{r-1,i}^{\ell}\\
-& = \frac{\alpha \beta_1}{1-\beta_1}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1,i}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1} + \alpha \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} g_{r,i}
+& = \frac{\alpha_{r}}{1-\beta_1} \frac{1}{n} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\|p_{r,i}^{\ell}\|} p_{r,i}^{\ell}  - \frac{\alpha_{r-1}}{1-\beta_1} \frac{1}{n} \sum_{i = 1}^n \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\|p_{r-1,i}^{\ell}\|} p_{r-1,i}^{\ell}\\
+& = \frac{\alpha \beta_1}{1-\beta_1} \frac{1}{n}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1} + \frac{\alpha}{n} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}
 \end{align}
 where we have assumed a constant learning rate $\alpha$.
 
@@ -164,29 +169,29 @@ We note for all $\theta \in \Theta$, the majorant $G > 0$ such that $\phi(\|\the
 
 Developing the LHS of \eqref{eq:main2} using \eqref{eq:gap} leads to
 
-\begin{align}
+\begin{align}\label{eq:inner}
 \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r} &= \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j (\bar{\vartheta}^{\ell,j}_{r+1} - \bar{\vartheta}^{\ell,j}_r) \\
-& =  \frac{\alpha \beta_1}{1-\beta_1}  \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j \left[   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1,i}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}  \right] \\
-& - \underbrace{ \alpha \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} g_{r,i}}_{= A_1}
+& =  \frac{\alpha \beta_1}{1-\beta_1}\frac{1}{n}  \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j \left[   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}  \right] \\
+& - \underbrace{ \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}}_{= A_1}
 \end{align}
 
 \textbf{ Term $A_1$:}
-Since we have that $\|p_{r,i}^{\ell}\| \leq \sqrt{\frac{p_\ell}{1-\beta_2}}$ and $\sqrt{v^{t}_{r,i}} \leq M$, using H\ref{ass:boundgrad}, we develop the term $A_1$ as follows:
+Since we have that $\|p_{r,i}^{\ell}\| \leq \sqrt{\frac{p_\ell}{1-\beta_2}}$ and $\sqrt{v^{t}_{r}} \leq M$, using H\ref{ass:boundgrad}, we develop the term $A_1$ as follows:
 \begin{align}
-A_1 & \leq - \alpha \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} g_{r,i}\\
-& \leq - \alpha \sum_{\ell=1}^\tot  \sqrt{\frac{1-\beta_2}{M^2 p_\ell}} \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  g^{\ell, j}_{r,i}\\
-& - \alpha \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \left( \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  \frac{p_{r,i}^{\ell}}{ \|p_{r,i}^{\ell}\|}\right)\mathsf{1}\left( \sign(  \nabla_{\ell} f(\bar{\vartheta}_r)^j) \neq  \sign( p_{r,i}^{\ell}) \right)
+A_1 & \leq - \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}\\
+& \leq - \frac{\alpha}{n} \sum_{\ell=1}^\tot  \sqrt{\frac{1-\beta_2}{M^2 p_\ell}} \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  g^{\ell, j}_{r,i}\\
+& - \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \left( \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  \frac{p_{r,i}^{\ell}}{ \|p_{r,i}^{\ell}\|}\right)\mathsf{1}\left( \sign(  \nabla_{\ell} f(\bar{\vartheta}_r)^j) \neq  \sign( p_{r,i}^{\ell}) \right)
 \end{align}
 
 Taking the expectations on both sides yields:
 
 \begin{align}
 \EE[A_1]  & \leq - \alpha \sum_{\ell=1}^\tot  \sqrt{\frac{1-\beta_2}{M^2 p_\ell}} \sum_{i = 1}^n \sum_{j=1}^{p_\ell} \EE \left[  \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  g^{\ell, j}_{r,i}\right]\\
-& - \alpha \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \EE\left[ \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  \frac{p_{r,i}^{\ell}}{ \|p_{r,i}^{\ell}\|}\mathsf{1} \left( \sign(  \nabla_{\ell} f(\bar{\vartheta}_r)^j) \neq  \sign( p_{r,i}^{\ell}) \right) \right]\\
-& \leq - \alpha \sum_{\ell=1}^\tot  \phi_m \sqrt{\frac{1-\beta_2}{M^2 p_\ell}} \sum_{i = 1}^n \sum_{j=1}^{p_\ell}    (\nabla_{\ell} f(\bar{\vartheta}_r)^j)^2\\
-& - \alpha \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell} \phi_M  \EE\left[ \left| \nabla_{\ell} f(\bar{\vartheta}_r)^j  \frac{p_{r,i}^{\ell}}{ \|p_{r,i}^{\ell}\|}\right| \mathsf{1}\left( \sign(  \nabla_{\ell} f(\bar{\vartheta}_r)^j) \neq  \sign( p_{r,i}^{\ell})\right) \right]\\
+& - \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \EE\left[ \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  \frac{p_{r,i}^{\ell}}{ \|p_{r,i}^{\ell}\|}\mathsf{1} \left( \sign(  \nabla_{\ell} f(\bar{\vartheta}_r)^j) \neq  \sign( p_{r,i}^{\ell}) \right) \right]\\
+& \leq - \frac{\alpha}{n} \sum_{\ell=1}^\tot  \phi_m \sqrt{\frac{1-\beta_2}{M^2 p_\ell}} \sum_{i = 1}^n \sum_{j=1}^{p_\ell}    (\nabla_{\ell} f(\bar{\vartheta}_r)^j)^2\\
+& - \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell} \phi_M  \EE\left[ \left| \nabla_{\ell} f(\bar{\vartheta}_r)^j  \frac{p_{r,i}^{\ell}}{ \|p_{r,i}^{\ell}\|}\right| \mathsf{1}\left( \sign(  \nabla_{\ell} f(\bar{\vartheta}_r)^j) \neq  \sign( p_{r,i}^{\ell})\right) \right]\\
 \end{align}
-where we have used the fact that there exists strictly positive constants such that $\phi_m \leq  \phi(a) \phi_M$ for any value $a \in \rset^*_+$.
+where we have used assumption H\ref{ass:phi}.
 
 Since for any $\ell, i , j$, we have
 \beq
@@ -195,29 +200,79 @@ Since for any $\ell, i , j$, we have
 
 Then, we obtain
 
-\beq
+\beq\label{eq:finala1}
 \EE[A_1]  \leq -\alpha \phi_m \sqrt{\frac{\tot(1-\beta_2)}{M^2 p}}  \EE[ \| \overline{\nabla f}(\bar{\vartheta})\|^2]  -  \alpha \phi_M \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell} \frac{\sigma_{i}^{\ell, j}}{\sqrt{n}}
 \eeq
 
 where $\overline{\nabla f}(\dot) = \sum_{i=1}^n \nabla f_i(.)$
 
 We now need to bound the following terms:
-
 \begin{align}
-& A_2 = \EE[  \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2]\\
-& A_3 =  \frac{\alpha \beta_1}{1-\beta_1}  \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j \left[   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1,i}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}  \right]
+& A_r^2 \eqdef \EE[  \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2]\\
+& A_r^3 \eqdef  \frac{\alpha \beta_1}{1-\beta_1}  \frac{1}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j \left[   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}  \right]
 \end{align}
 
-\textbf{ Term $A_2$:}
-According to definition \eqref{eq:defseq}, for each layer $\ell \in \llbracket \tot \rrbracket$, we have, using the triangle inequality, that:
+\textbf{ Term $A_r^2$:}
+According to definition \eqref{eq:defseq}, for each layer $\ell \in \llbracket \tot \rrbracket$, we have, using the Cauchy-Schwartz inequality, that:
 \begin{align}
-  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2 & = \left\| \frac{\alpha \beta_1}{1-\beta_1}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1,i}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1} + \alpha \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} g_{r,i}\right \|^2 \\
-&  \leq 2\alpha^2 \left\| \frac{ \beta_1}{1-\beta_1}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1,i}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}\right\|^2 + \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r,i}} \|p_{r,i}^{\ell}\|} g_{r,i}\right\|^2
+  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2 & = \left\| \frac{\alpha \beta_1}{1-\beta_1} \frac{1}{n}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1} + \frac{\alpha}{n} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}\right \|^2 \\
+&  \leq 2\frac{\alpha^2}{n^2} \left\| \frac{ \beta_1}{1-\beta_1}   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}\right\|^2 + \frac{1}{n^2} \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}\right\|^2
+\end{align}
+
+Taking the expectation on both sides leads to:
+\begin{align}\label{eq:maina2}
+\begin{split}
+\EE[  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2] &  \leq 2\alpha^2 \EE \left[ \left\| \frac{ \beta_1}{1-\beta_1}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}\right\|^2 \right] +  \frac{1}{n^2} \EE\left[ \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}\right\|^2 \right]\\
+& \leq 2 \frac{\alpha^2}{n^2} \EE \left[ \left\| \frac{ \beta_1}{1-\beta_1}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}\right\|^2 \right] \\
+& +  \frac{1}{n^2} \EE\left[ \left| \sum_{i = 1}^n\sum_{j = 1}^p    \pscal{\Gamma_{r,i}^j (\nabla f_i(\theta_r)^j + g_{r,i}^j - \nabla f_i(\theta_r)^j) }{\Gamma_{r,i}^j (\nabla f_i(\theta_r)^j + g_{r,i}^j - \nabla f_i(\theta_r)^j)}\right| \right]\\
+& \leq 2\frac{\alpha^2}{n^2} \EE \left[ \left\| \frac{ \beta_1}{1-\beta_1}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}\right\|^2 \right] \\
+& +  \frac{1}{n^2} \EE\left[ \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|}\nabla f_i(\theta_r) \right\|^2 \right] +  \frac{1}{n}\left\| \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} \right\|^2 \right]\\
+\end{split}
+\end{align}
+where the last line uses assumptions H\ref{ass:boundgrad} and H\ref{ass:var} (unbiased gradient and bounded variance of the stochastic gradient) and $\Gamma \eqdef  \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} $.
+
+On the other hand, using the bound on the gradient H\ref{ass:boundgrad},
+\begin{align}\label{eq:first}
+\begin{split}
+& \sum_{r=1}^R \EE \left[ \left\| \frac{ \beta_1}{1-\beta_1}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}\right\|^2 \right]  \\
+& \leq   \frac{ \beta_1^2}{(1-\beta_1)^2} M^2 \phi^2_M \sum_{r=1}^R  \EE \left[  \left\| \sum_{i = 1}^n  \left( \frac{1}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{1}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) \right\|^2 \right]\\
+& \leq   \frac{ \beta_1^2}{(1-\beta_1)^2} \frac{\tot(1-\beta_2)}{ p}  M^2 \phi^2_M \sum_{r=1}^R  \EE \left[  \left\| \sum_{i = 1}^n  \left( \frac{1}{\sqrt{v^{t}_{r}}} - \frac{1}{\sqrt{v^{t}_{r-1}}} \right) \right\|^2 \right]\\
+& \leq   \frac{ \beta_1^2}{(1-\beta_1)^2} \frac{\tot(1-\beta_2)}{ p}  M^2 \phi^2_M \sum_{r=1}^R  \EE \left[  \left| \sum_{i = 1}^n  \sum_{j= 1}^p  \left( \frac{1}{\sqrt{v^{t,j}_{r}}} - \frac{1}{\sqrt{v^{t,j}_{r-1}}} \right) \right| \right]\\
+& \leq   \frac{ \beta_1^2}{(1-\beta_1)^2} \frac{\tot(1-\beta_2)}{ p}  M^2 \phi^2_M \frac{n p}{v_0}\\
+\end{split}
+\end{align}
+where, in the telescopic sum, we have used the initial value $v_0$ of the non decreasing sequence $\{v^t_r\}_{r >0}$ by construction (max operator).
+ 
+Combining \eqref{eq:first} into \eqref{eq:maina2} and summing over the total number of rounds $R$ yields
+\begin{align}\label{eq:finala2}
+\begin{split}
+\sum_{r=1}^R A_r^2 \eqdef \sum_{r=1}^R \EE[  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2] & \leq \frac{ \beta_1^2}{(1-\beta_1)^2} \frac{\tot(1-\beta_2)}{ p}  M^2 \phi^2_M \frac{n p}{v_0} \\
+& + \sum_{r=1}^R  \left[  \frac{1}{n^2} \EE\left[ \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|}\nabla f_i(\theta_r) \right\|^2 \right] +  \frac{1}{n}\left\| \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} \right\|^2 \right]\right]
+\end{split}
 \end{align}
 
 
-\textbf{ Term $A_3$:}
+\textbf{ Term $A_r^3$:}
+According to similar arguments on the non decreasing sequence involved in the algorithm as in the previous series of calculations, observe that
 
+\beq\label{eq:finala3}
+\sum_{r=1}^R A_r^3 \leq  \frac{\alpha \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}}
+\eeq
+
+Plugging \eqref{eq:finala1} into \eqref{eq:main2} combined with \eqref{eq:finala2} and \eqref{eq:finala3} injected into the original smoothness definition \eqref{eq:main} summed over the total number of rounds:
+\begin{align}
+- \sum_{r=1}^R \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \sum_{r=1}^R \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{r=1}^R \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2]
+\end{align}
+
+gives:
+
+\beq
+\begin{split}
+& -\alpha \phi_m \sqrt{\frac{\tot(1-\beta_2)}{M^2 p}}  \EE[ \| \overline{\nabla f}(\bar{\vartheta})\|^2]  -  \alpha \phi_M \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell} \frac{\sigma_{i}^{\ell, j}}{\sqrt{n}}  + \frac{\alpha \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} \\
+& \leq  \sum_{r=1}^R \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \frac{ \beta_1^2}{(1-\beta_1)^2} \frac{\tot(1-\beta_2)}{ p}  M^2 \phi^2_M \frac{n p}{v_0} \\
+& \quad + \sum_{r=1}^R  \left[  \frac{1}{n^2} \EE\left[ \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|}\nabla f_i(\theta_r) \right\|^2 \right] +  \frac{1}{n}\left\| \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} \right\|^2 \right]\right]
+\end{split}
+\eeq
 
 \section{Numerical experiments}\label{sec:numerical}
 
