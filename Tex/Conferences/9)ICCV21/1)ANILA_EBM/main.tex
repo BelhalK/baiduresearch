@@ -30,13 +30,18 @@
 
 \section{Introduction}
 
+Given a stream of input noted $x$, the energy-based model (EBM) is a Gibbs distribution defined as:
+\beq\label{eq:ebm}
+p_{\theta}(x) = \frac{1}{Z(\theta)} \mathrm{exp}(f_{\theta}(x))
+\eeq
+
 \section{MCMC based EBM}
 
-\paragraph{Energy Based Models}
+\paragraph{Energy Based Models: }
 
-\paragraph{MCMC procedures}
+\paragraph{MCMC procedures: }
 
-\paragraph{Focus on Langevin Diffusion}
+\paragraph{Focus on Langevin Diffusion: }
 
 \section{ANILA sampler based EBM}
 
@@ -45,20 +50,39 @@
 We introduce a new sampler based on the Langevin updates presented above.
 
 \begin{algorithm}[H]
-\caption{\textsc{AniLA EBM}} \label{alg:ldams}
+\caption{\textsc{AniLA for Energy-Based Model}} \label{alg:ldams}
 \begin{algorithmic}[1]
 %\small
-\STATE \textbf{Input}: parameter s
+\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$ learning rate $\eta$, initial values $\theta_0$, $\{ z_{0}^m \}_{m=1}^M$ and $n$ observations $\{ x_{i} \}_{i=1}^n$.
 \FOR{$t=1$ to $T$}
-\STATE Set $\theta_{r,i}^{0} = \bar{\theta}_{r-1}$
+\STATE Compute the anisotropic stepsize as follows: \label{line:step}
+\beq
+\stepsize_t = \frac{b}{\max(b, | \nabla f_{\theta_t}(x) |}
+\eeq
+\STATE Draw $m$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential \eqref{eq:ebm} via Langevin diffusion:\label{line:langevin}
+\beq
+z_{t}^m = z_{t}^m + \stepsize_t/2  \nabla f_{\theta_t}(x) + \sqrt{\stepsize} \mathsf{B}_t
+\eeq
+where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
+\STATE Samples $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution
+\STATE Compute the gradient of the empirical log-EBM \eqref{eq:ebm} as follows:
+\beq
+\nabla \sum_{i=1}^m \log p_{\theta_t}(x_i) = \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t^m)\right] \approx \frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)
+\eeq
+\STATE Update the vector of global parameters of the EBM:
+\beq
+\theta_{t+1} = \theta_{t+1} + \eta \nabla \sum_{i=1}^m \log p_{\theta_t}(x_i)
+\eeq
 \ENDFOR
-\STATE ds
+\STATE \textbf{Output:} Generated samples $\{ z_{T}^m \}_{m=1}^M$
 \end{algorithmic}
 \end{algorithm}
 
 
 
 \subsection{Geometric ergodicity of ANILA sampler}
+We will present in this subsection, a convergence result for the Markov Chain constructed using Line\ref{line:step}-\ref{line:langevin}. 
+
 
 \section{Numerical Experiments}
 
