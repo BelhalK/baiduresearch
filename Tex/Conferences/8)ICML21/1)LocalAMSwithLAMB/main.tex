@@ -101,12 +101,12 @@ We propose a layerwise and dimensionwise local AMS algorithm in the following:
 \STATE $v^{t,i}_r = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) g_{r,i}^2$.
 \STATE $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{r}\right)$.
 \STATE $\hat{v}^{t}_{r} = \max( \hat{v}^{t}_{r-1} , \frac{1}{n} \sum_{i=1}^n v^t_{r,i} )$.
-\STATE Compute ratio  $p^j_{r,i}=\frac{m^{t}_{r,i}}{\sqrt{v^{t}_{r}}+\epsilon}$.
+\STATE Compute ratio  $p_{r,i}=\frac{m^{t}_{r,i}}{\sqrt{v^{t}_{r}}+\epsilon}$.
 \STATE Update local model for each layer $\ell$:
-$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{j}+\lambda \theta_{r,i}^{\ell,t-1}) / \|p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}\|$$
+$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}) / \|p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}\|$$
 \ENDFOR
 \STATE Devices send local model $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ to the server
-\STATE Server computes the averages of the local models $\bar{\theta}_r^j = \frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{j,T}$ and send it back to the devices.
+\STATE Server computes the averages of the local models $\bar{\theta}_r^\ell = \frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{\ell,T}$ and send it back to the devices.
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
@@ -134,6 +134,111 @@ The variance of the stochastic gradient is bounded for any iteration $r>0$ and a
 For any value $a \in \rset^*_+$, there exists strictly positive constants such that $\phi_m \leq  \phi(a) \leq \phi_M$.
 \end{assumption}
 
+
+We now state our main result regarding the non asymptotic convergence analysis of our Algorithm~\ref{alg:ldams}:
+\begin{Theorem}\label{th:main}
+Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then, if the number of local epochs is set to $T=1$ and $\epsilon = \lambda = 0$, we have:
+\beq
+\frac{1}{R} \sum_{r=1}^R \EE[\| \nabla f(\overline{\theta_r}) \|^2 \leq dd
+\eeq
+\end{Theorem}
+
+\section{Numerical experiments}\label{sec:numerical}
+
+\begin{figure}[h]
+    \begin{center}
+        \mbox{
+        \includegraphics[width=2.5in]{figure/mnist_trainloss_cnn_ep1_client60_iid0.eps}
+        \includegraphics[width=2.5in]{figure/mnist_testerror_cnn_ep1_client60_iid0.eps}
+        }
+    \end{center}
+    \vspace{-0.1in}
+	\caption{Test accuracy on CNN + MNIST. Non-iid data distribution.}
+	\label{fig:mnist-cnn-noniid}
+\end{figure}
+
+\begin{figure}[h]
+    \begin{center}
+        \mbox{
+        \includegraphics[width=2.5in]{figure/cifar_testerror_cnn_ep1_client10_iid1.eps}
+        \includegraphics[width=2.5in]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
+        }
+        \mbox{
+        \includegraphics[width=2.5in]{figure/cifar_testerror_cnn_ep3_client10_iid1.eps}
+        \includegraphics[width=2.5in]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
+        }
+    \end{center}
+    \vspace{-0.1in}
+	\caption{Test accuracy on CNN + CIFAR10. iid data distribution.}
+	\label{fig:cifar-cnn-iid}
+\end{figure}
+
+\begin{figure}[h]
+    \begin{center}
+        \mbox{
+        \includegraphics[width=2.5in]{figure/cifar_testerror_resnet_ep1_client10_iid1.eps}
+        \includegraphics[width=2.5in]{figure/cifar_testerror_resnet_ep1_client50_iid1.eps}
+        }
+        \mbox{
+        \includegraphics[width=2.5in]{figure/cifar_testerror_resnet_ep3_client10_iid1.eps}
+        \includegraphics[width=2.5in]{figure/cifar_testerror_resnet_ep3_client50_iid1.eps}
+        }
+    \end{center}
+    \vspace{-0.1in}
+	\caption{Test accuracy on ResNet + CIFAR10. iid data distribution.}
+	\label{fig:cifar-resnet-iid}
+\end{figure}
+
+\section{Conclusion}\label{sec:conclusion}
+
+\clearpage
+
+\bibliographystyle{plain}
+\bibliography{ref}
+
+
+\clearpage
+\appendix 
+
+\section{Appendix}\label{sec:appendix}
+
+
+\section{Theoretical Analysis}
+
+\subsection{Intermediary Lemmas}
+
+\begin{Lemma}\label{lemma:iterates}
+Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then for $i \in \inter$:
+\beq
+\| \overline{\theta_r} - \theta_{r,i} \| \leq \alpha^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{v_0}
+\eeq
+\end{Lemma}
+
+\begin{proof}
+Assuming the simplest case when $T=1$, i.e. one local iteration, then by construction of Algorithm~\ref{alg:ldams}, we have for all $\ell \in \llbracket \tot \rrbracket$, $i \in \inter$ and $r >0$:
+\beq
+ \theta^{\ell}_{r,i} =  \overline{\theta_r}^{\ell}  - \alpha \phi(\|\theta_{r,i}^{\ell,t-1}\|)p_{r,i}^{j} / \|p_{r,i}^{\ell}\|=  \overline{\theta_r}^{\ell}  - \alpha \phi(\|\theta_{r,i}^{\ell,t-1}\|)  
+ \frac{m^{t}_{r,i}}{\sqrt{v^{t}_{r}}} \frac{1}{\|p_{r,i}^{\ell}\|}
+\eeq
+leading to 
+\beq
+\begin{split}
+\|\overline{\theta_r}   -  \theta_{r,i}\|^2 & = \pscal{\overline{\theta_r}^{\ell}   -  \theta^{\ell}_{r,i}}{\overline{\theta_r}^{\ell}   -  \theta^{\ell}_{r,i}} \\
+& \leq \alpha^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{v_0}
+\end{split}
+\eeq
+which concludes the proof.
+\end{proof}
+
+
+\subsection{Proof of Theorem~\ref{th:main}}
+
+\begin{Theorem*}
+Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then, if the number of local epochs is set to $T=1$ and $\epsilon = \lambda = 0$, we have:
+\beq
+\frac{1}{R} \sum_{r=1}^R \EE[\| \nabla f(\overline{\theta_r}) \|^2 \leq dd
+\eeq
+\end{Theorem*}
 
 
 \textbf{Case with $T=1$, $\epsilon = 0$ and $\lambda = 0$:}
@@ -176,7 +281,7 @@ Developing the LHS of \eqref{eq:main2} using \eqref{eq:gap} leads to
 \end{align}
 
 \textbf{ Term $A_1$:}
-Since we have that $\|p_{r,i}^{\ell}\| \leq \sqrt{\frac{p_\ell}{1-\beta_2}}$ and $\sqrt{v^{t}_{r}} \leq M$, using H\ref{ass:boundgrad}, we develop the term $A_1$ as follows:
+Since we have that $\|p_{r,i}^{\ell}\| \leq \sqrt{\frac{p_\ell}{1-\beta_2}}$ and $1/\sqrt{v^{t}_{r}} \leq 1/\sqrt{v_{0}}$, using H\ref{ass:boundgrad}, we develop the term $A_1$ as follows:
 \begin{align}
 A_1 & \leq - \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}\\
 & \leq - \frac{\alpha}{n} \sum_{\ell=1}^\tot  \sqrt{\frac{1-\beta_2}{M^2 p_\ell}} \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  g^{\ell, j}_{r,i}\\
@@ -268,72 +373,52 @@ gives:
 
 \beq
 \begin{split}
-& - \sum_{r=1}^R \alpha \phi_m \sqrt{\frac{\tot(1-\beta_2)}{M^2 p}}  \EE[ \| \overline{\nabla f}(\bar{\vartheta_r})\|^2]  -  \alpha \phi_M\sum_{r=1}^R \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell} \frac{\sigma_{i}^{\ell, j}}{\sqrt{n}}  + \frac{\alpha \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} \\
+&  \sum_{r=1}^R \alpha \phi_m \sqrt{\frac{\tot(1-\beta_2)}{M^2 p}}  \EE[ \| \overline{\nabla f}(\bar{\vartheta_r})\|^2]  -  \alpha \phi_M  \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell} \frac{\sigma_{i}^{\ell, j}}{\sqrt{n}}  + \frac{\alpha \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} \\
 & \leq  \sum_{r=1}^R \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \frac{ \beta_1^2}{(1-\beta_1)^2} \frac{\tot(1-\beta_2)}{ p}  M^2 \phi^2_M \frac{n p}{v_0} \\
-& \quad + \sum_{r=1}^R  \left[  \frac{1}{n^2} \EE\left[ \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|}\nabla f_i(\theta_r) \right\|^2 \right] +  \frac{1}{n}\left\| \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} \right\|^2 \right]\right]
+& \quad - \sum_{r=1}^R  \left[  \frac{1}{n^2} \EE\left[ \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|}\nabla f_i(\theta_r) \right\|^2 \right] +  \frac{1}{n}\left\| \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} \right\|^2 \right]\right]
 \end{split}
 \eeq
 Noting that $ \sum_{r=1}^R \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] =   f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{R+1})] $, we obtain
-\section{Numerical experiments}\label{sec:numerical}
-
-\begin{figure}[h]
-    \begin{center}
-        \mbox{
-        \includegraphics[width=2.5in]{figure/mnist_trainloss_cnn_ep1_client60_iid0.eps}
-        \includegraphics[width=2.5in]{figure/mnist_testerror_cnn_ep1_client60_iid0.eps}
-        }
-    \end{center}
-    \vspace{-0.1in}
-	\caption{Test accuracy on CNN + MNIST. Non-iid data distribution.}
-	\label{fig:mnist-cnn-noniid}
-\end{figure}
-
-\begin{figure}[h]
-    \begin{center}
-        \mbox{
-        \includegraphics[width=2.5in]{figure/cifar_testerror_cnn_ep1_client10_iid1.eps}
-        \includegraphics[width=2.5in]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
-        }
-        \mbox{
-        \includegraphics[width=2.5in]{figure/cifar_testerror_cnn_ep3_client10_iid1.eps}
-        \includegraphics[width=2.5in]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
-        }
-    \end{center}
-    \vspace{-0.1in}
-	\caption{Test accuracy on CNN + CIFAR10. iid data distribution.}
-	\label{fig:cifar-cnn-iid}
-\end{figure}
-
-\begin{figure}[h]
-    \begin{center}
-        \mbox{
-        \includegraphics[width=2.5in]{figure/cifar_testerror_resnet_ep1_client10_iid1.eps}
-        \includegraphics[width=2.5in]{figure/cifar_testerror_resnet_ep1_client50_iid1.eps}
-        }
-        \mbox{
-        \includegraphics[width=2.5in]{figure/cifar_testerror_resnet_ep3_client10_iid1.eps}
-        \includegraphics[width=2.5in]{figure/cifar_testerror_resnet_ep3_client50_iid1.eps}
-        }
-    \end{center}
-    \vspace{-0.1in}
-	\caption{Test accuracy on ResNet + CIFAR10. iid data distribution.}
-	\label{fig:cifar-resnet-iid}
-\end{figure}
-
-\section{Conclusion}\label{sec:conclusion}
-
-\newpage
-
-\bibliographystyle{plain}
-\bibliography{ref}
 
 
-\appendix 
+\beq
+\begin{split}
+&    \sum_{r=1}^R \alpha \phi_m \sqrt{\frac{\tot(1-\beta_2)}{M^2 p}}  \EE[ \| \overline{\nabla f}(\bar{\vartheta_r})\|^2]  +  \frac{1}{n^2} \EE\left[ \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|}\nabla f_i(\theta_r) \right\|^2 \right] \\
+&\leq   f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{R+1})] +   \frac{1}{n}\left\| \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} \right\|^2 \right] +\alpha \phi_M  \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell} \frac{\sigma_{i}^{\ell, j}}{\sqrt{n}}  + \frac{\alpha \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} \\
+& +  \sum_{\ell =1}^L \frac{L_\ell}{2} \frac{ \beta_1^2}{(1-\beta_1)^2} \frac{\tot(1-\beta_2)}{ p}  M^2 \phi^2_M \frac{n p}{v_0} 
+\end{split}
+\eeq
 
-\section{Appendix}\label{sec:appendix}
+
+leading to
+\beq
+\begin{split}
+   \sum_{r=1}^R   \frac{1}{n^2} \EE\left[ \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|}\nabla f_i(\theta_r) \right\|^2 \right] &\leq   f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{R+1})] +   \frac{1}{n}\left\| \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} \right\|^2 \right]\\
+&   +\alpha \phi_M \sigma \tot p \sqrt{n}+ \frac{\overline{L}_\ell\beta_1^2\tot(1-\beta_2)M^2 \phi^2_M n}{2(1-\beta_1)^2 v_0}    + \frac{\alpha \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} 
+\end{split}
+\eeq
+where $ \overline{L}_\ell = \sum_{\ell=1}^\tot L_{\ell}$ is the sum of all smoothness constants.
+
+Consider the following inequality:
+
+\beq
+\frac{1}{n} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell} \|}\nabla f_i(\theta_r) \leq   \phi_M (1-\beta_2) \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}}
+\eeq
+where $\overline{\nabla}f(\theta_r) \eqdef \frac{1}{n} \sum_{i = 1}^n \nabla f_i(\theta_r) $.
+And using the Cauchy-Schwartz inequality we have
+\beq
+\begin{split}
+\left\| \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}} \right\| \geq \frac{1}{2} \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\| - \left\| \frac{\overline{\nabla}f(\theta_r)- \nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\|
+\end{split}
+\eeq
 
 
-%-----------------------------------------------------------------------------
-%\vspace{0.4cm}
+Using Lemma~\ref{lemma:iterates} and the smoothness assumption H\ref{ass:smooth}, we have
+\beq
+\begin{split}
+\left\| \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}} \right\| \geq \frac{1}{2} \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\| - \left\| \frac{\overline{\nabla}f(\theta_r)- \nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\|
+\end{split}
+\eeq
+
 
 \end{document} 
