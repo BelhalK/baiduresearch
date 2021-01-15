@@ -58,20 +58,64 @@ Based on recent progress in adaptive methods for accelerating the training proce
 Our contributions are as follows:
 \begin{itemize}
 \item We develop a novel optimization algorithm for federated learning, namely \textsc{Fed-LAMB}, following a principled layerwise adaptation strategy to accelerate training of deep neural networks.
-\item theoretical results
+\item We provide a rigorous theoretical understanding of the non asymptotic convergence rate of \textsc{Fed-LAMB}. Based on the recent progress on nonconvex stochastic optimization, we derive for a any finite number of rounds performed by our method, a characterization of the rate at which the classical suboptimilality condition, \ie, the second order moment of the gradient of the objective function, decreases. Our bound  in $\mathcal{O}(\sqrt{\frac{p \tot}{nR}})$ matches state of the art methods in Federated Learning reaching a sublinear convergence in $R$, the total number of rounds.
 \item We exhibit the advantages of our method on several benchmarks supervised learning methods on both homogeneous and heterogeneous settings.
 \end{itemize}
 
+The plan of our paper is as follows.
+After having established a literature review of both realms of federated and adaptive learning in subsection~\ref{sec:related}, we develop in Section~\ref{sec:main}, our method, namely \algo, based on the computation per layer and per dimension, of a scaling factor in the traditional stepsize of AMSGrad.
+Theoretical understanding of our method's behaviour with respect to convergence towards a stationary point is developed in Section~\ref{sec:thoery}.
+We present numerical illustrations showing the advantages of our method in Section~\ref{sec:numerical}.
+
 \subsection{Related Work}\label{sec:related}
 
-\paragraph{Federated learning.}
-
-
-
 \paragraph{Adaptive gradient methods.}
+In classical stochastic nonconvex optimization, adaptive methods have proven to be the spearhead of any practicioner.
+Those gradient based optimization algorithms alleviate the possibly high nonconvexity of the objective function by adaptively updating each coordinate of their learning rate using past gradients. Most used examples \textsc{AMSGrad} \citep{RKK18}, \textsc{Adam} \citep{KB15}, \textsc{RMSPROP} \citep{TH12}, \textsc{AdADELTA} \citep{Z12}, and \textsc{NADAM} \citep{D16}.
+
+Their popularity and efficiency are due to their great performance at training deep neural networks.
+They generally combine the idea of adaptivity from \textsc{AdaGrad} \citep{DHS11,MS10}, as explained above, and the idea of momentum from \textsc{Nesterov's Method} \citep{N04} or \textsc{Heavy ball} method \citep{P64} using past gradients.
+\textsc{AdaGrad} displays a great edge when the gradient is sparse compared to other classical methods.
+Its update has a notable feature: it leverages an anisotropic learning rate depending on the magnitude of the gradient for each dimension which helps in exploiting the geometry of the data. 
+
+The anisotropic nature of this update represented a real breakthrough in the training of high dimensional and nonconvex loss functions.
+This adaptive learning rate helps accelerating the convergence when the gradient vector is sparse \citep{DHS11}, yet, when applying \textsc{AdaGrad} to train deep neural networks, it is observed that the learning rate might decay too fast, see \citep{KB15} for more details.
+Consequently, \cite{KB15} develops \textsc{Adam} leveraging a moving average of the gradients divided by the square root of the second moment of this moving average (element-wise multiplication).
+A variant, called \textsc{AMSGrad} described in \citep{RKK18} ought to fix \textsc{Adam} failures and is presented in Algorithm~\ref{alg:amsgrad}.
+\begin{algorithm}[H]
+\caption{\textsc{AMSGrad} \citep{RKK18}} \label{alg:amsgrad}
+\begin{algorithmic}[1]
+\small
+\STATE \textbf{Required}: parameter $\beta_1$, $\beta_2$, and $\eta_t$. 
+\STATE Init: $w_{1} \in \Theta \subseteq \mathbb R^d $ and $v_{0} = \epsilon 1 \in \mathbb R^{d}$.
+\FOR{$t=1$ to $T$}
+\STATE Get mini-batch stochastic gradient $g_t$ at $w_t$.
+\STATE $\theta_t = \beta_1 \theta_{t-1} + (1 - \beta_1) g_t$.
+\STATE $v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2$. 
+\STATE \label{line:maxop}$\hat{v}_t = \max( \hat{v}_{t-1} , v_t )$. 
+\STATE $w_{t+1} = w_t - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}}_t }$.
+\text{ (element-wise division)}
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}\vspace{-0.1in}
+
+The difference between \textsc{Adam} and \textsc{AMSGrad} lies in Line~\ref{line:maxop} of Algorithm~\ref{alg:amsgrad}.
+
+A natural extension of Algorithm~\ref{alg:amsgrad} has been developed in \citep{you2019large} specifically for multi layered neural network. 
+A principled layerwise adaptation strategy to accelerate training of deep neural networks using large mini-batches is proposed using either a standard stochastic gradient update or a generalized adaptive method under the setting of a classical single server empirical risk minimization problem.
+
+\medskip
+\paragraph{Federated learning.}
+An extension of the well known parameter server framework, where a model is being trained on several servers in a distributed manner, is called Federated Learning, see \citep{konevcny2016federated}.
+Here, the central server only plays the role of compute power for aggregation and global update of the model.
+Compared with the distributed learning paradigm, in Federated Learning, the data stored in each worker must not be seen by the central server -- preserving privacy is key -- and the nature of those workers, which can be mobile devices, combined with their usually large amount make communication between the devices and the central server less appealing -- communication cost needs to be controlled.
+
+Thus, while traditional distributed gradient methods~\citep{recht2011hogwild,li2014scaling,zhao2020distributed} do not respect those constraints, it has been proposed in \citep{mcmahan2017communication}, an algorithm called Federated Averaging -- \textsc{Fed-Avg} -- extending parallel SGD with local updates performed on each device. 
+In \textsc{Fed-Avg}, each worker updates their own model parameters locally using SGD, and the local models are synchronized by periodic averaging on the central parameter server.
 
 
 \section{Layerwise and Dimensionwise Adaptive Methods}\label{sec:main}
+Beforehand, it is important to provide useful and important notations used throughout our paper.
 
 \paragraph{Notations:} We denote by $\theta$ the vector of parameters taking values in $\rset^d$. 
 For each layer $\ell \in \llbracket \tot \rrbracket$, where $\tot$ is the total number of layers of the neural networks, and each coordinate $j \in \llbracket p_\ell \rrbracket$ where $p_\ell$ is the dimension per layer $\ell$, we note $\theta^{\ell, j}$ its $j$th coordinate.
@@ -81,12 +125,12 @@ $r$ and $t$ are used as the round and local iteration numbers respectively.
 The smoothness per layer is denoted by $L_\ell$ for each layer $\ell \in \llbracket \tot \rrbracket$.
 
 
-\subsection{Local AMS with LAMB}
+\subsection{Layerwsie and Dimensionwise Learning with Periodic Averaging}
 
 We propose a layerwise and dimensionwise local AMS algorithm in the following:
 
 \begin{algorithm}[H]
-\caption{\textsc{L\&D Local AMS for Federated Learning}} \label{alg:ldams}
+\caption{\algo for Federated Learning} \label{alg:ldams}
 \begin{algorithmic}[1]
 %\small
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, and learning rate $\alpha_t$. 
@@ -112,7 +156,7 @@ $$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{
 \end{algorithm}
 
 
-\subsection{Finite time convergence bounds}
+\section{On The Convergence of \algo}\label{sec:theory}
 
 
 
