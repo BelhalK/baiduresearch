@@ -188,6 +188,15 @@ $r$ and $t$ are used as the round and local iteration numbers respectively.
 The smoothness per layer is denoted by $L_\ell$ for each layer $\ell \in \llbracket \tot \rrbracket$.
 We note for each communication $r>0$, the set of randomly drawn devices $D^{r}$ performing local updates.
 
+\begin{figure}[h]
+\vspace{-0.1in}
+    \begin{center}
+        \includegraphics[width=0.5\textwidth]{plot/plot1.pdf}
+    \end{center}
+	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
+	\label{fig:illustrate}
+\end{figure}
+
 
 \subsection{AMSGrad, Local AMSGrad and Periodic Averaging}
 Under our Federated setting, we stress on the important of reducing the communication cost at each round between the central server, used mainly for aggregation purposes, and the many clients used for gradient computation and local updates.
@@ -211,9 +220,17 @@ The multilayer and nonconvex nature of the loss function implies having recourse
 Besides, the distributed and clients low bandwidth constraints are strong motivations for improving existing methods performing \eqref{eq:opt}.  
 
 
-Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm described in the following:
+Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm which is depicted in Figure~\ref{fig:illustrate} and detailed in Algorithm~\ref{alg:ldams}, which is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{distributed} setting.
+In particular, while Line~\ref{line:first} and Line~\ref{line:second} corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Lines~\ref{line:new1}-\ref{line:new2} are correct the biases of those estimates, the final local update in Line~\ref{line:layer} is novel and corresponds to the specialization per layer of our federated method.
+Note that a scaling factor is applied to the learning rate $\alpha_r$ at each round $r>0$ via the quantity $\phi(\|\theta_{r,i}^{\ell,t-1}\|)$ depending on the dimensionwise and layerwise quantity computed in Line~\ref{line:scale}.
+This function is user designed and can be set to the identity function.
 
-\begin{algorithm}[H]
+The adaptivity of our federated method is thus manifold. 
+There occurs a per dimension normalization with respect to the square root of the second moment used in adaptive gradient methods and a layerwise normalization obtained via the final local update (Line~\ref{line:layer}).
+
+
+
+\begin{algorithm}[h]
 \caption{\algo\ for Federated Learning} \label{alg:ldams}
 \begin{algorithmic}[1]
 %\small
@@ -241,16 +258,24 @@ $$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{
 \end{algorithmic}
 \end{algorithm}
 
-Algorithm~\ref{alg:ldams} is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{distributed} settings.
-In particular, while Line~\ref{line:first} and Line~\ref{line:second} corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Lines~\ref{line:new1}-\ref{line:new2} are correct the biases of those estimates, the final local update in Line~\ref{line:layer} is novel and corresponds to the specialization per layer of our federated method.
-Note that a scaling factor is applied to the learning rate $\alpha_r$ at each round $r>0$ via the quantity $\phi(\|\theta_{r,i}^{\ell,t-1}\|)$ depending on the dimensionwise and layerwise quantity computed in Line~\ref{line:scale}.
-This function is user designed and can be set to the identity function.
 
-The adaptivity of our federated method is thus manifold. 
-There occurs a per dimension normalization with respect to the square root of the second moment used in adaptive gradient methods and a layerwise normalization obtained via the final local update (Line~\ref{line:layer}).
-
-
-
+Before our investigation of the theoretical behavior of our method, in the sequel, we recall few important notations used throughout our paper.
+\begin{table}[htbp]
+%\caption{Table of Notations}
+\begin{center}% used the environment to augment the vertical space
+% between the caption and the table
+\begin{tabular}{r c p{6cm} }
+\toprule
+$R, T$ & $\triangleq$ &  Number of communications rounds and local iterations (resp.)\\
+$n, D, i$ & $\triangleq$ &  Total number of clients, portion sampled uniformly and client index \\
+$\tot, \ell$ & $\triangleq$ &  Total number of layers in the DNN and its index \\
+$\phi(\cdot)$ & $\triangleq$ &  Scaling factor in \algo update\\
+$\bar{\theta}$ & $\triangleq$ &  Global model (after periodic averaging)\\
+\bottomrule
+\end{tabular}
+\end{center}
+\label{tab:notations}
+\end{table}
 
 \section{On The Convergence of \algo}\label{sec:theory}
 We develop in this section, the theoretical analysis of Algorithm~\ref{alg:ldams}.
@@ -267,19 +292,19 @@ Our analysis encompasses the consideration of those challenges and leads to a in
 \subsection{Finite Time Analysis of \algo}
 In the context of nonconvex stochastic optimization for distributed devices, assume the following:
 
-\begin{assumption}\label{ass:smooth}
+\begin{assumption}\label{ass:smooth}(Smoothness)
 For $i \in \inter$ and $\ell \in \interl$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta) - \nabla f_i (\vartheta)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
 \end{assumption}
 We add some classical assumption in the unbiased stochastic optimization realm, on the gradient of the objective function:
-\begin{assumption}\label{ass:boundgrad}
+\begin{assumption}\label{ass:boundgrad}(Unbiased and Bounded gradient)
 The stochastic gradient is unbiased for any iteration $r>0$: $\EE[g_r] = \nabla f(\theta_r)$ and is bounded from above, i.e., $\norm{g_t} \leq M$.
 \end{assumption}
 
-\begin{assumption}\label{ass:var}
+\begin{assumption}\label{ass:var}(Bounded variance)
 The variance of the stochastic gradient is bounded for any iteration $r>0$ and any dimension $j \in \llbracket d \rrbracket$: $\EE[|g_r^j - \nabla f(\theta_r)^j|^2] < \sigma^2$.
 \end{assumption}
 
-\begin{assumption}\label{ass:phi}
+\begin{assumption}\label{ass:phi}(Bounded Scale)
 For any value $a \in \rset^*_+$, there exists strictly positive constants such that $\phi_m \leq  \phi(a) \leq \phi_M$.
 \end{assumption}
 
@@ -351,14 +376,17 @@ Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r
 
 We now discuss our bound regarding several aspects in order to gain understanding of the advantages of our method:
 \begin{itemize}
-\item Our  \citep{karimireddy2019scaffold} \citep{reddi2020adaptive}
+\item \textbf{Round Complexity:} The (sublinear) dependence on the number of communication rounds of our bound matches that of most recent methods in Federated Learning, see \citep{karimireddy2019scaffold} developing SCAFFOLD, a solution to the problem posed by heterogeneity of the data in each client, and of \citep{reddi2020adaptive}, adapting state of the art method in optimization, here ADAM, under the federated setting. Novelty in our bound occurs considering the sublinear dependence on the number of layer $\tot$ and the dependence on the total number of dimension of our problem $p$. For the latter, the dependency can be simplified with stronger assumption on the control of the variance of the stochastic gradient. For the former, 
 
-\item
+\item \textbf{Homogeneous and Heterogeneous Data:} assumption on global variance of stochastic gradient instead of dissociating local variance (local loss) and global variance (sum of local losses).
 
 
-\item
+\item \textbf{Local Iterations:} 
 
 \end{itemize} 
+
+
+
 
 
 \section{Numerical Study}\label{sec:numerical}
@@ -385,7 +413,7 @@ In this section, we conduct numerical experiments on various datasets and networ
 
 \subsection{MNIST with Multilayer Perceptron}
 
-In Figure~\ref{fig:mnist-mlp-noniid}, we start by presenting the test accuracy on MNIST dataset trained by MLP. We test heterogeneous (non-iid) data distribution, where each device only receives samples of one digit (out of ten). This is known to be the scenario where federated learning is harder to generalize well. Firstly, we observe that our proposed Fed-LAMB outperforms Fed-AMS and Fed-SGd with both 1 and 5 local epochs, illustrating its improvement over baseline federated method. In addition, though it is not the main comparison of this paper, Fed-SGD slightly generalizes better than Fed-AMS, which means that SGD might be sufficient for this rather simple model. Yet, Fed-LAMB beats both methods on this task.
+In Figure~\ref{fig:mnist-mlp-noniid}, we start by presenting the test accuracy on MNIST dataset trained by MLP. We test heterogeneous (non-iid) data distribution, where each device only receives samples of one digit (out of ten). This is known to be the scenario where federated learning is harder to generalize well. Firstly, we observe that our proposed Fed-LAMB outperforms Fed-AMS and Fed-SGD with both 1 and 5 local epochs, illustrating its improvement over baseline federated method. In addition, though it is not the main comparison of this paper, Fed-SGD slightly generalizes better than Fed-AMS, which means that SGD might be sufficient for this rather simple model. Yet, Fed-LAMB beats both methods on this task.
 
 
 \subsection{MNIST with Convolutional Neural Network}
