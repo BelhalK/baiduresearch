@@ -193,7 +193,7 @@ We note for each communication $r>0$, the set of randomly drawn devices $D^{r}$ 
     \begin{center}
         \includegraphics[width=0.5\textwidth]{plot/plot1.pdf}
     \end{center}
-	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
+	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of federated training.}
 	\label{fig:illustrate}
 \end{figure}
 
@@ -247,9 +247,9 @@ There occurs a per dimension normalization with respect to the square root of th
 \STATE $m^{t}_{r,i}=m^{t}_{r,i} /\left(1-\beta_{1}^{r}\right)$. \label{line:new1}
 \STATE $v^{t,i}_r = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) g_{r,i}^2$. \label{line:second}
 \STATE $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{r}\right)$. \label{line:new2}
-\STATE Compute ratio  $p_{r,i}=\frac{m^{t}_{r,i}}{\sqrt{\hat v_{r}}+\epsilon}$. \label{line:scale}
+\STATE Compute ratio  $p_{r,i}^t=\frac{m^{t}_{r,i}}{\sqrt{\hat v_{r}}+\epsilon}$. \label{line:scale}
 \STATE Update local model for each layer $\ell \in \llbracket \tot \rrbracket$: \label{line:layer}
-$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)\frac{p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}}{ \|p_{r,i}^{\ell}+\lambda \theta_{r,i}^{\ell,t-1}\|}$$
+$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)\frac{p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}}{ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|}$$
 \ENDFOR
 \STATE Devices send $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $v_{r,i}^T$ to server.
 \ENDFOR
@@ -630,13 +630,13 @@ Developing the LHS of \eqref{eq:main2} using \eqref{eq:gap} leads to
 \begin{align}\label{eq:inner}
 \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r} &= \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j (\bar{\vartheta}^{\ell,j}_{r+1} - \bar{\vartheta}^{\ell,j}_r) \\
 & =  \frac{\alpha \beta_1}{1-\beta_1}\frac{1}{n}  \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j \left[   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}  \right] \\
-& - \underbrace{ \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}}_{= A_1}
+& - \underbrace{ \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}^{l,j}}_{= A_1}   \label{eqn1}
 \end{align}
 
 \textbf{ Term $A_1$:}
 Since we have that $\|p_{r,i}^{\ell}\| \leq \sqrt{\frac{p_\ell}{1-\beta_2}}$ and $1/\sqrt{v^{t}_{r}} \leq 1/\sqrt{v_{0}}$, using H\ref{ass:boundgrad}, we develop the term $A_1$ as follows:
 \begin{align}
-A_1 & \leq - \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}\\
+A_1 & \leq - \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}^{l,j}\\
 & \leq - \frac{\alpha}{n} \sum_{\ell=1}^\tot  \sqrt{\frac{1-\beta_2}{M^2 p_\ell}} \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  g^{\ell, j}_{r,i}\\
 & - \frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{i = 1}^n \sum_{j=1}^{p_\ell}   \left( \phi(\|\theta_{r,i}^{\ell}\|)  \nabla_{\ell} f(\bar{\vartheta}_r)^j  \frac{p_{r,i}^{\ell}}{ \|p_{r,i}^{\ell}\|}\right)\mathsf{1}\left( \sign(  \nabla_{\ell} f(\bar{\vartheta}_r)^j) \neq  \sign( p_{r,i}^{\ell}) \right)
 \end{align}
@@ -799,6 +799,30 @@ Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r
 From the bound in Theorem~\ref{th:main} and with assumption \textbf{H\ref{ass:boundv}} we obtain:
 \end{proof}
 
+\subsection{Multiple local updates}
+
+In previous proof, we change all index $r$ to iteration $t$. We can write \eqref{eqn1} as
+\begin{align}
+    \alpha \langle \nabla f(\bar \vartheta_t),\frac{\bar g_t}{\sqrt{\hat v_t}} \rangle,
+\end{align}
+where $\bar g_t=\frac{1}{n}\sum_{i=1}^n \bar g_{t,i}$, with $\bar g_{t,i}=\Big[\frac{\phi(\Vert \theta_{t,i}^1\Vert)}{\Vert p_{t,i}^1\Vert}g_{t,i}^1,..., \frac{\phi(\Vert \theta_{t,i}^L\Vert)}{\Vert p_{t,i}^L\Vert}g_{t,i}^L   \Big]$ representing the normalized gradient (concatenated by layers) of the $i$-th device. It holds that
+\begin{align}
+    \langle \nabla f(\bar \vartheta_t),\frac{\bar g_t}{\sqrt{\hat v_t}} \rangle&=\frac{1}{2}\Vert \frac{\nabla f(\bar\vartheta_t) }{\hat v^{1/4}}\Vert^2+\frac{1}{2}\Vert \frac{\nabla f(\bar g_t) }{\hat v^{1/4}}\Vert^2-\Vert \frac{\nabla f(\bar\vartheta_t)-\bar g_t }{\hat v^{1/4}}\Vert^2.
+\end{align}
+To bound the last term on the RHS, we have
+\begin{align}
+    \Vert \frac{\nabla f(\bar\vartheta_t)-\bar g_t }{\hat v^{1/4}}\Vert^2&=\Vert \frac{\frac{1}{n}\sum_{i=1}^n (\nabla f_i(\bar\vartheta_t)-\bar g_{t,i})}{\hat v^{1/4}} \Vert^2\\
+    &\leq \frac{1}{n}\sum_{i=1}^n\Vert \frac{\nabla f_i(\bar\vartheta_t)-\bar g_{t,i}}{\hat v^{1/4}} \Vert^2\\
+    &\leq \frac{2}{n}\sum_{i=1}^n \Big(\Vert \frac{\nabla f_i(\bar\vartheta_t)-\nabla f_i(\bar\theta_t)}{\hat v^{1/4}} \Vert^2+\Vert \frac{\nabla f_i(\bar\vartheta_t)-\bar g_{t,i}}{\hat v^{1/4}} \Vert^2  \Big).
+\end{align}
+By Lipschitz smoothness of the loss function, the first term admits
+\begin{align}
+    \frac{2}{n}\sum_{i=1}^n\Vert \frac{\nabla f_i(\bar\vartheta_t)-\nabla f_i(\bar\theta_t)}{\hat v^{1/4}} \Vert^2&\leq \frac{2}{n \sqrt{v_0}}\sum_{i=1}^n L\Vert \bar\vartheta_t-\bar\theta_t\Vert^2  \\
+    &=\frac{2L_\ell}{n \sqrt{v_0}}\frac{\beta_1^2}{(1-\beta_1)^2}\sum_{i=1}^n \Vert \bar\theta_t-\bar\theta_{t-1}\Vert ^2\\
+    &\leq \frac{2L_\ell }{n \sqrt{v_0}}\frac{\beta_1^2}{(1-\beta_1)^2} \sum_{i=1}^n \sum_{l=1}^L\Vert \frac{\phi(\Vert \theta_{t,i}^l\Vert)}{\Vert p_{t,i}^l\Vert}p_{t,i}^l \Vert^2\\
+    &\leq \frac{2L_\ell LM^2}{ \sqrt{v_0}}\frac{\beta_1^2}{(1-\beta_1)^2}.
+\end{align}
+For the second term,
 
 \section{Additional Numerical Experiments}
 
