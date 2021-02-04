@@ -30,6 +30,7 @@
 \usepackage{makecell}
 \usepackage{pifont}
 \usepackage{mathtools}
+\usepackage{balance}
 
 \usepackage{xcolor}
 \usepackage{tikz}
@@ -225,7 +226,7 @@ Additionally, the estimation error of \texttt{DiffSketch} is higher than the ske
 \begin{itemize}
     \item We provide a new algorithm -- \texttt{HEAPRIX} -- and theoretically show that it reduces the cost of communication between devices and server, which is based on unbiased sketching without requiring the broadcast of exact values of gradients to the server. 
     Based on \texttt{HEAPRIX}, we develop general algorithms for communication-efficient and sketch-based FL, namely \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} for both homogeneous and heterogeneous data distribution settings respectively.
-    \item We establish non-asymptotic convergence bounds for convex, \pl\: and non-convex functions in Theorems~\ref{thm:homog_case} and~\ref{thm:hetreg_case} in both homogeneous and heterogeneous cases, and highlight an improvement in the number of iteration to reach a stationary point.
+    \item We establish non-asymptotic convergence bounds for convex, \pl\:(PL) and non-convex functions in Theorems~\ref{thm:homog_case} and~\ref{thm:hetreg_case} in both homogeneous and heterogeneous cases, and highlight an improvement in the number of iteration to reach a stationary point.
 We also provide a convergence analysis for the \texttt{PRIVIX} algorithm proposed in~\citet{li2019privacy}.
     \item We illustrate the benefits of \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} over baseline methods through a set of experiments. 
     The latter shows the advantages of the \texttt{HEAPRIX} compression method achieving comparable test accuracy as Federated SGD (\texttt{FedSGD}) while compressing the information exchanged between devices and server.
@@ -241,28 +242,14 @@ The count sketch of any vector $\boldsymbol{x}$ is designated by $\mathbf{S}(\bo
 \section{Compression using Count Sketch}\label{sec:compression}
 \vspace{-0.05in}
 
-In this paper, we exploit commonly used \texttt{Count Sketch} ~\citep{DBLP:journals/tcs/CharikarCF04} which uses two sets of functions that encode any input vector $\boldsymbol{x}$ \textbf{into a hash table} $\boldsymbol{S}_{m\times t}(\boldsymbol{x})$. 
+In this paper, we exploit the commonly used \texttt{Count Sketch} ~\citep{DBLP:journals/tcs/CharikarCF04} which uses two sets of functions that encode any input vector $\boldsymbol{x}$ \textbf{into a hash table} $\boldsymbol{S}_{m\times t}(\boldsymbol{x})$. 
 Pairwise independent hash functions $\{h_{j,1\leq j\leq t }:[d]\rightarrow m\}$ are used along with another set of pairwise independent sign hash functions $\{\text{sign}_{j,1\leq j\leq t}: [d]\rightarrow \{+1,-1\}\}$ to map entries of $\boldsymbol{x}$ (${x}_i, \:1\leq i\leq d$) into $t$ different columns of $\mathbf{S}_{m\times t}$, wherein to lower the dimension of the input vector we usually have $d\gg mt$.  
 The final update reads $\mathbf{S}[j][h_j(i)]=\mathbf{S}[j-1][h_{j-1}(i)]+\text{sign}_j(i).{x}_i$ for any $1 \leq j \leq t$ .
-There are various types of sketching algorithms which are developed based on count sketching that we develop in the following subsections.  
+There are various types of sketching algorithms which are developed based on count sketching that we develop in the following subsections. 
+See the Appendix for the detailed Count Sketch algorithm. 
 
 
-% In this paper, we exploit commonly used \texttt{Count Sketch} ~\citep{DBLP:journals/tcs/CharikarCF04} which is described in Algorithm~\ref{alg:csketch}.
-% \begin{algorithm}[b]
-% \caption{Count Sketch ({\texttt{CS})~\citep{DBLP:journals/tcs/CharikarCF04}} }\label{alg:csketch}
-% \begin{algorithmic}[1]
-% \STATE \textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, k, \mathbf{S}_{m\times t}, h_j (1\leq i\leq t), \text{sign}_j (1\leq i\leq t)$
-% \STATE \textbf{Compress vector $\boldsymbol{x}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\boldsymbol{x}\right)$:}
-% \STATE \textbf{for} $\boldsymbol{x}_i\in\boldsymbol{x}$ \textbf{do}
-% \STATE \quad\textbf{for $j=1,\cdots,t$ do}
-% \STATE \quad\quad $\mathbf{S}[j][h_j(i)]=\mathbf{S}[j-1][h_{j-1}(i)]+\text{sign}_j(i).\boldsymbol{x}_i$ 
-% \STATE \quad\textbf{end for}
-% \STATE \textbf{end for}
-% \STATE \textbf{return} $\mathbf{S}_{m\times t}(\boldsymbol{x})$
-% \end{algorithmic}
-% \end{algorithm}
-% Count Sketch uses two sets of functions that encode any input vector $\boldsymbol{x}$ \textbf{into a hash table} $\boldsymbol{S}_{m\times t}(\boldsymbol{x})$. 
-% Pairwise independent hash functions $\{h_{j,1\leq j\leq t }:[d]\rightarrow m\}$ are used along with another set of pairwise independent sign hash functions $\{\text{sign}_{j,1\leq j\leq t}: [d]\rightarrow \{+1,-1\}\}$ to map entries of $\boldsymbol{x}$ ($\boldsymbol{x}_i, \:1\leq i\leq d$) into $t$ different columns of $\mathbf{S}_{m\times t}$, wherein to lower the dimension of the input vector we usually have $d\gg mt$.  
+
 % There are various types of sketching algorithms which are developed based on count sketching that we develop in the following subsections.   
 
 \vspace{-0.05in}
@@ -317,15 +304,15 @@ For any $\boldsymbol{x}\in \mathbb{R}^{d}$, we have:
     \begin{align}\notag
         \mathbb{E}_{\mathbf{S}}\left[\texttt{PRIVIX}\left[\mathbf{S}\left(\boldsymbol{x}\right)\right]\right]=\boldsymbol{x}\, .
     \end{align}
-\textit{Bounded variance:} For the given $m<d$, $t=\mathcal{O}\left(\ln \left(\frac{d}{\delta}\right)\right)$ \textcolor{blue}{with probability $1-\delta$ we have:}
+\textit{Bounded variance:} For the given $m<d$, $t=\mathcal{O}\left(\ln \left(\frac{d}{\delta}\right)\right)$ with probability $1-\delta$ we have:
     \begin{align}\notag
-        \mathbb{E}_{\mathbf{S}}\left[\left\|\texttt{PRIVIX}\left[\mathbf{S}\left(\boldsymbol{x}\right)\right]-\boldsymbol{x}\right\|_2^2\right] {\color{blue}\leq c\frac{d}{m}\left\|\boldsymbol{x}\right\|_2^2}\ , 
+        \mathbb{E}_{\mathbf{S}}\left[\left\|\texttt{PRIVIX}\left[\mathbf{S}\left(\boldsymbol{x}\right)\right]-\boldsymbol{x}\right\|_2^2\right] \leq c\frac{d}{m}\left\|\boldsymbol{x}\right\|_2^2\ , 
     \end{align}
-{\color{blue} where $c$ ($e\leq c<m$) is a positive constant independent of the dimension of the input, $d$.}
+ where $c$ ($e\leq c<m$) is a positive constant independent of the dimension of the input, $d$.
 \end{property}
-{\color{blue}Thus, with probability $1-\delta$ we obtain that $\texttt{PRIVIX}\in \mathbb{U}(1+c\frac{d}{m})$.
-Note that $\Delta=1+c\frac{d}{m}$ implies that if $m\rightarrow d$, then $\Delta\rightarrow 1+c$, indicating a noisy reconstruction. 
-Exploiting this noisy reconstruction, \citet{li2019privacy} show that if the data is normally distributed, \texttt{PRIVIX} is differentially private~\citep{DBLP:conf/icalp/Dwork06}, up to additional assumptions and algorithmic design.  }
+Thus, with probability $1-\delta$ we obtain that $\texttt{PRIVIX}\in \mathbb{U}(1+c\frac{d}{m})$.
+Note $\Delta=1+c\frac{d}{m}$ implies that if $m\rightarrow d$, then $\Delta\rightarrow 1+c$, indicating a noisy reconstruction. 
+Exploiting this noisy reconstruction, \citet{li2019privacy} show that if the data is normally distributed, \texttt{PRIVIX} is differentially private~\citep{DBLP:conf/icalp/Dwork06}, up to additional assumptions and algorithmic design.  
 
 
 \vspace{-0.05in}
@@ -351,7 +338,7 @@ An example of biased compression via sketching and using top$_m$ operation is gi
 \caption{\texttt{HEAVYMIX}  }\label{alg:heavymix}
 \begin{algorithmic}[1]
 \STATE \textbf{Inputs:} $\mathbf{S}({\mathbf{g}})$; parameter $m$
-\STATE \textbf{Query the vector $\tilde{\mathbf{g}}\in\mathbb{R}^{d}$ from $\mathbf{S}\left(\mathbf{g}\right)$:}
+\STATE {Query the vector $\tilde{\mathbf{g}}\in\mathbb{R}^{d}$ from $\mathbf{S}\left(\mathbf{g}\right)$:}
 \STATE Query $\hat{\ell}_2^2=\left(1\pm 0.5\right)\left\|\mathbf{g}\right\|^2$ from sketch $\mathbf{S}(\mathbf{g})$
 \STATE $\forall j$ query $\hat{\mathbf{g}}_j^2=\hat{\mathbf{g}}_j^2\pm \frac{1}{2m}\left\|\mathbf{g}\right\|^2$ from sketch $\mathbf{S}_{\mathbf{g}}$
 \STATE $H=\{j|\hat{\mathbf{g}}_j\geq \frac{\hat{\ell}_2^2}{m}\}$ and $NH=\{j|\hat{\mathbf{g}}_j<\frac{\hat{\ell}_2^2}{m}\}$
@@ -380,17 +367,18 @@ Due to Theorem~$3$ in~\citet{horvath2020better}, which illustrates that we can c
 \caption{\texttt{HEAPRIX} }\label{alg:heaprix}
 \begin{algorithmic}[1]
 \STATE \textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, m, \mathbf{S}_{m\times t}, h_j (1\leq i\leq t), \text{sign}_j (1\leq i\leq t)$, parameter $m$
-\STATE \textbf{Approximate $\mathbf{S}(\boldsymbol{x})$ using \texttt{HEAVYMIX} }
-\STATE \textbf{Approximate $\mathbf{S}\left(x - \texttt{HEAVYMIX}[\mathbf{S}(\boldsymbol{x})]\right)$ using \texttt{PRIVIX} }
+\STATE {Approximate $\mathbf{S}(\boldsymbol{x})$ using \texttt{HEAVYMIX} }
+\STATE {Approximate} $\mathbf{S}\left(\boldsymbol{x} - \texttt{HEAVYMIX}[\mathbf{S}(\boldsymbol{x})]\right)$ using \texttt{PRIVIX} 
 \STATE \textbf{Output:}
+\vspace{- 0.1cm}
 \[ \Resize{7.4cm}{\texttt{HEAVYMIX}\left[\mathbf{S}\left(\boldsymbol{x}\right)\right]+\texttt{PRIVIX}\left[\mathbf{S}\left(\boldsymbol{x}-\texttt{HEAVYMIX}\left[\mathbf{S}\left(\boldsymbol{x}\right)\right]\right)\right]}\ .\]
 %\vspace{- 0.1cm}
 \end{algorithmic}
 \end{algorithm}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-We note if $m\rightarrow d$, then $C(\boldsymbol{x})\rightarrow \boldsymbol{x}$, meaning that the algorithm convergence can be improved by decreasing the size of compression $m$. 
+Note that if $m\rightarrow d$, then $C(\boldsymbol{x})\rightarrow \boldsymbol{x}$, which implies that the convergence rate of the algorithm can be improved by decreasing the size of compression $m$. 
 \begin{corollary}\label{cor:small}
-Based on~Theorem 3 of~\citep{horvath2020better}, \texttt{HEAPRIX} in Algorithm~\ref{alg:heaprix} satisfies \textcolor{blue}{$C(\boldsymbol{x})\in \mathbb{U}(c \frac{d}{m})$}. 
+Based on~Theorem 3 of~\citep{horvath2020better}, \texttt{HEAPRIX} in Algorithm~\ref{alg:heaprix} satisfies $C(\boldsymbol{x})\in \mathbb{U}(c \frac{d}{m})$. 
 \end{corollary}
 \textit{Benefits of \texttt{HEAPRIX}:} Corollary~\ref{cor:small} states that, unlike \texttt{PRIVIX}, \texttt{HEAPRIX} compression noise can be made as small as possible using larger hash size. 
 Contrary to \texttt{HEAVYMIX}, \texttt{HEAPRIX} does not require having access to exact $\text{top}_m$ values of the input, thus helps preserving privacy. 
@@ -409,7 +397,7 @@ We define two general frameworks for different sketching algorithms for homogene
 %The proposed algorithms for FL leverage sketching techniques to reduce communication costs.
 
 In \texttt{FedSKETCH}, the number of local updates, between two consecutive communication rounds, at device $j$ is denoted by $\tau$.
- unlike~\citet{haddadpour2020federated}, server node does not store any global model, instead device $j$ has two models, $\boldsymbol{x}^{(r)}$ and $\boldsymbol{x}^{(\ell,r)}_j$, respectively local and global models. 
+ Unlike~\citet{haddadpour2020federated}, server node does not store any global model, rather, device $j$ has two models: $\boldsymbol{x}^{(r)}$ and $\boldsymbol{x}^{(\ell,r)}_j$, which are respectively the local and global models. 
 %At communication round $r$ and device $j$, the local model $\boldsymbol{x}^{(\ell,r)}_j$ is updated using the rule $$\boldsymbol{x}_j^{(\ell+1,r)}=\boldsymbol{x}_j^{(\ell,r)}-\eta \tilde{\mathbf{g}}_j^{(\ell,r)} \qquad \text{for}\quad\ell=0,\ldots,\tau-1\, , $$
 %where $\tilde{\mathbf{g}}_j^{(\ell,r)}\triangleq\nabla{f}_j(\boldsymbol{x}_j^{(\ell,r)},\Xi_j^{(\ell,r)})\triangleq\frac{1}{b}\sum_{\xi\in\Xi_j^{(\ell,r)}}\nabla{L}_j(\boldsymbol{x}_j^{(\ell,r)},\xi)$ is a stochastic gradient of $f_j$ evaluated using the mini-batch $\Xi_j^{(\ell,r)}=\{\xi^{(\ell,r)}_{j,1},\ldots,\xi^{(\ell,r)}_{j,b_j} \}$ of size $b_j$ and $\eta$ is the local learning rate. After $\tau$ local updates, model at device $j$ and communication round $r$ is indicated by $\boldsymbol{x}_j^{(\tau,r)}$. The next step of our algorithm is that device $j$ sends the count sketch $\mathbf{S}_j^{(r)}\triangleq\mathbf{S}_j\left(\boldsymbol{x}_j^{(\tau,r)}-\boldsymbol{x}_j^{(0,r)}\right)$ back to the server. We note that
 % \begin{equation}
@@ -450,7 +438,7 @@ We develop \texttt{FedSKETCH} in Algorithm~\ref{Alg:PFLHom}.
 \vspace{0.1cm}
 \tikzmark{k}  
 \STATE \hspace{0.04in} \textbf{if HEAPRIX variant:} 
-\STATE $\quad$ Second round of communication: $\delta_j^{(r)} :=  \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$ and broadcasts $\tilde{\mathbf{S}}^{(r)}\triangleq\frac{1}{k}\sum_{j\in\mathcal{K}}\delta_j^{(r)}$ to devices in set $\mathcal{K}^{(r)}$
+\STATE $\quad$ Second round of communication: $\mathbf{\delta}_j^{(r)} :=  \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$ and broadcasts $\tilde{\mathbf{S}}^{(r)}\triangleq\frac{1}{k}\sum_{j\in\mathcal{K}}\mathbf{\delta}_j^{(r)}$ to devices in set $\mathcal{K}^{(r)}$
 \tikzmark{l}  
 \vspace{0.1cm}
 \STATE \textbf{end parallel for}
@@ -460,20 +448,19 @@ We develop \texttt{FedSKETCH} in Algorithm~\ref{Alg:PFLHom}.
 \end{algorithmic}
 \end{algorithm}
 A variant of this algorithm implementing \texttt{HEAPRIX} is also described in Algorithm~\ref{Alg:PFLHom}. 
-We note that for this variant, we need to have an additional communication round between server and worker $j$ to aggregate $\delta_j^{(r)}\triangleq \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$, see Lines~\ref{line:heaprix1} and~\ref{line:heaprix2}. The main difference between our \texttt{FedSKETCH} and the \texttt{DiffSketch} algorithm in~\citet{li2019privacy} is that we use distinct local and global learning rates. Additionally, unlike~\citet{li2019privacy}, we do not add local Gaussian noise. 
+We note that for this variant, we need to have an additional communication round between server and worker $j$ to aggregate $\mathbf{\delta}_j^{(r)}\triangleq \mathbf{S}_j\left[\texttt{HEAVYMIX}(\mathbf{S}^{(r)})\right]$, see Lines~\ref{line:heaprix1} and~\ref{line:heaprix2}. The main difference between our \texttt{FedSKETCH} and the \texttt{DiffSketch} algorithm in~\citet{li2019privacy} is that we use distinct local and global learning rates. Furthermore, unlike~\citet{li2019privacy}, we do not add local Gaussian noise. 
 
 \noindent\textbf{Algorithmic comparison  with~\citet{haddadpour2020federated}}
 An important feature of our algorithm is that due to a lower dimension of the count sketch, the resulting averages ($\mathbf{S}^{(r)}$ and  $\tilde{\mathbf{S}}^{(r)}$) received by the server, are also of lower dimension. 
 Therefore, these algorithms exploit a bidirectional compression during the communication from server to device back and forth. 
 As a result, due to this bidirectional property of communicating sketching for the case of large quantization error $\omega=\theta(\frac{d}{m})$ as shown in~\citet{haddadpour2020federated}, our algorithms can outperform \texttt{FedCOM} and \texttt{FedCOMGATE} developed in~\citet{haddadpour2020federated} if sufficiently large hash tables are used and the uplink communication cost is high. 
 Furthermore, while, in~\citet{haddadpour2020federated}, server stores a global model and aggregates the partial gradients from devices which can enable the server to extract some information regarding the device's data, in contrast, in our algorithms server does not store the global model and only broadcasts the average sketches. 
-Thus, sketching-based server-devices communication algorithms such as ours does not reveal the exact values of the inputs (to preserve privacy) as a by-product.
+Thus, sketching-based server-devices communication algorithms such as ours do not reveal the exact values of the inputs, to preserve privacy as a by-product.
 
-{\color{blue}\begin{remark}
+\begin{remark}
 As pointed out in~\cite{horvath2020better}, while induced compressors transform a biased compressor into unbiased one, as a drawback it doubles communication cost since the devices need to send $C_1(\boldsymbol{x})$ and $C_2\left(\boldsymbol{x}-C_1\left(\boldsymbol{x}\right)\right)$ separately. 
 We note that in the special case of \texttt{HEAPRIX}, due to the use of sketching, the extra communication round cost is compensated with lower number of bits per round thanks to the lower dimension of sketching.  
 \end{remark}
-}
 %Then, server averages all $\delta^{(r)}_j$ and broadcasts to all devices the following quantity:
 %\begin{align}
 %\tilde{\mathbf{S}}^{(r)}\triangleq \frac{1}{k}\sum_{j\in\mathcal{K}^{(r)}}\delta^{(r)}_j \, .\label{eq:glbl-updts}
@@ -493,7 +480,17 @@ These results can be extended to the scenario where devices are sampled.
 %In the previous section, we discussed Algorithm~\texttt{FedSKETCH}, which is originally designed for homogeneous setting.
 For non i.i.d. data, the \texttt{FedSKETCH} algorithm, designed for homogeneous setting, may fail to perform well in practice. 
 The main reason is that in FL, devices are using local stochastic descent direction which could be different than global descent direction when the data distribution are non-identical. 
-Therefore, to mitigate the effect of data heterogeneity, we introduce a new algorithm called \texttt{FedSKETCHGATE} described in Algorithm~\ref{Alg:PFLHet}. 
+Therefore, to mitigate the effect of data heterogeneity, we introduce a new algorithm called \texttt{FedSKETCHGATE} described in Algorithm~\ref{Alg:PFLHet}. This algorithm leverages the idea of gradient tracking applied in~\citet{haddadpour2020federated} (with compression) and a special case of $\gamma=1$ without compression~\citep{liang2019variance}. 
+The main idea is that using an approximation of global gradient, $\mathbf{c}_j^{(r)}$ allows to correct the local gradient direction. 
+For the \texttt{FedSKETCHGATE} with \texttt{PRIVIX} variant, the correction vector $\mathbf{c}_j^{(r)}$ at device $j$ and communication round $r$ is computed in Line~\ref{line:cj_privix}. 
+While using \texttt{HEAPRIX} compression, \texttt{FedSKETCHGATE} also updates $\tilde{\mathbf{S}}^{(r)}$ via Line~\ref{line:tildeS}.
+
+
+\begin{remark}\label{rmk:bidirect}
+Most of the existing communication-efficient algorithms with compression only consider communication-efficiency from devices to server. However, Algorithms~\ref{Alg:PFLHom} and~\ref{Alg:PFLHet} also improve the communication efficiency from server to devices since it exploits low-dimensional sketches (and averages), communicated from the server to devices. 
+\end{remark}
+For both \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} algorithms, unlike \texttt{PRIVIX}, \texttt{HEAPRIX} variant requires a second round of communication. 
+Therefore, in Cross-Device FL setting, where there could be millions of devices, \texttt{HEAPRIX} variant may not be practical, and we note that it could be more suitable for Cross-Silo FL setting. 
 \begin{algorithm}[t]
 \DrawBox[draw=white,fill=blue!6]{a}{b}
 \DrawBoxx[draw=white,fill=blue!6]{c}{d}
@@ -521,8 +518,8 @@ Therefore, to mitigate the effect of data heterogeneity, we introduce a new algo
 \tikzmark{c}  
 \STATE  \hspace{0.04in}\textbf{if HEAPRIX variant:} 
 \STATE  Device $j$ computes $\mathbf{\Phi}^{(r)}_j\triangleq \texttt{HEAPRIX}[\mathbf{S}_j^{(r)}]$
-\STATE  Second round of communication to obtain $\delta_j^{(r)} :=  \mathbf{S}_j\left(\texttt{HEAVYMIX}[\mathbf{S}^{(r)}]\right)$  \label{line:tildeS}
-\STATE  Broadcasts $\tilde{\mathbf{S}}^{(r)}\triangleq\frac{1}{p}\sum_{j=1}^p\delta_j^{(r)}$ to devices
+\STATE  Second round of communication to obtain $\mathbf{\delta}_j^{(r)} :=  \mathbf{S}_j\left(\texttt{HEAVYMIX}[\mathbf{S}^{(r)}]\right)$  \label{line:tildeS}
+\STATE  Broadcasts $\tilde{\mathbf{S}}^{(r)}\triangleq\frac{1}{p}\sum_{j=1}^p\mathbf{\delta}_j^{(r)}$ to devices
 \tikzmark{d}  
 \vspace{0.1cm}
 \STATE \textbf{end parallel for}
@@ -533,17 +530,7 @@ Therefore, to mitigate the effect of data heterogeneity, we introduce a new algo
 \end{algorithm}
 
 
-This algorithm leverages the idea of gradient tracking applied in~\citet{haddadpour2020federated} (with compression) and a special case of $\gamma=1$ without compression~\citep{liang2019variance}. 
-The main idea is that using an approximation of global gradient, $\mathbf{c}_j^{(r)}$ allows to correct the local gradient direction. 
-For the \texttt{FedSKETCHGATE} with \texttt{PRIVIX} variant, the correction vector $\mathbf{c}_j^{(r)}$ at device $j$ and communication round $r$ is computed in Line~\ref{line:cj_privix}. 
-While using \texttt{HEAPRIX} compression, \texttt{FedSKETCHGATE} also updates $\tilde{\mathbf{S}}^{(r)}$ via Line~\ref{line:tildeS}.
 
-
-\begin{remark}\label{rmk:bidirect}
-Most of the existing communication-efficient algorithms with compression only consider communication-efficiency from devices to server. However, Algorithms~\ref{Alg:PFLHom} and~\ref{Alg:PFLHet} also improve the communication efficiency from server to devices since it exploits low-dimensional sketches (and averages), communicated from the server to devices. 
-\end{remark}
-For both \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} algorithms, unlike \texttt{PRIVIX}, \texttt{HEAPRIX} variant requires a second round of communication. 
-Therefore, in Cross-Device FL setting, where there could be millions of devices, \texttt{HEAPRIX} variant may not be practical, and we note that it could be more suitable for Cross-Silo FL setting. 
 
 %Note that these algorithms are more applicable to cross-silo setting where the number of devices are not extremely large and most of them are available.
 %For the \texttt{FedSKETCHGATE} with \texttt{PRIVIX} variant, the correction vector $\mathbf{c}_j^{(r)}$ at device $j$ and communication round $r$ is computed using the update rule $\mathbf{c}_j^{(r)}=\mathbf{c}_j^{(r-1)}-\frac{1}{\tau}\left({\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}\right)-{\texttt{PRIVIX}}\left(\mathbf{S}^{(r-1)}_{j}\right)\right)$ where $\mathbf{S}^{(r-1)}_{j}\triangleq\mathbf{S}\left(\boldsymbol{x}_j^{(0,r-1)}-~{\boldsymbol{x}}_{j}^{(\tau,r-1)}\right)$ is computed and stored at device $j$ from previous communication round $r-1$. 
@@ -589,18 +576,16 @@ Therefore, in Cross-Device FL setting, where there could be millions of devices,
 \vspace{-0.05in}
 \section{Convergence Analysis}\label{sec:cnvg-an}
 \vspace{-0.05in}
-We first state common assumptions needed in the following convergence analysis (reminder of our notations can be found Table~\ref{tab:notations} of the Appendix).
+We first state commonly used assumptions required in the following convergence analysis (reminder of our notations can be found Table~\ref{tab:notations} of the Appendix).
 %\vspace{-0.05in}
 %\subsection{Common Assumptions}
 %\vspace{-0.05in}
 \begin{assumption}[Smoothness and Lower Boundedness]\label{Assu:1}
-The local objective function $f_j(\cdot)$ of $j$th device is differentiable for $j\in [p]$ and $L$-smooth, i.e., $\|\nabla f_j(\boldsymbol{x})-\nabla f_j(\mathbf{y})\|\leq L\|\boldsymbol{x}-\mathbf{y}\|,\: \forall \;\boldsymbol{x},\mathbf{y}\in\mathbb{R}^d$. Moreover, the optimal objective function $f(\cdot)$ is bounded below by ${f^*} = \min_{\boldsymbol{x}} f(\boldsymbol{x})>-\infty$. 
+The local objective function $f_j(\cdot)$ of device $j$ is differentiable for $j\in [p]$ and $L$-smooth, i.e., $\|\nabla f_j(\boldsymbol{x})-\nabla f_j(\mathbf{y})\|\leq L\|\boldsymbol{x}-\mathbf{y}\|,\: \forall \;\boldsymbol{x},\mathbf{y}\in\mathbb{R}^d$. Moreover, the optimal objective function $f(\cdot)$ is bounded below by ${f^*} := \min_{\boldsymbol{x}} f(\boldsymbol{x})>-\infty$. 
 \end{assumption}
-\begin{assumption}[\pl]\label{assum:pl}
-A function $f(\boldsymbol{x})$ satisfies the \pl (PL)~ condition with constant $\mu$ if $\frac{1}{2}\|\nabla f(\boldsymbol{x})\|_2^2\geq \mu\big(f(\boldsymbol{x})-f(\boldsymbol{x}^*)\big),\: \forall \boldsymbol{x}\in\mathbb{R}^d $ with $\boldsymbol{x}^*$ is an optimal solution.
-\end{assumption}
+
 Assumption~\ref{Assu:1} is common in stochastic optimization. 
-It is shown in~\citet{karimi2016linear} that PL condition implies strong convexity property with same module (PL objectives can also be non-convex, hence strong convexity does not imply PL condition necessarily).
+We present our results for PL, convex and general non-convex objectives. The reference~\citet{karimi2016linear} show that PL condition implies strong convexity property with same module (PL objectives can also be non-convex, hence strong convexity does not imply PL condition necessarily).
 
 \vspace{-0.05in}
 \subsection{Convergence of  \texttt{FEDSKETCH} } 
@@ -618,65 +603,65 @@ For all $j\in [m]$, we can sample an independent mini-batch $\ell_j$   of size $
 Suppose Assumptions~\ref{Assu:1}-\ref{Assu:1.5} hold. 
 Given $0<m\leq d$ and considering Algorithm~\ref{Alg:PFLHom} with sketch size $B=O\left(m\log\left(\frac{d R}{\delta}\right)\right)$ and $\gamma\geq k$, with probability $1-\delta$ we have: In the \textbf{non-convex} case, $\{ {\boldsymbol{x}}^{(r)}\}_{r=>0}$ satisfies  $\frac{1}{R}\sum_{r=0}^{R-1}\left\|\nabla f({\boldsymbol{x}}^{(r)})\right\|_2^2\leq {\epsilon}$ if: 
  
-\noindent {\color{blue}$\bullet$ \texttt{FS-PRIVIX}, for $\eta=\frac{1}{L\gamma}\sqrt{\frac{k}{R\tau\left(\frac{c d}{m k}+1\right)}}$:    
+\noindent $\bullet$ \texttt{FS-PRIVIX}, for $\eta=\frac{1}{L\gamma}\sqrt{\frac{k}{R\tau\left(\frac{c d}{m k}+1\right)}}$:    
 \begin{equation}\notag
 R=O\left(1/\epsilon\right) \quad \textrm{and} \quad \tau=O\left(( d+m)/(mk\epsilon)\right)\ .
- \end{equation}}
-\noindent {\color{blue}$\bullet$ \texttt{FS-HEAPRIX}, for $\eta=\frac{1}{L\gamma}\sqrt{\frac{k}{R\tau\left(\frac{cd-m}{mk}+1\right)}}$:
+ \end{equation}
+\noindent $\bullet$ \texttt{FS-HEAPRIX}, for $\eta=\frac{1}{L\gamma}\sqrt{\frac{k}{R\tau\left(\frac{cd-m}{mk}+1\right)}}$:
 \begin{equation}\notag
 R=O\left(1/\epsilon\right) \quad \textrm{and} \quad \tau=O\left(d/(mk\epsilon)\right)\ .
- \end{equation}}
+ \end{equation}
 In the \textbf{PL or strongly convex} case, $\{ {\boldsymbol{x}}^{(r)}\}_{r=>0}$ satisfies $\mathbb{E}[f({\boldsymbol{x}}^{(R-1)})-f({\boldsymbol{x}}^{(*)})]\leq \epsilon$ if  we set:  
 
 %\noindent {\color{blue}$\bullet$ \texttt{FS-PRIVIX}, for $\eta=1/(2L(cd/mk+1)\tau\gamma)$:    
-\noindent {\color{blue}$\bullet$ \texttt{FS-PRIVIX}, for $\eta=\frac{1}{2L(cd/mk+1)\tau\gamma}$:    
+\noindent $\bullet$ \texttt{FS-PRIVIX}, for $\eta=\frac{1}{2L(cd/mk+1)\tau\gamma}$:    
 \begin{equation}\notag
 \begin{split}
 R&=O\left(\left(d/mk+1\right)\kappa\log\left(1/\epsilon\right)\right)\ , \\
 \tau&=O\left((d/m+1)\Big/\left(d/m+k\right)\epsilon\right)\ .
   \end{split}
- \end{equation}}
+ \end{equation}
 %\noindent {\color{blue}$\bullet$ \texttt{FS-HEAPRIX}, for $\eta=1/(2L\left((cd-m)/mk+1\right)\tau\gamma)$:    
-\noindent {\color{blue}$\bullet$ \texttt{FS-HEAPRIX}, for $\eta=\frac{1}{2L\left((cd-m)/mk+1\right)\tau\gamma}$:    
+\noindent $\bullet$ \texttt{FS-HEAPRIX}, for $\eta=\frac{1}{2L\left((cd-m)/mk+1\right)\tau\gamma}$:    
 \begin{equation}\notag
 \begin{split}
 R& = O\left(\left((d-m)/mk+1\right)\kappa\log\left(1/\epsilon\right)\right)\ ,\\
  \tau &=O\left(d/m\Big/\left(\left((d/m-1)+k\right)\epsilon\right)\right)\ .
   \end{split}
-\end{equation}}
+\end{equation}
 In the \textbf{Convex} case, $\{ {\boldsymbol{x}}^{(r)}\}_{r=>0}$ satisfies $ \mathbb{E}\Big[f({\boldsymbol{x}}^{(R-1)})-f({\boldsymbol{x}}^{(*)})\Big]\leq \epsilon$ if we set:  
 
 %\noindent {\color{blue}$\bullet$ \texttt{FS-PRIVIX}, for $\eta=1/(2L(cd/mk+1)\tau\gamma)$:    
-\noindent {\color{blue}$\bullet$ \texttt{FS-PRIVIX}, for $\eta=\frac{1}{2L(cd/mk+1)\tau\gamma}$:    
+\noindent $\bullet$ \texttt{FS-PRIVIX}, for $\eta=\frac{1}{2L(cd/mk+1)\tau\gamma}$:    
 \begin{equation}\notag
 \begin{split}
 R& =O\left(L\left(1+d/mk\right)/\epsilon\log\left(1/\epsilon \right)\right)\ ,\\
 \tau&=O\left(\left(d/m+1\right)^2/(k\left(d/m k+1\right)^2\epsilon^2)\right)\ .
  \end{split}
-\end{equation}}
+\end{equation}
 %\noindent {\color{blue}$\bullet$ \texttt{FS-HEAPRIX}, for $\eta=1/(2L\left((cd-m)/mk+1\right)\tau\gamma)$:   
-\noindent {\color{blue}$\bullet$ \texttt{FS-HEAPRIX}, for $\eta=\frac{1}{2L\left((cd-m)/mk+1\right)\tau\gamma}$:   
+\noindent $\bullet$ \texttt{FS-HEAPRIX}, for $\eta=\frac{1}{2L\left((cd-m)/mk+1\right)\tau\gamma}$:   
 \begin{equation}\notag
 \begin{split}
 R& =O\left(L\left(1+(d-m)/mk\right)/\epsilon\log\left(1/\epsilon \right)\right)\ ,\\
  \tau&=O\left((d/m)^2/\left(k\left([d-m]/mk+1\right)^2\epsilon^2\right)\right)\ .
  \end{split}
-\end{equation}}
+\end{equation}
 \end{theorem}
 
 
 
 
-{\color{blue}The bounds in Theorem~\ref{thm:homog_case} suggest that in homogeneous setting if we set $d=m$ (no compression), the number of communication rounds to achieve the $\epsilon$ error matches with the number of iterations required to achieve the same error under a centralized setting. 
+The bounds in Theorem~\ref{thm:homog_case} suggest that in homogeneous setting if we set $d=m$ (no compression), the number of communication rounds to achieve the $\epsilon$ error matches with the number of iterations required to achieve the same error under a centralized setting. 
 Additionally, computational complexity scales down with number of sampled devices. 
-To stress on the further impact of using sketching, we also compare our results with prior works in terms of total number of communicated bits per device as follows:}
+To stress on the further impact of using sketching, we also compare our results with prior works in terms of total number of communicated bits per device as follows:
 
 \paragraph{Comparison with~\citet{ivkin2019communication}}
 From privacy aspect, we note~\citet{ivkin2019communication} requires for server to have access to exact values of top$_m$ gradients, hence do not preserve privacy, whereas our schemes do not need those exact values. From communication cost point of view, for strongly convex objective and compared to~\citet{ivkin2019communication}, we improve the total communication per worker from 
-\textcolor{blue}{$RB=O\left(\frac{ d}{\epsilon}\log\left(\frac{d}{\delta\sqrt{\epsilon}}\max\left(\frac{ d}{m},\frac{1}{\sqrt{\epsilon}}\right)\right)\right)$ to 
-\[ \Resize{8cm}{RB=O\left(\kappa(\frac{d-m}{k}+m)\log\frac{1}{\epsilon}\log\left(\frac{\kappa d}{\delta}(\frac{d-m}{mk}+1)\log\frac{1}{\epsilon}\right)\right)}\ .\]}  
+$RB=O\left(\frac{ d}{\epsilon}\log\left(\frac{d}{\delta\sqrt{\epsilon}}\max\left(\frac{ d}{m},\frac{1}{\sqrt{\epsilon}}\right)\right)\right)$ to 
+\[ \Resize{8cm}{RB=O\left(\kappa(\frac{d-m}{k}+m)\log\frac{1}{\epsilon}\log\left(\frac{\kappa d}{\delta}(\frac{d-m}{mk}+1)\log\frac{1}{\epsilon}\right)\right)}\ .\]
 %Similar comparison for PL objectives is summarized in Table~\ref{table:1}. 
-We note that while reducing communication cost, our scheme requires {\color{blue}$\tau=O(d/m(k(\frac{ d}{mk}+1)\epsilon))>1$}, which scales down with the number of sampled devices, $k$. 
+We note that while reducing communication cost, our scheme requires $\tau=O(d/m(k(\frac{ d}{mk}+1)\epsilon))>1$, which scales down with the number of sampled devices, $k$. 
 Moreover, unlike~\citet{ivkin2019communication}, we do not use bounded gradient assumption. 
 Therefore, we obtain stronger result with weaker assumptions. 
 Regarding general non-convex objectives, our result improves the total communication cost per worker in~\citet{ivkin2019communication} from $RB=O\left(\max(\frac{1}{\epsilon^2},\frac{d^2}{k^2\epsilon}\right)\log(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2}{k^2\epsilon})))$ for \emph{only one device} to $RB=O(\frac{m}{\epsilon}\log(\frac{d}{\epsilon\delta}))$. 
@@ -836,7 +821,7 @@ R=O\left(L(d/m)\epsilon \log(1/\epsilon)\right) \quad \textrm{and} \quad \tau=O\
 %    }
 %\end{table*}
 
-{\color{blue} Theorem~\ref{thm:hetreg_case} implies that the number of communication rounds and local updates are similar to the corresponding quantities in homogeneous setting except for the non-convex case where the number of communication rounds also depends on the compression rate.}
+Theorem~\ref{thm:hetreg_case} implies that the number of communication rounds and local updates are similar to the corresponding quantities in homogeneous setting except for the non-convex case where the number of communication rounds also depends on the compression rate.
 
 These results are summarized in Table~\ref{table:1}-\ref{table:2} of the Appendix.
 
@@ -844,9 +829,9 @@ These results are summarized in Table~\ref{table:1}-\ref{table:2} of the Appendi
 \vspace{-0.05in}
 \subsection{Comparison with Prior Methods} 
 
-{\color{blue}Before comparing with prior works, we highlight that privacy is another purpose of using unbiased sketching in addition to communication efficiency. 
+Before comparing with prior works, we highlight that privacy is another purpose of using unbiased sketching in addition to communication efficiency. 
 Therefore, our main competing schemes are distributed algorithms based on sketching. 
-Yet, for the sake of showing the effectiveness of our algorithms, we also compare with prior non-sketching based distributed algorithms (\cite{karimireddy2019scaffold,basu2019qsparse,haddadpour2020federated}) in Section~\ref{app:comparison} of Appendix.}
+Nonetheless, for the sake of showing the effectiveness of our algorithms, we also compare with prior non-sketching based distributed algorithms (\cite{karimireddy2019scaffold,basu2019qsparse,reisizadeh2020fedpaq,haddadpour2020federated}) in Section~\ref{app:comparison} of Appendix.
 
 
 \noindent\textbf{Comparison with~\citet{li2019privacy}.} Note that our convergence analysis does not rely on the bounded gradient assumption. We also improve both the number of communication rounds $R$ and the size of transmitted bits $B$ per communication round. 
@@ -859,15 +844,15 @@ Due to gradient tracking, our algorithm tackles data heterogeneity issue, while 
 As a consequence, in \texttt{FedSKETCHGATE} each device has to store an additional state vector compared to~\citet{rothchild2020fetchsgd}. 
 Yet, as our method is built upon an unbiased compressor, server does not need to store any additional error correction vector.
 The convergence results for both of two variants of \texttt{FetchSGD} in~\citet{rothchild2020fetchsgd} rely on the uniform bounded gradient assumption which may not be applicable with $L$-smoothness assumption when data distribution is highly heterogeneous, as in FL, see~\citep{bayoumi2020tighter}, while our bounds do not assume such boundedness.
-{\color{blue}Besides, Theorem 1~\citep{rothchild2020fetchsgd} assumes that \emph{Contraction Holds} for the sequence of gradients which may not hold in practice, yet based on this strong assumption, their total communication cost ($RB$) in order to achieve $\epsilon$ error is $BR=O\left(m\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\log\left(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\right)\right)$.
-Note that for the sake of comparison we let the compression ratio in~\citet{rothchild2020fetchsgd} to be $\frac{m}{d}$. 
-In contrast, without any extra assumptions, our results in Theorem~\ref{thm:hetreg_case} for \texttt{PRIVIX} and \texttt{HEAPRIX} are respectively $BR=O(\frac{(d+m)}{\epsilon}\log(\frac{{(\frac{d^2}{m})}+d}{\epsilon\delta}))$ and $BR=O(\frac{d}{\epsilon}\log(\frac{d^2}{\epsilon m\delta}))$ which improves the total communication cost of Theorem 1 in~\citet{rothchild2020fetchsgd} under regimes such that $\frac{1}{\epsilon}\geq d$ or $d\gg m$. 
+Besides, Theorem 1~\citep{rothchild2020fetchsgd} assumes that \emph{Contraction Holds} for the sequence of gradients which may not hold in practice, yet based on this strong assumption, their total communication cost ($RB$) in order to achieve $\epsilon$ error is $RB=O\left(m\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\log\left(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\right)\right)$.
+For the sake of comparison we let the compression ratio in~\citet{rothchild2020fetchsgd} to be $\frac{m}{d}$. 
+In contrast, without any extra assumptions, our results in Theorem~\ref{thm:hetreg_case} for \texttt{PRIVIX} and \texttt{HEAPRIX} are respectively $RB=O(\frac{(d+m)}{\epsilon}\log(\frac{{(\frac{d^2}{m})}+d}{\epsilon\delta}))$ and $RB=O(\frac{d}{\epsilon}\log(\frac{d^2}{\epsilon m\delta}))$ which improves the total communication cost of Theorem 1 in~\citet{rothchild2020fetchsgd} under regimes such that $\frac{1}{\epsilon}\geq d$ or $d\gg m$. 
 Theorem 2 in~\citet{rothchild2020fetchsgd} is based the \emph{Sliding Window Heavy Hitters} assumption, which is similar to the gradient diversity assumption in~\citet{li2018federated,haddadpour2019convergence}. 
-Under that assumption, the total communication cost is shown to be $BR=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$ where $I$ is a constant related to the window of gradients.
-Our result improves this bound under weaker assumptions in a regime where $\frac{I^{2/3}}{\epsilon^2}\geq d$. 
-We also provide bounds for PL, convex and non-convex objectives unlike~\citet{rothchild2020fetchsgd}. 
+Under that assumption the total communication cost is shown to be $RB=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$ where $I$ is a constant related to the window of gradients.
+We improve this bound under weaker assumptions in a regime where $\frac{I^{2/3}}{\epsilon^2}\geq d$. 
+We also provide bounds for PL, convex and non-convex objectives contrary to~\citet{rothchild2020fetchsgd}. 
 Finally, we note that algorithms in~\citet{rothchild2020fetchsgd} are using momentum at server. 
-While we do not use it explicitly, we note that we can modify our algorithms to include momentum easily.}
+While we do not use it explicitly,  we can modify our algorithms to include momentum easily.
 
 
 
@@ -890,16 +875,14 @@ While we do not use it explicitly, we note that we can modify our algorithms to 
 In this section, we provide empirical results on MNIST benchmark dataset to demonstrate the effectiveness of our proposed algorithms. 
 We train LeNet-5 Convolutional Neural Network (CNN) architecture introduced in~\citet{lecun1998gradient}, with $60\,000$ parameters.
 We compare Federated SGD (\texttt{FedSGD}) as the full-precision baseline, along with four sketching methods \texttt{SketchSGD}~\citep{ivkin2019communication}, \texttt{FetchSGD}~\cite{rothchild2020fetchsgd}, and two FedSketch variants \texttt{FS-PRIVIX} and \texttt{FS-HEAPRIX}.
-Note that in Algorithm~\ref{Alg:PFLHom}, FS-PRIVIX with global learning rate $\gamma=1$ is equivalent to the \texttt{DiffSketch} algorithm proposed in~\citet{li2018federated}. Also, \texttt{SketchSGD} is slightly modified to compress the change in local weights (instead of local gradient in every iteration), and \texttt{FetchSGD} is implemented with second round of communication for fairness. (The original proposal does not include second round of communication, which performs worse with small sketch size.) As suggested in~\cite{rothchild2020fetchsgd}, the momentum factor of \texttt{FetchSGD} is set to $0.9$, and we also follow some recommended implementation tricks to improve its performance, which are detailed in the Appendix.
-The number of workers is set to $50$ and we report the results for 1 and 5 local epochs. A local epoch is finished when all workers go through their local data samples once.
-We tune the learning rates ($\eta$ and $\gamma$, if applicable) over log-scale and report the best results.
-At each round, we randomly choose half of the devices to be active, following practical scenarios. 
-Results are reported for both \emph{homogeneous} and \emph{heterogeneous} setting. 
-In the former case, each device receives uniformly drawn data samples, and in the latter, it receives samples from one or two classes among ten. 
+Note that in Algorithm~\ref{Alg:PFLHom}, \texttt{FS-PRIVIX} with global learning rate $\gamma=1$ is equivalent to the \texttt{DiffSketch} algorithm proposed in~\citet{li2018federated}. Also, \texttt{SketchSGD} is slightly modified to compress the change in local weights (instead of local gradient in every iteration), and \texttt{FetchSGD} is implemented with second round of communication for fairness. (The original proposal does not include second round of communication, which performs worse with small sketch size.) As suggested in~\cite{rothchild2020fetchsgd}, the momentum factor of \texttt{FetchSGD} is set to $0.9$, and we also follow some recommended implementation tricks to improve its performance, which are detailed in the Appendix.
+The number of workers is set to $50$ and we report the results for 1 and 5 local epochs. A local epoch is finished when all workers go through their local data samples once. The local batch size is 30. In each round, we randomly choose half of the devices to be active. 
+We tune the learning rates ($\eta$ and $\gamma$, if applicable) over log-scale and report the best results, for both \emph{homogeneous} and \emph{heterogeneous} setting. 
+In the former case, each device receives uniformly drawn data samples, and in the latter, it only receives samples from one or two classes among ten. 
 
 \begin{figure}[t]
 	\begin{center}
-		\mbox{\hspace{-0.15in}			  
+		\mbox{\hspace{-0.1in}			  
 		 \includegraphics[width=1.7in]{MNIST_figures/local1_sketch20_iid1_train_loss.eps} \hspace{-0.12in}
 		 \includegraphics[width=1.7in]{MNIST_figures/local1_sketch20_iid1_test_acc.eps} 
 		 }
@@ -922,7 +905,7 @@ In the former case, each device receives uniformly drawn data samples, and in th
     \vspace{-0.1in}
 \end{figure}
 
-\textbf{Homogeneous case.} In Figure~\ref{fig:MNIST-iid1}, we provide the training loss and test accuracy with different number of local EP and sketch size, $(t,k)=(20,40)$ and $(50,100)$. 
+\textbf{Homogeneous case.} In Figure~\ref{fig:MNIST-iid1}, we provide the training loss and test accuracy with different number of local epochs and sketch size, $(t,k)=(20,40)$ and $(50,100)$. 
 Note that, these two choices of sketch size correspond to a $75\times$ and $12\times$ compression ratio, respectively. We conclude
 \begin{itemize}
     \item In general, increasing compression ratio would sacrifice learning performance. In all cases, \texttt{FS-HEAPRIX} performs the best in terms of both training objective and test accuracy, among all compressed methods.
@@ -935,7 +918,7 @@ In general, our proposed \texttt{FS-HEAPRIX} outperforms all competing methods, 
 
 \begin{figure}[t]
 	\begin{center}
-		\mbox{\hspace{-0.15in}			   
+		\mbox{\hspace{-0.1in}			   
 		\includegraphics[width=1.7in]{MNIST_figures/local1_sketch20_iid0_train_loss.eps} \hspace{-0.12in}
 		\includegraphics[width=1.7in]{MNIST_figures/local1_sketch20_iid0_test_acc.eps} 
 		}
@@ -964,7 +947,7 @@ Note that, slower convergence and worse generalization of \texttt{FedSGD} in non
 
 We also notice in Figure~\ref{fig:MNIST-iid0} the advantage of \texttt{FS-HEAPRIX} over \texttt{FS-PRIVIX} in terms of training loss and test accuracy. 
 However, empirically we see that in the heterogeneous setting, more local updates tend to undermine the learning performance, especially with small sketch size.  
-Nevertheless, when the sketch size is not too small, i.e. $(50,100)$, \texttt{FS-HEAPRIX} can still provide comparable test accuracy as \texttt{FedSGD} with multiple local epochs.
+Nevertheless, when the sketch size is not too small, i.e. $(50,100)$, \texttt{FS-HEAPRIX} can still provide comparable test accuracy as \texttt{FedSGD} in both cases.
 Our empirical study demonstrates that our proposed \texttt{FedSketch} (and \texttt{FedSketchGATE}) frameworks are able to perform well in homogeneous (resp. heterogeneous) setting, with high compression rate. 
 In particular, \texttt{FedSketch} methods are advantageous over recent \texttt{SketchedSGD}~\citep{ivkin2019communication} and \texttt{FetchSGD}~\cite{rothchild2020fetchsgd} in all cases. 
 \texttt{FS-HEAPRIX} performs the best among all the tested compressed optimization algorithms, which in many cases achieves similar generalization accuracy as full-precision FedSGD with small sketch size. 
@@ -975,10 +958,12 @@ In particular, \texttt{FedSketch} methods are advantageous over recent \texttt{S
 
 In this paper, we introduced \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} algorithms for homogeneous and heterogeneous data distribution setting respectively for Federated Learning wherein communication between server and devices is only performed using count sketch. 
 Our algorithms, thus, provide communication-efficiency and privacy, through random hashes based sketches. 
-We analyze the convergence error for \emph{non-convex}, \emph{\pl} and \emph{general convex} objective functions in the scope of Federated Optimization.  
+We analyze the convergence error for \emph{non-convex}, \emph{PL} and \emph{general convex} objective functions in the scope of Federated Optimization.  
 We provide insightful numerical experiments showcasing the advantages of our \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} methods over current federated optimization algorithm. The proposed algorithms outperform competing compression method and can achieve comparable test accuracy as Federated SGD, with high compression ratio.
-\newpage
 
+
+\newpage
+\clearpage\balance
 \bibliographystyle{icml2021}
 \bibliography{reference}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1017,6 +1002,7 @@ $d$ & $\triangleq$ &  Dimension of the model \\
 $\tau$ & $\triangleq$ & Number of local updates\\
 $R$ & $\triangleq$ & Number of communication rounds\\
 $B$ & $\triangleq$ &  Size of transmitted bits \\
+$R\times B$ & $\triangleq$ &  Total communication cost per device \\
 $\kappa$ & $\triangleq$ & Condition number\\
 $\epsilon$ & $\triangleq$ & Target accuracy\\
 $\mu$ & $\triangleq$ & PL constant \\
@@ -1029,14 +1015,35 @@ $m$ & $\triangleq$ &  Number of bins of hash tables \\
 \label{tab:notations}
 \end{table}
 
+\begin{definition}[\pl]\label{assum:pl}
+A function $f(\boldsymbol{x})$ satisfies the \pl (PL)~ condition with constant $\mu$ if $\frac{1}{2}\|\nabla f(\boldsymbol{x})\|_2^2\geq \mu\big(f(\boldsymbol{x})-f(\boldsymbol{x}^*)\big),\: \forall \boldsymbol{x}\in\mathbb{R}^d $ with $\boldsymbol{x}^*$ is an optimal solution.
+\end{definition}
 
- \begin{definition}
- A randomized mechanism $\mathcal{O}$ satisfies $\epsilon-$differential privacy, if for input data ${S}_1$ and ${S}_2$ differing by up to one point, and for output $D$ of $\mathcal{O}$,
- \begin{align}\notag
-     \Pr\left[\mathcal{O}(S_1)\in D\right]\leq \exp{\left(\epsilon\right)}\Pr\left[\mathcal{O}(S_2)\in D\right] \, .
- \end{align}
- \end{definition}
-  For smaller $\epsilon$, it becomes difficult to specify the input data, hence, implying stronger privacy.
+
+% \begin{definition}
+ %A randomized mechanism $\mathcal{O}$ satisfies $\epsilon-$differential privacy, if for input data ${S}_1$ and ${S}_2$ differing by up to one point, and for output $D$ of $\mathcal{O}$,
+ %\begin{align}\notag
+    % \Pr\left[\mathcal{O}(S_1)\in D\right]\leq \exp{\left(\epsilon\right)}\Pr\left[\mathcal{O}(S_2)\in D\right] \, .
+ %\end{align}
+ %\end{definition}
+  %For smaller $\epsilon$, it becomes difficult to specify the input data, hence, implying stronger privacy.
+\subsection{Count sketch}
+ In this paper, we exploit commonly used \texttt{Count Sketch} ~\citep{DBLP:journals/tcs/CharikarCF04} which is described in Algorithm~\ref{alg:csketch}.
+ \begin{algorithm}[b]
+\caption{Count Sketch ({\texttt{CS})~\citep{DBLP:journals/tcs/CharikarCF04}} }\label{alg:csketch}
+ \begin{algorithmic}[1]
+\STATE \textbf{Inputs:} $\boldsymbol{x}\in\mathbb{R}^{d}, t, k, \mathbf{S}_{m\times t}, h_j (1\leq i\leq t), \text{sign}_j (1\leq i\leq t)$
+ \STATE \textbf{Compress vector $\boldsymbol{x}\in\mathbb{R}^{d}$ into $\mathbf{S}\left(\boldsymbol{x}\right)$:}
+ \STATE \textbf{for} $\boldsymbol{x}_i\in\boldsymbol{x}$ \textbf{do}
+ \STATE \quad\textbf{for $j=1,\cdots,t$ do}
+ \STATE \quad\quad $\mathbf{S}[j][h_j(i)]=\mathbf{S}[j-1][h_{j-1}(i)]+\text{sign}_j(i).\boldsymbol{x}_i$ 
+ \STATE \quad\textbf{end for}
+ \STATE \textbf{end for}
+ \STATE \textbf{return} $\mathbf{S}_{m\times t}(\boldsymbol{x})$
+ \end{algorithmic}
+ \end{algorithm}
+% Count Sketch uses two sets of functions that encode any input vector $\boldsymbol{x}$ \textbf{into a hash table} $\boldsymbol{S}_{m\times t}(\boldsymbol{x})$. 
+% Pairwise independent hash functions $\{h_{j,1\leq j\leq t }:[d]\rightarrow m\}$ are used along with another set of pairwise independent sign hash functions $\{\text{sign}_{j,1\leq j\leq t}: [d]\rightarrow \{+1,-1\}\}$ to map entries of $\boldsymbol{x}$ ($\boldsymbol{x}_i, \:1\leq i\leq d$) into $t$ different columns of $\mathbf{S}_{m\times t}$, wherein to lower the dimension of the input vector we usually have $d\gg mt$.  
 
 \subsection{\texttt{PRIVIX} and compression error of \texttt{HEAPRIX}}
 For the sake of completeness we review \texttt{PRIVIX} algorithm that is also mentioned in~\citet{li2019privacy} as follows:
@@ -1110,7 +1117,7 @@ Comparison of our results and existing ones for homogeneous and heterogeneous se
        %$\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\[3pt]
        %$\boldsymbol{kBR=O\left(\frac{mk}{\epsilon}\log\left(\frac{d}{\epsilon\delta}\right)\right)}$}  
        & \makecell[l]{$\boldsymbol{R=O\left(\kappa\left(\frac{ d-m}{m k}+1\right)\log\left(\frac{1}{\epsilon}\right)\right)}$,\: $\boldsymbol{\tau=O\left(\frac{d}{k\left(\frac{ d}{k}+m\right)\epsilon}\right)}$,\:$\boldsymbol{B=O\left(m\log\left(\frac{dR}{\delta}\right)\right)}$\\
-       $\boldsymbol{kBR=O\left({m}\kappa(d-m+mk)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(d\frac{d-m}{mk}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}                                                                                   & \makecell{\ding{52}} & \makecell{\ding{52}}   \\
+       $\boldsymbol{kRB=O\left({m}\kappa(d-m+mk)\log\frac{1}{\epsilon}\log\left(\frac{\kappa(d\frac{d-m}{mk}+d)\log\frac{1}{\epsilon}}{\delta}\right)\right)}$}                                                                                   & \makecell{\ding{52}} & \makecell{\ding{52}}   \\
         \bottomrule
     \end{tabular}
     }
@@ -1142,12 +1149,12 @@ Comparison of our results and existing ones for homogeneous and heterogeneous se
         \midrule
         \makecell{\textbf{Rothchild et al.~\citep{rothchild2020fetchsgd}}}  & \makecell[l]{$R=O\left(\max(\frac{1}{\epsilon^2},\frac{d^2-md}{m^2\epsilon})\right)$ \\ $\tau=1$\\
         $B=O\left(m\log\left(\frac{d}{\epsilon^2\delta}\right)\right)$\\
-        $BR=O\left(\frac{m}{\epsilon^2}\max(\frac{1}{\epsilon^2},\frac{d^2-md}{m^2\epsilon})\log\left(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2-md}{m^2\epsilon})\right)\right)$}       & \makecell[l]{$-$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{55}}
+        $RB=O\left(\frac{m}{\epsilon^2}\max(\frac{1}{\epsilon^2},\frac{d^2-md}{m^2\epsilon})\log\left(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2-md}{m^2\epsilon})\right)\right)$}       & \makecell[l]{$-$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{55}}
         \\
         \midrule
         \makecell{\textbf{Rothchild et al.~\citep{rothchild2020fetchsgd}}}  & \makecell[l]{$R=O\left(\frac{\max(I^{2/3},2-\alpha)}{\epsilon^3}\right)$ \\ $\tau=1$\\
         $B=O\left(\frac{m}{\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$\\
-        $BR=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$
+        $RB=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$
         }       & \makecell[l]{$-$}                                                                            & \makecell{\ding{55}} & \makecell{\ding{55}}
 %        \\
 %        \midrule
@@ -1163,7 +1170,7 @@ Comparison of our results and existing ones for homogeneous and heterogeneous se
         \midrule
               \makecell{\textbf{Theorem~\ref{thm:hetreg_case}}} & \makecell[l]{$\boldsymbol{R=O\left(\frac{d}{m\epsilon}\right)}$ \\[3pt] $\boldsymbol{\tau=O\left(\frac{1}{p\epsilon}\right)}$\\[3pt]
        $\boldsymbol{B=O\left(m\log\left(\frac{d^2}{m\epsilon\delta}\right)\right)}$\\[3pt]
-       $\boldsymbol{BR=O\left(\frac{d}{\epsilon}\log\left(\frac{d^2}{m\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$}   & \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{d}{m\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
+       $\boldsymbol{RB=O\left(\frac{d}{\epsilon}\log\left(\frac{d^2}{m\epsilon\delta}\log\left(\frac{1}{\epsilon}\right)\right)\right)}$}   & \makecell[l]{$\boldsymbol{R\!=\!O\left(\frac{d}{m\epsilon}{\color{black}\log\left(\frac{1}{\epsilon}\right)}\right)}$\\[3pt]
        $\boldsymbol{\tau\!=\!O\left(\frac{1}{p\epsilon^2}\right)}$\\[3pt]
        $\boldsymbol{B=O\left(m\log\left(\frac{d^2}{m\epsilon\delta}\right)\right)}$}                                                                            & \makecell{\ding{52}} & \makecell{\ding{52}}
    \\
@@ -1173,11 +1180,11 @@ Comparison of our results and existing ones for homogeneous and heterogeneous se
 \end{table}
 
 
-\noindent\textbf{Comparison  with~\citet{haddadpour2020federated}.}
-{\color{blue}Convergence analysis of algorithms in~\cite{haddadpour2020federated} relies on unbiased compression, while in this paper our FL algorithm based on \texttt{HEAPRIX} enjoys from unbiased compression with equivalent biased compression variance. Moreover, we highlight that convergence analysis of \texttt{FedCOMGATE} is based on the extra assumption that bounds the difference between average of compressed vectors and compressed averages of vectors. However, we do not need this extra assumption as it is satisfied naturally due to linearity of sketching. Finally, as pointed out in Remark~\ref{rmk:bidirect}, our algorithms enjoy from bidirectional compression property, unlike \texttt{FedCOMGATE} in general.} %Therefore, for instance in case of general non-convex our algorithm improves the total number of transmitted bits per device from $RB=O\left(\frac{d}{m\log(\frac{d}{\delta})}\frac{d}{\epsilon}\right)$ (by letting $q=\frac{d}{mt}=\frac{d}{m\log(\frac{d}{\delta})}$ and $B=O\left(d\right)$) to $RB=O\left(\log(\frac{d^2}{m\epsilon\delta})\frac{d}{\epsilon}\right)$. }
+\noindent\textbf{Comparison  with~\citet{haddadpour2020federated} and~\cite{reisizadeh2020fedpaq}}
+Convergence analysis of algorithms in~\cite{haddadpour2020federated} relies on unbiased compression, while in this paper our FL algorithm based on \texttt{HEAPRIX} enjoys from unbiased compression with equivalent biased compression variance. Moreover, we highlight that convergence analysis of \texttt{FedCOMGATE} is based on the extra assumption that bounds the difference between average of compressed vectors and compressed averages of vectors. However, we do not need this extra assumption as it is satisfied naturally due to linearity of sketching. Finally, as pointed out in Remark~\ref{rmk:bidirect}, our algorithms enjoy from bidirectional compression property, unlike \texttt{FedCOMGATE} in general. Furthermore, since results in ~\cite{haddadpour2020federated} improves the communication complexity of FedPAQ algorithm in \cite{reisizadeh2020fedpaq}, hence \texttt{FedSKETCH} and \texttt{FedSKETCHGATE} improves the communication complexity obtained in \cite{reisizadeh2020fedpaq}. %Therefore, for instance in case of general non-convex our algorithm improves the total number of transmitted bits per device from $RB=O\left(\frac{d}{m\log(\frac{d}{\delta})}\frac{d}{\epsilon}\right)$ (by letting $q=\frac{d}{mt}=\frac{d}{m\log(\frac{d}{\delta})}$ and $B=O\left(d\right)$) to $RB=O\left(\log(\frac{d^2}{m\epsilon\delta})\frac{d}{\epsilon}\right)$. }
 
-\noindent\textbf{Comparison with~\citet{basu2019qsparse}.}{\color{blue}\:  We note that the algorithm in~\cite{basu2019qsparse} uses a composed compression and quantization, however our algorithm is based on only compression. So, in order to compare with algorithms in~\cite{basu2019qsparse} we only consider Qsparse-local-SGD with compression and we let compression factor $\gamma=\frac{m}{d}$ (to compare with the same compression ratio induced with sketch size of $mt$). For strongly convex objective in   Qsparse-local-SGD to achieve convergence error of $\epsilon$ they require $R=O\left(\kappa\frac{d}{m\sqrt{\epsilon}}\right)$ and $\tau=O\left(\frac{m}{pd\sqrt{\epsilon}}\right)$, which is improved to $R=O\left(\frac{\kappa d}{m}\log (1/\epsilon)\right)$ and $\tau=O\left(\frac{1}{p\epsilon}\right)$ for \pl \:   objectives. Similarly, for non-convex objective~\cite{basu2019qsparse} requires $R=O\left(\frac{d}{m\epsilon^{1.5}}\right)$ and $\tau=O\left(\frac{m}{pd\sqrt{\epsilon}}\right)$, which is improved to $R=O\left(\frac{d}{m\epsilon}\right)$ and $\tau=O\left(\frac{1}{p\epsilon}\right)$. We note that we reduce communication rounds at the cost of increasing number of local updates (which scales down with number of devices, $p$). Additionally, we highlight that our \texttt{FedSKETCHGATE} exploits the gradient tracking idea to deal with data heterogeneity, while algorithms in~\cite{basu2019qsparse} does not develop such mechanism and may suffer from poor convergence in heterogeneous setting. We also note that setting $\tau=1$ and using $top_{m}$ compressor, the QSPARSE-local-SGD algorithm becomes similar to distributed SGD with sketching as they both use the error feedback framework to improve the compression variance.  
-Finally, since the average of sparse vectors may not be sparse in general the number of transmitted bits from server to devices in QSPARSE-Local-SGD in~\cite{basu2019qsparse} may not be sparse in general ($B=O(d)$), however our algorithms enjoy from bidirectional compression properly due to lower dimension and linearity properties of sketching ($B=O(m\log(\frac{Rd}{\delta}))$). Therefore, the total number of bits per device for strongly convex and non-convex objective is improved respectively from $RB=O\left(\kappa\frac{d^2}{m\sqrt{\epsilon}}\right)$ and $RB=O\left(\frac{d^2}{m\epsilon^{1.5}}\right)$ in~\cite{basu2019qsparse} to $RB=O\left({\kappa d\log(\frac{\kappa d^2}{m\delta}\log (\frac{1}{\epsilon})) }\log (1/\epsilon)\right)=O\left({\kappa d\max\Big(\log(\frac{\kappa d^2}{m\delta}}),\log^2 (1/\epsilon)\Big)\right)$ and $RB=O\left(\log(\frac{d^2}{m\epsilon\delta})\frac{d}{\epsilon}\right)$.}
+\noindent\textbf{Comparison with~\citet{basu2019qsparse}.}  We note that the algorithm in~\cite{basu2019qsparse} uses a composed compression and quantization, however our algorithm is based on only compression. So, in order to compare with algorithms in~\cite{basu2019qsparse} we only consider Qsparse-local-SGD with compression and we let compression factor $\gamma=\frac{m}{d}$ (to compare with the same compression ratio induced with sketch size of $mt$). For strongly convex objective in   Qsparse-local-SGD to achieve convergence error of $\epsilon$ they require $R=O\left(\kappa\frac{d}{m\sqrt{\epsilon}}\right)$ and $\tau=O\left(\frac{m}{pd\sqrt{\epsilon}}\right)$, which is improved to $R=O\left(\frac{\kappa d}{m}\log (1/\epsilon)\right)$ and $\tau=O\left(\frac{1}{p\epsilon}\right)$ for PL \:   objectives. Similarly, for non-convex objective~\cite{basu2019qsparse} requires $R=O\left(\frac{d}{m\epsilon^{1.5}}\right)$ and $\tau=O\left(\frac{m}{pd\sqrt{\epsilon}}\right)$, which is improved to $R=O\left(\frac{d}{m\epsilon}\right)$ and $\tau=O\left(\frac{1}{p\epsilon}\right)$. We note that we reduce communication rounds at the cost of increasing number of local updates (which scales down with number of devices, $p$). Additionally, we highlight that our \texttt{FedSKETCHGATE} exploits the gradient tracking idea to deal with data heterogeneity, while algorithms in~\cite{basu2019qsparse} does not develop such mechanism and may suffer from poor convergence in heterogeneous setting. We also note that setting $\tau=1$ and using $top_{m}$ compressor, the QSPARSE-local-SGD algorithm becomes similar to distributed SGD with sketching as they both use the error feedback framework to improve the compression variance.  
+Finally, since the average of sparse vectors may not be sparse in general the number of transmitted bits from server to devices in QSPARSE-Local-SGD in~\cite{basu2019qsparse} may not be sparse in general ($B=O(d)$), however our algorithms enjoy from bidirectional compression properly due to lower dimension and linearity properties of sketching ($B=O(m\log(\frac{Rd}{\delta}))$). Therefore, the total number of bits per device for strongly convex and non-convex objective is improved respectively from $RB=O\left(\kappa\frac{d^2}{m\sqrt{\epsilon}}\right)$ and $RB=O\left(\frac{d^2}{m\epsilon^{1.5}}\right)$ in~\cite{basu2019qsparse} to $RB=O\left({\kappa d\log(\frac{\kappa d^2}{m\delta}\log (\frac{1}{\epsilon})) }\log (1/\epsilon)\right)=O\left({\kappa d\max\Big(\log(\frac{\kappa d^2}{m\delta}}),\log^2 (1/\epsilon)\Big)\right)$ and $RB=O\left(\log(\frac{d^2}{m\epsilon\delta})\frac{d}{\epsilon}\right)$.
 
 
 Additionally, as we noted using sketching for transmission implies two way communication from master to devices and vice e versa. Therefore, in order to show efficacy of our algorithm we compare our convergence analysis with the obtained rates in the following related work:
@@ -1608,7 +1615,7 @@ Since the sketching methods \texttt{PRIVIX} and \texttt{HEAPRIX}, satisfy the As
 \section{Comparison to Related Methods}
 
 
-{\color{blue}Before we compare with prior studies we highlight that privacy is another purpose of using unbiased sketching in addition to communication efficiency. Therefore, our main competing schemes are distributed algorithms based on sketching. Yet, for the sake of showing the effectiveness of our algorithms we also compare with prior non-sketching based distributed algorithms. } 
+Before we compare with prior studies we highlight that privacy is another purpose of using unbiased sketching in addition to communication efficiency. Therefore, our main competing schemes are distributed algorithms based on sketching. Yet, for the sake of showing the effectiveness of our algorithms we also compare with prior non-sketching based distributed algorithms. 
 \vspace{0.05in}
 
 \subsection{Comparison with~\citet{li2019privacy}.} Note that our convergence analysis does not rely on the bounded gradient assumption. We also improve both the number of communication rounds $R$ and the size of transmitted bits $B$ per communication round. 
@@ -1621,11 +1628,11 @@ Due to gradient tracking, our algorithm tackles data heterogeneity issue, while 
 As a consequence, in \texttt{FedSKETCHGATE} each device has to store an additional state vector compared to~\citet{rothchild2020fetchsgd}. 
 Yet, unlike ~\citep{rothchild2020fetchsgd}, as our method is built upon an unbiased compressor, server does not need to store any additional error correction vector.
 The convergence results for both of two variants of \texttt{FetchSGD} in~\citet{rothchild2020fetchsgd} rely on the uniform bounded gradient assumption which may not be applicable with $L$-smoothness assumption when data distribution is highly heterogeneous, as in FL, see~\citep{bayoumi2020tighter}, while our bounds do not assume such boundedness.
-{\color{blue}Besides, Theorem 1~\citep{rothchild2020fetchsgd} assumes that \emph{Contraction Holds} for the sequence of gradients which may not hold in practice, yet based on this strong assumption their total communication cost ($RB$) in order to achieve $\epsilon-$ error is $BR=O\left(m\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\log\left(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\right)\right)$.
+{\color{blue}Besides, Theorem 1~\citep{rothchild2020fetchsgd} assumes that \emph{Contraction Holds} for the sequence of gradients which may not hold in practice, yet based on this strong assumption their total communication cost ($RB$) in order to achieve $\epsilon-$ error is $RB=O\left(m\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\log\left(\frac{d}{\delta}\max(\frac{1}{\epsilon^2},\frac{d^2-dm}{m^2\epsilon})\right)\right)$.
 Note that for the sake of comparison we let the compression ratio in~\citet{rothchild2020fetchsgd} to be $\frac{m}{d}$. 
-In contrast, without any extra assumptions, our results in Theorem~\ref{thm:hetreg_case} for \texttt{PRIVIX} and \texttt{HEAPRIX} are respectively $BR=O(\frac{(d+m)}{\epsilon}\log(\frac{{(\frac{d^2}{m})}+d}{\epsilon\delta}))$ and $BR=O(\frac{d}{\epsilon}\log(\frac{d^2}{\epsilon m\delta}))$ which improves the total communication cost of Theorem 1 in~\citet{rothchild2020fetchsgd} under regimes such that $\frac{1}{\epsilon}\geq d$ or $d\gg m$. 
+In contrast, without any extra assumptions, our results in Theorem~\ref{thm:hetreg_case} for \texttt{PRIVIX} and \texttt{HEAPRIX} are respectively $RB=O(\frac{(d+m)}{\epsilon}\log(\frac{{(\frac{d^2}{m})}+d}{\epsilon\delta}))$ and $RB=O(\frac{d}{\epsilon}\log(\frac{d^2}{\epsilon m\delta}))$ which improves the total communication cost of Theorem 1 in~\citet{rothchild2020fetchsgd} under regimes such that $\frac{1}{\epsilon}\geq d$ or $d\gg m$. 
 Theorem 2 in~\citet{rothchild2020fetchsgd} is based on the assumption of \emph{Sliding Window Heavy Hitters}, which is similar to the gradient diversity assumption in~\citet{li2018federated,haddadpour2019convergence}. 
-They show that, under such an assumption, the total communication cost is $BR=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$ where $I$ is a constant related to the window of gradients assumption.
+They show that, under such an assumption, the total communication cost is $RB=O\left(\frac{m\max(I^{2/3},2-\alpha)}{\epsilon^3\alpha}\log\left(\frac{d\max(I^{2/3},2-\alpha)}{\epsilon^3\delta}\right)\right)$ where $I$ is a constant related to the window of gradients assumption.
 Our result improves the latter bound with weaker assumptions in a regime where $\frac{I^{2/3}}{\epsilon^2}\geq d$. 
 We also provide bounds for PL, convex and non-convex objectives unlike~\citet{rothchild2020fetchsgd}. 
 Finally, we note that algorithms in~\citet{rothchild2020fetchsgd} are using momentum at sever. 
@@ -1634,7 +1641,7 @@ While we do not use it explicitly, we note that we can modify our algorithms to 
 \noindent\textbf{Comparison  with~\citet{haddadpour2020federated}}
 {\color{blue}Convergence analysis of algorithms in~\cite{haddadpour2020federated} relies on unbiased compression, while in this paper our FL algorithm based on \texttt{HEAPRIX} enjoys from unbiased compression with equivalent biased compression variance. Moreover, we highlight that convergence analysis of \texttt{FedCOMGATE} is based on the extra assumption that bounds the difference between average of compressed vectors and compressed averages of vectors. However, we do not need this extra assumption as it is satisfied naturally due to linearity of sketching. Finally, as pointed out in Remark~\ref{rmk:bidirect}, our algorithms enjoy from bidirectional compression property, unlike \texttt{FedCOMGATE} in general.} %Therefore, for instance in case of general non-convex our algorithm improves the total number of transmitted bits per device from $RB=O\left(\frac{d}{m\log(\frac{d}{\delta})}\frac{d}{\epsilon}\right)$ (by letting $q=\frac{d}{mt}=\frac{d}{m\log(\frac{d}{\delta})}$ and $B=O\left(d\right)$) to $RB=O\left(\log(\frac{d^2}{m\epsilon\delta})\frac{d}{\epsilon}\right)$. }
 
-\subsection{Comparison with~\citet{basu2019qsparse}}{\color{blue}\:  We note that the algorithm in~\cite{basu2019qsparse} uses a composed compression and quantization, however our algorithm is based on only compression. So, in order to compare with algorithms in~\cite{basu2019qsparse} we only consider Qsparse-local-SGD with compression and we let compression factor $\gamma=\frac{m}{d}$ (based on $top_{mt}$ where $mt$ is the size of sketches). For strongly convex objective in   Qsparse-local-SGD to achieve convergence error of $\epsilon$ they require $R=O\left(\kappa\frac{d}{m\sqrt{\epsilon}}\right)$ and $\tau=O\left(\frac{m}{pd\sqrt{\epsilon}}\right)$, which is improved to $R=O\left(\frac{\kappa d}{m}\log (1/\epsilon)\right)$ and $\tau=O\left(\frac{1}{p\epsilon}\right)$ for \pl \:   objectives. Similarly, for non-convex objective~\cite{basu2019qsparse} requires $R=O\left(\frac{d}{m\epsilon^{1.5}}\right)$ and $\tau=O\left(\frac{m}{pd\sqrt{\epsilon}}\right)$, which is improved to $R=O\left(\frac{d}{m\epsilon}\right)$ and $\tau=O\left(\frac{1}{p\epsilon}\right)$. We note that we reduce communication rounds at the cost of increasing number of local updates (which scales down with number of devices, $p$). Additionally, we highlight that our \texttt{FedSKETCHGATE} exploits the gradient tracking idea to deal with data heterogeneity, while algorithms in~\cite{basu2019qsparse} does not develop such mechanism and may suffer from poor convergence in heterogeneous setting. We also note that setting $\tau=1$ and using $top_{m}$ compressor, the QSPARSE-local-SGD algorithm becomes similar to distributed SGD with sketching as they both use the error feedback framework to improve the compression variance.  
+\subsection{Comparison with~\citet{basu2019qsparse}}{\color{blue}\:  We note that the algorithm in~\cite{basu2019qsparse} uses a composed compression and quantization, however our algorithm is based on only compression. So, in order to compare with algorithms in~\cite{basu2019qsparse} we only consider Qsparse-local-SGD with compression and we let compression factor $\gamma=\frac{m}{d}$ (based on $top_{mt}$ where $mt$ is the size of sketches). For strongly convex objective in   Qsparse-local-SGD to achieve convergence error of $\epsilon$ they require $R=O\left(\kappa\frac{d}{m\sqrt{\epsilon}}\right)$ and $\tau=O\left(\frac{m}{pd\sqrt{\epsilon}}\right)$, which is improved to $R=O\left(\frac{\kappa d}{m}\log (1/\epsilon)\right)$ and $\tau=O\left(\frac{1}{p\epsilon}\right)$ for PL   objectives. Similarly, for non-convex objective~\cite{basu2019qsparse} requires $R=O\left(\frac{d}{m\epsilon^{1.5}}\right)$ and $\tau=O\left(\frac{m}{pd\sqrt{\epsilon}}\right)$, which is improved to $R=O\left(\frac{d}{m\epsilon}\right)$ and $\tau=O\left(\frac{1}{p\epsilon}\right)$. We note that we reduce communication rounds at the cost of increasing number of local updates (which scales down with number of devices, $p$). Additionally, we highlight that our \texttt{FedSKETCHGATE} exploits the gradient tracking idea to deal with data heterogeneity, while algorithms in~\cite{basu2019qsparse} does not develop such mechanism and may suffer from poor convergence in heterogeneous setting. We also note that setting $\tau=1$ and using $top_{m}$ compressor, the QSPARSE-local-SGD algorithm becomes similar to distributed SGD with sketching as they both use the error feedback framework to improve the compression variance.  
 Finally, since the average of sparse vectors may not be sparse in general the number of transmitted bits from server to devices in QSPARSE-Local-SGD in~\cite{basu2019qsparse} may not be sparse in general ($B=O(d)$), however our algorithms enjoy from bidirectional compression properly due to lower dimension and linearity properties of sketching ($B=O(m\log(\frac{Rd}{\delta}))$). Therefore, the total number of bits per device for strongly convex and non-convex objective is improved respectively from $RB=O\left(\kappa\frac{d^2}{m\sqrt{\epsilon}}\right)$ and $RB=O\left(\frac{d^2}{m\epsilon^{1.5}}\right)$ in~\cite{basu2019qsparse} to $RB=O\left({\kappa d\log(\frac{\kappa d^2}{m\delta}\log (\frac{1}{\epsilon})) }\log (1/\epsilon)\right)=O\left({\kappa d\max\Big(\log(\frac{\kappa d^2}{m\delta}}),\log^2 (1/\epsilon)\Big)\right)$ and $RB=O\left(\log(\frac{d^2}{m\epsilon\delta})\frac{d}{\epsilon}\right)$.}
 
 \subsection{Comparison with~SCAFFOLD}{\color{blue}\:  To compare with~\cite{karimireddy2019scaffold} which does not use gradient compression, we let $m=d$ (no compression). In this case, similar to~\cite{haddadpour2020federated}, our communication complexities and number of local updates match with corresponding bounds obtained by SCAFFOLD with difference that in downlink (from devices to server) we only send one vector while SCAFFOLD needs to send two vectors (additional control variate).}
