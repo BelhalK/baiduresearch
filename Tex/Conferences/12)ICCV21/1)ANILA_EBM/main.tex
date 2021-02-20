@@ -4,6 +4,7 @@
 \usepackage[colorlinks,linkcolor=blue,filecolor=blue,citecolor=magenta,urlcolor=blue]{hyperref}
 \usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem,graphicx,subfigure}
 \usepackage{xargs}
+\usepackage{natbib}
 \usepackage{stmaryrd}
 
 
@@ -30,49 +31,71 @@ We develop in this paper
 \end{abstract}
 
 \section{Introduction}
+The modeling of a data generating process is critical for many tasks.
+A growing interest in generative models within the realm of computer vision has led to multiple interesting solutions.
+In particular, Energy Based Models (EBM) \citep{zhu1998filters,lecun2006tutorial}, are a class of generative models that learns high dimensional and complex (in terms of landscape) representation/distribution of the input data.
+Since inception, EBMs have been used in several applications including computer vision \citep{ngiam2011learning, xie2016theory,xie2020generative,du2019implicit}, natural language processing \citep{mikolov2013distributed,deng2020residual},  density estimation \citep{wenliang2019learning,song2020sliced} and reinforcement learning \citep{haarnoja2017reinforcement}.
 
-Given a stream of input data noted $x$, the energy-based model (EBM) is a Gibbs distribution defined as:
+Formally, EBMs are built upon an unnormalized log probability, called the energy function, that is not required to sum to one, as standard log probability functions.
+This noticeable feature allows for more freedom in the way one parametrizes the EBM.
+For instance, Convolutional Neural Network (CNN) can be employed to parametrize the energy function, see \citep{xie2016theory}.
+Note that this choice is highly related to the type of the input data, as mentioned in \citep{song2021train}.
+
+The training procedure of such models consists of finding an energy function that assigns to lower energies to observations than unobserved points.
+This phase can be casted into an optimization task and several ways are possible to achieve it.
+In this paper, we will focus on training the EBM via Maximum Likelihood Estimation (MLE) and defer the readers to \citep{song2021train} for alternative procedures.
+Particularly, while using MLE to fit the EBM on a stream of observed data, the high non-convexity of the loss function leads to a non closed form maximization step. In general, gradient based optimization methods are thus used during that phase.
+Besides, given the intractability of the normalizing constant of our model, the aforementioned gradient, which is an intractable integral, needs to be approximated.
+A popular and efficient way to conduct such approximation is to use Monte Carlo approximation where the samples are obtained via Markov Chain Monte Carlo (MCMC).
+
+
+
+\section{On MCMC based Energy Based Models}
+
+Given a stream of input data noted $x \in \rset^p$, the energy-based model (EBM) is a Gibbs distribution defined as follows:
 \beq\label{eq:ebm}
 p_{\theta}(x) = \frac{1}{Z(\theta)} \mathrm{exp}(f_{\theta}(x))
 \eeq
 
+where $\theta \in \rset^d$ denotes the global vector parameters of our model and $Z(\theta) \eqdef \int_{x} \mathrm{exp}(f_{\theta}(x)) \textrm{d}x$ is the normalizing constant (with respect to $x$).
 
-\section{MCMC based EBM}
+
+
 
 \paragraph{Energy Based Models: }
 Energy based models \cite{lecun2006tutorial,ngiam2011learning} are a class of generative models that leverages the power of Gibbs potential and high dimensional sampling techniques to produce high quality synthetic image samples.
 Training of such models occurs via Maximum Likelihood (ML).
 
 \paragraph{MCMC procedures: }
+MCMC are a class of inference algorithms
 
 
 
-\section{AniLA sampler based EBM}
+\section{Gradient Informed Langevin Diffusion}
 
 \subsection{Preliminaries and Bottlenecks of Langevin MCMC based EBM}
 State of the art MCMC sampling algorithm, particularly used during the training procedure of EBMs, is the discretized Langevin diffusion, casted as Stochastic Gradient Langevin Dynamics (SGLD), see \cite{welling2011bayesian}.
-In many 
 
 \subsection{Curvature informed MCMC}
 
 We introduce a new sampler based on the Langevin updates presented above.
 
 \begin{algorithm}[H]
-\caption{\textsc{StAnLey for Energy-Based Model}} \label{alg:anila}
+\caption{\textsc{StAnLey} for Energy-Based Model} \label{alg:anila}
 \begin{algorithmic}[1]
 %\small
-\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$ learning rate $\eta$, initial values $\theta_0$, $\{ z_{0}^m \}_{m=1}^M$ and $n$ observations $\{ x_{i} \}_{i=1}^n$.
+\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$ learning rate $\eta$, initial values $\theta_0$, initial chain states $\{ z_{0}^m \}_{m=1}^M$ and $n$ observations $\{ x_{i} \}_{i=1}^n$.
 \FOR{$t=1$ to $T$}
 \STATE Compute the anisotropic stepsize as follows: \label{line:step}
 \beq
-\stepsize_t = \frac{b}{\max(b, | \nabla f_{\theta_t}(x) |}
+\stepsize_t = \frac{b}{\max(b, | \nabla f_{\theta_t}(z_{t-1}^m) |}
 \eeq
 \STATE Draw $m$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential \eqref{eq:ebm} via Langevin diffusion:\label{line:langevin}
 \beq
-z_{t}^m = z_{t}^m + \stepsize_t/2  \nabla f_{\theta_t}(x) + \sqrt{\stepsize} \mathsf{B}_t
+z_{t}^{m} = z_{t-1}^m + \stepsize_t/2  \nabla f_{\theta_t}(z_{t-1}^m) + \sqrt{\stepsize} \mathsf{B}_t
 \eeq
 where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
-\STATE Samples $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution
+\STATE Samples $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
 \STATE Compute the gradient of the empirical log-EBM \eqref{eq:ebm} as follows:
 \beq
 \nabla \sum_{i=1}^m \log p_{\theta_t}(x_i) = \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t^m)\right] \approx \frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)
@@ -91,6 +114,29 @@ where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
 \section{Geometric ergodicity of AniLA sampler}
 We will present in this section, our theoretical analysis for the Markov Chain constructed using Line~\ref{line:step}-\ref{line:langevin}. 
 
+Let $\mathcal{S}$ be a subset of $\rset^q$ for some integer $q >0$.
+We denote by $\mathcal{X}$ the measurable space of $\rset^\ell$ for some integer $\ell >0$.
+We define a family of stationary distribution $\left(\pi_s \right)_{s \in \mathcal{S}}$, probability density functions with respect to the Lebesgue measure on the measurable space $\mathcal{X}$. This family of p.d.f. defines the stationary distributions of our newly introduced sampler.
+
+For any chain state $s \in \mathcal{S}$ we denote by $\Pi_s$ the transition kernel as defined in the \textsc{StAnLey} update in Line~\ref{line:langevin}.
+
+The objective of this section is to rigorously show that each transition kernel $\Pi_s$ is uniformly geometrically ergodic and that this result is true uniformly in state $s$ on any compact subset $\mathcal{C} \in \mathcal{S}$.
+As a background note, a Markov chain, as built Line~\ref{line:langevin}, is said to be geometrically ergodic when $k$ iterations of the same transition kernel is converging to the stationary distribution of the chain and this convergence as a geometric dependence on $k$.
+
+We begin with several usual assumptions for such results.
+The first one is related to the continuity of the gradient of the log posterior distribution and the unit vector pointing in the direction of the sample $z$ and the unit vector pointing in the direction of the gradient of the log posterior distribution at $z$:
+\begin{assumption}
+(Continuity) The stationary distribution is positive and has continuous derivative such that for all $\theta \in \rset^d$:
+\begin{equation}
+\lim \limits_{z \to \infty} \frac{z}{|z|} \nabla f_{\theta}(z) = - \infty \quad \textrm{and} \quad \lim \sup \limits_{z \to \infty} \frac{z}{|z|} \frac{\nabla f_{\theta}(z) }{|\nabla f_{\theta}(z) |} < 0
+\end{equation}
+\end{assumption}
+
+We assume also some regularity conditions of the stationary distributions with respect to state $s$:
+\begin{assumption}
+
+\end{assumption}
+
 
 \section{Numerical Experiments}
 
@@ -107,7 +153,7 @@ We will present in this section, our theoretical analysis for the Markov Chain c
 
 \subsection{Flowers Dataset}
 
-\begin{figure}[h]
+\begin{figure}[H]
     \begin{center}
         \mbox{
         \includegraphics[width=2in]{figs/flowerslangevin}
@@ -123,7 +169,7 @@ We will present in this section, our theoretical analysis for the Markov Chain c
 
 
 
-\begin{figure}[h]
+\begin{figure}[H]
     \begin{center}
         \mbox{
         \includegraphics[width=2in]{figs/cifarlangevin}
@@ -132,14 +178,15 @@ We will present in this section, our theoretical analysis for the Markov Chain c
     \end{center}
     \vspace{-0.1in}
 	\caption{(CIFAR Dataset). Left: Langevin Method. Right: AniLA method. After 100k iterations.}
-	\label{fig:flowers}
+	\label{fig:cifar}
 \end{figure}
+
 
 \section{Conclusion}
 
 \newpage
 
-\bibliographystyle{apalike}
+\bibliographystyle{plainnat}
 \bibliography{ref}
 
 
