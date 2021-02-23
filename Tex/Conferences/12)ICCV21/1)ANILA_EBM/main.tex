@@ -81,7 +81,7 @@ State of the art MCMC sampling algorithm, particularly used during the training 
 We introduce a new sampler based on the Langevin updates presented above.
 
 \begin{algorithm}[H]
-\caption{\textsc{StAnLey} for Energy-Based Model} \label{alg:anila}
+\caption{\algo for Energy-Based Model} \label{alg:anila}
 \begin{algorithmic}[1]
 %\small
 \STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$ learning rate $\eta$, initial values $\theta_0$, initial chain states $\{ z_{0}^m \}_{m=1}^M$ and $n$ observations $\{ x_{i} \}_{i=1}^n$.
@@ -114,18 +114,20 @@ where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
 \section{Geometric ergodicity of AniLA sampler}
 We will present in this section, our theoretical analysis for the Markov Chain constructed using Line~\ref{line:step}-\ref{line:langevin}. 
 
-Let $\mathcal{S}$ be a subset of $\rset^q$ for some integer $q >0$.
-We denote by $\mathcal{X}$ the measurable space of $\rset^\ell$ for some integer $\ell >0$.
-We define a family of stationary distribution $\left(\pi_s \right)_{s \in \mathcal{S}}$, probability density functions with respect to the Lebesgue measure on the measurable space $\mathcal{X}$. This family of p.d.f. defines the stationary distributions of our newly introduced sampler.
+Let $\Theta$ be a subset of $\rset^d$ for some integer $d >0$.
+We denote by $\zset$ the measurable space of $\rset^\ell$ for some integer $\ell >0$.
+We define a family of stationary distribution $\left(\pi_\theta(z) \right)_{\theta \in \Theta}$, probability density functions with respect to the Lebesgue measure on the measurable space $\zset$. This family of p.d.f. defines the stationary distributions of our newly introduced sampler.
 
-For any chain state $s \in \mathcal{S}$ we denote by $\Pi_s$ the transition kernel as defined in the \textsc{StAnLey} update in Line~\ref{line:langevin}.
+\textbf{Important Note:} The stationary distributions are defined per $\theta \in \Theta$, \ie at each model update during the EBM optimization phase.
 
-The objective of this section is to rigorously show that each transition kernel $\Pi_s$ is uniformly geometrically ergodic and that this result is true uniformly in state $s$ on any compact subset $\mathcal{C} \in \mathcal{S}$.
+For any chain state $z \in \zset$ we denote by $\Pi_\theta(z,\cdot)$ the transition kernel as defined in the \algo update in Line~\ref{line:langevin}.
+
+The objective of this section is to rigorously show that each transition kernel $\pi_\theta$ is uniformly geometrically ergodic and that this result is true uniformly in state $s$ on any compact subset $\mathcal{C} \in \zset$.
 As a background note, a Markov chain, as built Line~\ref{line:langevin}, is said to be geometrically ergodic when $k$ iterations of the same transition kernel is converging to the stationary distribution of the chain and this convergence as a geometric dependence on $k$.
 
 We begin with several usual assumptions for such results.
 The first one is related to the continuity of the gradient of the log posterior distribution and the unit vector pointing in the direction of the sample $z$ and the unit vector pointing in the direction of the gradient of the log posterior distribution at $z$:
-\begin{assumption}
+\begin{assumption}\label{ass:cont}
 (Continuity) The stationary distribution is positive and has continuous derivative such that for all $\theta \in \rset^d$:
 \begin{equation}
 \lim \limits_{z \to \infty} \frac{z}{|z|} \nabla f_{\theta}(z) = - \infty \quad \textrm{and} \quad \lim \sup \limits_{z \to \infty} \frac{z}{|z|} \frac{\nabla f_{\theta}(z) }{|\nabla f_{\theta}(z) |} < 0
@@ -133,11 +135,54 @@ The first one is related to the continuity of the gradient of the log posterior 
 \end{assumption}
 
 We assume also some regularity conditions of the stationary distributions with respect to state $s$:
-\begin{assumption}
+\begin{assumption}\label{ass:contlogpi}
+For all $z \in \zset$, $\theta \to \pi_\theta$ and $\theta \to \nabla \log \pi_\theta$ are continuous on $\Theta$.
+\end{assumption}
 
+For a positive and finite function noted $V: \zset \mapsto \rset$, we define the V-norm distance between two arbitrary transition kernels $\Pi_1$ and $\Pi_2$ as follows:
+
+\beq
+\| \Pi_1 - \Pi_2 \|_V \eqdef \sup \limits_{z \in \zset} \frac{\| \Pi_1(z, \cdot) - \Pi_2(z, \cdot) \|_V }{V(z)}
+\eeq
+
+The definition of this norm will allow us to establish a convergence rate for our sampling method by deriving an upper bound of the quantity $\| \Pi_\theta^k - \pi_\theta \|_V$ where $k$ denotes the number of MCMC transitions.
+We also recall that $\Pi_\theta$ is the transition kernel defined by Line~\ref{line:langevin} and $\pi_\theta$ is the stationary distribution of our Markov chain. 
+Then, this quantity characterizes how close to the target distribution, our chain is getting after a finite time of iterations and will eventually formalize \emph{V-uniform ergodicity} of our method.
+We specify that strictly speaking $\pi_\theta$ is a probability measure, and not a transition kernel. However $\| \Pi_\theta^k - \pi_\theta \|_V$ is well-defined if we consider the the probability $\pi_\theta$ as a kernel by making the definition:
+
+\beq
+\pi(z, \mathcal{C}) \eqdef \pi(\mathcal{C}) \quad \textrm{for} \quad \mathcal{C} \in \zset, \quad z \in \zset
+\eeq
+
+
+Here, for some $\beta \in ] 0,1[$ we define the V function for all $z \in \zset$ as follows: 
+\beq
+V_\theta(z) = c_\theta \pi_\theta(z)^{-\beta}
+\eeq
+where $c_\theta$ is a constant, with respect to the chain state $s$, such that for all $z \in \zset$, $V_\theta(z) \geq 1$.
+Again, we note that the V norm is, in our case, function of the chain state noted $z$ \emph{and} of the global model parameter $\theta$, estimated, and thus varying, through the optimization procedure.
+The convergence rate will thus be given for a particular model estimate (the supremum in fact).
+Define $V_1(z) \eqdef \inf \limits_{\theta \in \Theta} V_\theta(z)$ and $V_2(z) \eqdef \sup \limits_{\theta \in \Theta} V_\theta(z)$ and assume that:
+
+\begin{assumption}\label{ass:V2}
+There exists a constant $a_0 > 0$ such that for all $\theta \in \Theta $ and $z \in \zset$, $V_2(z)$ is integrable against the kernel $\Pi_\theta(z, \cdot)$ and 
+\beq
+ \lim \sup  \limits_{a \to 0}  \sup \limits_{\theta \in \Theta, z \in \zset} \Pi_\theta V_2^a(z) = 1
+\eeq
 \end{assumption}
 
 
+We will now give the main convergence result of our sampling method in \algo.
+The result consists of showing V-uniform ergodicity of the chain, the irreducibility of the transition kernels and their aperiodicity, ssee \cite{meyn2012markov} for more details. 
+We also prove a drift condition which states that the transition kernels tend to bring back elements into a small set from which boils down V-uniform ergodicity of the transition kernels $(\Pi_\theta)_{\theta \in \Theta}$.
+
+
+\begin{Theorem}
+Assume H\ref{ass:cont}-H\ref{ass:V2}.
+
+\end{Theorem}
+
+\clearpage
 \section{Numerical Experiments}
 
 \subsection{Application on Toy Example: Gaussian Mixture Model}
