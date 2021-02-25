@@ -46,35 +46,96 @@ This phase can be casted into an optimization task and several ways are possible
 In this paper, we will focus on training the EBM via Maximum Likelihood Estimation (MLE) and defer the readers to \citep{song2021train} for alternative procedures.
 Particularly, while using MLE to fit the EBM on a stream of observed data, the high non-convexity of the loss function leads to a non closed form maximization step. In general, gradient based optimization methods are thus used during that phase.
 Besides, given the intractability of the normalizing constant of our model, the aforementioned gradient, which is an intractable integral, needs to be approximated.
-A popular and efficient way to conduct such approximation is to use Monte Carlo approximation where the samples are obtained via Markov Chain Monte Carlo (MCMC).
+A popular and efficient way to conduct such approximation is to use Monte Carlo approximation where the samples are obtained via Markov Chain Monte Carlo (MCMC) \citep{meyn2012markov}.
+The goal of this embedded MCMC procedure while training the Energy-based model is to synthesize new examples of the input data and use those new synthetic observations, in our case images, to approximate some expectations that we will describe later.
+The sampling phase is thus crucial for both the EBM training speed and its final accuracy in generating new samples.
+
+The computational burden of those MCMC transitions at each iteration of the EBM training procedure is alleviated via different techniques in the literature.
+For instance, in \citep{nijkamp2019learning}, the authors develop a short-run MCMC as a flow-based generator mechanism despite its non convergence property.
+A large class of solutions aiming at reducing the cost of running MCMC until convergence, which in practice can be unfeasible, is using Contrastive Divergence \citep{hinton2002training} and persistent Contrastive Divergence \citep{tieleman2008training}.
+This principled approach keeps in memory the final chain state under the previous global model parameter and uses it as the initialization of the current chain.
+The heuristic of such approach is that along the EBM iterations, the conditional distributions, depending on the model parameter, are more and more similar and thus using a good sample from the previous chain is in general a good sample of the current one.
+Though, this method can be limited during the first iterations of the EBM training since when the model parameter changes drastically, the conditional distributions do too and samples from two different chains can be quite inconsistent.
+Several extensions varying the way the chain is initialized can be found in \citep{welling2002new,gao2018learning,du2019implicit}.
+
+An interesting line of work in the realm of MCMC-based EBM tackles the biases induced by stopping the MCMC runs too early. 
+Indeed, it is known, see \citep{meyn2012markov}, that before convergence, MCMC samples are biased and thus correcting this biase while keep a short run and less expensive run is an appealing option.
+Several contributions aiming at removing this bias for improved MCMC training include coupling MCMC chains, see \citep{qiu2019unbiased,jacob2020unbiased} or by simply estimating this bias and correct the chain afterwards, see \citep{du2020improved}.
+
+
+In this work, we consider the case of a short-run MCMC for the training of an Energy-Based Model but rather than focussing on debiasing the chain, we develop a new sampling scheme which purpose is to obtain better samples from the target distribution using less MCMC transitions.
+We consider that the shape of the target distribution, which highly inspires our proposed method, is of utmost importance to obtain such negative samples.
+
+The contributions of our paper are as follows:
+
+\begin{itemize}
+\item We develop \algo, a EBM training method that embeds a newly proposed \emph{convergent} and \emph{efficient} MCMC sampling scheme, focussing on curvature informed metrics of the target distribution one wants to obtain samples from.
+\item Based on a anisotropic stepsize, our method, which is an improvement of the Langevin dynamics, achieves to obtain negative samples from the EBM data distribution.
+\item We prove the geometric ergodicity uniformly on any compact set of our method assuming some regularity conditions on the target distribution
+\item We empirically verify the relevance of our method on several image generation tasks.
+\end{itemize}
+
+The rest of the paper is organized as follows.
+We introduce in Section~\ref{sec:mcmc} the important notions of this paper regarding EBM and MCMC procedures.
+Section~\ref{sec:main} develops the main algorithmic contribution of this paper, namely \algo.
+Section~\ref{sec:theory} introduces the main theoretical results of our paper and focuses on the ergodicity of our propose MCMC sampling method.
+Section~\ref{sec:numericals} present several image generation experiments on a toy dataset and baseline deep image datasets.
+ Section~\ref{sec:conclusion} concludes our work
 
 
 
-\section{On MCMC based Energy Based Models}
+\section{On MCMC based Energy Based Models}\label{sec:mcmc}
 
-Given a stream of input data noted $x \in \rset^p$, the energy-based model (EBM) is a Gibbs distribution defined as follows:
+
+Given a stream of input data noted $x \in \xset \subset \rset^p$, the energy-based model (EBM) is a Gibbs distribution defined as follows:
 \beq\label{eq:ebm}
-p_{\theta}(x) = \frac{1}{Z(\theta)} \mathrm{exp}(f_{\theta}(x))
+p(x,\theta) = \frac{1}{Z(\theta)} \mathrm{exp}(f_{\theta}(x))
 \eeq
 
-where $\theta \in \rset^d$ denotes the global vector parameters of our model and $Z(\theta) \eqdef \int_{x} \mathrm{exp}(f_{\theta}(x)) \textrm{d}x$ is the normalizing constant (with respect to $x$).
+where $\theta \in \Theta \subset \rset^d$ denotes the global vector parameters of our model and $Z(\theta) \eqdef \int_{x} \mathrm{exp}(f_{\theta}(x)) \textrm{d}x$ is the normalizing constant (with respect to $x$).
+The natural way of fitting model \eqref{eq:ebm} is to employ Maximum Likelihood Estimation (MLE) to maximize the marginal likelihood $p(\theta)$ and consisting of finding the vector of parameters $\theta^*$ such that for any $x \in \xset$, 
+\beq\label{eq:mle}
+ \theta^*  = \arg \max \limits_{\theta \in \Theta} \log p(\theta) \eqsp.
+ \eeq
 
+The quantity of interest $p(\theta)$ is obtained by marginalizing over the input data $x \in \xset$ and formally reads $p(\theta) = \int_{x \in xset} p(x, \theta) q(x) \textrm{d}x$ where we note $q(x)$ the true distribution of the input data $x$.
+The optimization task \eqref{eq:mle} is not tractable in closed form and requires an iterative procedure to be solved.
+The standard algorithm used to train EBMs is Stochastic Gradient Descent (SGD), see \citep{robbins1951A,bottou2008}.
+SGD requires having access to the gradient of the objective function $\log p(\theta)$. 
+This latter requires computing an intractable, due to the high nonlinearity of the parametrized model we use in general $f_\theta(x)$.
+Given the general form in \eqref{eq:ebm} we have that:
+\beq
+\nabla \log p(\theta) = \int_{x \in xset} \nabla \log p(x, \theta) q(x) \textrm{d}x =  \EE_{p(x,\theta)}[\nabla_\theta f_\theta(x)] - \EE_{q(x)}[\nabla_\theta f_\theta(x)] \eqsp,
+\eeq
+and a simple Monte Carlo approximation of $\nabla \log p(\theta)$ yields
 
+\beq\label{eq:mcapprox}
+\nabla \log p(\theta) \approx \frac{1}{m} \sum_{j=1}^m \nabla_\theta f_\theta(x^{p}_j) -  \frac{1}{n} \sum_{i=1}^n \nabla_\theta f_\theta(x^{q}_i) \eqsp,
+\eeq
+where are $\{x^{p}_j\}_{j=1}^m$ samples obtained from the EBM $p(x,\theta)$ and $\{x^{q}_i\}_{i=1}^n$ are samples obtained from the true data distribution $q(x)$.
 
+While drawing samples from the data distribution is trivial, the challenge during the EBM training phase is to obtain good samples from the EBM distribution $p(x,\theta)$ for any model parameter $\theta \in \Theta$.
+This task is generally done using MCMC methods.
+State of the arts MCMC used in the EBM literature include Langevin dynamics, see \citep{grenander1994representations,roberts1996exponential} and Hamiltonian Monte Carlo (HMC), see \citep{neal2011mcmc}.
+Those methods are detailed in the sequel and are important concepts throughout our paper.
 
 \paragraph{Energy Based Models: }
 Energy based models \cite{lecun2006tutorial,ngiam2011learning} are a class of generative models that leverages the power of Gibbs potential and high dimensional sampling techniques to produce high quality synthetic image samples.
 Training of such models occurs via Maximum Likelihood (ML).
 
+\textcolor{red}{TO COMPLETE}
+
 \paragraph{MCMC procedures: }
 MCMC are a class of inference algorithms
 
+\textcolor{red}{TO COMPLETE, MCMC, Metropolis methods, detail Langevin Dynamics as baseline for our paper, HMC etc}
 
-
-\section{Gradient Informed Langevin Diffusion}
+\section{Gradient Informed Langevin Diffusion}\label{sec:main}
 
 \subsection{Preliminaries and Bottlenecks of Langevin MCMC based EBM}
 State of the art MCMC sampling algorithm, particularly used during the training procedure of EBMs, is the discretized Langevin diffusion, casted as Stochastic Gradient Langevin Dynamics (SGLD), see \cite{welling2011bayesian}.
+
+\textcolor{red}{TO COMPLETE with disadvantage of vanilla Langevin}
 
 \subsection{Curvature informed MCMC}
 
@@ -111,7 +172,17 @@ where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
 
 
 
-\section{Geometric ergodicity of AniLA sampler}
+\textcolor{red}{TO COMPLETE with heuristic on why informing the stepsize with shape of the target is good.}
+
+
+\textcolor{red}{Some modifications have been proposed in particular to optimize the covariance matrix of the proposal in order to better stride the support of the target distribution. In \citep{atchade2006adaptive,marshall2012adaptive}, the authors propose to construct adaptive Langevin chains for which they prove the geometric ergodicity of the chain uniformly on any compact subset of its parameters. Unfortunately, this technique does not take the whole advantage of changing the proposal using the target distribution (which is important and makes it an efficient method since for each model parameter through the EBM training iteration, the target moves) . In particular, the covariance matrix of the proposal is given by a stochastic approximation of the empirical covariance matrix. This choice seems completely relevant as soon as the convergence toward the stationary distribution is reached, in other words it would make sense towards the end of the EBM training). However, it does not provide a good guess of the variability during the first iterations of the chain since it is still very dependent on the initialization. This leads to chains that may be numerically trapped. }
+
+\textcolor{red}{Moreover, if we consider the constant curvature simplification suggested in \citep{girolami2011riemann}, one still needs to invert the metric which may be neither explicit nor computationally tractable. Note that these constrains are common with other application fields such as pharmacology, where models are often complex and especially in convent based EBM as we are dealing with in this paper.}
+
+\textcolor{red}{Therefore, we propose to sample from a proposal distribution using a full anisotropic covariance matrix based on the anisotropy and correlations of the target distribution. The expectation is obtained as the sum of the current iterate plus a drift which is proportional to the gradient of the logarithm of the target distribution.}
+
+
+\section{Geometric ergodicity of AniLA sampler}\label{sec:theory}
 We will present in this section, our theoretical analysis for the Markov Chain constructed using Line~\ref{line:step}-\ref{line:langevin}. 
 
 Let $\Theta$ be a subset of $\rset^d$ for some integer $d >0$.
@@ -173,7 +244,7 @@ There exists a constant $a_0 > 0$ such that for all $\theta \in \Theta $ and $z 
 
 
 We will now give the main convergence result of our sampling method in \algo.
-The result consists of showing V-uniform ergodicity of the chain, the irreducibility of the transition kernels and their aperiodicity, ssee \cite{meyn2012markov} for more details. 
+The result consists of showing V-uniform ergodicity of the chain, the irreducibility of the transition kernels and their aperiodicity, see \cite{meyn2012markov} for more details. 
 We also prove a drift condition which states that the transition kernels tend to bring back elements into a small set from which boils down V-uniform ergodicity of the transition kernels $(\Pi_\theta)_{\theta \in \Theta}$.
 
 
@@ -183,7 +254,7 @@ Assume H\ref{ass:cont}-H\ref{ass:V2}.
 \end{Theorem}
 
 \clearpage
-\section{Numerical Experiments}
+\section{Numerical Experiments}\label{sec:numericals}
 
 \subsection{Application on Toy Example: Gaussian Mixture Model}
 
@@ -227,7 +298,7 @@ Assume H\ref{ass:cont}-H\ref{ass:V2}.
 \end{figure}
 
 
-\section{Conclusion}
+\section{Conclusion}\label{sec:conclusion}
 
 \newpage
 
