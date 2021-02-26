@@ -154,12 +154,12 @@ We introduce a new sampler based on the Langevin updates presented above.
 \STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$ learning rate $\eta$, initial values $\theta_0$, initial chain states $\{ z_{0}^m \}_{m=1}^M$ and $n$ observations $\{ x_{i} \}_{i=1}^n$.
 \FOR{$t=1$ to $T$}
 \STATE Compute the anisotropic stepsize as follows: \label{line:step}
-\beq
+\beq\label{eq:step}
 \stepsize_t = \frac{b}{\max(b, | \nabla f_{\theta_t}(z_{t-1}^m) |}
 \eeq
 \STATE Draw $m$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential \eqref{eq:ebm} via Langevin diffusion:\label{line:langevin}
-\beq
-z_{t}^{m} = z_{t-1}^m + \stepsize_t/2  \nabla f_{\theta_t}(z_{t-1}^m) + \sqrt{\stepsize} \mathsf{B}_t
+\beq\label{eq:anila}
+z_{t}^{m} = z_{t-1}^m + \stepsize_t/2  \nabla f_{\theta_t}(z_{t-1}^m) + \sqrt{\stepsize_t} \mathsf{B}_t
 \eeq
 where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
 \STATE Samples $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
@@ -177,15 +177,20 @@ where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
 \end{algorithm}
 
 
+\textbf{Heuristic behind the efficacy of \algo:}
+Some past modifications have been proposed in particular to optimize the covariance matrix of the proposal of the general MCMC procedure in order to better stride the support of the target distribution. 
+Langevin dynamics is one example of those improvements where the proposal is a Gaussian distribution where the mean depends on the gradient of the log target distribution and the covariance depends on some Brownian motion.
+For instance, in \citep{atchade2006adaptive,marshall2012adaptive}, the authors propose adaptive and geometrically ergodic Langevin chains. 
+Yet, one important characteristic of our EBM problem, is that for each model parameter through the EBM training iterations, the target distribution moves and the proposal should take that adjustment into account.
+The technique in \citep{atchade2006adaptive,marshall2012adaptive} does not take the whole advantage of changing the proposal using the target distribution. 
+In particular, the covariance matrix of the proposal is given by a stochastic approximation of the empirical covariance matrix. 
+This choice seems completely relevant as soon as the convergence towards the stationary distribution is reached, in other words it would make sense towards the end of the EBM training, as the target distribution from a model parameter to the next one are similar. 
+However, it does not provide a good guess of the variability during the first iterations of the chain since it is still very dependent on the initialization. 
 
-\textcolor{red}{TO COMPLETE with heuristic on why informing the stepsize with shape of the target is good.}
+Moreover, in  \citep{girolami2011riemann}, the authors consider the approximation of a constant. Even though this simplification leads to ease of implementation, the curvature metric chosen by the authors need to be inverted, step that can be a computational burden if not intractable. 
+Especially in the case we are considering in our paper, \ie Convnet-based EBM, where the high nonlinearity would lead to intractable quanities.
 
-
-\textcolor{red}{Some modifications have been proposed in particular to optimize the covariance matrix of the proposal in order to better stride the support of the target distribution. In \citep{atchade2006adaptive,marshall2012adaptive}, the authors propose to construct adaptive Langevin chains for which they prove the geometric ergodicity of the chain uniformly on any compact subset of its parameters. Unfortunately, this technique does not take the whole advantage of changing the proposal using the target distribution (which is important and makes it an efficient method since for each model parameter through the EBM training iteration, the target moves) . In particular, the covariance matrix of the proposal is given by a stochastic approximation of the empirical covariance matrix. This choice seems completely relevant as soon as the convergence toward the stationary distribution is reached, in other words it would make sense towards the end of the EBM training). However, it does not provide a good guess of the variability during the first iterations of the chain since it is still very dependent on the initialization. This leads to chains that may be numerically trapped. }
-
-\textcolor{red}{Moreover, if we consider the constant curvature simplification suggested in \citep{girolami2011riemann}, one still needs to invert the metric which may be neither explicit nor computationally tractable. Note that these constrains are common with other application fields such as pharmacology, where models are often complex and especially in convent based EBM as we are dealing with in this paper.}
-
-\textcolor{red}{Therefore, we propose to sample from a proposal distribution using a full anisotropic covariance matrix based on the anisotropy and correlations of the target distribution. The expectation is obtained as the sum of the current iterate plus a drift which is proportional to the gradient of the logarithm of the target distribution.}
+Therefore, in \eqref{eq:step} and \eqref{eq:anila} of Algorithm~\ref{alg:anila}, we propose a variant of Langevin, to sample from a target distribution, using a full anisotropic covariance matrix based on the anisotropy and correlations of the target distribution, see the $\sqrt{\stepsize_t} \mathsf{B}_t$ term. 
 
 
 \section{Geometric ergodicity of AniLA sampler}\label{sec:theory}
@@ -232,7 +237,7 @@ We specify that strictly speaking $\pi_\theta$ is a probability measure, and not
 \eeq
 
 
-Here, for some $\beta \in ] 0,1[$ we define the V function for all $z \in \zset$ as follows: 
+Here, for some $\beta \in ] 0,1[$ we define the V function, also know as the \emph{drift}, for all $z \in \zset$ as follows: 
 \beq
 V_\theta(z) = c_\theta \pi_\theta(z)^{-\beta}
 \eeq
@@ -258,6 +263,19 @@ We also prove a drift condition which states that the transition kernels tend to
 Assume H\ref{ass:cont}-H\ref{ass:V2}.
 
 \end{Theorem}
+
+
+\begin{proof}
+The proof of our results are divided into two parts.
+We first prove the existence of a set noted $\mathcal{O}$ as a small set for our transition kernel $\Pi_\theta$.
+Proving a small set is important to show that for any state, the Markov Chain does not stay in the same state, and thus help in proving its irreducibility and aperiodicity.
+
+Then, we will prove the drift condition towards a small set.
+This condition is crucial to prove the convergence of the chain since it states that the kernels tend to attract elements into that set. 
+finally, uniform ergodicity is established as a consequence of those drift conditions.
+
+\end{proof}
+
 
 \clearpage
 \section{Numerical Experiments}\label{sec:numericals}
