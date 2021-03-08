@@ -1,18 +1,13 @@
-\documentclass[10pt,twocolumn,letterpaper]{article}
+\documentclass{article}
 
-\usepackage{iccv}
-\usepackage{times}
-\usepackage{epsfig}
-\usepackage{graphicx}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage[pagebackref=true,breaklinks=true,colorlinks,bookmarks=false]{hyperref}
-
-\usepackage{bm,amsmath,amsthm,amssymb,algorithmic,algorithm,enumitem,graphicx,subfigure}
+\usepackage[margin=1in]{geometry}
+\usepackage[colorlinks,linkcolor=blue,filecolor=blue,citecolor=magenta,urlcolor=blue]{hyperref}
+\usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem,graphicx,subfigure}
 \usepackage{xargs}
+\usepackage{natbib}
 \usepackage{stmaryrd}
 \usepackage{mdframed}
-\usepackage{booktabs}
+
 
 \newmdtheoremenv{theo}{Theorem}
 \newmdtheoremenv{lemm}{Lemma}
@@ -21,101 +16,63 @@
 \input{shortcuts}
 
 
-
-% \iccvfinalcopy % *** Uncomment this line for the final submission
-
-\def\iccvPaperID{****} % *** Enter the ICCV Paper ID here
-\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
-
-% Pages are numbered in submission mode, and unnumbered in camera-ready
-\ificcvfinal\pagestyle{empty}\fi
-
 \begin{document}
 
-%%%%%%%%% TITLE
+
+
 \title{STANLey: \textbf{St}ochastic gradient \textbf{AN}isotropic \textbf{L}angevin dynamics for training Energy-Based Models}
 
-\author{First Author\\
-Institution1\\
-Institution1 address\\
-{\tt\small firstauthor@i1.org}
-% For a paper whose authors are all at the same institution,
-% omit the following lines up until the closing ``}''.
-% Additional authors and addresses can be added with ``\and'',
-% just like the second author.
-% To save space, use either the email address or home page, not both
-\and
-Second Author\\
-Institution2\\
-First line of institution2 address\\
-{\tt\small secondauthor@i2.org}
-}
+ \author{\textbf{Belhal Karimi, Jianwen Xie, Ping Li} \\\\
+ Cognitive Computing Lab\\
+ Baidu Research\\
+   10900 NE 8th St. Bellevue, WA 98004, USA
+ }
 
-
-%\author{First Author\\
-%Institution1\\
-%Institution1 address\\
-%{\tt\small firstauthor@i1.org}
-%% For a paper whose authors are all at the same institution,
-%% omit the following lines up until the closing ``}''.
-%% Additional authors and addresses can be added with ``\and'',
-%% just like the second author.
-%% To save space, use either the email address or home page, not both
-%\and
-%Second Author\\
-%Institution2\\
-%First line of institution2 address\\
-%{\tt\small secondauthor@i2.org}
-%}
-
+\date{}
 \maketitle
-% Remove page # from the first page of camera-ready.
-\ificcvfinal\thispagestyle{empty}\fi
 
-%%%%%%%%% ABSTRACT
 \begin{abstract}
 We propose in this paper, \algo, a \textbf{St}ochastic gradient \textbf{AN}isotropic \textbf{L}angevin dynamics, for sampling high dimensional data.
-With the growing efficacy and potential of Energy-Based Modeling, also known as non-normalized probabilistic modeling, for modeling a generative process for different natures of high dimensional data observations, we  present an end-to-end learning algorithm for Energy-Based Models (EBM) with the purpose of improving the quality of the sampled data points.
-While the unknown normalizing constant of EBMs makes the training procedure intractable, resorting to Markov Chain Monte Carlo (MCMC) is in general a viable option.
-Realizing what MCMC entails for the EBM training, we propose in this paper, a novel high dimensional sampling method, based on an anisotropic stepsize and covariance matrix, embedded into a discretized Langevin diffusion.
-We motivate the necessity for an anisotropic update of the negative samples in the Markov Chain by the non linearity of the backbone of the EBM, here a Convolutional Neural Network.
-Our resulting method, namely \algo, is an optimization algorithm for training Energy-Based models via our newly introduced MCMC method.
+With the growing efficacy  and potential of Energy-Based Modeling, also known as non-normalized probabilistic modeling, for modeling a generative process for different nature of high dimensional observations.
+While the unknown normalizing constant of EBMs makes the training procedure intractable, resorting to Markov Chain Monte Carlo (MCMC) is in general a good option.
+Realizing what MCMC entails for the end-to-end EBM training, we propose in this paper, a novel high dimensional sampling method, based on a anisotropic stepsize plugged into a vanilla discretized Langevin diffusion.
+We motivate the necessity for a anisotropic update of the negative samples in the Markov Chain by the non linearity of the backbone, here a ConvNet, of the EBM.
+Our resulting method, namely \algo, is an optimization algorithm for training Energy-Based models via our newly introduced MCMC.
 We provide theoretical understanding of our sampling scheme by proving that our sampler leads to a geometrically uniformly ergodic Markov chain.
 Several image generation experiments are provided in our paper to show the effectiveness of our method.
 \end{abstract}
 
-%%%%%%%%% BODY TEXT
 \section{Introduction}
 The modeling of a data generating process is critical for many tasks.
 A growing interest in generative models within the realm of computer vision has led to multiple interesting solutions.
-In particular, Energy Based Models (EBM) \cite{zhu1998filters,lecun2006tutorial}, are a class of generative models that learns high dimensional and complex (in terms of landscape) representation/distribution of the input data.
-Since inception, EBMs have been used in several applications including computer vision \cite{ngiam2011learning, xie2016theory,xie2020generative,du2019implicit}, natural language processing \cite{mikolov2013distributed,deng2020residual},  density estimation \cite{wenliang2019learning,song2020sliced} and reinforcement learning \cite{haarnoja2017reinforcement}.
+In particular, Energy Based Models (EBM) \citep{zhu1998filters,lecun2006tutorial}, are a class of generative models that learns high dimensional and complex (in terms of landscape) representation/distribution of the input data.
+Since inception, EBMs have been used in several applications including computer vision \citep{ngiam2011learning, xie2016theory,xie2020generative,du2019implicit}, natural language processing \citep{mikolov2013distributed,deng2020residual},  density estimation \citep{wenliang2019learning,song2020sliced} and reinforcement learning \citep{haarnoja2017reinforcement}.
 
 Formally, EBMs are built upon an unnormalized log probability, called the energy function, that is not required to sum to one, as standard log probability functions.
 This noticeable feature allows for more freedom in the way one parametrizes the EBM.
-For instance, Convolutional Neural Network (CNN) can be employed to parametrize the energy function, see \cite{xie2016theory}.
-Note that this choice is highly related to the type of the input data, as mentioned in \cite{song2021train}.
+For instance, Convolutional Neural Network (CNN) can be employed to parametrize the energy function, see \citep{xie2016theory}.
+Note that this choice is highly related to the type of the input data, as mentioned in \citep{song2021train}.
 
 The training procedure of such models consists of finding an energy function that assigns to lower energies to observations than unobserved points.
 This phase can be casted into an optimization task and several ways are possible to achieve it.
-In this paper, we will focus on training the EBM via Maximum Likelihood Estimation (MLE) and defer the readers to \cite{song2021train} for alternative procedures.
+In this paper, we will focus on training the EBM via Maximum Likelihood Estimation (MLE) and defer the readers to \citep{song2021train} for alternative procedures.
 Particularly, while using MLE to fit the EBM on a stream of observed data, the high non-convexity of the loss function leads to a non closed form maximization step. In general, gradient based optimization methods are thus used during that phase.
 Besides, given the intractability of the normalizing constant of our model, the aforementioned gradient, which is an intractable integral, needs to be approximated.
-A popular and efficient way to conduct such approximation is to use Monte Carlo approximation where the samples are obtained via Markov Chain Monte Carlo (MCMC) \cite{meyn2012markov}.
+A popular and efficient way to conduct such approximation is to use Monte Carlo approximation where the samples are obtained via Markov Chain Monte Carlo (MCMC) \citep{meyn2012markov}.
 The goal of this embedded MCMC procedure while training the Energy-based model is to synthesize new examples of the input data and use those new synthetic observations, in our case images, to approximate some expectations that we will describe later.
 The sampling phase is thus crucial for both the EBM training speed and its final accuracy in generating new samples.
 
 The computational burden of those MCMC transitions at each iteration of the EBM training procedure is alleviated via different techniques in the literature.
-For instance, in \cite{nijkamp2019learning}, the authors develop a short-run MCMC as a flow-based generator mechanism despite its non convergence property.
-A large class of solutions aiming at reducing the cost of running MCMC until convergence, which in practice can be unfeasible, is using Contrastive Divergence \cite{hinton2002training} and persistent Contrastive Divergence \cite{tieleman2008training}.
+For instance, in \citep{nijkamp2019learning}, the authors develop a short-run MCMC as a flow-based generator mechanism despite its non convergence property.
+A large class of solutions aiming at reducing the cost of running MCMC until convergence, which in practice can be unfeasible, is using Contrastive Divergence \citep{hinton2002training} and persistent Contrastive Divergence \citep{tieleman2008training}.
 This principled approach keeps in memory the final chain state under the previous global model parameter and uses it as the initialization of the current chain.
 The heuristic of such approach is that along the EBM iterations, the conditional distributions, depending on the model parameter, are more and more similar and thus using a good sample from the previous chain is in general a good sample of the current one.
 Though, this method can be limited during the first iterations of the EBM training since when the model parameter changes drastically, the conditional distributions do too and samples from two different chains can be quite inconsistent.
-Several extensions varying the way the chain is initialized can be found in \cite{welling2002new,gao2018learning,du2019implicit}.
+Several extensions varying the way the chain is initialized can be found in \citep{welling2002new,gao2018learning,du2019implicit}.
 
 An interesting line of work in the realm of MCMC-based EBM tackles the biases induced by stopping the MCMC runs too early. 
-Indeed, it is known, see \cite{meyn2012markov}, that before convergence, MCMC samples are biased and thus correcting this biase while keep a short run and less expensive run is an appealing option.
-Several contributions aiming at removing this bias for improved MCMC training include coupling MCMC chains, see \cite{qiu2019unbiased,jacob2020unbiased} or by simply estimating this bias and correct the chain afterwards, see \cite{du2020improved}.
+Indeed, it is known, see \citep{meyn2012markov}, that before convergence, MCMC samples are biased and thus correcting this biase while keep a short run and less expensive run is an appealing option.
+Several contributions aiming at removing this bias for improved MCMC training include coupling MCMC chains, see \citep{qiu2019unbiased,jacob2020unbiased} or by simply estimating this bias and correct the chain afterwards, see \citep{du2020improved}.
 
 
 In this work, we consider the case of a short-run MCMC for the training of an Energy-Based Model but rather than focussing on debiasing the chain, we develop a new sampling scheme which purpose is to obtain better samples from the target distribution using less MCMC transitions.
@@ -155,15 +112,12 @@ The natural way of fitting model \eqref{eq:ebm} is to employ Maximum Likelihood 
 
 The quantity of interest $p(\theta)$ is obtained by marginalizing over the input data $x \in \xset$ and formally reads $p(\theta) = \int_{x \in xset} p(x, \theta) q(x) \textrm{d}x$ where we note $q(x)$ the true distribution of the input data $x$.
 The optimization task \eqref{eq:mle} is not tractable in closed form and requires an iterative procedure to be solved.
-The standard algorithm used to train EBMs is Stochastic Gradient Descent (SGD), see \cite{robbins1951A,bottou2008}.
+The standard algorithm used to train EBMs is Stochastic Gradient Descent (SGD), see \citep{robbins1951A,bottou2008}.
 SGD requires having access to the gradient of the objective function $\log p(\theta)$. 
 This latter requires computing an intractable, due to the high nonlinearity of the parametrized model we use in general $f_\theta(x)$.
 Given the general form in \eqref{eq:ebm} we have that:
 \beq
-\begin{split}
-\nabla \log p(\theta) & = \int_{x \in xset} \nabla \log p(x, \theta) q(x) \textrm{d}x \\
-& =  \EE_{p(x,\theta)}[\nabla_\theta f_\theta(x)] - \EE_{q(x)}[\nabla_\theta f_\theta(x)] \eqsp,
-\end{split}
+\nabla \log p(\theta) = \int_{x \in xset} \nabla \log p(x, \theta) q(x) \textrm{d}x =  \EE_{p(x,\theta)}[\nabla_\theta f_\theta(x)] - \EE_{q(x)}[\nabla_\theta f_\theta(x)] \eqsp,
 \eeq
 and a simple Monte Carlo approximation of $\nabla \log p(\theta)$ yields
 
@@ -174,95 +128,63 @@ where are $\{x^{p}_j\}_{j=1}^m$ samples obtained from the EBM $p(x,\theta)$ and 
 
 While drawing samples from the data distribution is trivial, the challenge during the EBM training phase is to obtain good samples from the EBM distribution $p(x,\theta)$ for any model parameter $\theta \in \Theta$.
 This task is generally done using MCMC methods.
-State of the arts MCMC used in the EBM literature include Langevin dynamics, see \cite{grenander1994representations,roberts1996exponential} and Hamiltonian Monte Carlo (HMC), see \cite{neal2011mcmc}.
+State of the arts MCMC used in the EBM literature include Langevin dynamics, see \citep{grenander1994representations,roberts1996exponential} and Hamiltonian Monte Carlo (HMC), see \citep{neal2011mcmc}.
 Those methods are detailed in the sequel and are important concepts throughout our paper.
 
 \paragraph{Energy Based Models: }
 Energy based models \cite{lecun2006tutorial,ngiam2011learning} are a class of generative models that leverages the power of Gibbs potential and high dimensional sampling techniques to produce high quality synthetic image samples.
-Just as Variational Autotencoders (VAE) \cite{kingma2013auto} or Generative Adversarial Networks (GAN) \cite{goodfellow2014generative}, EBMs are powerful tools for generative modeling tasks, as a building block for a wide variety of tasks. 
+Just as Variational Autotencoders (VAE) \citep{kingma2013auto} or Generative Adversarial Networks (GAN) \citep{goodfellow2014generative}, EBMs are powerful tools for generative modeling tasks, as a building block for a wide variety of tasks. 
 The main purpose of EBMs is to learn an energy function \eqref{eq:ebm} that assigns low energy to a stream of observation and high energy values to other inputs.
-Learning, or Training, of such models is done via Maximum Likelihood (ML) \cite{du2019implicit} or Score Matching \cite{song2020score} or Noise Constrastive Estimation \cite{gao2020flow}.
+Learning, or Training, of such models is done via Maximum Likelihood (ML) \citep{du2019implicit} or Score Matching \citep{song2020score} or Noise Constrastive Estimation \citep{gao2020flow}.
 Yet, unlike VAE or GANn energy-based models enjoy from a single structure requiring training (versus several networks) resulting in more stability.
 The use of implicit sampling techniques, such as MCMC, as detailed in the sequel, allows more flexibility trading of quality for computation time.
 Overall, the \emph{implicit} property of the EBM, seen as a energy function, makes it a tool of choice as opposed to \emph{explicit} generators that are limited to some design choice (see prior choices for VAE or both networks design in GAN).
 
 
 \paragraph{MCMC procedures: }
-Whether for sampling from a posterior distribution \cite{}, or in general intractable likelihoods \cite{}, several inference methods are available.
-Approximate inference is a partial solution to the inference problem and include techniques such as Variational Inference (VI) \cite{jordanvi,freitas} or Laplace Approximation \cite{wolfinger,rue2009approximate}. 
-Those methods allow simplification of the intractable quantities and result in the collection of "good enough" samples.
+As seen in \eqref{eq:mcapprox}, samples from the EBM are needed to compute its gradient.
+We generally have recourse to MCMC methods.
+MCMC are a class of inference algorithms
 
-As seen in \eqref{eq:mcapprox}, training an EBM requires obtaining samples from the model itself.
-Given the nonconvexity of the structural model $f_\theta(\cdot)$ with respect to the model parameter $\theta$, direct sampling is not an option.
-Besides, in order to update the model parameter $\theta$, usually through gradient descent type of methods \cite{bottou2008},  exact samples from the EBM are needed in order to compute a good approximation of its (intractable) gradient, see \eqref{eq:mcapprox}.
-To do so, we generally have recourse to MCMC methods.
-MCMC are a class of inference algorithms that provide a principled iterative approach to obtain samples from any intractable distribution.
-
-While being exact, the samples generally represent a larger computation burden than methods such as VI.
-Increasing the efficiency of MCMC methods, by obtaining exact samples, in other words constructing a chain that converges faster, in fewer transitions is thus of utmost importance in the context of optimizing our EBM.
-
-Several attempts have been proposed for the standalone task of posterior sampling through the use of Langevin diffusion, see Unadjusted Langevin in \cite{brosse2017tamed} of MALA algorithm in \cite{roberts,robertsmala,durmus2017fast} or leveraging Hamiltonian Dynamics, see HMC in \cite{girolami}.
-
-We propose in the next section, an improvement of the Langevin diffusion with the ultimate goal of speeding the EBM training procedure.
-Our method includes this latter improvement in an end-to-end learning algorithms for Energy-Based Models.
+\textcolor{red}{TO COMPLETE, MCMC, Metropolis methods, detail Langevin Dynamics as baseline for our paper, HMC etc}
 
 \section{Gradient Informed Langevin Diffusion}\label{sec:main}
-
-We now introduce the main algorithmic contribution of our paper, namely \algo.
-\algo\ is a learning algorithm for EBMs, comprising a novel MCMC method for sampling negative samples from the intractable model.
-We provide theoretical guarantees of our scheme in Section~\ref{sec:theory}.
 
 \subsection{Preliminaries and Bottlenecks of Langevin MCMC based EBM}
 State of the art MCMC sampling algorithm, particularly used during the training procedure of EBMs, is the discretized Langevin diffusion, casted as Stochastic Gradient Langevin Dynamics (SGLD), see \cite{welling2011bayesian}.
 
-In particular, several applications using EBM and SGLD have thrived in image generation, Natural Language Processing or even biology \cite{du2020energy}.
-Yet, the choice of the proposal, generally Gaussian, is critical for improving the performances of both the sampling step (inner loop of the whole procedure) and the EBM training.
-We recall the vanilla discretized Langevin diffusion used in the related literature as follows:
-\beq
-z_t = z_{t-1} + \frac{\gamma}{2} \nabla \log \pi_\theta(z_t) + \sqrt{\gamma} B_t
-\eeq
-where $\pi_\theta(\cdot)$ is the target distribution, $z$ represents the states of the chains, \ie the generated samples in the context of EBM, $t$ is the MCMC iteration index, $\gamma$ is the constant stepsize and $B_t$ is the Brownian motion, usually set as a Gaussian noise and can be written as $B_t \eqdef = \Sigma \xi$ where $\xi$ is a standard Gaussian random variable.
-This method directs the proposed moves towards areas of high probability for the stationary distribution $\pi_\theta$, for any $\theta \in \Theta$ , using the gradient of $\log \pi_{theta}$ and has been the object of several studies \cite{girolami,cotter2013mcmc}.
-In high dimensional and highly nonlinear settings, the burden of computing this gradient for a certain number of MCMC transitions leads to a natural focus: the improvement on the behaviour of such sampling scheme by assimilating information about the landscape of the target, also called the stationary, distribution, while keeping its ease of implementation.
+\textcolor{red}{TO COMPLETE with disadvantage of vanilla Langevin}
 
-\subsection{\algo\, an Anisotropic Energy Based Modeling Approach}
+\subsection{Curvature informed MCMC}
 
-Given the drawbacks of current MCMC methods used for training EBMs, we introduce a new sampler based on the Langevin updates presented above in Step~\ref{line:langevin} of Algorithm~\ref{alg:anila}.
+We introduce a new sampler based on the Langevin updates presented above.
 
 \begin{algorithm}[H]
 \caption{\algo\ for Energy-Based Model} \label{alg:anila}
 \begin{algorithmic}[1]
 %\small
-\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$, sequence of global learning rate ${\eta_t}_{t >0}$ for the EBM model update, sequence of MCMC stepsize ${\gamma_k}_{k >0}$ for the Langevin transitions, initial values $\theta_0$, initial chain states $\{ z_{0}^m \}_{m=1}^M$ and $n$ observations $\{ x_{i} \}_{i=1}^n$.
+\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$ learning rate $\eta$, initial values $\theta_0$, initial chain states $\{ z_{0}^m \}_{m=1}^M$ and $n$ observations $\{ x_{i} \}_{i=1}^n$.
 \FOR{$t=1$ to $T$}
 \STATE Compute the anisotropic stepsize as follows: \label{line:step}
 \beq\label{eq:step}
-\stepsize_t = \frac{\thresh}{\max(\thresh, | \nabla f_{\theta_t}(z_{t-1}^m) |)}
+\stepsize_t = \frac{\thresh}{\max(\thresh, | \nabla f_{\theta_t}(z_{t-1}^m) |}
 \eeq
-\STATE Draw $M$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential \eqref{eq:ebm} via Langevin diffusion:\label{line:langevin}
-\FOR{$k=1$ to $K$}
-\STATE Construct the Markov Chain as follows:
+\STATE Draw $m$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential \eqref{eq:ebm} via Langevin diffusion:\label{line:langevin}
 \beq\label{eq:anila}
-z_{k}^{m} = z_{k-1}^m + \stepsize_k/2  \nabla f_{\theta_t}(z_{k-1}^m) + \sqrt{\stepsize_k} \mathsf{B}_k
+z_{t}^{m} = z_{t-1}^m + \stepsize_t/2  \nabla f_{\theta_t}(z_{t-1}^m) + \sqrt{\stepsize_t} \mathsf{B}_t
 \eeq
 where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
-\ENDFOR
-\STATE Assign $\{ z_{t}^m \}_{m=1}^M \leftarrow \{ z_{K}^m \}_{m=1}^M$.
 \STATE Samples $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
 \STATE Compute the gradient of the empirical log-EBM \eqref{eq:ebm} as follows:
 \beq
-\begin{split}
-&\nabla \sum_{i=1}^m \log p_{\theta_t}(x_i) \\
- =& \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\\
- \approx & \frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)
-\end{split}
+\nabla \sum_{i=1}^m \log p_{\theta_t}(x_i) = \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t^m)\right] \approx \frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)
 \eeq
 \STATE Update the vector of global parameters of the EBM:
 \beq
-\theta_{t+1} = \theta_{t} + \eta_t \nabla \sum_{i=1}^m \log p_{\theta_t}(x_i)
+\theta_{t+1} = \theta_{t+1} + \eta \nabla \sum_{i=1}^m \log p_{\theta_t}(x_i)
 \eeq
 \ENDFOR
-\STATE \textbf{Output:} Vector of fitted parameters $\theta_{T+1}$
+\STATE \textbf{Output:} Generated samples $\{ z_{T}^m \}_{m=1}^M$
 \end{algorithmic}
 \end{algorithm}
 
@@ -270,20 +192,20 @@ where $\mathsf{B}_t$ is the brownian motion, drawn from a Normal distribution.
 \textbf{Heuristic behind the efficacy of \algo:}
 Some past modifications have been proposed in particular to optimize the covariance matrix of the proposal of the general MCMC procedure in order to better stride the support of the target distribution. 
 Langevin dynamics is one example of those improvements where the proposal is a Gaussian distribution where the mean depends on the gradient of the log target distribution and the covariance depends on some Brownian motion.
-For instance, in \cite{atchade2006adaptive,marshall2012adaptive}, the authors propose adaptive and geometrically ergodic Langevin chains. 
+For instance, in \citep{atchade2006adaptive,marshall2012adaptive}, the authors propose adaptive and geometrically ergodic Langevin chains. 
 Yet, one important characteristic of our EBM problem, is that for each model parameter through the EBM training iterations, the target distribution moves and the proposal should take that adjustment into account.
-The technique in \cite{atchade2006adaptive,marshall2012adaptive} does not take the whole advantage of changing the proposal using the target distribution. 
+The technique in \citep{atchade2006adaptive,marshall2012adaptive} does not take the whole advantage of changing the proposal using the target distribution. 
 In particular, the covariance matrix of the proposal is given by a stochastic approximation of the empirical covariance matrix. 
 This choice seems completely relevant as soon as the convergence towards the stationary distribution is reached, in other words it would make sense towards the end of the EBM training, as the target distribution from a model parameter to the next one are similar. 
 However, it does not provide a good guess of the variability during the first iterations of the chain since it is still very dependent on the initialization. 
 
-Moreover, in  \cite{girolami2011riemann}, the authors consider the approximation of a constant. Even though this simplification leads to ease of implementation, the curvature metric chosen by the authors need to be inverted, step that can be a computational burden if not intractable. 
+Moreover, in  \citep{girolami2011riemann}, the authors consider the approximation of a constant. Even though this simplification leads to ease of implementation, the curvature metric chosen by the authors need to be inverted, step that can be a computational burden if not intractable. 
 Especially in the case we are considering in our paper, \ie Convnet-based EBM, where the high nonlinearity would lead to intractable quantities.
 
 Therefore, in \eqref{eq:step} and \eqref{eq:anila} of Algorithm~\ref{alg:anila}, we propose a variant of Langevin, to sample from a target distribution, using a full anisotropic covariance matrix based on the anisotropy and correlations of the target distribution, see the $\sqrt{\stepsize_t} \mathsf{B}_t$ term. 
 
 
-\section{Geometric ergodicity of \algo\ sampler}\label{sec:theory}
+\section{Geometric ergodicity of \algo sampler}\label{sec:theory}
 We will present in this section, our theoretical analysis for the Markov Chain constructed using Line~\ref{line:step}-\ref{line:langevin}. 
 
 Let $\Theta$ be a subset of $\rset^d$ for some integer $d >0$.
@@ -292,7 +214,6 @@ We define a family of stationary distribution $\left(\pi_\theta(z) \right)_{\the
 
 \textbf{Important Note:} The stationary distributions are defined per $\theta \in \Theta$, \ie at each model update during the EBM optimization phase.
 
-\subsection{Notations and Assumptions}
 For any chain state $z \in \zset$ we denote by $\Pi_\theta(z,\cdot)$ the transition kernel as defined in the \algo update in Line~\ref{line:langevin}.
 
 The objective of this section is to rigorously show that each transition kernel $\pi_\theta$ is uniformly geometrically ergodic and that this result is true uniformly in state $s$ on any compact subset $\mathcal{C} \in \zset$.
@@ -303,10 +224,7 @@ The first one is related to the continuity of the gradient of the log posterior 
 \begin{assumption}\label{ass:bounded}
 (Continuity) The stationary distribution is positive and has continuous derivative such that for all $\theta \in \rset^d$:
 \begin{equation}
-\begin{split}
-\lim \limits_{z \to \infty} \frac{z}{|z|} \nabla f_{\theta}(z) & = - \infty \\
- \lim \sup \limits_{z \to \infty} \frac{z}{|z|} \frac{\nabla f_{\theta}(z) }{|\nabla f_{\theta}(z) |} &< 0
-\end{split}
+\lim \limits_{z \to \infty} \frac{z}{|z|} \nabla f_{\theta}(z) = - \infty \quad \textrm{and} \quad \lim \sup \limits_{z \to \infty} \frac{z}{|z|} \frac{\nabla f_{\theta}(z) }{|\nabla f_{\theta}(z) |} < 0
 \end{equation}
 \end{assumption}
 
@@ -333,7 +251,7 @@ We specify that strictly speaking $\pi_\theta$ is a probability measure, and not
 
 Here, for some $\beta \in ] 0,1[$ we define the $V_\theta$ function, also know as the \emph{drift}, for all $z \in \zset$ as follows: 
 \beq\label{eq:driftfunction}
-V_\theta(z) \eqdef c_\theta \pi_\theta(z)^{-\beta} \eqsp,
+V_\theta(z) = c_\theta \pi_\theta(z)^{-\beta}
 \eeq
 where $c_\theta$ is a constant, with respect to the chain state $s$, such that for all $z \in \zset$, $V_\theta(z) \geq 1$.
 Again, we note that the V norm is, in our case, function of the chain state noted $z$ \emph{and} of the global model parameter $\theta$, estimated, and thus varying, through the optimization procedure.
@@ -341,10 +259,7 @@ The convergence rate will thus be given for a particular model estimate (precise
 Define 
 
 \beq\label{eq:vfunctions}
-\begin{split}
-V_1(z) & \eqdef \inf \limits_{\theta \in \Theta} V_\theta(z) \\
- V_2(z) & \eqdef \sup \limits_{\theta \in \Theta} V_\theta(z) \eqsp,
-\end{split}
+V_1(z) \eqdef \inf \limits_{\theta \in \Theta} V_\theta(z) \quad \textrm{and} \quad V_2(z) \eqdef \sup \limits_{\theta \in \Theta} V_\theta(z) \eqsp,
 \eeq
 and assume that
 \begin{assumption}\label{ass:V2}
@@ -355,7 +270,7 @@ There exists a constant $a_0 > 0$ such that for all $\theta \in \Theta $ and $z 
 
 \end{assumption}
 
-\subsection{Convergence Results}
+
 We will now give the main convergence result of our sampling method in \algo.
 The result consists of showing V-uniform ergodicity of the chain, the irreducibility of the transition kernels and their aperiodicity, see \cite{meyn2012markov} for more details. 
 We also prove a drift condition which states that the transition kernels tend to bring back elements into a small set from which boils down V-uniform ergodicity of the transition kernels $(\Pi_\theta)_{\theta \in \Theta}$.
@@ -373,172 +288,15 @@ Moreover there exists $0 < \mu < 1$, $\delta > 0$ and a drift function $V$, now 
 \eeq
 \end{theo}
 
-Theorem~\ref{thm:thm1} shows two important convergence results for our sampling method. 
-First, it established the existence of a small set $\mathcal{O}$ leading to the crucially needed aperiodicity of the chain and ensuring that each transition moves toward a better state.
-Then, it provide a uniform ergodicity result of our sampling method in \algo, via the so-called \emph{drift condition} providing the guarantee that our user-designed transition kernels $(\Pi_\theta)_{\theta \in \Theta}$ attracts the states into the small set $\mathcal{O}$.
-
-
-Moreover, the independence on the EBM model parameter $\theta$ of $V$ in \eqref{thm:main2} leads to \emph{uniform} ergodicity as shown in the following Corollary.
-While Theorem~\ref{thm:thm1} is critical for proving the aperiodicity and irreducibility of the chain, we now establish the geometric speed of convergence of the chain.
-Not only we show the importance of the \emph{uniform} ergodicity of the chain, which makes it appealing for the EBM training since the model parameter $\theta$ is often updated, but we also derive a geometrical rate in the following:
-
-\begin{coro}\label{coro:coro1}
-Assume H\ref{ass:bounded}-H\ref{ass:V2}.
-A direct consequence of Theorem~\ref{thm:thm1} is that the family of transition kernels $(\Pi_\theta)_{\theta \in \Theta}$ are uniformly ergodic,\ie for any compact $\mathcal{C} \subset \zset$, there exist constants $\rho \in ]0,1[$ and $e >0$ such for any iteration $t > 0$,we have:
-\beq\label{coro:main}
-\sup \limits_{z \in \mathcal{C}} \| \Pi_\theta^t f(\cdot) - \pi_\theta f(\cdot) \|_{V} \leq e \rho^k \| f \|_{V_\theta}
-\eeq
-where $V$ is the drift function used in Theorem~\ref{thm:thm1}.
-\end{coro}
-
-
-\subsection{Sketch of the Proofs}
-
-\begin{lemm}\label{lem:cone}
-Define $\mathcal{P}(z) \eqdef \{ z- \ell \frac{z}{|z|} - i \nu , \, \textrm{with} \quad i > a - \ell  , \nu \in \{ \nu \in \rset^d, \| \nu \| < 1\}, |\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |} \leq \frac{\epsilon}{2}   \}$ and $\accept(z) \eqdef \{ y \in \zset, \rho_\theta(z,y) \geq 1 \}$. Then for $z \in \zset$, $\mathcal{P}(z) \subset \accept(z)$
-\end{lemm}
-
-
-\section{Numerical Experiments}\label{sec:numericals}
-
-
-We present in this section a collection of numerical experiments to show the effectiveness of our method.
-Both on synthetic and real datasets, we put our EBM to the test of data generation.
-After verifying the advantage of \algo on a Gaussian Mixture Model (GMM) retrieving the synthetic data observations, we next investigate its performance when learning a distribution over high-dimensional natural images such as pictures of flowers or general concepts displayed in CIFAR-10 \cite{krizhevsky2009learning}.
-
-\subsection{Application on Toy Example: Gaussian Mixture Model}
-
-\textbf{Methods.}
-We consider two baselines. 
-
-\textbf{Datasets.}
-We compare different algorithms on \textit{CIFAR10},
-
-\textbf{Network architectures.} We adopt a multi-layer fully connected neural network
-
-
-\begin{figure}[H]
-\begin{center}
-\includegraphics[width=0.8\linewidth]{figs/rings}
-\end{center}
-   \caption{(Rings Toy Dataset) }
-\label{fig:resultstoy}
-\end{figure}
-
-
-\textbf{Results.} We adopt a multi-layer fully connected neural network
-
-\subsection{Flowers Dataset \cite{nilsback2008automated}}
-
-\textbf{Methods.}
-We consider two baselines. 
-
-\textbf{Datasets.}
-We compare different algorithms on \textit{CIFAR10},
-
-\textbf{Network architectures.} We adopt a multi-layer fully connected neural network
-
-
-
-
-\begin{figure}[H]
-\begin{center}
-        \mbox{
-        \includegraphics[width=1.5in]{figs/flowerslangevin}
-        \includegraphics[width=1.5in]{figs/flowersanila}
-        }
-\end{center}
-	\caption{(Flowers Dataset). Left: Langevin Method. Right: \algo method. After 100k iterations.}
-	\label{fig:flowers}
-\end{figure}
-
-\textbf{Results.} We adopt a multi-layer fully connected neural network
-
-\subsection{CIFAR Dataset}
-
-
-\textbf{Methods.}
-We consider two baselines. 
-
-\textbf{Datasets.}
-We compare different algorithms on \textit{CIFAR10},
-
-\textbf{Network architectures.} We adopt a multi-layer fully connected neural network
-
-
-
-\begin{figure}[H]
-\begin{center}
-    \mbox{
-        \includegraphics[width=1.5in]{figs/cifarlangevin}
-        \includegraphics[width=1.5in]{figs/cifarlangevin}
-        }
-\end{center}
-\caption{(CIFAR Dataset). Left: Langevin Method. Right: \algo method. After 100k iterations.}
-	\label{fig:cifar}
-\end{figure}
-
-
-\textbf{Results.} We adopt a multi-layer fully connected neural network
-
-\section{Conclusion}\label{sec:conclusion}
-
-Given the growing interest in self-supervised learning, we propose in this paper, a improvement of the so-called MCMC based Energy-Based Models.
-In the particular case of a highly nonlinear structural model of the EBM, more precisely a Convolutional Neural Network in our paper, we tackle the complex task of sampling negative samples from the energy function.
-The multi-modal and highly curved surface one must sample from inspire our technique called \algo, and based on a Stochastic Gradient Anisotropic Langevin dynamics, that updates the Markov Chain using an anisotropic stepsize in the vanilla Langevin update.
-We provide strong theoretical guarantees for our novel method, including uniform ergodicity of the resulting chain.
-Our method is put to test on several benchmarks data and image generation tasks including toy and real datasets such as CIFAR-10.
-
-\clearpage
-{\small
-\bibliographystyle{ieee_fullname}
-\bibliography{ref}
-}
-
-\newpage
-
-\appendix
-
-\onecolumn
-
-\section{Proofs of Theorem~\ref{thm:thm1}}
-\begin{Theorem*}
-Assume H\ref{ass:bounded}-H\ref{ass:V2}.
-For any $\theta \in \Theta$, there exists a drift function $V_\theta$, a set $\mathcal{O} \subset \zset$, a constant $0 < \epsilon \leq 1$ such that 
-\beq
-\Pi_\theta(z, \bset) \geq  \epsilon \int_{\bset} \mathsf{1}_\xset(z)  \textrm{d}y \eqsp.
-\eeq
-Moreover there exists $0 < \mu < 1$, $\delta > 0$ and a drift function $V$, now independent of $\theta$ such that for all $z \zset$:
-\beq
-\Pi_\theta V(z) \leq \mu V(z) + \delta \mathsf{1}_{\mathcal{O}}(z) \eqsp.
-\eeq
-\end{Theorem*}
-
 
 \begin{proof}
 
-
-
-\textbf{Notations used throughout this proof:} 
-
-\begin{table}[htbp]
-%\caption{Table of Notations}
-% between the caption and the table
-\begin{tabular}{r c p{17cm} }
-\toprule
-$\Pi_\theta$ & $\triangleq$ &  Transition kernel of the MCMC defined by \eqref{eq:anila}\\
-$\mathcal{O}$ & $\triangleq$ & subset of $\rset^p$ and small set for kernel $\Pi_\theta$\\
-& & \textcolor{red}{COMPLETE WITH ALL NOTATIONS USED}\\
-\bottomrule
-\end{tabular}
-\label{tab:notations}
-\end{table}
-
-
+\textcolor{red}{ADD IN THE PROOF TABLE FOR ALL NOTATIONS USED}
 
 The proof of our results are divided into two parts.
 We first prove the existence of a set noted $\mathcal{O}$ as a small set for our transition kernel $\Pi_\theta$.
-Proving a small set is important to show that for any state, the Markov Chain does not stay in the same state, and thus help in proving its irreducibility and aperiodicity.
+Proving a small set is important to show that for any state, the Markov Chain does not stay in the same s
+tate, and thus help in proving its irreducibility and aperiodicity.
 
 Then, we will prove the drift condition towards a small set.
 This condition is crucial to prove the convergence of the chain since it states that the kernels tend to attract elements into that set. 
@@ -582,7 +340,7 @@ Thus proving \eqref{thm:main1}, \ie the existence of a small set for our family 
 \noindent \textbf{(ii) Drift condition and ergodicity: }
 We first need to prove the fact that our family of transition kernels $(\Pi_\theta)_\theta$ satisfies a drift property.
 
-For a given EBM model parameter $\theta \in \Theta$, we can see in \cite{jarner2000geometric} that the drift condition boils down to proving that for the drift function noted $V_\theta$ and defined in \eqref{eq:driftfunction}, we have
+For a given EBM model parameter $\theta \in \Theta$, we can see in \citep{jarner2000geometric} that the drift condition boils down to proving that for the drift function noted $V_\theta$ and defined in \eqref{eq:driftfunction}, we have
 \beq\label{mainproof}
 \sup \limits_{z \in \zset}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} < \infty \quad \textrm{and} \quad \lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} < 1
 \eeq
@@ -687,7 +445,7 @@ If we define the translation of vector $z \in \zset$ by the operator $\mathcal{I
 \eeq
 
 
-Recalling the objective of \noindent \textsc{Step (2)} that is to find a constant $c$ such that $1 - \lim \inf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \leq 1 - c$, we see from \eqref{eq:constant} that since the set $\mathcal{P}(z)$ does not depend on the EBM model parameter $\theta$ and that once translated by $z$ the resulting set $T_z(\mathcal{P}(z))$ is independent of $z$ (but depends on $\ell$, see definition \eqref{eq:defcone}, then the integral $ \int_{T_z(\mathcal{P}(z))}  n_{\sigma_1}(y-z)  \textrm{d}y$ in \eqref{eq:constant} is independent of $z$ thus concluding on the existence of the constant $c$ such that $\lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq 1- c$. Thus proving the second part of \eqref{mainproof} which is the main drift condition we ought to demonstrate.
+Recalling the objective of \noindent \textsc{Step (2)} that is to find a constant $c$ such that $1 - \lim \inf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \leq 1 - c$, we see from \eqref{eq:constant} that since the set $\mathcal{P}(z)$ does not depend on the EBM model parameter $\theta$ and that once translated by $z$ the resulting set $T_z(\mathcal{P}(z))$ is independent of $z$ (but depends on $\ell$, see definition \eqref{eq:defcone}, then the integral $ \int_{T_z(\mathcal{P}(z))}  n_{\sigma_1}(y-z)  \textrm{d}y$ in \eqref{eq:constant} is independent of $z$ thus condluing on the existence of the constant $c$ such that $\lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq 1- c$. Thus proving the second part of \eqref{mainproof} which is the main drift condition we ought to demonstrate.
 The first part of \eqref{mainproof} can be proved by observing that $  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} $ is smooth on $\zset$ according to H\ref{ass:contlogpi} and by construction of the transition kernel. Smoothness implies boundedness on the compact $\zset$.
 
 
@@ -726,7 +484,93 @@ Then plugging \eqref{eq:driftvtheta} in \eqref{eq:uniform1}, we have
 
 where we have used \eqref{eq:defv} and the assumption H\ref{ass:V2} in the last inequality, ensuring the existence of such exponent $\alpha$.
 
-Setting $\epsilon \eqdef \sqrt{\frac{\bar{\mu}(1+\bar{\mu})}{2}}$, $ \mu  \eqdef  \sqrt{\frac{2\bar{\mu}}{1+\bar{\mu}}}$ and $\delta \eqdef \frac{\bar{\delta}}{2 \epsilon^2}$ proves the uniform ergodicity in \eqref{thm:main2} and concludes the proof of Theorem~\ref{thm:thm1}.
+Setting $\epsilon \eqdef \sqrt{\frac{\bar{\mu}(1+\bar{\mu})}{2}}$, $ \mu  \eqdef  \sqrt{\frac{2\bar{\mu}}{1+\bar{\mu}}}$ and $\delta \eqdef \frac{\bar{\delta}}{2 \epsilon^2}$ proves the uniform ergodicity in \eqref{thm:main2} and concludes the proof of our Theorem~\ref{thm:thm1}.
 \end{proof}
 
-\end{document}
+Theorem~\ref{thm:thm1} shows two important convergence results for our sampling method. 
+First, it established the existence of a small set $\mathcal{O}$ leading to the crucially needed aperiodicity of the chain and ensuring that each transition moves toward a better state.
+Then, it provide a uniform ergodicity result of our sampling method in \algo, via the so-called \emph{drift condition} providing the guarantee that our user-designed transition kernels $(\Pi_\theta)_{\theta \in \Theta}$ attracts the states into the small set $\mathcal{O}$.
+
+
+Moreover, the independence on the EBM model parameter $\theta$ of $V$ in \eqref{thm:main2} leads to \emph{uniform} ergodicity as shown in the following Corollary.
+\begin{coro}\label{coro:coro1}
+Assume H\ref{ass:bounded}-H\ref{ass:V2}.
+A direct consequence of Theorem~\ref{thm:thm1} is that the family of transition kernels $(\Pi_\theta)_{\theta \in \Theta}$ are uniformly ergodic,\ie for any compact $\mathcal{C} \subset \zset$, there exist constants $\rho \in ]0,1[$ and $e >0$ such for any iteration $t > 0$,we have:
+\beq\label{coro:main}
+\sup \limits_{z \in \mathcal{C}} \| \Pi_\theta^t f(\cdot) - \pi_\theta f(\cdot) \|_{V} \leq e \rho^k \| f \|_{V_\theta}
+\eeq
+where $V$ is the drift function used in Theorem~\ref{thm:thm1}.
+\end{coro}
+
+
+\subsection{Intermediary Lemmas}
+
+\begin{lemm}\label{lem:cone}
+Define $\mathcal{P}(z) \eqdef \{ z- \ell \frac{z}{|z|} - i \nu , \, \textrm{with} \quad i > a - \ell  , \nu \in \{ \nu \in \rset^d, \| \nu \| < 1\}, |\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |} \leq \frac{\epsilon}{2}   \}$ and $\accept(z) \eqdef \{ y \in \zset, \rho_\theta(z,y) \geq 1 \}$. Then for $z \in \zset$, $\mathcal{P}(z) \subset \accept(z)$
+\end{lemm}
+
+
+\clearpage
+\section{Numerical Experiments}\label{sec:numericals}
+
+
+\textcolor{red}{TO COMPLETE with TEXT on experiments and FID TABLES}
+
+\subsection{Application on Toy Example: Gaussian Mixture Model}
+
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.8\textwidth]{figs/rings}
+\caption{(Rings Toy Dataset) }
+\label{fig:results}
+\end{center}
+\end{figure}
+
+
+\subsection{Flowers Dataset}
+
+\begin{figure}[H]
+    \begin{center}
+        \mbox{
+        \includegraphics[width=2in]{figs/flowerslangevin}
+        \includegraphics[width=2in]{figs/flowersanila}
+        }
+    \end{center}
+    \vspace{-0.1in}
+	\caption{(Flowers Dataset). Left: Langevin Method. Right: \algo method. After 100k iterations.}
+	\label{fig:flowers}
+\end{figure}
+
+\subsection{CIFAR Dataset}
+
+
+
+\begin{figure}[H]
+    \begin{center}
+        \mbox{
+        \includegraphics[width=2in]{figs/cifarlangevin}
+        \includegraphics[width=2in]{figs/cifarlangevin}
+        }
+    \end{center}
+    \vspace{-0.1in}
+	\caption{(CIFAR Dataset). Left: Langevin Method. Right: \algo method. After 100k iterations.}
+	\label{fig:cifar}
+\end{figure}
+
+
+\section{Conclusion}\label{sec:conclusion}
+
+Given the growing interest in self-supervised learning, we propose in this paper, a improvement of the so-called MCMC based Energy-Based Models.
+In the particular case of a highly nonlinear structural model of the EBM, more precisely a Convolutional Neural Network in our paper, we tackle the complex task of sampling negative samples from the energy function.
+The multi-modal and highly curved surface one must sample from inspire our technique called \algo, and based on a Stochastic Gradient Anisotropic Langevin dynamics, that updates the Markov Chain using an anisotropic stepsize in the vanilla Langevin update.
+We provide strong theoretical guarantees for our novel method, including uniform ergodicity of the resulting chain.
+Our method is put to test on several benchmarks data and image generation tasks including toy and real datasets such as CIFAR-10.
+
+\newpage
+
+\bibliographystyle{plainnat}
+\bibliography{ref}
+
+
+\end{document} 
