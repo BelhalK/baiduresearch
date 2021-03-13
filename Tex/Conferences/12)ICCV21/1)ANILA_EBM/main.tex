@@ -120,14 +120,13 @@ Several contributions aiming at removing this bias for improved MCMC training in
 
 In this work, we consider the case of a short-run MCMC for the training of an Energy-Based Model but rather than focusing on debiasing the chain, we develop a new sampling scheme which purpose is to obtain better samples from the target distribution using less MCMC transitions.
 We consider that the shape of the target distribution, which highly inspires our proposed method, is of utmost importance to obtain such negative samples.
-
 The contributions of our paper are as follows:
 
 \begin{itemize}
-\item We develop \algo, a EBM training method that embeds a newly proposed \emph{convergent} and \emph{efficient} MCMC sampling scheme, focusing on curvature informed metrics of the target distribution one wants to obtain samples from.
-\item Based on an anisotropic stepsize, our method, which is an improvement of the Langevin Dynamics, achieves to obtain negative samples from the Energy-Based Model data distribution.
-\item We prove the geometric ergodicity uniformly on any compact set of our method assuming some regularity conditions on the target distribution
-\item We empirically verify the relevance of our method on several image generation tasks.
+\item We develop \algo, an Energy-Based Model training method that embeds a newly proposed \emph{convergent} and \emph{efficient} MCMC sampling scheme, focusing on curvature informed metrics of the target distribution one wants to obtain samples from.
+\item Based on an anisotropic stepsize, our method, which is an improvement of the Langevin Dynamics, achieves to obtain negative samples from the Energy-Based Model data distribution and improves the overall optimization algorithm.
+\item We prove the geometric ergodicity uniformly on any compact set of our MCMC method assuming some regularity conditions on the target distribution.
+\item We empirically verify the effectiveness of our method on several image generation tasks, both on synthetic and real datasets including the Oxford Flowers 102 dataset and CIFAR-10.
 \end{itemize}
 
 The rest of the paper is organized as follows.
@@ -149,7 +148,7 @@ p(x,\theta) = \frac{1}{Z(\theta)} \mathrm{exp}(f_{\theta}(x)) \eqsp,
 where $\theta \in \Theta \subset \rset^d$ denotes the global vector parameters of our model and $Z(\theta) \eqdef \int_{x} \mathrm{exp}(f_{\theta}(x)) \textrm{d}x$ is the normalizing constant (with respect to $x$).
 The natural way of fitting model \eqref{eq:ebm} is to employ Maximum Likelihood Estimation (MLE) to maximize the marginal likelihood $p(\theta)$ and consisting of finding the vector of parameters $\theta^*$ such that for any $x \in \xset$, 
 \beq\label{eq:mle}
- \theta^*  = \arg \max \limits_{\theta \in \Theta} \log p(\theta) \eqsp.
+ \theta^*  = \arg \max \limits_{\theta \in \Theta} \log p(x,\theta) \eqsp.
  \eeq
 
 The quantity of interest $p(\theta)$ is obtained by marginalizing over the input data $x \in \xset$ and formally reads $p(\theta) = \int_{x \in xset} p(x, \theta) q(x) \textrm{d}x$ where we note $q(x)$ the true distribution of the input data $x$.
@@ -170,7 +169,6 @@ and a simple Monte Carlo approximation of $\nabla \log p(\theta)$ yields
 \nabla \log p(\theta) \approx \frac{1}{m} \sum_{j=1}^m \nabla_\theta f_\theta(x^{p}_j) -  \frac{1}{n} \sum_{i=1}^n \nabla_\theta f_\theta(x^{q}_i) \eqsp,
 \eeq
 where are $\{x^{p}_j\}_{j=1}^m$ samples obtained from the EBM $p(x,\theta)$ and $\{x^{q}_i\}_{i=1}^n$ are samples obtained from the true data distribution $q(x)$.
-
 While drawing samples from the data distribution is trivial, the challenge during the EBM training phase is to obtain good samples from the EBM distribution $p(x,\theta)$ for any model parameter $\theta \in \Theta$.
 This task is generally done using MCMC methods.
 State of the arts MCMC used in the EBM literature include Langevin Dynamics, see \cite{grenander1994representations,roberts1996exponential} and Hamiltonian Monte Carlo (HMC), see \cite{neal2011mcmc}.
@@ -190,18 +188,14 @@ Overall, the \emph{implicit} property of the EBM, seen as a energy function, mak
 Whether for sampling from a posterior distribution \cite{mh:robert}, or in general intractable likelihoods \cite{doucet2000sequential}, several inference methods are available.
 Approximate inference is a partial solution to the inference problem and include techniques such as Variational Inference (VI) \cite{jordanvi,freitas} or Laplace Approximation \cite{wolfinger,rue2009approximate}. 
 Those methods allow simplification of the intractable quantities and result in the collection of "good enough" samples.
-
 As seen in \eqref{eq:mcapprox}, training an EBM requires obtaining samples from the model itself.
 Given the nonconvexity of the structural model $f_\theta(\cdot)$ with respect to the model parameter $\theta$, direct sampling is not an option.
 Besides, in order to update the model parameter $\theta$, usually through gradient descent type of methods \cite{bottou2008},  exact samples from the EBM are needed in order to compute a good approximation of its (intractable) gradient, see \eqref{eq:mcapprox}.
 To do so, we generally have recourse to MCMC methods.
 MCMC are a class of inference algorithms that provide a principled iterative approach to obtain samples from any intractable distribution.
-
 While being exact, the samples generally represent a larger computation burden than methods such as VI.
 Increasing the efficiency of MCMC methods, by obtaining exact samples, in other words constructing a chain that converges faster, in fewer transitions is thus of utmost importance in the context of optimizing our EBM.
-
 Several attempts have been proposed for the standalone task of posterior sampling through the use of Langevin diffusion, see Unadjusted Langevin in \cite{brosse2017tamed} of MALA algorithm in \cite{roberts,robertsmala,durmus2017fast} or leveraging Hamiltonian Dynamics, see HMC in \cite{girolami}.
-
 We propose in the next section, an improvement of the Langevin diffusion with the ultimate goal of speeding the EBM training procedure.
 Our method includes this latter improvement in an end-to-end learning algorithms for Energy-Based Models.
 
@@ -211,9 +205,8 @@ We now introduce the main algorithmic contribution of our paper, namely \algo.
 \algo\ is a learning algorithm for EBMs, comprising a novel MCMC method for sampling negative samples from the intractable model.
 We provide theoretical guarantees of our scheme in Section~\ref{sec:theory}.
 
-\subsection{Preliminaries and Bottlenecks of Langevin MCMC based EBM}
+\subsection{Preliminaries on Langevin MCMC based EBM}
 State of the art MCMC sampling algorithm, particularly used during the training procedure of EBMs, is the discretized Langevin diffusion, cast as Stochastic Gradient Langevin Dynamics (SGLD), see \cite{welling2011bayesian}.
-
 In particular, several applications using EBM and SGLD have thrived in image generation, Natural Language Processing or even biology \cite{du2020energy}.
 Yet, the choice of the proposal, generally Gaussian, is critical for improving the performances of both the sampling step (inner loop of the whole procedure) and the EBM training.
 We recall the vanilla discretized Langevin diffusion used in the related literature as follows:
@@ -295,12 +288,12 @@ We define a family of stationary distribution $\left(\pi_\theta(z) \right)_{\the
 For any chain state $z \in \zset$ we denote by $\Pi_\theta(z,\cdot)$ the transition kernel as defined in the \algo\ update in Line~\ref{line:langevin}.
 
 The objective of this section is to rigorously show that each transition kernel $\pi_\theta$ is uniformly geometrically ergodic and that this result is true uniformly in state $s$ on any compact subset $\mathcal{C} \in \zset$.
-As a background note, a Markov chain, as built Line~\ref{line:langevin}, is said to be geometrically ergodic when $k$ iterations of the same transition kernel is converging to the stationary distribution of the chain and this convergence as a geometric dependence on $k$.
+As a background note, a Markov chain, as built Line~\ref{line:langevin}, is said to be geometrically ergodic when $k$ iterations of the same transition kernel is converging to the stationary distribution of the chain and this convergence has a geometric dependence on $k$.
 
-We begin with several usual assumptions for such results.
+We now state the usual assumptions required in order to obtain such results.
 The first one is related to the continuity of the gradient of the log posterior distribution and the unit vector pointing in the direction of the sample $z$ and the unit vector pointing in the direction of the gradient of the log posterior distribution at $z$:
 \begin{assumption}\label{ass:bounded}
-(Continuity) The stationary distribution is positive and has continuous derivative such that for all $\theta \in \rset^d$:
+The stationary distribution is positive and has continuous derivative such that for all $\theta \in \rset^d$:
 \begin{equation}\notag
 \begin{split}
 \lim \limits_{z \to \infty} \frac{z}{|z|} \nabla f_{\theta}(z) & = - \infty \eqsp,\\
@@ -337,7 +330,7 @@ V_\theta(z) \eqdef c_\theta \pi_\theta(z)^{-\beta} \eqsp,
 where $c_\theta$ is a constant, with respect to the chain state $s$, such that for all $z \in \zset$, $V_\theta(z) \geq 1$.
 Again, we note that the V norm is, in our case, function of the chain state noted $z$ \emph{and} of the global model parameter $\theta$, estimated, and thus varying, through the optimization procedure.
 The convergence rate will thus be given for a particular model estimate (precisely its supremum).
-Define 
+Define the auxiliary functions
 
 \beq\label{eq:vfunctions}
 V_1(z)  \eqdef \inf \limits_{\theta \in \Theta} V_\theta(z) \quad \textrm{and} \quad V_2(z)  \eqdef \sup \limits_{\theta \in \Theta} V_\theta(z) \eqsp,
@@ -396,7 +389,7 @@ Those various techniques are common in the MCMC literature and we refer the read
 
 \textbf{Notations for the proof:}
 We denote by $z \to \prop{\theta}(z',z)$, the pdf of the Gaussian proposal of Line~\ref{line:step} for any current state of the chain $z' \in \zset$ and dependent on the EBM model parameter $\theta$.
-The transition kernel from state $z$ to $z'$ is denoted by $\Pi_\theta(z, z')$.
+The transition kernel from $z$ to $z'$ is denoted by $\Pi_\theta(z, z')$.
 $\zset$ is a subset of $\rset^\ell$ and $\bset$ is a Borel set of $\rset^\ell$.
 
 \medskip
@@ -408,7 +401,7 @@ The drift condition ensures the recurrence of the chain as the property that a c
 
 Uniform ergodicity is then established as a consequence of those drift conditions and thus proving \eqref{thm:main2}.
 
-
+\medskip
 \noindent \textbf{(i) Existence of a small set: }
 Let $\mathcal{O}$ be a compact subset of the state space $\zset$..
 %Given \algo's MCMC update, at iteration $t$, the proposal is a Gaussian distribution of mean $z_{t-1}^m+ \stepsize_t/2  \nabla f_{\theta_t}(z_{t-1}^m)$ and covariance $\sqrt{\stepsize_t} \mathsf{B}_t$.
@@ -416,13 +409,13 @@ We recall the definition of the transition kernel in the case of a Metropolis ad
 \beq\notag
 \begin{split}
 \Pi_\theta(z, \bset) = & \int_{\bset} \alpha_\theta(z, y) \prop{\theta}(z,y) \textrm{d}y \\
-& + \mathsf{1}_{\bset(z)}\int_{\zset} (1 - \alpha_\theta(z, y)) \prop{\theta}(z,y) \textrm{d}y
+& + \mathsf{1}_{\bset(z)}\int_{\zset} (1 - \alpha_\theta(z, y)) \prop{\theta}(z,y) \textrm{d}y \eqsp,
 \end{split}
 \eeq
 where we have defined the Metropolis ratio between two states $z \in \zset$ and $y \in \bset$ as $\alpha_\theta(z, y) = \textrm{min}(1, \frac{\pi_\theta(z)  \prop{\theta}(z,y)}{\prop{\theta}(y,z) \pi_\theta(y)  })$.
 Under H\ref{ass:bounded} and due to the fact that the threshold $\thresh$ leads to a symmetric positive definite covariance matrix with bounded non zero eigenvalues, then the following holds:
 \beq\notag
-a n_{\sigma_1}(z - y) \leq \prop{\theta}(z,y)  \leq b n_{\sigma_2}(z - y) \quad \textrm{for all} \quad \theta \in \Theta
+a n_{\sigma_1}(z - y) \leq \prop{\theta}(z,y)  \leq b n_{\sigma_2}(z - y) \quad \textrm{for all} \quad \theta \in \Theta \eqsp,
 \eeq
 where $\sigma_1$ and $\sigma_2$ are the corresponding standard deviation of the two Gaussian distributions $n_{\sigma_1}$ and $n_{\sigma_2}$. 
 We denote by $\rho_\theta$ the ratio $\frac{\pi_\theta(z)  \prop{\theta}(z,y)}{\prop{\theta}(y,z) \pi_\theta(y)  }$ and define the quantity 
@@ -435,7 +428,7 @@ Then,
 \begin{split}
 \Pi_\theta(z, \bset) &\geq  
 \int_{\bset \cap \xset} \alpha_\theta(z, y) \prop{\theta}(z,y) \textrm{d}y \\
-& \geq \textrm{min}(1, \delta) m \int_{\bset} \mathsf{1}_\xset(z)  \textrm{d}y
+& \geq \textrm{min}(1, \delta) m \int_{\bset} \mathsf{1}_\xset(z)  \textrm{d}y \eqsp.
 \end{split}
 \eeq
 According to \eqref{eq:delta_main}, we can find a compact set $\mathcal{O}$ such that $\Pi_\theta(z, \bset) \geq  \epsilon$ where $\epsilon = \textrm{min}(1, \delta) m \textbf{Z}$ where $\textbf{Z}$ is the normalizing constant of the pdf $\frac{1}{\textbf{Z}}\mathbf{1}_\xset(z)  \textrm{d}y$ and the proposal distribution is bounded from below by some quantity noted $m$.
@@ -458,12 +451,12 @@ Then, using an important intermediary result, stated in Lemma~\ref{lem:cone}, th
 \begin{lemm}\label{lem:cone}
 Define $\mathcal{P}(z) \eqdef \{ z- \ell \frac{z}{|z|} - \kappa \nu , \, \textrm{with} \quad \kappa < a - \ell  , \nu \in \{ \nu \in \rset^d, \| \nu \| < 1\}, |\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |} \leq \frac{\epsilon}{2}   \}$ and $\accept(z) \eqdef \{ y \in \zset, \rho_\theta(z,y) \geq 1 \}$. Then for $z \in \zset$, $\mathcal{P}(z) \subset \accept(z)$.
 \end{lemm}
-\textsc{Step (2)} establishes that $1 - \lim \inf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \leq 1 - c$ where $c$ is a constant, \emph{independent of all the other quantities} towards showing uniformity of the final result.
+Noting the limit inferior as $\varliminf$, \textsc{Step (2)} establishes that $1 - \varliminf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \leq 1 - c$ where $c$ is a constant, \emph{independent of all the other quantities} towards showing uniformity of the final result.
 Finally, \textsc{Step (3)} uses the inequality $\Pi_\theta V_\theta(z) \leq \bar{\mu} V_\theta(z) + \bar{\delta} \mathsf{1}_{\mathcal{O}}(z)$ dependent of $\theta$ and defines the V function, independent of $\theta$, as $V(z) = V_1(z)^\alpha V_2(z)^{2\alpha}$ in order to establish the main result of Theorem~\ref{thm:thm1}, \ie
 \begin{align}\notag
 \Pi_\theta V(z) \leq \left(\frac{\bar{\mu}}{2 \epsilon^2} + \frac{\epsilon^2}{1 + \bar{\mu}} \right) V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z) 
 \end{align}
-Setting $\epsilon \eqdef \sqrt{\frac{\bar{\mu}(1+\bar{\mu})}{2}}$, $ \mu  \eqdef  \sqrt{\frac{2\bar{\mu}}{1+\bar{\mu}}}$ and $\delta \eqdef \frac{\bar{\delta}}{2 \epsilon^2}$ proves the uniform ergodicity in \eqref{thm:main2}.
+Setting $\epsilon \eqdef \sqrt{\frac{\bar{\mu}(1+\bar{\mu})}{2}}$, $ \mu  \eqdef  \sqrt{\frac{2\bar{\mu}}{1+\bar{\mu}}}$ and $\delta \eqdef \frac{\bar{\delta}}{2 \epsilon^2}$ proves the uniformity of the inequality \eqref{thm:main2}.
 
 \section{Numerical Experiments}\label{sec:numericals}
 
@@ -566,8 +559,9 @@ The evolution of the FID values are reported in Figure~\ref{fig:fidall} (Left) t
 \subsection{CIFAR Dataset}
 
 \textbf{Datasets.}
-For this third experiment we use the \textit{CIFAR10} dataset \cite{krizhevsky2009learning}.
-\textit{CIFAR10}  is a popular computer-vision dataset of $50\,000$ training images and $10\,000$ test images, of size $32\times 32$. 
+For this third experiment we use the \textit{CIFAR-10} dataset \cite{krizhevsky2009learning}.
+\textit{CIFAR-10}  is a popular computer-vision dataset of $50\,000$ training images and $10\,000$ test images, of size $32\times 32$. 
+It is composed of tiny natural images representing a wide variety of objects and scenes, making the task of self supervision supposedly harder.
 
 
 \medskip
@@ -603,7 +597,7 @@ $5$ Convolutional Layers using ReLU activation functions are stacked in our mode
 Visual results are provided in Figure~\ref{fig:cifar} where we have used both methods to generate synthetic images of flowers.
 The FID values are reported in Figure~\ref{fig:fidall} (Right) and have been computed using $10\,000$ synthetic images from each model.
 The similarity score is then evaluated every $5\,000$ iterations. 
-While the FID curves for the Flowers dataset exhibits a superior performance of our method throughout the training procedure, we notice that in the case of CIFAR10, vanilla method seems to be slightly better than \algo\. during the first iterations, \ie when the model is still learning the representation of the images.
+While the FID curves for the Flowers dataset exhibits a superior performance of our method throughout the training procedure, we notice that in the case of CIFAR-10, vanilla method seems to be slightly better than \algo\. during the first iterations, \ie when the model is still learning the representation of the images.
 Yet, after a certain number of iterations, we observe that \algo\ leads to more accurate synthetic images.
 This behavior can be explained by the importance of incorporating curvature informed metrics into the training process when the parameter reaches a neighborhood of the optimal solution.
 
@@ -612,7 +606,7 @@ This behavior can be explained by the importance of incorporating curvature info
 %\begin{center}
 %        \includegraphics[width=3in]{figs/fid_cifar}
 %\end{center}
-%	\caption{(CIFAR10 Dataset). FID values per method through 100k iterations}
+%	\caption{(CIFAR-10 Dataset). FID values per method through 100k iterations}
 %	\label{fig:cifarfid}
 %\end{figure}
 
@@ -634,9 +628,9 @@ This behavior can be explained by the importance of incorporating curvature info
 
 Given the growing interest in self-supervised learning, we propose in this paper, an improvement of the so-called MCMC based Energy-Based Models.
 In the particular case of a highly nonlinear structural model of the EBM, more precisely a Convolutional Neural Network in our paper, we tackle the complex task of sampling negative samples from the energy function.
-The multi-modal and highly curved surface one must sample from inspire our technique called \algo, and based on a Stochastic Gradient Anisotropic Langevin Dynamics, that updates the Markov Chain using an anisotropic stepsize in the vanilla Langevin update.
+The multi-modal and highly curved landscape one must sample from inspire our technique called \algo, and based on a Stochastic Gradient Anisotropic Langevin Dynamics, that updates the Markov Chain using an anisotropic stepsize in the vanilla Langevin update.
 We provide strong theoretical guarantees for our novel method, including uniform ergodicity of the resulting chain.
-Our method is put to test on several benchmarks data and image generation tasks including toy and real datasets such as CIFAR-10.
+Our method is tested on several benchmarks data and image generation tasks including toy and real datasets such as CIFAR-10.
 
 \clearpage
 {\small
