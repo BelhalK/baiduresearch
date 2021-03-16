@@ -147,7 +147,7 @@ Given a stream of input data noted $x \in \xset \subset \rset^p$, the Energy-Bas
 p(x,\theta) = \frac{1}{Z(\theta)} \mathrm{exp}(f_{\theta}(x)) \eqsp,
 \eeq
 where $\theta \in \Theta \subset \rset^d$ denotes the global parameters vector of our model and $Z(\theta) \eqdef \int_{x} \mathrm{exp}(f_{\theta}(x)) \textrm{d}x$ is the normalizing constant (with respect to $x$).
-The natural way of fitting model \eqref{eq:ebm} is to employ Maximum Likelihood Estimation (MLE) maximizing the marginal likelihood $p(\theta)$, \ie finding the vector $\theta^*$ such that for any $x \in \xset$, 
+The natural way of fitting model \eqref{eq:ebm} is to employ Maximum Likelihood Estimation (MLE) maximizing the marginal likelihood $p(\theta)$, \ie\ finding the vector $\theta^*$ such that for any $x \in \xset$, 
 \beq\label{eq:mle}
  \theta^*  = \arg \max \limits_{\theta \in \Theta} \log p(\theta) \eqsp,
  \eeq
@@ -181,44 +181,44 @@ Just as Variational Autotencoders (VAE) \cite{kingma2013auto} or Generative Adve
 The main purpose of EBMs is to learn an energy function \eqref{eq:ebm} that assigns low energy to a stream of observation and high energy values to other inputs.
 Learning, or Training, of such models is done via Maximum Likelihood (ML) \cite{du2019implicit} or Score Matching \cite{song2020score} or Noise Constrastive Estimation \cite{gao2020flow}.
 In several general applications, authors leverage the power of EBMs for classification purposes as in \cite{grathwohl2020your}, deep regression~\cite{gustafsson2020energy} and also in Reinforcement Learning where \cite{haarnoja2018soft} develop an energy-based optimal policy where the parameters of that energy function are provided by the reward of the overall system.
-Yet, unlike VAE or GANn Energy-Based models enjoy from a single structure requiring training (versus several networks) resulting in more stability.
-The use of implicit sampling techniques, such as MCMC, as detailed in the sequel, allows more flexibility trading of quality for computation time.
-Overall, the \emph{implicit} property of the EBM, seen as an energy function, makes it a tool of choice as opposed to \emph{explicit} generators that are limited to some design choice (see prior choices for VAE or both networks design in GAN).
+Yet, unlike VAE or GAN Energy-Based models enjoy from a single structure requiring training (versus several networks) resulting in more stability.
+The use of implicit sampling techniques, such as MCMC, as detailed in the sequel, allows more flexibility by trading off sample quality for computation time.
+Overall, the \emph{implicit} property of the EBM, seen as an energy function, makes it a tool of choice as opposed to \emph{explicit} generators that are limited to some design choices, such as the choice of the prior distribution for VAEs or both neural networks design in GANs.
 
 
 
 \paragraph{MCMC procedures: }
-Whether for sampling from a posterior distribution \cite{mh:robert}, or in general intractable likelihoods \cite{doucet2000sequential}, several inference methods are available.
+Whether for sampling from a posterior distribution \cite{mh:robert}, or in general intractable likelihoods scenario \cite{doucet2000sequential}, various inference methods are available.
 Approximate inference is a partial solution to the inference problem and include techniques such as Variational Inference (VI) \cite{jordanvi,freitas} or Laplace Approximation \cite{wolfinger,rue2009approximate}. 
-Those methods allow simplification of the intractable quantities and result in the collection of "good enough" samples.
+Those methods allow the simplification of the intractable quantities and result in the collection of good, yet approximate, samples.
 As seen in \eqref{eq:mcapprox}, training an EBM requires obtaining samples from the model itself.
 Given the nonconvexity of the structural model $f_\theta(\cdot)$ with respect to the model parameter $\theta$, direct sampling is not an option.
 Besides, in order to update the model parameter $\theta$, usually through gradient descent type of methods \cite{bottou2008},  exact samples from the EBM are needed in order to compute a good approximation of its (intractable) gradient, see \eqref{eq:mcapprox}.
 To do so, we generally have recourse to MCMC methods.
 MCMC are a class of inference algorithms that provide a principled iterative approach to obtain samples from any intractable distribution.
 While being exact, the samples generally represent a larger computation burden than methods such as VI.
-Increasing the efficiency of MCMC methods, by obtaining exact samples, in other words constructing a chain that converges faster, in fewer transitions is thus of utmost importance in the context of optimizing our EBM.
-Several attempts have been proposed for the standalone task of posterior sampling through the use of Langevin diffusion, see Unadjusted Langevin in \cite{brosse2017tamed} of MALA algorithm in \cite{roberts,robertsmala,durmus2017fast} or leveraging Hamiltonian Dynamics, see HMC in \cite{girolami}.
+Increasing the efficiency of MCMC methods, by obtaining exact samples, in other words constructing a chain that converges faster, in fewer transitions is thus of utmost importance in the context of optimizing EBMs.
+Several attempts have been proposed for the standalone task of posterior sampling through the use of Langevin diffusion, see the Unadjusted Langevin in \cite{brosse2017tamed}, the MALA algorithm in \cite{roberts,robertsmala,durmus2017fast} or leveraging Hamiltonian Dynamics as in \cite{girolami}.
 We propose in the next section, an improvement of the Langevin diffusion with the ultimate goal of speeding the EBM training procedure.
 Our method includes this latter improvement in an end-to-end learning algorithms for Energy-Based models.
 
 \section{Gradient Informed Langevin Diffusion}\label{sec:main}
 
 We now introduce the main algorithmic contribution of our paper, namely \algo.
-\algo\ is a learning algorithm for EBMs, comprised of a novel MCMC method for sampling negative samples from the intractable model.
-We provide theoretical guarantees of our scheme in Section~\ref{sec:theory}.
+\algo\ is a learning algorithm for EBMs, comprised of a novel MCMC method for sampling negative samples from the intractable model \eqref{eq:ebm}.
+We provide theoretical guarantees of our scheme in Section~\ref{sec:theory} along with sketches of the proofs.
 
 \subsection{Preliminaries on Langevin MCMC based EBM}
-State of the art MCMC sampling algorithm, particularly used during the training procedure of EBMs, is the discretized Langevin diffusion, cast as Stochastic Gradient Langevin Dynamics (SGLD), see \cite{welling2011bayesian}.
-In particular, several applications using EBM and SGLD have thrived in image generation, Natural Language Processing or even biology \cite{du2020energy}.
+State-of-the-art MCMC sampling algorithm, particularly used during the training procedure of EBMs, is the discretized Langevin diffusion, cast as Stochastic Gradient Langevin Dynamics (SGLD), see \cite{welling2011bayesian}.
+In particular, several applications using EBM and SGLD have thrived in image generation, natual language processing or even biology \cite{du2020energy}.
 Yet, the choice of the proposal, generally Gaussian, is critical for improving the performances of both the sampling step (inner loop of the whole procedure) and the EBM training.
 We recall the vanilla discretized Langevin diffusion used in the related literature as follows:
 \beq\notag
-z_t = z_{t-1} + \frac{\gamma}{2} \nabla \log \pi_\theta(z_t) + \sqrt{\gamma} B_t \eqsp,
+z_k = z_{k-1} + \frac{\gamma}{2} \nabla \log \pi_\theta(z_k) + \sqrt{\gamma} B_k \eqsp,
 \eeq
-where $\pi_\theta(\cdot)$ is the target distribution, $z$ represents the states of the chains, \ie the generated samples in the context of EBM, $t$ is the MCMC iteration index and $B_t$ is the Brownian motion, usually set as a Gaussian noise and can be written as $B_t \eqdef = \Sigma \xi$ where $\xi$ is a standard Gaussian random variable.
-This method directs the proposed moves towards areas of high probability for the stationary distribution $\pi_\theta$, for any $\theta \in \Theta$ , using the gradient of $\log \pi_{theta}$ and has been the object of several studies \cite{girolami,cotter2013mcmc}.
-In high dimensional and highly nonlinear settings, the burden of computing this gradient for a certain number of MCMC transitions leads to a natural focus: the improvement on the behaviour of such sampling scheme by assimilating information about the landscape of the target, also called the stationary, distribution, while keeping its ease of implementation.
+where $\pi_\theta(\cdot)$ is the target distribution, $z$ represents the states of the chains, \ie\ the generated samples in the context of EBM, $k$ is the MCMC iteration index and $B_k$ is the Brownian motion, usually set as a Gaussian noise and which can be written as $B_k \eqdef \Sigma \xi_k$ where $\xi_k$ is a standard Gaussian random variable.
+This method directs the proposed moves towards areas of high probability of the stationary distribution $\pi_\theta$, for any $\theta \in \Theta$ , using the gradient of $\log \pi_{\theta}$ and has been the object of several studies \cite{girolami,cotter2013mcmc}.
+In high dimensional and highly nonlinear settings, the burden of computing this gradient for a certain number of MCMC transitions leads to a natural focus: the improvement of the behaviour of such sampling scheme by assimilating information about the landscape of the target, also called the stationary, distribution, while keeping its ease of implementation.
 
 \subsection{\algo\, an Anisotropic Energy Based Modeling Approach}
 
@@ -273,7 +273,7 @@ This choice seems completely relevant as soon as the convergence towards the sta
 However, it does not provide a good guess of the variability during the first iterations of the chain since it is still very dependent on the initialization. 
 
 Moreover, in  \cite{girolami2011riemann}, the authors consider the approximation of a constant. Even though this simplification leads to ease of implementation, the curvature metric chosen by the authors need to be inverted, step that can be a computational burden if not intractable. 
-Especially in the case we are considering in our paper, \ie ConvNet-based EBM, where the high nonlinearity would lead to intractable expectations.
+Especially in the case we are considering in our paper, \ie\ ConvNet-based EBM, where the high nonlinearity would lead to intractable expectations.
 
 Therefore, in \eqref{eq:step} and \eqref{eq:anila} of Algorithm~\ref{alg:anila}, we propose a variant of Langevin Dynamics, in order to sample from a target distribution, using a full anisotropic covariance matrix based on the anisotropy and correlations of the target distribution, see the $\sqrt{\stepsize_t} \mathsf{B}_t$ term. 
 
@@ -293,7 +293,7 @@ As a background note, a Markov chain, as built Line~\ref{line:langevin}, is said
 We now state the assumptions required for our analysis.
 The first one is related to the continuity of the gradient of the log posterior distribution and the unit vectors pointing in the direction of the sample $z$ and in the direction of the gradient of the log posterior distribution at $z$:
 \begin{assumption}\label{ass:bounded}
-The stationary distribution is positive and has continuous derivative such that for all $\theta \in \rset^d$:
+For all $\theta \in \rset^d$, the structural model $f_\theta(\cdot)$ satisfies:
 \begin{equation}\notag
 \begin{split}
 \lim \limits_{z \to \infty} \frac{z}{|z|} \nabla f_{\theta}(z) & = - \infty \eqsp,\\
@@ -302,9 +302,9 @@ The stationary distribution is positive and has continuous derivative such that 
 \end{equation}
 \end{assumption}
 
-We assume also some regularity conditions of the stationary distributions with respect to state $s$:
+We assume also some regularity conditions of the stationary distributions with respect to the model parameter $\theta$:
 \begin{assumption}\label{ass:contlogpi}
-For $z \in \zset$, $\theta \to \pi_\theta$ and $\theta \to \nabla \log \pi_\theta$ are continuous.
+$\theta \to \pi_\theta$ and $\theta \to \nabla \log \pi_\theta$ are continuous on $\Theta$.
 \end{assumption}
 
 For a positive and finite function noted $V: \zset \mapsto \rset$, we define the V-norm distance between two arbitrary transition kernels $\Pi_1$ and $\Pi_2$ as follows:
@@ -432,7 +432,7 @@ Then,
 \end{split}
 \eeq
 According to \eqref{eq:delta_main}, we can find a compact set $\mathcal{O}$ such that $\Pi_\theta(z, \bset) \geq  \epsilon$ where $\epsilon = \textrm{min}(1, \delta) m \textbf{Z}$ where $\textbf{Z}$ is the normalizing constant of the pdf $\frac{1}{\textbf{Z}}\mathbf{1}_\xset(z)  \textrm{d}y$ and the proposal distribution is bounded from below by some quantity noted $m$.
-Thus proving \eqref{thm:main1}, \ie the existence of a small set for our family of transition kernels $(\Pi_\theta)_{\theta \in \Theta}$.
+Thus proving \eqref{thm:main1}, \ie\ the existence of a small set for our family of transition kernels $(\Pi_\theta)_{\theta \in \Theta}$.
 
 \medskip
 \noindent \textbf{(ii) Drift condition and ergodicity: }
@@ -443,7 +443,8 @@ For a given EBM parameter $\theta \in \Theta$, we can see in \cite{jarner2000geo
 \eeq
 where $V_\theta$ is the \emph{drift function} defined in \eqref{eq:driftfunction}
 Let denote the acceptation set, \ie\ $\rho_\theta \geq 1$ by $\accept(z) \eqdef \{ y \in \zset, \rho_\theta(z,y) \geq 1 \}$ for any state $y \in \bset$ and its complementary set $\compaccept(z)$.
-The remaining of the proof is composed of three main steps. \textsc{Step (1)} shows that for any $\theta \in \Theta$:
+The remaining of the proof is composed of three main steps. 
+\textcolor{magenta}{\textsc{Step (1)}} shows that for any $\theta \in \Theta$:
 \begin{align}\notag
 \lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq 1 - \lim \inf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \eqsp.
 \end{align}
@@ -451,8 +452,10 @@ Then, using an important intermediary result, stated in Lemma~\ref{lem:cone}, th
 \begin{lemm}\label{lem:cone}
 Define $\mathcal{P}(z) \eqdef \{ z- \ell \frac{z}{|z|} - \kappa \nu , \, \textrm{with} \quad \kappa < a - \ell  , \nu \in \{ \nu \in \rset^d, \| \nu \| < 1\}, |\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |} \leq \frac{\epsilon}{2}   \}$ and $\accept(z) \eqdef \{ y \in \zset, \rho_\theta(z,y) \geq 1 \}$. Then for $z \in \zset$, $\mathcal{P}(z) \subset \accept(z)$.
 \end{lemm}
-Noting the limit inferior as $\varliminf$, \textsc{Step (2)} establishes that $1 - \varliminf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \leq 1 - c$ where $c$ is a constant, \emph{independent of all the other quantities} towards showing uniformity of the final result.
-Finally, \textsc{Step (3)} uses the inequality $\Pi_\theta V_\theta(z) \leq \bar{\mu} V_\theta(z) + \bar{\delta} \mathsf{1}_{\mathcal{O}}(z)$ dependent of $\theta$ and defines the V function, independent of $\theta$, as $V(z) = V_1(z)^\alpha V_2(z)^{2\alpha}$ in order to establish the main result of Theorem~\ref{thm:thm1}, \ie
+Noting the limit inferior as $\varliminf$, 
+\textcolor{magenta}{\textsc{Step (2)}} establishes that $1 - \varliminf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \leq 1 - c$ where $c$ is a constant, \emph{independent of all the other quantities} towards showing uniformity of the final result.
+Finally, 
+\textcolor{magenta}{\textsc{Step (3)}} uses the inequality $\Pi_\theta V_\theta(z) \leq \bar{\mu} V_\theta(z) + \bar{\delta} \mathsf{1}_{\mathcal{O}}(z)$ dependent of $\theta$ and defines the V function, independent of $\theta$, as $V(z) \eqdef V_1(z)^\alpha V_2(z)^{2\alpha}$ in order to establish the main result of Theorem~\ref{thm:thm1}, \ie
 \begin{align}\notag
 \Pi_\theta V(z) \leq \left(\frac{\bar{\mu}}{2 \epsilon^2} + \frac{\epsilon^2}{1 + \bar{\mu}} \right) V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z) \eqsp.
 \end{align}
@@ -461,9 +464,8 @@ Setting $\epsilon \eqdef \sqrt{\frac{\bar{\mu}(1+\bar{\mu})}{2}}$, $ \mu  \eqdef
 \section{Numerical Experiments}\label{sec:numericals}
 
 
-We present in this section a collection of numerical experiments to show the effectiveness of our method.
-Both on synthetic and real datasets, we put our EBM to the test of data generation.
-After verifying the advantage of \algo\ on a Gaussian Mixture Model (GMM) retrieving the synthetic data observations, we next investigate its performance when learning a distribution over high-dimensional natural images such as pictures of flowers, see the Flowers dataset in \cite{nilsback2008automated}, or general concepts displayed in CIFAR-10 \cite{krizhevsky2009learning}.
+We present in this section a collection of numerical experiments to show the effectiveness of our method, both on synthetic and real datasets
+After verifying the advantage of \algo\ on a Gaussian Mixture Model (GMM) retrieving the synthetic data observations, we then investigate its performance when learning a distribution over high-dimensional natural images such as pictures of flowers, see the Flowers dataset in \cite{nilsback2008automated}, or general concepts featured in CIFAR-10 \cite{krizhevsky2009learning}.
 For both methods, we use the Frechet Inception Distance (FID), as a reliable performance metrics as detailed in \cite{heusel2017gans}.
 In the sequel, we tune the learning rates over a fine grid and report the best result for all methods.
 For our method \algo, the threshold parameter $\thresh$, crucial for the implementation of the stepsize \eqref{eq:step} is tuned over a grid search as well.
@@ -597,7 +599,7 @@ $5$ Convolutional Layers using ReLU activation functions are stacked in our mode
 Visual results are provided in Figure~\ref{fig:cifar} where we have used both methods to generate synthetic images of flowers.
 The FID values are reported in Figure~\ref{fig:fidall} (Right) and have been computed using $10\,000$ synthetic images from each model.
 The similarity score is then evaluated every $5\,000$ iterations. 
-While the FID curves for the Flowers dataset exhibits a superior performance of our method throughout the training procedure, we notice that in the case of CIFAR-10, vanilla method seems to be slightly better than \algo\. during the first iterations, \ie when the model is still learning the representation of the images.
+While the FID curves for the Flowers dataset exhibits a superior performance of our method throughout the training procedure, we notice that in the case of CIFAR-10, vanilla method seems to be slightly better than \algo\. during the first iterations, \ie\ when the model is still learning the representation of the images.
 Yet, after a certain number of iterations, we observe that \algo\ leads to more accurate synthetic images.
 This behavior can be explained by the importance of incorporating curvature informed metrics into the training process when the parameter reaches a neighborhood of the optimal solution.
 
@@ -674,10 +676,13 @@ We list the notations used throughout this proof in the following table:
 \toprule
 $\Pi_\theta$ & $\triangleq$ &  Transition kernel of the MCMC defined by \eqref{eq:anila}\\
 $\mathcal{O}$ & $\triangleq$ & Subset of $\rset^p$ and small set for kernel $\Pi_\theta$\\
+$B(z,a)$  & $\triangleq$ & Ball around $z \in \zset$ of radius $a >0$\\
 $\accept(z)$ & $\triangleq$ & Acceptance set at state $ \in \zset$ such that $\rho_\theta \geq 1$ \\
 $\compaccept(z)$ & $\triangleq$ & Complementary set of  $\accept(z)$\\
 $\prop{\theta}(z',z)$ & $\triangleq$ &  Probability density function of the Gaussian proposal\\
+$\pi_{\theta}(\cdot)$ & $\triangleq$ &  Stationary/Target distribution under model $\theta \in \Theta$\\
 $\Pi_\theta(z, z')$ & $\triangleq$ & Transition kernel from state $z$ to state $z'$\\
+$n_{\sigma}(z)$ & $\triangleq$ & Pdf of a centered Normal distribution of standard deviation $\sigma >0$ \\
 \bottomrule
 \end{tabular}
 \label{tab:notations}
@@ -700,14 +705,14 @@ Given \algo's MCMC update, at iteration $t$, the proposal is a Gaussian distribu
 We recall the definition of the transition kernel in the case of a Metropolis adjustment and for any model parameter $\theta \in \Theta$ and state $z \in \zset$:
 
 \beq 
-\Pi_\theta(z, \bset) = \int_{\bset} \alpha_\theta(z, y) \prop{\theta}(z,y) \textrm{d}y + \mathsf{1}_{\bset(z)}\int_{\zset} (1 - \alpha_\theta(z, y)) \prop{\theta}(z,y) \textrm{d}y
+\Pi_\theta(z, \bset) = \int_{\bset} \alpha_\theta(z, y) \prop{\theta}(z,y) \textrm{d}y + \mathsf{1}_{\bset(z)}\int_{\zset} (1 - \alpha_\theta(z, y)) \prop{\theta}(z,y) \textrm{d}y \eqsp,
 \eeq
 
 where we have defined the Metropolis ratio between two states $z \in \zset$ and $y \in \bset$ as $\alpha_\theta(z, y) = \textrm{min}(1, \frac{\pi_\theta(z)  \prop{\theta}(z,y)}{\prop{\theta}(y,z) \pi_\theta(y)  })$.
 Thanks to Assumption H\ref{ass:bounded} and due to the fact that the threshold $\thresh$ leads to a symmetric positive definite covariance matrix with bounded non zero eigenvalues implies that the proposal distribution can be bounded by two zero-mean Gaussian distributions as follows:
 
 \beq\label{eq:twogauss}
-a n_{\sigma_1}(z - y) \leq \prop{\theta}(z,y)  \leq b n_{\sigma_2}(z - y) \quad \textrm{for all} \quad \theta \in \Theta
+a n_{\sigma_1}(z - y) \leq \prop{\theta}(z,y)  \leq b n_{\sigma_2}(z - y) \quad \textrm{for all} \quad \theta \in \Theta\eqsp,
 \eeq
 where $\sigma_1$ and $\sigma_2$ are the corresponding standard deviation of the distributions and $a$ and $b$ are some scaling factors.
 
@@ -719,11 +724,11 @@ We denote by $\rho_\theta$ the ratio $\frac{\pi_\theta(z)  \prop{\theta}(z,y)}{\
 Likewise, the proposal distribution is bounded from below by some quantity noted $m$.
 Then,
 \beq
-\Pi_\theta(z, \bset) \geq  \int_{\bset \cap \xset} \alpha_\theta(z, y) \prop{\theta}(z,y) \textrm{d}y \geq \textrm{min}(1, \delta) m \int_{\bset} \mathsf{1}_\xset(z)  \textrm{d}y
+\Pi_\theta(z, \bset) \geq  \int_{\bset \cap \xset} \alpha_\theta(z, y) \prop{\theta}(z,y) \textrm{d}y \geq \textrm{min}(1, \delta) m \int_{\bset} \mathsf{1}_\xset(z)  \textrm{d}y\eqsp.
 \eeq
 
 Then, given the definition of \eqref{eq:delta}, we can find a compact set $\mathcal{O}$ such that $\Pi_\theta(z, \bset) \geq  \epsilon$ where $\epsilon = \textrm{min}(1, \delta) m \textbf{Z}$ where $\textbf{Z}$ is the normalizing constant of the pdf $\frac{1}{\textbf{Z}}\mathbf{1}_\xset(z)  \textrm{d}y$.
-Thus proving \eqref{thm:main1}, \ie the existence of a small set for our family of transition kernels $(\Pi_\theta)_{\theta \in \Theta}$.
+Thus proving \eqref{thm:main1}, \ie\ the existence of a small set for our family of transition kernels $(\Pi_\theta)_{\theta \in \Theta}$.
 
 \medskip
 \noindent \textbf{(ii) Drift condition and ergodicity: }
@@ -731,7 +736,7 @@ We first need to prove the fact that our family of transition kernels $(\Pi_\the
 
 For a given EBM model parameter $\theta \in \Theta$, we can see in \cite{jarner2000geometric} that the drift condition boils down to proving that for the drift function noted $V_\theta$ and defined in \eqref{eq:driftfunction}, we have
 \beq\label{mainproof}
-\sup \limits_{z \in \zset}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} < \infty \quad \textrm{and} \quad \lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} < 1
+\sup \limits_{z \in \zset}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} < \infty \quad \textrm{and} \quad \lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} < 1 \eqsp.
 \eeq
 
 Throughout the proof, the model parameter is set to an arbitrary $\theta \in \Theta$.
@@ -742,7 +747,7 @@ Let denote the acceptation set, \ie\ $\rho_\theta \geq 1$ by $\accept(z) \eqdef 
 
 \begin{align}\label{eq:main1}
  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} & = \int_{\accept(z)}  \prop{\theta}(z,y) \frac{V_\theta(y)}{V_\theta(z)} \textrm{d}y +  \int_{\compaccept(z)} \frac{\pi_\theta(y)\prop{\theta}(y,z)}{\pi_\theta(z)\prop{\theta}(z,y)} \prop{\theta}(z,y) \frac{V_\theta(y)}{V_\theta(z)} \textrm{d}y +  \int_{\compaccept(z)} (1 - \frac{\pi_\theta(y)\prop{\theta}(y,z)}{\pi_\theta(z)\prop{\theta}(z,y)}) \prop{\theta}(z,y)  \textrm{d}y\\
- &  \overset{(a)}{\leq} \int_{\accept(z)}  \prop{\theta}(z,y) \frac{\pi_\theta(y)^{-\beta}}{\pi_\theta(z)^{-\beta}} \textrm{d}y  + \int_{\compaccept(z)} \prop{\theta}(z,y) \frac{\pi_\theta(y)^{1-\beta}}{\pi_\theta(z)^{1-\beta}}\textrm{d}y +  \int_{\compaccept(z)} \prop{\theta}(z,y)  \textrm{d}y
+ &  \overset{(a)}{\leq} \int_{\accept(z)}  \prop{\theta}(z,y) \frac{\pi_\theta(y)^{-\beta}}{\pi_\theta(z)^{-\beta}} \textrm{d}y  + \int_{\compaccept(z)} \prop{\theta}(z,y) \frac{\pi_\theta(y)^{1-\beta}}{\pi_\theta(z)^{1-\beta}}\textrm{d}y +  \int_{\compaccept(z)} \prop{\theta}(z,y)  \textrm{d}y \eqsp,
 \end{align}
 where (a) is due to \eqref{eq:driftfunction}.
 
@@ -758,31 +763,31 @@ While we can define the level set of the stationary distribution $\pi_\theta$ as
 H\ref{ass:bounded} ensures the existence of a radial $r$ such that for all $z \in \zset, |z| \geq r$, then $0 \in \mathcal{L}_{\pi_\theta(y)}$ with $\pi_\theta(z) >  \pi_\theta(y)$.
 Since the function $y \to n_{\sigma_2}(y - z)$ is smooth, it is known that there exists a constant $a >0$ such that for $\epsilon >0$, we have that 
 \beq\label{eq:lowandup}
-\int_{B(z,a)}  n_{\sigma_2}(y - z) \textrm{d}y \geq 1 - \epsilon \quad \textrm{and} \quad \int_{B(z,a) \cap \mathcal{L}_{\pi_\theta(y)}(p) }  n_{\sigma_2}(y - z) \textrm{d}y \leq  \epsilon
+\int_{B(z,a)}  n_{\sigma_2}(y - z) \textrm{d}y \geq 1 - \epsilon \quad \textrm{and} \quad \int_{B(z,a) \cap \mathcal{L}_{\pi_\theta(y)}(p) }  n_{\sigma_2}(y - z) \textrm{d}y \leq  \epsilon \eqsp,
 \eeq
 for some $p$ small enough and where $B(z,a)$ denotes the ball around $z \in \zset$ of radius $a$.
 Then combining \eqref{eq:comp} and \eqref{eq:lowandup} we have that:
 \beq
-\int_{\accept(z) \cap B(z,a) \cap \mathcal{L}_{\pi_\theta(y)}(p) }  \prop{\theta}(z,y) \frac{\pi_\theta(y)^{-\beta}}{\pi_\theta(z)^{-\beta}} \textrm{d}y  \leq  b \epsilon
+\int_{\accept(z) \cap B(z,a) \cap \mathcal{L}_{\pi_\theta(y)}(p) }  \prop{\theta}(z,y) \frac{\pi_\theta(y)^{-\beta}}{\pi_\theta(z)^{-\beta}} \textrm{d}y  \leq  b \epsilon \eqsp.
 \eeq
 Conversely, we can define the set  $\mathcal{A} = \accept(z) \cap B(z,a) \cap \mathcal{L}^+$ where $u \in \mathcal{L}^+$ if $u \in \mathcal{L}_{\pi_\theta(y)}(p)$ and $\phi_\theta(u) > \pi_\theta(p)$.
 Then using the second part of H\ref{ass:bounded}, there exists a radius $r' > r + a$, such that for $z \in \zset$ with $|z| \geq r'$ we have
 \beq
-\int_{\mathcal{A}} (\frac{\pi_\theta(y)}{\pi_\theta(z)})^{1-\beta} \prop{\theta}(y,z) \textrm{d}y \leq \mathsf{d}(p, r')^{1-\beta}  b \int_{\accept(z)}  n_{\sigma_2}(y-z)  \textrm{d}y\leq b \mathsf{d}(p, r')^{1-\beta} 
+\int_{\mathcal{A}} (\frac{\pi_\theta(y)}{\pi_\theta(z)})^{1-\beta} \prop{\theta}(y,z) \textrm{d}y \leq \mathsf{d}(p, r')^{1-\beta}  b \int_{\accept(z)}  n_{\sigma_2}(y-z)  \textrm{d}y\leq b \mathsf{d}(p, r')^{1-\beta} \eqsp,
 \eeq
 where $\mathsf{d}(p, r') = \sup \limits_{|z| > r'} \frac{\pi_\theta(z + p \frac{z}{|z|})}{\pi_\theta(z)}$. 
 Note that H\ref{ass:bounded} implies that $\mathsf{d}(p, r') \to 0$ when $r' \to \infty$.
 Likewise with  $\mathcal{A} = \accept(z) \cap B(z,a) \cap \mathcal{L}^-$ we have
 \beq
-\int_{\mathcal{A}} (\frac{\pi_\theta(y)}{\pi_\theta(z)})^{-\beta} \prop{\theta}(z,y) \textrm{d}y  \leq b \mathsf{d}(p, r')^{\beta} 
+\int_{\mathcal{A}} (\frac{\pi_\theta(y)}{\pi_\theta(z)})^{-\beta} \prop{\theta}(z,y) \textrm{d}y  \leq b \mathsf{d}(p, r')^{\beta} \eqsp.
 \eeq
-Same arguments can be obtained for the second term of \eqref{eq:main1}, \ie $\prop{\theta}(z,y) \frac{\pi_\theta(y)^{1-\beta}}{\pi_\theta(z)^{1-\beta}}$ and we obtain, plugging the above in \eqref{eq:main1} that:
+Same arguments can be obtained for the second term of \eqref{eq:main1}, \ie\ $\prop{\theta}(z,y) \frac{\pi_\theta(y)^{1-\beta}}{\pi_\theta(z)^{1-\beta}}$ and we obtain, plugging the above in \eqref{eq:main1} that:
 \begin{align}
-\lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq \lim \sup \limits_{|z| \to \infty}  \int_{\compaccept(z)} \prop{\theta}(z,y)  \textrm{d}y
+\lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq \lim \sup \limits_{|z| \to \infty}  \int_{\compaccept(z)} \prop{\theta}(z,y)  \textrm{d}y \eqsp.
 \end{align}
 Since $\compaccept(z)$ is the complementary set of $\accept(z)$, the above inequality yields
 \begin{align}
-\lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq 1 - \lim \inf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y
+\lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq 1 - \lim \inf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \eqsp.
 \end{align}
 
 
@@ -794,14 +799,14 @@ Since $\compaccept(z)$ is the complementary set of $\accept(z)$, the above inequ
 Given that the proposal distribution is a Gaussian and using assumption H\ref{ass:bounded} we have the existence of a constant $c_a$ depending on $a$ as defined above (the radius of the ball $B(z,a)$) such that
 
 \beq\label{eq:gauss}
-\frac{\pi_\theta(z)}{\pi_\theta(z- \ell \frac{z}{|z|})} \leq  c_a \leq \inf \limits_{y \in B(z,a)} \frac{\prop{\theta}(y, z)}{\prop{\theta}(z, y)} \quad \textrm{for any} \, z \in \zset, |z| \geq r^*
+\frac{\pi_\theta(z)}{\pi_\theta(z- \ell \frac{z}{|z|})} \leq  c_a \leq \inf \limits_{y \in B(z,a)} \frac{\prop{\theta}(y, z)}{\prop{\theta}(z, y)} \quad \textrm{for any} \, z \in \zset, |z| \geq r^* \eqsp.
 \eeq
 
 Then for any $|z| \geq r^*$, we obtain that $z- \ell \frac{z}{|z|} \in \accept(z)$.
 A particular subset of $\accept(z)$ used throughout the rest of the proof is the cone defined as 
 
 \beq\label{eq:defcone}
-\mathcal{P}(z) \eqdef \{ z- \ell \frac{z}{|z|} - \kappa \nu , \, \textrm{with} \quad i < a - \ell  , \nu \in \{ \nu \in \rset^d, \| \nu \| < 1\}, |\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |} \leq \frac{\epsilon}{2}   \}
+\mathcal{P}(z) \eqdef \{ z- \ell \frac{z}{|z|} - \kappa \nu , \, \textrm{with} \quad i < a - \ell  , \nu \in \{ \nu \in \rset^d, \| \nu \| < 1\}, |\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |} \leq \frac{\epsilon}{2}   \} \eqsp.
 \eeq
 
 Using Lemma~\ref{lem:cone}, we have that $\mathcal{P}(z) \subset \accept(z)$
@@ -809,17 +814,19 @@ Using Lemma~\ref{lem:cone}, we have that $\mathcal{P}(z) \subset \accept(z)$
 Then,  
 
 \beq 
- \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \overset{(a)}{\geq}  \int_{\accept(z)}a n_{\sigma_1}(y- z)  \textrm{d}y \overset{(b)}{\geq} a \int_{\mathcal{P}(z)}  n_{\sigma_1}(y-z)  \textrm{d}y
+ \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \overset{(a)}{\geq}  \int_{\accept(z)}a n_{\sigma_1}(y- z)  \textrm{d}y \overset{(b)}{\geq} a \int_{\mathcal{P}(z)}  n_{\sigma_1}(y-z)  \textrm{d}y \eqsp,
  \eeq
 where we have used \eqref{eq:twogauss} in (a) and applied Lemma~\ref{lem:cone} in (b).
 
 If we define the translation of vector $z \in \zset$ by the operator $\mathcal{I} \subset \rset^d \to T_z(\mathcal{I})$, then
 \beq\label{eq:constant}
- \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \geq a \int_{\mathcal{P}(z)}  n_{\sigma_1}(y-z)  \textrm{d}y =  \int_{T_z(\mathcal{P}(z))}  n_{\sigma_1}(y-z)  \textrm{d}y
+ \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \geq a \int_{\mathcal{P}(z)}  n_{\sigma_1}(y-z)  \textrm{d}y =  \int_{T_z(\mathcal{P}(z))}  n_{\sigma_1}(y-z)  \textrm{d}y \eqsp.
 \eeq
 
 
-Recalling the objective of \noindent \textsc{Step (2)} that is to find a constant $c$ such that $1 - \lim \inf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \leq 1 - c$, we see from \eqref{eq:constant} that since the set $\mathcal{P}(z)$ does not depend on the EBM model parameter $\theta$ and that once translated by $z$ the resulting set $T_z(\mathcal{P}(z))$ is independent of $z$ (but depends on $\ell$, see definition \eqref{eq:defcone}, then the integral $ \int_{T_z(\mathcal{P}(z))}  n_{\sigma_1}(y-z)  \textrm{d}y$ in \eqref{eq:constant} is independent of $z$ thus concluding on the existence of the constant $c$ such that $\lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq 1- c$. Thus proving the second part of \eqref{mainproof} which is the main drift condition we ought to demonstrate.
+Recalling the objective of \noindent \textsc{Step (2)} that is to find a constant $c$ such that $1 - \lim \inf \limits_{|z| \to \infty}  \int_{\accept(z)} \prop{\theta}(z,y)  \textrm{d}y \leq 1 - c$, we see from \eqref{eq:constant} that since the set $\mathcal{P}(z)$ does not depend on the EBM model parameter $\theta$ and that once translated by $z$ the resulting set $T_z(\mathcal{P}(z))$ is independent of $z$ (but depends on $\ell$, see definition \eqref{eq:defcone}, then the integral $ \int_{T_z(\mathcal{P}(z))}  n_{\sigma_1}(y-z)  \textrm{d}y$ in \eqref{eq:constant} is independent of $z$ thus concluding on the existence of the constant $c$ such that 
+$$\lim \sup \limits_{|z| \to \infty}  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} \leq 1- c \eqsp.$$ 
+Thus proving the second part of \eqref{mainproof} which is the main drift condition we ought to demonstrate.
 The first part of \eqref{mainproof} can be proved by observing that $  \frac{\Pi_\theta V_\theta(z)}{V_\theta(z)} $ is smooth on $\zset$ according to H\ref{ass:contlogpi} and by construction of the transition kernel. Smoothness implies boundedness on the compact $\zset$.
 
 
@@ -842,18 +849,18 @@ V(z) = V_1(z)^\alpha V_2(z)^{2\alpha} \eqsp,
 where $0 < \alpha < \textrm{min}(\frac{1}{2\beta},\frac{a_0}{3})$, $a_0$ is defined in H\ref{ass:V2} and $\beta$ is defined in \eqref{eq:driftfunction}.
 Thus for $\theta \in \Theta$, $z \in \zset$ and $\epsilon >0$:
 \begin{align}\notag
-\Pi_\theta V(z) & = \int_{\zset} \Pi_\theta(z,y) V_1(y)^\alpha V_2(y)^{2\alpha} \textrm{d}y\\ \notag
-& \overset{(a)}{\leq} \frac{1}{2} \int_{\zset} \Pi_\theta(z,y) (\frac{1}{\epsilon^2}V_1(y)^{2\alpha} + \epsilon^2 V_2(y)^{4\alpha}) \textrm{d}y\\ 
-& \overset{(b)}{\leq} \frac{1}{2\epsilon^2} \int_{\zset} \Pi_\theta(z,y) V_\theta(y)^{2\alpha} + \frac{\epsilon^2}{2}  \int_{\zset} \Pi_\theta(z,y)  V_2(y)^{4\alpha} \textrm{d}y \label{eq:uniform1}
+\Pi_\theta V(z) & = \int_{\zset} \Pi_\theta(z,y) V_1(y)^\alpha V_2(y)^{2\alpha} \textrm{d}y\\ \notag \eqsp,
+& \overset{(a)}{\leq} \frac{1}{2} \int_{\zset} \Pi_\theta(z,y) (\frac{1}{\epsilon^2}V_1(y)^{2\alpha} + \epsilon^2 V_2(y)^{4\alpha}) \textrm{d}y \eqsp,\\ 
+& \overset{(b)}{\leq} \frac{1}{2\epsilon^2} \int_{\zset} \Pi_\theta(z,y) V_\theta(y)^{2\alpha} + \frac{\epsilon^2}{2}  \int_{\zset} \Pi_\theta(z,y)  V_2(y)^{4\alpha} \textrm{d}y \label{eq:uniform1} \eqsp,
 \end{align}
 where we have used the Young's inequality in (a) and the definition of $V_1$, see \eqref{eq:vfunctions}, in (b).
 Then plugging \eqref{eq:driftvtheta} in \eqref{eq:uniform1}, we have
 \begin{align}
-\Pi_\theta V(z) & \leq \frac{1}{2\epsilon^2} (\bar{\mu} V_\theta(z)^{2\alpha} + \bar{\delta} \mathsf{1}_{\mathcal{O}}(z) ) + \frac{\epsilon^2}{2}  \int_{\zset} \Pi_\theta(z,y)  V_2(y)^{4\alpha} \textrm{d}y\\
-& \leq \frac{\bar{\mu}}{2 \epsilon^2} V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z)  + \frac{\epsilon^2}{2}  \int_{\zset} \Pi_\theta(z,y)  V_2(y)^{4\alpha} \textrm{d}y\\
-& \leq \frac{\bar{\mu}}{2 \epsilon^2} V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z)  + \frac{\epsilon^2}{2} \sup \limits_{\theta \in \Theta, z \in \zset} \int_{\zset} \Pi_\theta(z,y)  V_2(y)^{4\alpha} \textrm{d}y\\
-& \leq \frac{\bar{\mu}}{2 \epsilon^2} V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z)  + \frac{\epsilon^2}{1 + \bar{\mu}}V(z)\\
-& \leq \left(\frac{\bar{\mu}}{2 \epsilon^2} + \frac{\epsilon^2}{1 + \bar{\mu}} \right) V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z) 
+\Pi_\theta V(z) & \leq \frac{1}{2\epsilon^2} (\bar{\mu} V_\theta(z)^{2\alpha} + \bar{\delta} \mathsf{1}_{\mathcal{O}}(z) ) + \frac{\epsilon^2}{2}  \int_{\zset} \Pi_\theta(z,y)  V_2(y)^{4\alpha} \textrm{d}y \eqsp,\\
+& \leq \frac{\bar{\mu}}{2 \epsilon^2} V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z)  + \frac{\epsilon^2}{2}  \int_{\zset} \Pi_\theta(z,y)  V_2(y)^{4\alpha} \textrm{d}y \eqsp,\\
+& \leq \frac{\bar{\mu}}{2 \epsilon^2} V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z)  + \frac{\epsilon^2}{2} \sup \limits_{\theta \in \Theta, z \in \zset} \int_{\zset} \Pi_\theta(z,y)  V_2(y)^{4\alpha} \textrm{d}y \eqsp,\\
+& \leq \frac{\bar{\mu}}{2 \epsilon^2} V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z)  + \frac{\epsilon^2}{1 + \bar{\mu}}V(z) \eqsp,\\
+& \leq \left(\frac{\bar{\mu}}{2 \epsilon^2} + \frac{\epsilon^2}{1 + \bar{\mu}} \right) V(z) +\frac{\bar{\delta}}{2 \epsilon^2} \mathsf{1}_{\mathcal{O}}(z) \eqsp,
 \end{align}
 
 where we have used \eqref{eq:defv} and the assumption H\ref{ass:V2} in the last inequality, ensuring the existence of such exponent $\alpha$.
@@ -875,23 +882,24 @@ We will now show that $y \in \accept(z)$.
 
 By the generalization of Rolle's theorem applied on the stationary distribution $\pi_\theta$, we guarantee the existence of some $\kappa^*$ such that:
 
-$$
-\nabla \pi_\theta( z- \ell \frac{z}{|z|} - \kappa^* \nu) = \frac{\pi_\theta(y) - \pi_\theta(z- \ell \frac{z}{|z|})}{y - (z- \ell \frac{z}{|z|})} = - \frac{\pi_\theta(y) - \pi_\theta(z- \ell \frac{z}{|z|})}{\kappa \nu}
-$$
+\begin{align}
+\nabla \pi_\theta( z- \ell \frac{z}{|z|} - \kappa^* \nu) & = \frac{\pi_\theta(y) - \pi_\theta(z- \ell \frac{z}{|z|})}{y - (z- \ell \frac{z}{|z|})} \\
+& = - \frac{\pi_\theta(y) - \pi_\theta(z- \ell \frac{z}{|z|})}{\kappa \nu} \eqsp.
+\end{align}
 
 Expanding $\nabla \pi_\theta( z- \ell \frac{z}{|z|} - \kappa^* \nu)$ yields:
 \beq\label{eq:interlem}
-\pi_\theta(y) - \pi_\theta(z- \ell \frac{z}{|z|}) = - \kappa \nu \frac{z- \ell \frac{z}{|z|} - \kappa^* \nu}{|z- \ell \frac{z}{|z|} - \kappa^* \nu|} |\nabla \pi_\theta( z- \ell \frac{z}{|z|} - \kappa^* \nu)|
+\pi_\theta(y) - \pi_\theta(z- \ell \frac{z}{|z|}) = - \kappa \nu \frac{z- \ell \frac{z}{|z|} - \kappa^* \nu}{|z- \ell \frac{z}{|z|} - \kappa^* \nu|} |\nabla \pi_\theta( z- \ell \frac{z}{|z|} - \kappa^* \nu)| \eqsp.
 \eeq
 
 Yet, under H\ref{ass:bounded}, there exists $\epsilon$ such that 
 $$
- \frac{\nabla f_{\theta}(z) }{|\nabla f_{\theta}(z) |}  \frac{z }{|z|} \leq -\epsilon
+ \frac{\nabla f_{\theta}(z) }{|\nabla f_{\theta}(z) |}  \frac{z }{|z|} \leq -\epsilon \eqsp,
  $$
  and for any $y \in \mathcal{P}(z)$ we note that $\frac{y }{|y|} - \frac{z }{|z|}|\leq \frac{\epsilon}{2}$, by construction of the set.
  Thus, 
 \beq\label{eq:finallem}
-  \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |}  \nu  =  \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |} (\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |}) +  \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |} (\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |} - \frac{y }{|y|} ) + \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |}  \frac{y }{|y |} \leq 0
+  \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |}  \nu  =  \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |} (\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |}) +  \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |} (\nu - \frac{z- \ell \frac{z}{|z|} }{|z- \ell \frac{z}{|z|} |} - \frac{y }{|y|} ) + \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |}  \frac{y }{|y |} \leq 0 \eqsp,
 \eeq
  where $\nu$ is used in the definition of $\mathcal{P}(z)$.
  Also note that $  \frac{\nabla f_{\theta}(y) }{|\nabla f_{\theta}(y) |}  \nu  $ denotes the vector multiplication between the normalized gradient and $\nu$.
