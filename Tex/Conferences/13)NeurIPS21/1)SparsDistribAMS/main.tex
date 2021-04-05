@@ -8,10 +8,9 @@
 \usepackage{stmaryrd}
 \usepackage{natbib}
 
-\newcommand{\algo}{\textsc{Spars-AMS}}
 % ready for submission
 \usepackage{neurips_2020}
-
+\input{shortcuts.tex}
 
 \begin{document}
 \title{Sparsified Distributed Adaptive Learning with Error Feedback}
@@ -45,6 +44,15 @@ To be completed...
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
+
+Most modern machine learning tasks can be casted as a large finite-sum optimization problem written as:
+\begin{equation}\label{eq:opt}
+\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)
+\end{equation}
+where $n$ denotes the number of workers, $f_i$ represents the average loss for worker $i$ and $\theta$ the global model parameter taking value in $\Theta$, a subset of $\mathbb{R}^d$.
+
+
+
 Some related work:
 
 
@@ -98,7 +106,7 @@ The key difference (and interesting part) of our TopK AMSGrad compared with the 
 
 
 \begin{algorithm}[H]
-\caption{\algo\ for Federated Learning} \label{alg:sparsams}
+\caption{\algo\ for Distributed Learning} \label{alg:sparsams}
 \begin{algorithmic}[1]
 
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
@@ -109,7 +117,7 @@ The key difference (and interesting part) of our TopK AMSGrad compared with the 
 \STATE\textbf{parallel for worker $i \in [n]$ do}:
 \STATE\quad  Receive model parameter $\theta_{t-1}$ from central server
 \STATE\quad  Compute stochastic gradient $g_{t,i}$ at $\theta_t$
-\STATE\quad  Compute $\tilde g_{t,i}=TopK(g_{t,i}+e_{t,i},k)$
+\STATE\quad  Compute $\tilde g_{t,i}=TopK(g_{t,i}+e_{t,i},k)$ \label{line:topk}
 \STATE\quad  Update the error $e_{t+1,i}=e_{t,i}+g_{t,i}-\tilde g_{t,i}$
 \STATE\quad  Send $\tilde g_{t,i}$ back to central server
 \STATE \textbf{end parallel}
@@ -136,6 +144,25 @@ Check \citep{chen2020quantized} starting with single machine  and extending to d
 Under the centralized setting, the goal is to derive an upper bound to the second order moment of the gradient of the objective function at some iteration $T_f \in [1, T]$.
 
 We begin by making the following assumptions.
+
+\begin{assumption}\label{ass:smooth}(Smoothness)
+For $i \in \inter$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta) - \nabla f_i (\vartheta)} \leq L \norm{\theta-\vartheta}$.
+\end{assumption}
+
+\begin{assumption}\label{ass:boundgrad}(Unbiased and Bounded gradient)
+For any iteration index $t >0$ and worker index $i \in \inter$, the stochastic gradient is unbiased and bounded from above: $\EE[g_{t,i}] = \nabla f(\theta_t)$ and $\norm{g_{t,i}} \leq G$.
+\end{assumption}
+
+\begin{assumption}\label{ass:var}(Bounded variance)
+For any iteration index $t >0$ and worker index $i \in \inter$, the variance of the noisy gradient is bounded: $\EE[|g_{t,i} - \nabla f(\theta_t)|^2] < \sigma^2$.
+\end{assumption}
+
+Denote by $Q(\cdot)$ the quantization operator Line~\ref{line:topk} of Algorithm~\ref{alg:sparsams}, and note $\tilde{g} \eqdef Q(g)$.
+Assume that
+\begin{assumption}\label{ass:var}(Bounded Quantization)
+There exists a constant $q >0$ such that $\norm{g - \tilde{g}} \leq q \norm{g}$.
+\end{assumption}
+
 
 We first define multiple auxiliary sequences. For the first moment, define
 
