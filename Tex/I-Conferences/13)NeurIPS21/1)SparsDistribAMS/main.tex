@@ -110,14 +110,14 @@ The key difference (and interesting part) of our TopK AMSGrad compared with the 
 \begin{algorithmic}[1]
 
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
-\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{t,i}=0$ the error accumulator for each worker; sparsity parameter $k$; $N$ local workers; $m_0=0$, $v_0=0$, $\hat v_0=0$
+\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{0,i}=0$ the error accumulator for each worker; sparsity parameter $k$; $N$ local workers; $m_0=0$, $v_0=0$, $\hat v_0=0$
 
 \FOR{$t=1$ to $T$}
 
 \STATE\textbf{parallel for worker $i \in [n]$ do}:
 \STATE\quad  Receive model parameter $\theta_{t}$ from central server
 \STATE\quad  Compute stochastic gradient $g_{t,i}$ at $\theta_t$
-\STATE\quad  Compute $\tilde g_{t,i}=TopK(g_{t,i}+e_{t,i},k)$ \label{line:topk}
+\STATE\quad  Compute $\tilde g_{t,i}=TopK(g_{t,i}+e_{t,i},k)$ \label{line:topk} \label{line:quantize}
 \STATE\quad  Update the error $e_{t+1,i}=e_{t,i}+g_{t,i}-\tilde g_{t,i}$
 \STATE\quad  Send $\tilde g_{t,i}$ back to central server
 \STATE \textbf{end parallel}
@@ -179,7 +179,7 @@ where $n$ denotes the number of workers.
 Under Assumption\ref{ass:smooth} to Assumption\ref{ass:var}, with a decreasing sequence of stepsize $\{\eta_t\}_{t>0}$, we have:
 
 \begin{equation}
-\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \bar{g}_t}] \leq \textcolor{red}{TBD}
+-\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \bar{g}_t}] \leq \textcolor{red}{TBD}
 \end{equation}
 where $ \mathsf{I_d}$ is the identity matrix, $\hat{V_t}$ the diagonal matrix which diagonal entries are $\hat v_t=\max(v_t,\hat v_{t-1})$ defined Line~\ref{line:v} of Algorithm~\ref{alg:sparsams} and $\bar{g}_t$ is the aggregation of all \textbf{quantized} gradients from the workers.
 \end{Lemma}
@@ -187,7 +187,17 @@ where $ \mathsf{I_d}$ is the identity matrix, $\hat{V_t}$ the diagonal matrix wh
 
 
 \begin{proof}
-Decompose $\bar{g}_t$  as the unbiased stochastic gradients and quantized versions.
+We first decompose $\bar{g}_t$  as the sum of the unbiased stochastic gradients and its quantized versions as computed Line~\ref{line:quantize} of Algorithm~\ref{alg:sparsams}:
+\begin{equation}
+\bar{g}_t = \frac{1}{N}\sum_{i=1}^N \tilde g_{t,i} = \frac{1}{N}\sum_{i=1}^N [ g_{t,i} + \tilde g_{t,i} - g_{t,i}]
+\end{equation}
+Hence,
+\begin{equation}
+\begin{split}
+& -\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \bar{g}_t}] \\
+=  & -\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \frac{1}{N}\sum_{i=1}^N  g_{t,i}} ] -\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \frac{1}{N}\sum_{i=1}^N  \tilde g_{t,i} - g_{t,i}}]
+\end{split}
+\end{equation}
 \end{proof}
 
 
@@ -303,12 +313,12 @@ Plugging the above into \eqref{eq:main1} yields
 \end{split}
 \end{equation}
 
-\textcolor{red}{Bound $ T_1 = \EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \bar{g}_t}]$ with an intermediate Lemma}
+\textcolor{red}{Bound $ T_1 = -\eta_{t+1} \EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \bar{g}_t}]$ with an intermediate Lemma}
 
 Under the assumption that we use a decreasing stepsize such that $\eta_{t+1} \leq \eta_{t}$, and given that according to Line~\ref{line:v} we have that $\hat v_{t+1} \geq \hat v_{t}$ by construction, we obtain 
 \begin{equation}
 \begin{split}
-\EE[f(\theta_{t+1}) - f(\theta_{t}) ] \leq & \textcolor{red}{bound of T1}- \eta_{t+1} \beta_1\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}}]\\
+\EE[f(\theta_{t+1}) - f(\theta_{t}) ] \leq &   (1-\beta_1) \textcolor{red}{bound of T1}- \eta_{t+1} \beta_1\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}}]\\
 & +  \left(\frac{L}{2} + \beta_1 L \right) \norm{\theta_t - \theta_{t}}^2\\
 &+   \eta_{t+1} G^2 \EE[\sum_{j=1}^d \left[(\hat{v}^j_{t+1} + \epsilon )^{-1/2} - (\hat{v}^j_{t} + \epsilon )^{-1/2}  \right] ]
 \end{split}
