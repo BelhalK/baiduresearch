@@ -174,6 +174,7 @@ where $n$ denotes the number of workers.
 
 
 \subsection{Intermediary Lemmas}
+
 \begin{Lemma}\label{lem:bound}
 Under Assumption~\ref{ass:boundgrad} and Assumption~\ref{ass:var} we have for any iteration $t >0$:
 
@@ -182,6 +183,168 @@ Under Assumption~\ref{ass:boundgrad} and Assumption~\ref{ass:var} we have for an
 \end{equation}
 where $m_t$ and $\hat v_t=\max(v_t,\hat v_{t-1})$ are defined Line~\ref{line:v} of Algorithm~\ref{alg:sparsams} and $G^2 = \frac{1}{n}\sum_{i=1}^N  G_{i}^2$.
 \end{Lemma}
+
+
+\begin{Lemma}\label{lem:lemma1}
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a decreasing sequence of stepsize $\{\eta_t\}_{t>0}$, we have:
+
+\begin{equation}
+-\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \bar{g}_t}] \leq - \frac{\eta_{t+1}}{2}  (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2] +q^2 \frac{G^2 \eta_{t+1}}{\epsilon 2n^2}
+\end{equation}
+where $ \mathsf{I_d}$ is the identity matrix, $\hat{V_t}$ the diagonal matrix which diagonal entries are $\hat v_t=\max(v_t,\hat v_{t-1})$ defined Line~\ref{line:v} of Algorithm~\ref{alg:sparsams} and $\bar{g}_t$ is the aggregation of all \textbf{quantized} gradients from the workers.
+\end{Lemma}
+
+\begin{Lemma}\label{lem:lemma2}
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a decreasing sequence of stepsize $\{\eta_t\}_{t>0}$, we have:
+
+\begin{equation}
+\begin{split}
+\EE[f(\theta_{t+1}) - f(\theta_{t}) ] \leq &   - \frac{\eta_{t+1}(1-\beta_1)}{2}  (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2] +q^2 \frac{G^2 \eta_{t+1}}{\epsilon 2n^2} \\
+&- \eta_{t+1} \beta_1\EE[\pscal{\nabla f(\theta_{t-1})}{(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}}]\\
+& +  \left(\frac{L}{2} + \beta_1 L \right) \norm{\theta_t - \theta_{t-1}}^2\\
+&+   \eta_{t+1} G^2 \EE[\sum_{j=1}^d \left[(\hat{v}^j_{t+1} + \epsilon )^{-1/2} - (\hat{v}^j_{t} + \epsilon )^{-1/2}  \right] ]
+\end{split}
+\end{equation}
+where $d$ denotes the dimension of the parameter vector
+\end{Lemma}
+
+
+
+
+The main theorem in the decentralized setting reads:
+
+\begin{Theorem}\label{thm:mainmultiple}
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a constant stepsize $\eta_t = \eta = \frac{L}{\sqrt{\maxiter}}$, we have:
+
+\begin{equation}
+\begin{split}
+ \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \leq \frac{\EE[ f(\theta_{0}) - f(\theta_{\maxiter})]}{L \Delta_1 \sqrt{\maxiter}} + 
+d\frac{L \Delta_3}{\Delta_1 \sqrt{\maxiter}} + \frac{\Delta_2}{\eta \Delta_1\maxiter} +\frac{1-\beta_1}{\Delta_1}  (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} 
+\end{split}
+\end{equation}
+
+where 
+\begin{equation}
+\begin{split}
+\Delta_1 & \eqdef \frac{(1-\beta_1)}{2} (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} \quad \textrm{,} \quad \Delta_2 \eqdef q^2 + \sum_{k=t+1}^\infty  \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}\\
+\Delta_3 &\eqdef \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right) (1-\beta_2)^{-1} (1 - \frac{\beta_1^{2}}{\beta_2})^{-1}
+\end{split}
+\end{equation}
+\end{Theorem}
+
+
+
+\section{Sequential Model}
+
+Single machine method
+
+\begin{algorithm}[H]
+\caption{\algo\ : Single machine setting} \label{alg:sparsamssingle}
+\begin{algorithmic}[1]
+
+\STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
+\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{0}=0$ the error accumulator; sparsity parameter $k$; $m_0=0$, $v_0=0$, $\hat v_0=0$
+
+\FOR{$t=1$ to $T$}
+\STATE  Compute stochastic gradient $g_{t} = g_{t,i_t}$ at $\theta_t$ for randomly sampled index $i_t$
+\STATE  Compute $\tilde g_{t}=TopK(g_{t}+e_{t},k)$ \label{line:topksingle} 
+\STATE  Update the error $e_{t+1}=e_{t}+g_{t}-\tilde g_{t}$
+\STATE $m_t=\beta_1 m_{t-1}+(1-\beta_1)\tilde g_t$
+\STATE $v_t=\beta_2 v_{t-1}+(1-\beta_2)\tilde g_t^2$
+\STATE $\hat v_t=\max(v_t,\hat v_{t-1})$ \label{line:vsingle}
+\STATE Update global model $\theta_t=\theta_{t-1}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
+
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+
+
+Let $m_t'$ and $\hat v_t'$ be the first and second moment moving average of standard AMSGrad using full gradients. Denote
+\begin{align*}
+    a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad a_t'=\frac{m_t'}{\sqrt{\hat v_t'+\epsilon}}.
+\end{align*}
+Define the sequence
+\begin{align*}
+    \mathcal E_{t+1}=\mathcal E_t+a_t'-a_t,
+\end{align*}
+such that the auxiliary model
+\begin{align*}
+    \theta_{t+1}'&\eqdef\theta_{t+1}-\eta \mathcal E_{t+1}\\
+    &=\theta_t-\eta a_t-\eta\mathcal E_{t+1}\\
+    &=\theta_t-\eta a_t-\eta(\mathcal E_t+a_t'-a_t)\\
+    &=\theta_t'-\eta a_t'
+\end{align*}
+follows the update of full-gradient AMSGrad. By smoothness assumption we have
+\begin{align*}
+    f(\theta_{t+1}')\leq f(\theta_t')-\eta\langle \nabla f(\theta_t'), a_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
+\end{align*}
+Thus,
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]\\
+    &=-\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle] \\
+    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
+    &\leq -\eta\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\sqrt{G^2+\epsilon}}+\frac{\eta}{2\rho}\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\epsilon}+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2,
+    % &=-\eta \langle \nabla f(\theta_t), \mathbb E[a_t']\rangle+(\frac{\eta^2L}{2}+\frac{\eta}{2\rho})\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2.
+\end{align*}
+when $\beta_1=0$ for example. We may discard this assumption and use more complicated bound on the first two terms. The third term can be bounded by constant yielding $O(1/\sqrt T)$ rate eventually when taking decreasing learning rate. The key is to get a good bound on the cumulative error sequence, $\mathcal E_t$. We have the following:
+\begin{align*}
+    \mathbb E\|\mathcal E_{t+1}\|^2&=\mathbb E\|\mathcal E_t+a_t'-a_t+TopK(\mathcal E_t+a_t')-TopK(\mathcal E_t+a_t')\|^2\\
+    &\leq 2\mathbb E\|\mathcal E_t+a_t'-TopK(\mathcal E_t+a_t')\|^2+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
+    &\leq 2q\mathbb E\|\mathcal E_t+a_t'\|+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
+    &\leq 2q[(1+r)\mathbb E\|\mathcal E_t\|^2+(1+\frac{1}{r})\mathbb E\|a_t'\|^2]+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2.
+\end{align*}
+Current try: If we can bound the last term in the same form as the first two terms, then we can use recursion to get the desired result. We can have
+\begin{align*}
+    \mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2&=\mathbb E\| \frac{\tilde m_t}{\sqrt{\hat v_t+\epsilon}}- \|^2
+\end{align*}
+
+\newpage
+\section{Experiments}\label{sec:experiment}
+Our proposed TopK-EF with AMSGrad matches that of full AMSGrad, in distributed learning. Number of local workers is 20. Error feedback fixes the convergence issue of using solely the TopK gradient. 
+
+\begin{figure}[H]
+    \begin{center}
+    \mbox{\hspace{-0.3in}
+        \includegraphics[width=2.2in]{figure/mnist_cnn_test_accuracy.eps}
+        \includegraphics[width=2.2in]{figure/cifar_cnn_test_accuracy.eps}
+        \includegraphics[width=2.2in]{figure/cifar_lenet_test_accuracy.eps}
+    }
+    \end{center}
+    \vspace{-0.1in}
+	\caption{Test accuracy.}
+	\label{fig:test accuracy}
+\end{figure}
+
+
+
+\section{Conclusion}\label{sec:conclusion}
+
+
+
+\newpage
+\bibliographystyle{plain}
+\bibliography{ref}
+
+\newpage
+\appendix 
+
+\section{Appendix}\label{sec:appendix}
+
+
+
+\section{Proofs}
+
+\subsection{Proof of Lemmas}
+
+\begin{Lemma*}
+Under Assumption~\ref{ass:boundgrad} and Assumption~\ref{ass:var} we have for any iteration $t >0$:
+
+\begin{equation}
+\norm{m_t}^2 \leq (q^2+1) G^2 \quad \textrm{and} \quad \hat v_t \leq (q^2+1) G^2
+\end{equation}
+where $m_t$ and $\hat v_t=\max(v_t,\hat v_{t-1})$ are defined Line~\ref{line:v} of Algorithm~\ref{alg:sparsams} and $G^2 = \frac{1}{n}\sum_{i=1}^N  G_{i}^2$.
+\end{Lemma*}
 
 \begin{proof}
 We start by writing
@@ -210,14 +373,14 @@ Similarly
 \end{equation}
 \end{proof}
 
-\begin{Lemma}\label{lem:lemma1}
-Under Assumption\ref{ass:smooth} to Assumption\ref{ass:var}, with a decreasing sequence of stepsize $\{\eta_t\}_{t>0}$, we have:
+\begin{Lemma*}
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a decreasing sequence of stepsize $\{\eta_t\}_{t>0}$, we have:
 
 \begin{equation}
 -\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \bar{g}_t}] \leq - \frac{\eta_{t+1}}{2}  (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2] +q^2 \frac{G^2 \eta_{t+1}}{\epsilon 2n^2}
 \end{equation}
 where $ \mathsf{I_d}$ is the identity matrix, $\hat{V_t}$ the diagonal matrix which diagonal entries are $\hat v_t=\max(v_t,\hat v_{t-1})$ defined Line~\ref{line:v} of Algorithm~\ref{alg:sparsams} and $\bar{g}_t$ is the aggregation of all \textbf{quantized} gradients from the workers.
-\end{Lemma}
+\end{Lemma*}
 
 
 
@@ -283,8 +446,9 @@ Finally, combining \eqref{eq:lem2eq1} and \eqref{eq:lem2eq2} yields
 \end{proof}
 
 
-\begin{Lemma}\label{lem:lemma2}
-Under Assumption\ref{ass:smooth} to Assumption\ref{ass:var}, with a decreasing sequence of stepsize $\{\eta_t\}_{t>0}$, we have:
+
+\begin{Lemma*}
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a decreasing sequence of stepsize $\{\eta_t\}_{t>0}$, we have:
 
 \begin{equation}
 \begin{split}
@@ -295,7 +459,7 @@ Under Assumption\ref{ass:smooth} to Assumption\ref{ass:var}, with a decreasing s
 \end{split}
 \end{equation}
 where $d$ denotes the dimension of the parameter vector
-\end{Lemma}
+\end{Lemma*}
 
 
 
@@ -416,19 +580,34 @@ Finally, using Lemma~\ref{lem:lemma1}, we obtain the desired result.
 \end{proof}
 
 
-The main theorem in the decentralized setting reads:
 
-\begin{Theorem}\label{thm:mainmultiple}
-Under Assumption\ref{ass:smooth} to Assumption\ref{ass:var}, with a decreasing sequence of stepsize $\{\eta_t\}_{t>0}$, we have:
+\subsection{Proof of Theorem~\ref{thm:mainmultiple}}
+
+
+\begin{Theorem*}
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a constant stepsize $\eta_t = \eta = \frac{L}{\sqrt{\maxiter}}$, we have:
 
 \begin{equation}
 \begin{split}
-\frac{1}{\maxiter} \sum_{t= 0}^{\maxiter-1} \EE[\norm{\nabla f(\theta_t)}^2] \leq \EE[f(\theta_{0}) - f(\theta_{\maxiter}) ] + \textcolor{red}{TBD}
+ \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \leq \frac{\EE[ f(\theta_{0}) - f(\theta_{\maxiter})]}{L \Delta_1 \sqrt{\maxiter}} + 
+d\frac{L \Delta_3}{\Delta_1 \sqrt{\maxiter}} + \frac{\Delta_2}{\eta \Delta_1\maxiter} +\frac{1-\beta_1}{\Delta_1}  (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} 
 \end{split}
 \end{equation}
-\end{Theorem}
+
+where 
+\begin{equation}
+\begin{split}
+\Delta_1 & \eqdef \frac{(1-\beta_1)}{2} (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} \quad \textrm{,} \quad \Delta_2 \eqdef q^2 + \sum_{k=t+1}^\infty  \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}\\
+\Delta_3 &\eqdef \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right) (1-\beta_2)^{-1} (1 - \frac{\beta_1^{2}}{\beta_2})^{-1}
+\end{split}
+\end{equation}
+\end{Theorem*}
+
+
 
 \begin{proof}
+
+
 By Lemma~\ref{lem:lemma2} we have 
 \begin{equation}
 \begin{split}
@@ -507,7 +686,7 @@ The above coupled with \eqref{eq:mainR} yields
 \begin{split}
 \EE[R_{t+1}] - \EE[R_t] \leq & - \eta_{t+1}\frac{(1-\beta_1)}{2} (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2]+q^2 \eta_{t+1}+ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}\\
 &  -  (\eta_{t+1}+ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2}) G^2 \EE[\sum_{j=1}^d \left[(\hat{v}^j_{t} + \epsilon )^{-1/2} - (\hat{v}^j_{t+1} + \epsilon )^{-1/2}  \right] ]\\
-& + \left(\frac{L}{2} + \eta_{t+1}+ \frac{\beta_1L}{1-\beta_1} \right)  \EE[ \norm{\theta_{t+1} - \theta_{t}}^2]
+& + \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right)  \EE[ \norm{\theta_{t+1} - \theta_{t}}^2]
 \end{split}
 \end{equation}
 
@@ -517,7 +696,7 @@ We now sum from $t = 0$ to $t = \maxiter -1$  the inequality in \eqref{eq:mainR2
 \begin{split}
 &\eta\frac{(1-\beta_1)}{2} (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \\
 \leq & \frac{\EE[R_0] - \EE[R_{\maxiter}]}{\maxiter} + \frac{q^2 \eta+ \sum_{k=t+1}^\infty \eta \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}}{\maxiter}\\
-& + \left(\frac{L}{2} + \eta_{t+1}+ \frac{\beta_1L}{1-\beta_1} \right)\frac{1}{\maxiter}  \sum_{t=0}^{\maxiter -1}\EE[ \norm{\theta_{t+1} - \theta_{t}}^2]
+& + \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right)\frac{1}{\maxiter}  \sum_{t=0}^{\maxiter -1}\EE[ \norm{\theta_{t+1} - \theta_{t}}^2]
 \end{split}
 \end{equation}
 
@@ -544,7 +723,53 @@ By definition \eqref{eq:defR} of $R_t$ we have, using Lemma~\ref{lem:bound}:
 
 \textbf{Bounding $   \sum_{t=0}^{\maxiter -1}\EE[ \norm{\theta_{t+1} - \theta_{t}}^2]$:}
 
-\textcolor{red}{TBD}
+By definition in Algorithm~\ref{alg:sparsams}:
+
+\begin{equation}\label{eq:gap}
+\begin{split}
+\norm{\theta_{t+1} - \theta_{t}}^2  = \eta_{t+1}^2 \left[ (\hat V_{t+1}+\epsilon \mathsf{I_d})^{-\frac{1}{2}} m_{t+1}\right]^2 = \eta_{t+1}^2 \sum_{j=1}^d  \frac{|m_{t+1}^j|^2}{\hat{v}^j_{t+1} + \epsilon}
+\end{split}
+\end{equation}
+
+For any dimension $j \in [d]$,
+\begin{equation}
+\begin{split}
+|m_{t+1}^j|^2 &= |\beta_1 m_{t}^j + (1-\beta_1) \bar g_t^j |^2\\
+& \leq \beta_1(\beta_1^2 |m_{t-1}^j|^2 + (1-\beta_1)^2 |\bar g_{t-1}^j|^2) +  |\bar g_t^j|^2\\
+& \leq \sum_{k=0}^t \beta_1^{2(t-k)}|\bar g_k^j|^2\\
+& \leq \sum_{k=0}^t \frac{\beta_1^{2(t-k)}}{\beta_2^{t-k}}\beta_2^{t-k}|\bar g_k^j|^2
+\end{split}
+\end{equation}
+
+Using Cauchy-Schwartz inequality we obtain
+\begin{equation}\label{eq:temp1}
+\begin{split}
+|m_{t+1}^j|^2  \leq \sum_{k=0}^t \frac{\beta_1^{2(t-k)}}{\beta_2^{t-k}}\beta_2^{t-k}|\bar g_k^j|^2 &\leq \sum_{k=0}^t \left(\frac{\beta_1^{2}}{\beta_2}\right)^{t-k}  \sum_{k=0}^t\beta_2^{t-k}|\bar g_k^j|^2\\
+&\leq \frac{1}{1 - \frac{\beta_1^{2}}{\beta_2}} \sum_{k=0}^t\beta_2^{t-k}|\bar g_k^j|^2
+\end{split}
+\end{equation}
+
+On the other hand we have
+\begin{equation}
+\hat{v}^j_{t+1} \geq \beta_2 \hat{v}^j_{t} + (1-\beta_2) (\bar g_t^j)^2
+\end{equation}
+and since it is also true for iteration $t=1$, we have by induction replacing $v_t^j$ in the above that 
+\begin{equation}\label{eq:temp2}
+\begin{split}
+\hat{v}^j_{t+1} \geq (1-\beta_2) \sum_{k=0}^t\beta_2^{t-k}|\bar g_k^j|^2 \iff  \frac{\sum_{k=0}^t\beta_2^{t-k}|\bar g_k^j|^2}{ \hat{v}^j_{t+1}} \leq    (1-\beta_2)^{-1}
+\end{split}
+\end{equation}
+
+Hence, we can derive from \eqref{eq:gap} that
+
+\begin{equation}\label{eq:gap2}
+\begin{split}
+\norm{\theta_{t+1} - \theta_{t}}^2  = \eta_{t+1}^2 \sum_{j=1}^d  \frac{|m_{t+1}^j|^2}{\hat{v}^j_{t+1} + \epsilon}&\leq  \eta_{t+1}^2 \sum_{j=1}^d  \frac{|m_{t+1}^j|^2}{\hat{v}^j_{t+1}}\\
+&\overset{(a)}{\leq}   \eta_{t+1}^2 \sum_{j=1}^d  \frac{1}{1 - \frac{\beta_1^{2}}{\beta_2}} \frac{\sum_{k=0}^t\beta_2^{t-k}|\bar g_k^j|^2}{\hat{v}^j_{t+1}}\\
+&\overset{(b)}{\leq} \eta_{t+1}^2 d (1-\beta_2)^{-1} (1 - \frac{\beta_1^{2}}{\beta_2})^{-1}
+\end{split}
+\end{equation}
+where (a) uses \eqref{eq:temp1} and (b) uses \eqref{eq:temp2}.
 
 
 Plugging the two bounds in \eqref{eq:finalR2}, we obtain the following bound:
@@ -553,111 +778,29 @@ Plugging the two bounds in \eqref{eq:finalR2}, we obtain the following bound:
 \begin{split}
  \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \leq & \frac{\EE[ f(\theta_{0}) - f(\theta_{\maxiter})]}{\eta \Delta_1 \maxiter} + \frac{q^2 \eta+ \sum_{k=t+1}^\infty \eta \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}}{\eta \Delta_1\maxiter}\\
 &+\frac{1-\beta_1}{\Delta_1}  (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} \\
-& + \left(\frac{L}{2} + \eta_{t+1}+ \frac{\beta_1L}{1-\beta_1} \right)\frac{1}{\eta \Delta_1\maxiter}  \textcolor{red}{Bound of gap}
+& + \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right)\frac{1}{\eta \Delta_1}  \eta^2 d (1-\beta_2)^{-1} (1 - \frac{\beta_1^{2}}{\beta_2})^{-1}
 \end{split}
 \end{equation}
 
 
 where $\Delta_1 \eqdef \frac{(1-\beta_1)}{2} (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}}$
+
+With a constant stepsize $\eta = \frac{L}{\sqrt{\maxiter}}$ we get the final convergence bound as follows:
+\begin{equation}
+\begin{split}
+ \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \leq & \frac{\EE[ f(\theta_{0}) - f(\theta_{\maxiter})]}{L \Delta_1 \sqrt{\maxiter}} + 
+d\frac{L \Delta_3}{\Delta_1 \sqrt{\maxiter}} \\
+& + \frac{\Delta_2}{\eta \Delta_1\maxiter} +\frac{1-\beta_1}{\Delta_1}  (\epsilon + \frac{G^2}{1 - \beta_2})^{-\frac{1}{2}} 
+\end{split}
+\end{equation}
+where $\Delta_2 \eqdef q^2 + \sum_{k=t+1}^\infty  \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}$ and $\Delta_3 \eqdef \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right) (1-\beta_2)^{-1} (1 - \frac{\beta_1^{2}}{\beta_2})^{-1}$.
+
+
+
+
+
 \end{proof}
 
-
-\section{Sequential Model}
-
-Single machine method
-
-\begin{algorithm}[H]
-\caption{\algo\ : Single machine setting} \label{alg:sparsamssingle}
-\begin{algorithmic}[1]
-
-\STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
-\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{0}=0$ the error accumulator; sparsity parameter $k$; $m_0=0$, $v_0=0$, $\hat v_0=0$
-
-\FOR{$t=1$ to $T$}
-\STATE  Compute stochastic gradient $g_{t} = g_{t,i_t}$ at $\theta_t$ for randomly sampled index $i_t$
-\STATE  Compute $\tilde g_{t}=TopK(g_{t}+e_{t},k)$ \label{line:topksingle} 
-\STATE  Update the error $e_{t+1}=e_{t}+g_{t}-\tilde g_{t}$
-\STATE $m_t=\beta_1 m_{t-1}+(1-\beta_1)\tilde g_t$
-\STATE $v_t=\beta_2 v_{t-1}+(1-\beta_2)\tilde g_t^2$
-\STATE $\hat v_t=\max(v_t,\hat v_{t-1})$ \label{line:vsingle}
-\STATE Update global model $\theta_t=\theta_{t-1}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
-
-\ENDFOR
-\end{algorithmic}
-\end{algorithm}
-
-
-
-Let $m_t'$ and $\hat v_t'$ be the first and second moment moving average of standard AMSGrad using full gradients. Denote
-\begin{align*}
-    a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad a_t'=\frac{m_t'}{\sqrt{\hat v_t'+\epsilon}}.
-\end{align*}
-Define the sequence
-\begin{align*}
-    \mathcal E_{t+1}=\mathcal E_t+a_t'-a_t,
-\end{align*}
-such that the auxiliary model
-\begin{align*}
-    \theta_{t+1}'&\eqdef\theta_{t+1}-\eta \mathcal E_{t+1}\\
-    &=\theta_t-\eta a_t-\eta\mathcal E_{t+1}\\
-    &=\theta_t-\eta a_t-\eta(\mathcal E_t+a_t'-a_t)\\
-    &=\theta_t'-\eta a_t'
-\end{align*}
-follows the update of full-gradient AMSGrad. By smoothness assumption we have
-\begin{align*}
-    f(\theta_{t+1}')\leq f(\theta_t')-\eta\langle \nabla f(\theta_t'), a_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
-\end{align*}
-Thus,
-\begin{align*}
-    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]\\
-    &=-\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle] \\
-    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
-    &\leq -\eta\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\sqrt{G^2+\epsilon}}+\frac{\eta}{2\rho}\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\epsilon}+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2,
-    % &=-\eta \langle \nabla f(\theta_t), \mathbb E[a_t']\rangle+(\frac{\eta^2L}{2}+\frac{\eta}{2\rho})\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2.
-\end{align*}
-when $\beta_1=0$ for example. We may discard this assumption and use more complicated bound on the first two terms. The third term can be bounded by constant yielding $O(1/\sqrt T)$ rate eventually when taking decreasing learning rate. The key is to get a good bound on the cumulative error sequence, $\mathcal E_t$. We have the following:
-\begin{align*}
-    \mathbb E\|\mathcal E_{t+1}\|^2&=\mathbb E\|\mathcal E_t+a_t'-a_t+TopK(\mathcal E_t+a_t')-TopK(\mathcal E_t+a_t')\|^2\\
-    &\leq 2\mathbb E\|\mathcal E_t+a_t'-TopK(\mathcal E_t+a_t')\|^2+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
-    &\leq 2q\mathbb E\|\mathcal E_t+a_t'\|+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
-    &\leq 2q[(1+r)\mathbb E\|\mathcal E_t\|^2+(1+\frac{1}{r})\mathbb E\|a_t'\|^2]+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2.
-\end{align*}
-Current try: If we can bound the last term in the same form as the first two terms, then we can use recursion to get the desired result. We can have
-\begin{align*}
-    \mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2&=\mathbb E\| \frac{\tilde m_t}{\sqrt{\hat v_t+\epsilon}}- \|^2
-\end{align*}
-
-\newpage
-\section{Experiments}\label{sec:experiment}
-Our proposed TopK-EF with AMSGrad matches that of full AMSGrad, in distributed learning. Number of local workers is 20. Error feedback fixes the convergence issue of using solely the TopK gradient. 
-
-\begin{figure}[H]
-    \begin{center}
-    \mbox{\hspace{-0.3in}
-        \includegraphics[width=2.2in]{figure/mnist_cnn_test_accuracy.eps}
-        \includegraphics[width=2.2in]{figure/cifar_cnn_test_accuracy.eps}
-        \includegraphics[width=2.2in]{figure/cifar_lenet_test_accuracy.eps}
-    }
-    \end{center}
-    \vspace{-0.1in}
-	\caption{Test accuracy.}
-	\label{fig:test accuracy}
-\end{figure}
-
-
-
-\section{Conclusion}\label{sec:conclusion}
-
-
-
-\newpage
-\bibliographystyle{plain}
-\bibliography{ref}
-
-\newpage
-\appendix 
-
-\section{Appendix}\label{sec:appendix}
 
 
 %-----------------------------------------------------------------------------
