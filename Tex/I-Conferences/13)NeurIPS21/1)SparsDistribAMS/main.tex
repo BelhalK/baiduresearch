@@ -45,26 +45,23 @@ To be completed...
 
 \section{Introduction}\label{sec:introduction}
 
-Most modern machine learning tasks can be casted as a large finite-sum optimization problem written as:
-\begin{equation}\label{eq:opt}
-\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)
-\end{equation}
-where $n$ denotes the number of workers, $f_i$ represents the average loss for worker $i$ and $\theta$ the global model parameter taking value in $\Theta$, a subset of $\mathbb{R}^d$.
+Deep neural network has achieved the state-of-the-art learning performance on numerous AI applications, e.g., computer vision~\cite{Proc:GAN_NIPS14,Proc:Resnet_CVPR16,CV_review18}, Natural Language Processing~\cite{Proc:Graves_ICASSP13,NLP_review18,sentiment_review18}, Reinforcement Learning~\cite{Arxiv:MnihKSGAWR13,AlphaGo_17} and recommendation systems~\cite{Proc:Covington_2016,Article:Wei_2017}. With the increasing size of both data and deep networks, standard single machine training confronts with at least two major challenges:
+\begin{itemize}
+    \item Due to the limited computing power of a single machine, it would take a long time to process the massive number of data samples---training would be slow.
+  
+    \item In many practical scenarios, data are typically stored in multiple servers, possibly at different locations, due to the storage constraints (massive user behavior data, Internet images, etc.) or privacy reasons~\cite{Proc:Chang18}. Transmitting data might be costly.
+\end{itemize}
+\textit{Distributed learning} framework~\cite{Proc:Dean_NIPS12} has been a common training strategy to tackle the above two issues. For example, in distributed stochastic gradient descent (SGD) protocol, data are located at $N$ local nodes, at which the gradients of the model are computed in parallel. In each iteration, a central server aggregates the local gradients, updates the global model, and transmits back the updated model to the local nodes for subsequent gradient computation. As we can see, this setting naturally solves aforementioned issues: 1) We use $N$ computing nodes to train the model, so the time per training epoch can be largely reduced; 2) There is no need to transmit the local data to central server. Besides, distributed training also provides stronger error tolerance since the training process could continue even one local machine breaks down. As a result of these advantages, there has been a surge of study and applications on distributed systems~\cite{boyd2011distributed,nedic2009distributed,duchi2011dual,Arxiv:Goyal17,hong2017prox,lu2019gnsd,koloskova2019decentralized}.
+
+Among many optimization strategies, SGD is still the most popular prototype in distributed training for its simplicity and effectiveness~\cite{Proc:Agrawal_NIPS19,Proc:Wu_ICML18,mikami2018massively}. Yet, when the deep learning model is very large, the communication between local nodes and central server could be expensive. Burdensome gradient transmission would slow down the whole training system, or even be impossible because of the limited bandwidth in some applications. Thus, reducing the communication cost in distributed SGD has become an active topic, and an important ingredient of large-scale distributed systems (e.g.~\cite{Proc:Seide14}). Solutions based on quantization, sparsification and other compression techniques of the local gradients are proposed~\cite{alistarh2017qsgd,wen2017terngrad,jiang2018linear,wangni2017gradient,haddadpour2019trading,chen2010approximate,jegou2010product,stich2018sparsified,aji2017sparse,bernstein2018signsgd,de2017understanding,yang2019swalp,Proc:Ivkin_NIPS19}. As one would expect, in most approaches, there exists a trade-off between compression and model accuracy. In particular, larger bias of the compressed gradients usually brings more significant performance downgrade. Interestingly, \cite{karimireddy2019error} shows that the technique of \textit{error feedback} is able to remedy the issue of such biased compressors, achieving same convergence rate and learning performance as full-gradient SGD.
 
 
+On the other hand, in recent years, adaptive optimization algorithms (e.g. AdaGrad~\cite{Duchi10-adagrad}, Adam~\cite{kingma2014adam} and AMSGrad~\cite{reddi2019convergence}) have become popular because of their superior empirical performance. These methods use different implicit learning rates for different coordinates that keep changing adaptively throughout the training process, based on the learning trajectory. In many learning problems, adaptive methods have been shown to converge faster than SGD, sometimes with better generalization as well. However, the body of literature that combines adaptive methods with distributed training is still very limited.
 
-Some related work:
-
-
-\citep{karimireddy2019error} develops variant of signSGD (as a biased compression schemes) for distributed optimization. Contributions are mainly on this error feedback variant.
-In \citep{shi2019convergence}, the authors provide theoretical results on the convergence of sparse Gradient SGD for distributed optimization (we want that for AMS here).
-\citep{stich2018sparsified} develops a variant of distributed SGD with sparse gradients too. Contributions include a memory term used while compressing the gradient (using top k for instance). Speeding up the convergence in $\frac{1}{T^3}$.
-% \url{https://arxiv.org/pdf/1901.09847.pdf}
-% \url{https://pdfs.semanticscholar.org/8728/dee89906022c1d4f5c1de1233c3f65ab92f2.pdf?_ga=2.152244026.2027005181.1606271153-15127215.1603945483}
-% \url{https://proceedings.neurips.cc/paper/2018/file/b440509a0106086a67bc2ea9df0a1dab-Paper.pdf}
+\subsection{Our contributions}
 
 
-\section{Preliminaries}\label{sec:prelim}
+\section{Related Work}\label{sec:related}
 
 \paragraph{Sparse Optimization Methods. } 
 
@@ -93,6 +90,24 @@ Hence the need for even more efficient techniques which constitutes the object o
 
 
 \section{Method}\label{sec:main}
+
+Most modern machine learning tasks can be casted as a large finite-sum optimization problem written as:
+\begin{equation}\label{eq:opt}
+\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)
+\end{equation}
+where $n$ denotes the number of workers, $f_i$ represents the average loss for worker $i$ and $\theta$ the global model parameter taking value in $\Theta$, a subset of $\mathbb{R}^d$.
+
+
+
+Some related work:
+
+
+\citep{karimireddy2019error} develops variant of signSGD (as a biased compression schemes) for distributed optimization. Contributions are mainly on this error feedback variant.
+In \citep{shi2019convergence}, the authors provide theoretical results on the convergence of sparse Gradient SGD for distributed optimization (we want that for AMS here).
+\citep{stich2018sparsified} develops a variant of distributed SGD with sparse gradients too. Contributions include a memory term used while compressing the gradient (using top k for instance). Speeding up the convergence in $\frac{1}{T^3}$.
+% \url{https://arxiv.org/pdf/1901.09847.pdf}
+% \url{https://pdfs.semanticscholar.org/8728/dee89906022c1d4f5c1de1233c3f65ab92f2.pdf?_ga=2.152244026.2027005181.1606271153-15127215.1603945483}
+% \url{https://proceedings.neurips.cc/paper/2018/file/b440509a0106086a67bc2ea9df0a1dab-Paper.pdf}
 
 Consider standard synchronous distributed optimization setting. AMSGrad is used as the prototype, and the local workers is only in charge of gradient computation.
 
@@ -233,6 +248,67 @@ where
 \end{equation}
 \end{Theorem}
 
+We remark from this bound in Theorem~\ref{thm:mainmultiple}, that the more quantization we apply to our gradient vectors ($q \uparrow$), the larger the upper bound of the stationary condition is, \ie the slower the algorithm is. 
+This is intuitive as using compressed quantities will definitely impact the algorithm speed.
+We will observe in the numerical section below that a trade-off on the level of quantization $q$ can be found to achieve similar speed of convergence with less computation resources used throughout the training.
+
+
+
+
+
+\textbf{Belhal Try for Single Machine Setting:}
+
+
+Define the auxiliary model
+\begin{align*}
+\theta_{t+1}'&\eqdef \theta_{t+1}- e_{t+1}\\
+&=\theta_t - \eta a_t- e_{t+1}\\
+& =\theta_t - \eta a_t- e_{t} - g_t + \tilde g_t\\ 
+& =\theta_t - \eta a_t- e_{t} - \Delta_t\\
+& =\theta_t' - \eta a_t - \Delta_t
+\end{align*}
+where $a_t \eqdef \frac{m_t}{\sqrt{\hat v_t+\epsilon}}$ and $\Delta_t \eqdef g_t - \tilde g_t$.
+By smoothness assumption we have
+\begin{align*}
+    f(\theta_{t+1}')\leq f(\theta_t')-\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
+\end{align*}
+Thus,
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\mathbb E[\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+        & \leq \eta\mathbb E[\langle \nabla f(\theta_t) -  \nabla f(\theta_t') , \eta a_t + \Delta_t \rangle] -\mathbb E[\langle  \nabla f(\theta_t), \eta  a_t + \Delta_t \rangle] +\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]
+\end{align*}
+Using the smoothness assumption A\ref{ass:smooth} we have 
+
+\begin{align*}
+\EE[\langle \nabla f(\theta_t) -  \nabla f(\theta_t') , \eta a_t + \Delta_t \rangle] \leq L \EE[\norm{\theta_t - \theta_t'}] E[\norm{\eta a_t + \Delta_t}]
+\end{align*}
+
+Hence,
+
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\mathbb E[\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+        & \leq - \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \mathbb E\|\nabla f(\theta_t)\|^2 + L \EE[\norm{\theta_t - \theta_t'}] E[\norm{\eta a_t + \Delta_t}]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+                & \leq - \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \mathbb E\|\nabla f(\theta_t)\|^2 + L \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]
+\end{align*}
+
+Summing from $t = 0$ to $t = \maxiter -1$ and divide it by $\maxiter$ yields:
+
+
+\begin{align*}
+&  \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \\
+\leq &\sum_{t=0}^{\maxiter -1}\frac{\EE[f(\theta_t') -f(\theta_{t+1}')]}{\maxiter}  +  \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]+  \frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]
+\end{align*} 
+
+
+\textbf{Bounding $\frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]$:}
+
+To begin with
+\begin{align*}
+\norm{e_t} & = \norm{e_{t-1} + g_{t-1} - \tilde g_{t-1}}\\
+ & \leq q \norm{g_{t-1}} + \norm{e_{t-1}}\\
+\end{align*}
+
+\textbf{Bounding $\frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]$:}
 
 
 \section{Sequential Model}
@@ -260,6 +336,19 @@ Single machine method
 \end{algorithm}
 
 
+%We first define multiple auxiliary sequences. For the first moment, define
+%
+%\begin{align*}
+%    &\bar m_t=m_t+\mathcal E_t,\\   
+%    &\mathcal E_t=\beta_1\mathcal E_{t-1}+(1-\beta_1)(e_{t+1}-e_t),
+%\end{align*}
+%such that 
+%\begin{align*} 
+%    \bar m_t&=\bar m_t+\mathcal E_t\\
+%    &=\beta_1(m_t+\mathcal E_t)+(1-\beta_1)(\bar g_t+e_{t+1}-e_1)\\
+%    &=\beta_1\bar m_{t-1}+(1-\beta_1)g_t.
+%\end{align*}
+
 
 Let $m_t'$ and $\hat v_t'$ be the first and second moment moving average of standard AMSGrad using full gradients. Denote
 \begin{align*}
@@ -283,8 +372,8 @@ follows the update of full-gradient AMSGrad. By smoothness assumption we have
 Thus,
 \begin{align*}
     \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]\\
-    &=-\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle] \\
-    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
+    &=-\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle] \\
+    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
     &\leq -\eta\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\sqrt{G^2+\epsilon}}+\frac{\eta}{2\rho}\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\epsilon}+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2,
     % &=-\eta \langle \nabla f(\theta_t), \mathbb E[a_t']\rangle+(\frac{\eta^2L}{2}+\frac{\eta}{2\rho})\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2.
 \end{align*}
@@ -292,9 +381,10 @@ when $\beta_1=0$ for example. We may discard this assumption and use more compli
 \begin{align*}
     \mathbb E\|\mathcal E_{t+1}\|^2&=\mathbb E\|\mathcal E_t+a_t'-a_t+TopK(\mathcal E_t+a_t')-TopK(\mathcal E_t+a_t')\|^2\\
     &\leq 2\mathbb E\|\mathcal E_t+a_t'-TopK(\mathcal E_t+a_t')\|^2+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
-    &\leq 2q\mathbb E\|\mathcal E_t+a_t'\|+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
+    & \overset{(a)}{\leq} 2q\mathbb E\|\mathcal E_t+a_t'\|+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
     &\leq 2q[(1+r)\mathbb E\|\mathcal E_t\|^2+(1+\frac{1}{r})\mathbb E\|a_t'\|^2]+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2.
 \end{align*}
+where (a) uses A\ref{ass:quant}.
 Current try: If we can bound the last term in the same form as the first two terms, then we can use recursion to get the desired result. We can have
 \begin{align*}
     \mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2&=\mathbb E\| \frac{\tilde m_t}{\sqrt{\hat v_t+\epsilon}}- \|^2
@@ -404,7 +494,7 @@ Using the Tower rule, we have:
 \begin{split}
 t_1 := &  -\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \frac{1}{n}\sum_{i=1}^N  g_{t,i}} ] \\
 =  & -\eta_{t+1}\EE[\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2} \frac{1}{n}\sum_{i=1}^N  g_{t,i}} | \mathcal{F}_t]] \\
-=  & -\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2}\EE[ \frac{1}{n}\sum_{i=1}^N  g_{t,i}} | \mathcal{F}_t]] 
+=  & -\eta_{t+1}\EE[\pscal{\nabla f(\theta_t)}{(\hat{V}_{t+1} + \epsilon \mathsf{I_d})^{-1/2}\EE[ \frac{1}{n}\sum_{i=1}^N  g_{t,i}| \mathcal{F}_t]} ] 
 \end{split}
 \end{equation}
 Using Assumption~\ref{ass:boundgrad} and Lemma~\ref{lem:bound}, we have that 
@@ -467,18 +557,7 @@ where $d$ denotes the dimension of the parameter vector
 \begin{proof}
 
 
-%We first define multiple auxiliary sequences. For the first moment, define
-%
-%\begin{align*}
-%    &\bar m_t=m_t+\mathcal E_t,\\   
-%    &\mathcal E_t=\beta_1\mathcal E_{t-1}+(1-\beta_1)(e_{t+1}-e_t),
-%\end{align*}
-%such that 
-%\begin{align*} 
-%    \bar m_t&=\bar m_t+\mathcal E_t\\
-%    &=\beta_1(m_t+\mathcal E_t)+(1-\beta_1)(\bar g_t+e_{t+1}-e_1)\\
-%    &=\beta_1\bar m_{t-1}+(1-\beta_1)g_t.
-%\end{align*}
+
 
 
 Denote the following auxiliary variables at iteration $t+1$
