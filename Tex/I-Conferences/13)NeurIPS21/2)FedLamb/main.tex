@@ -1,18 +1,26 @@
 
 \documentclass[11pt]{article}
 
-\usepackage[colorlinks,linkcolor=blue,filecolor=blue,citecolor=magenta,urlcolor=blue]{hyperref}
-\usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem,graphicx,subfigure}
+
+
+\usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem,graphicx}
+\usepackage{neurips_2021}
+
+\usepackage{subcaption}
+\usepackage{wrapfig}
+\usepackage{url}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage[font=small,skip=0pt]{caption}
+\usepackage{natbib}
 \usepackage{xargs}
 \usepackage{stmaryrd}
-\usepackage{natbib}
 
 
-\usepackage{neurips_2021}
 % Recommended, but optional, packages for figures and better typesetting:
 \usepackage{microtype}
 \usepackage{graphicx}
-\usepackage{subfigure}
+%\usepackage{subfigure}
 \usepackage{booktabs} % for professional tables
 
 
@@ -116,27 +124,29 @@ Its update has a notable feature: it leverages an anisotropic learning rate depe
 The anisotropic nature of this update represented a real breakthrough in the training of high dimensional and nonconvex loss functions.
 This adaptive learning rate helps accelerate the convergence when the gradient vector is sparse~\citep{DHS11}. Yet, when applying \textsc{AdaGrad} to train deep neural networks, it is observed that the learning rate might decay too fast, see~\citet{KB15} for more details.
 Consequently,~\citet{KB15} develops \textsc{Adam} leveraging a moving average of the gradients divided by the square root of the second moment of this moving average (element-wise multiplication).
-A variant, called \textsc{AMSGrad} described in~\citet{RKK18} ought to fix \textsc{Adam} failures and is presented in Algorithm~\ref{alg:amsgrad}. The difference between \textsc{Adam} and \textsc{AMSGrad} lies in Line~7.
-
-\begin{algorithm}[H]
-\caption{\textsc{AMSGrad}~\citep{RKK18}} \label{alg:amsgrad}
-\begin{algorithmic}[1]
-\small
-\STATE \textbf{Required}: parameter $\beta_1$, $\beta_2$, and $\eta_t$. 
-\STATE Init: $w_{1} \in \Theta \subseteq \mathbb R^d $ and $v_{0} = \epsilon 1 \in \mathbb R^{d}$.
-\FOR{$t=1$ to $T$}
-\STATE Get mini-batch stochastic gradient $g_t$ at $w_t$.
-\STATE $\theta_t = \beta_1 \theta_{t-1} + (1 - \beta_1) g_t$.
-\STATE $v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2$. 
-\STATE \label{line:maxop}$\hat{v}_t = \max( \hat{v}_{t-1} , v_t )$. 
-\STATE $w_{t+1} = w_t - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}}_t }$.
-\text{ (element-wise division)}
-\ENDFOR
-\end{algorithmic}
-\end{algorithm}\vspace{-0.1in}
+%A variant, called \textsc{AMSGrad} described in~\citet{RKK18} ought to fix \textsc{Adam} failures and is presented in Algorithm~\ref{alg:amsgrad}. The difference between \textsc{Adam} and \textsc{AMSGrad} lies in Line~7.
+A variant, called \textsc{AMSGrad} described in~\citet{RKK18} ought to fix \textsc{Adam} failures using a max operator.
 
 
-A natural extension of Algorithm~\ref{alg:amsgrad} has been developed in~\citet{you2019large} specifically for multi layered neural network. 
+%\begin{algorithm}[H]
+%\caption{\textsc{AMSGrad}~\citep{RKK18}} \label{alg:amsgrad}
+%\begin{algorithmic}[1]
+%\small
+%\STATE \textbf{Required}: parameter $\beta_1$, $\beta_2$, and $\eta_t$. 
+%\STATE Init: $w_{1} \in \Theta \subseteq \mathbb R^d $ and $v_{0} = \epsilon 1 \in \mathbb R^{d}$.
+%\FOR{$t=1$ to $T$}
+%\STATE Get mini-batch stochastic gradient $g_t$ at $w_t$.
+%\STATE $\theta_t = \beta_1 \theta_{t-1} + (1 - \beta_1) g_t$.
+%\STATE $v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2$. 
+%\STATE \label{line:maxop}$\hat{v}_t = \max( \hat{v}_{t-1} , v_t )$. 
+%\STATE $w_{t+1} = w_t - \eta_t \frac{\theta_t}{ \sqrt{\hat{v}}_t }$.
+%\text{ (element-wise division)}
+%\ENDFOR
+%\end{algorithmic}
+%\end{algorithm}\vspace{-0.1in}
+
+
+A natural extension of \textsc{AMSGrad} has been developed in~\citet{you2019large} specifically for multi layered neural network. 
 A principled layerwise adaptation strategy to accelerate training of deep neural networks using large mini-batches is proposed using either a standard stochastic gradient update or a generalized adaptive method under the setting of a classical single server empirical risk minimization problem. 
  In simple terms, the idea is based on the observation that in a large deep neural network, the magnitude of the gradient might be too small in comparison with the magnitude of the weight for some layers of the model, hence slowing down the overall convergence. 
 As a consequence, layerwise adaptive learning rate is applied, such that in each iteration the model can move sufficiently far. 
@@ -157,10 +167,10 @@ In \textsc{Fed-Avg}, each worker updates their own model parameters locally usin
 Beforehand, it is important to provide useful and important notations used throughout our paper.
 
 \paragraph{Notations:} We denote by $\theta$ the vector of parameters taking values in $\rset^d$. 
-For each layer $\ell \in \llbracket \tot \rrbracket$, where $\tot$ is the total number of layers of the neural networks, and each coordinate $j \in \llbracket p_\ell \rrbracket$ where $p_\ell$ is the dimension per layer $\ell$, we note $\theta^{\ell, j}$ its $j$-th coordinate.
+For each layer $\ell \in \llbracket \tot \rrbracket$, where $\tot$ is the total number of layers of the neural networks, and each coordinate $j \in \llbracket p_\ell \rrbracket$ where $p_\ell$ is the dimension per layer $\ell$, we note $\theta_{r,i}^{\ell,t}$ its value at round $r$, local iteration $t$ and for worker $i$.
 The gradient of $f$ with respect to $\theta^\ell$ is denoted by $\nabla_{\ell} f(\theta)$.
-The index $i \in \inter$ denotes the index of the worker $i$ in our federated framework.
-$r$ and $t$ are used as the round and local iteration numbers respectively.
+%The index $i \in \inter$ denotes the index of the worker $i$ in our federated framework.
+%$r$ and $t$ are used as the round and local iteration numbers respectively.
 The smoothness per layer is denoted by $L_\ell$ for each layer $\ell \in \llbracket \tot \rrbracket$.
 We note for each communication $r>0$, the set of randomly drawn devices $D^{r}$ performing local updates.
 
@@ -179,11 +189,7 @@ Then, with the growing need of training far more complex models, such as deep ne
 
 \subsection{Layerwise and Dimensionwise Learning with Periodic Averaging}
 
-Recall that our original problem is the following optimization task:
-\begin{equation}\notag
-\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)
-\end{equation}
-where $f_i(\theta)$ is the loss function associated to the client $i \in \inter$ and is parameterized, in our paper, by a deep neural network.
+Recall that our original problem is the following optimization task $\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)$ where $f_i(\theta)$ is the loss function associated to the client $i \in \inter$ and is parameterized, in our paper, by a deep neural network.
 The multilayer and nonconvex nature of the loss function implies having recourse to particular optimization methods in order to efficiently train our model.
 Besides, the distributed and clients low bandwidth constraints are strong motivations for improving existing methods performing \eqref{eq:opt}.  
 
@@ -200,14 +206,14 @@ The adaptivity of our federated learning method is thus manifold.
 There occurs a per dimension normalization with respect to the square root of the second moment used in adaptive gradient methods and a layerwise normalization obtained via the final local update (Line~13).
 
 
-\begin{figure}[H]
-\mbox{\hspace{-0.15in}
-        \includegraphics[width=0.53\textwidth]{plot/plot1.pdf}
-}
-    \vspace{-0.2in}
-	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network and $\phi(x)=x$ as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
-	\label{fig:illustrate}\vspace{-0.1in}
-\end{figure}
+%\begin{figure}[H]
+%\mbox{\hspace{-0.15in}
+%        \includegraphics[width=0.53\textwidth]{plot/plot1.pdf}
+%}
+%    \vspace{-0.2in}
+%	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network and $\phi(x)=x$ as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
+%	\label{fig:illustrate}\vspace{-0.1in}
+%\end{figure}
 
 
 
@@ -234,7 +240,7 @@ $$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{
 \ENDFOR
 \STATE Devices send $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $v_{r,i}^T$ to server.
 \ENDFOR
-\STATE Server computes averages of the local models $\bar{\theta}_r^\ell = \frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{\ell,T}$ and $\hat{v}_{r+1} = \max( \hat{v}_{r},\frac{1}{n} \sum_{i=1}^n v^T_{r,i} )$ and send them back to the devices. \label{line:final}
+\STATE Server computes averages of the local models $\bar{\theta}_r = [\bar{\theta}_r^\ell]_{\ell =1}^{\tot} = [\frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $\hat{v}_{r+1} = \max( \hat{v}_{r},\frac{1}{n} \sum_{i=1}^n v^T_{r,i} )$ and send them back to the devices. \label{line:final}
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
@@ -242,24 +248,24 @@ $$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{
 
 \section{On The Convergence of \algo}\label{sec:theory}
 We develop in this section, the theoretical analysis of Algorithm~\ref{alg:ldams}. In Table~\ref{tab:notations}, we recall some important notations that will be used in our following analysis.
-\begin{table}[H]
-%\caption{Table of Notations}
-\begin{center}% used the environment to augment the vertical space
-% between the caption and the table
-\begin{tabular}{r c p{6cm} }
-\toprule
-$R, T$ & $\triangleq$ &  Number of communications rounds and local iterations (resp.)\\
-$n, D, i$ & $\triangleq$ &  Total number of clients, portion sampled uniformly and client index \\
-$\tot, \ell$ & $\triangleq$ &  Total number of layers in the DNN and its index \\
-$\phi(\cdot)$ & $\triangleq$ &  Scaling factor in \algo update\\
-$\bar{\theta}$ & $\triangleq$ &  Global model (after periodic averaging)\\
-$p_{r,i}^{t}$ & $\triangleq$ &  ratio computed at round $r$, local iteration $t$ and for device $i$. $p_{r,i}^{\ell,t}$ denotes its component at layer $\ell$\\
-\bottomrule
-\end{tabular}
-\end{center}
-\caption{Summary of notations used in the paper.}
-\label{tab:notations}
-\end{table}
+%\begin{table}[H]
+%%\caption{Table of Notations}
+%\begin{center}% used the environment to augment the vertical space
+%% between the caption and the table
+%\begin{tabular}{r c p{6cm} }
+%\toprule
+%$R, T$ & $\triangleq$ &  Number of communications rounds and local iterations (resp.)\\
+%$n, D, i$ & $\triangleq$ &  Total number of clients, portion sampled uniformly and client index \\
+%$\tot, \ell$ & $\triangleq$ &  Total number of layers in the DNN and its index \\
+%$\phi(\cdot)$ & $\triangleq$ &  Scaling factor in \algo update\\
+%$\bar{\theta}$ & $\triangleq$ &  Global model (after periodic averaging)\\
+%$p_{r,i}^{t}$ & $\triangleq$ &  ratio computed at round $r$, local iteration $t$ and for device $i$. $p_{r,i}^{\ell,t}$ denotes its component at layer $\ell$\\
+%\bottomrule
+%\end{tabular}
+%\end{center}
+%\caption{Summary of notations used in the paper.}
+%\label{tab:notations}
+%\end{table}
 
 Based on classical result for stochastic nonconvex optimization, we provide a collection of results that aims to providing a better understanding of the convergence behavior of our distributed optimization method under the federated learning framework.
 The main challenges we ought to overcome are manifold: 
@@ -274,8 +280,8 @@ Our analysis encompasses the consideration of those challenges and leads to a in
 In the sequel, the analysis of our scheme we provide is \emph{global}, in the sense that it does not depend on the initialization of our algorithm, and \emph{finite-time}, meaning that it is true for any arbitrary number of communication rounds, in particular small ones.
 In the particular context of nonconvex stochastic optimization for distributed clients, we assume the following:
 
-\begin{assumption}\label{ass:smooth}(Smoothness)
-For $i \in \inter$ and $\ell \in \interl$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta) - \nabla f_i (\vartheta)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
+\begin{assumption}\label{ass:smooth}(Smoothness per layer)
+For $i \in \inter$ and $\ell \in \interl$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta^\ell) - \nabla f_i (\vartheta^\ell)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
 \end{assumption}
 We add some classical assumption in the unbiased stochastic optimization realm, on the gradient of the objective function:
 \begin{assumption}\label{ass:boundgrad}(Unbiased and Bounded gradient)
@@ -292,17 +298,18 @@ For any value $a \in \rset^*_+$, there exists strictly positive constants such t
 
 
 We now state our main result regarding the non asymptotic convergence analysis of our Algorithm~\ref{alg:ldams}:
-\begin{theo}\label{th:main}
+\begin{Theorem}\label{th:main}
 Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained via Algorithm~\ref{alg:ldams} with a decreasing lr $\alpha_r$. Then, if $T=1$ and $\lambda = 0$:
 \beq \label{bound1}
 \begin{split}
-  & \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right] \\\notag
+  \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right] 
    \leq &  \sqrt{\frac{M^2 p}{n}} \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha_r R}+      \frac{\phi_M   \sigma^2}{R n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } \\
   +& \alpha_r \phi_M \sigma \tot p \sqrt{n}+ \frac{ \overline{L}\beta_1^2\tot(1-\beta_2)M^2 \phi^2_M n}{2(1-\beta_1)^2 v_0}    \\
  + &\frac{\alpha_r \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} +\overline{L} \alpha_r^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{Rv_0} 
    \end{split}
 \eeq
-\end{theo}
+where $\overline{L} = \sum_{\ell=1}^\tot L_{\ell}$ is the sum of all smoothness constants.
+\end{Theorem}
 
 
 
@@ -313,26 +320,26 @@ Two important Lemmas are required in the proof of the Theorem above.
 We also report the complete proof of our bound in the Appendix of this paper.
 
 The first result gives a characterization of the gap between the averaged model, that is computed by the central server in a periodic manner, and each of the local models stored in each client $i \in \inter$.
-\begin{lem}\label{lemma:iterates}
+\begin{Lemma}\label{lemma:iterates}
 Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then for $i \in \inter$ and $r > 0$:
 \beq
 \| \overline{\theta_r} - \theta_{r,i} \|^2 \leq \alpha_r^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{v_0}
 \eeq
 where $\phi_M$ is defined in H\ref{ass:phi} and p is the total number of dimensions $p = \sum_{\ell = 1}^\tot p_\ell$.
-\end{lem}
+\end{Lemma}
 
 The gap is provably bounded by some quantities of interest such as the total dimension of the multilayered model $p$, the learning rate and the assumed upper bound of the  gradient, see H\ref{ass:boundgrad}.
 
 Then, the following Lemma allows us to convert the suboptimality condition $\left\| \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}} \right\|$ to the desired one which is $\left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\|$.
 Note that the end goal is to characterize how fast the gradient of the averaged/global parameter $\overline{\theta_r}$ goes to zero, and not the averaged gradient.
 
-\begin{lem}\label{lemma:ratio}
+\begin{Lemma}\label{lemma:ratio}
 Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then for $r > 0$:
 \beq
 \left\| \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}} \right\|^2 \geq \frac{1}{2} \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\|^2 - \overline{L} \alpha^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{v_0}
 \eeq
 where $M$ is defined in H\ref{ass:boundgrad}, p is the total number of dimensions $p = \sum_{\ell = 1}^\tot p_\ell$ and $\phi_M$ is defined in H\ref{ass:phi}.
-\end{lem}
+\end{Lemma}
 
 
 
@@ -355,17 +362,15 @@ Besides, for ease of interpretation, the LHS of \eqref{bound1} is summed over al
 \textbf{Local-AMS bound in~\citet{chen2020toward}: }
 We now discuss the similarities and differences between the distributed adaptive method developed in~\citet{chen2020toward} and named local-AMS, and our \emph{deep federated} method, namely \algo.
 We first recall their main result:
-\begin{theo}[Theorem 5.1 in~\citet{chen2020toward}]
+\begin{Theorem}[Theorem 5.1 in~\citet{chen2020toward}]
 Under some regularity conditions on the local losses and similar arguments as ours, \textsc{Local-AMS} reaches a stationary point with the following rate:
 \beq 
 \begin{split}
-& \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right]  \\
-&   \leq  8 \sqrt{\frac{p}{Rn}} \left[ f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{R+1})] \right] \\
-& +    8 L_{s} \sqrt{\frac{p}{Rn}}  \frac{  \sigma^2}{\epsilon} + cst.
+ \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right]     \leq  8 \sqrt{\frac{p}{Rn}} \left[ f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{R+1})] \right]  +    8 L_{s} \sqrt{\frac{p}{Rn}}  \frac{  \sigma^2}{\epsilon} + cst.
  \end{split}
 \eeq
 where $\epsilon$ corresponds to their initialization of the vector $\hat v_0$ and $L_{s}$ is the sum of the local smoothness constants.
-\end{theo}
+\end{Theorem}
 
 The first two terms of their results and ours, standard in convergence analysis, displays a strong dependence of the convergence rate on the initialization, which tends to be forgotten, and the bounded variance assumption of the stochastic gradient, see H\ref{ass:var}.
 The acceleration of our layerwise scheme is exhibited in the dependence on $\frac{1}{R}$ in those two terms, while results in~\citet{chen2020toward} are of order $\frac{1}{\sqrt{R}}$.
@@ -382,12 +387,12 @@ In light of the prior remarks, we give a simple variant of Theorem~\ref{th:main}
 For $t >0$ and $r>0$, there exists some constant such that $\| \sqrt{ v_r^t} \| \leq V^2 $.
 \end{assumption}
 
-\begin{coro}\label{coro:main}
+\begin{Corollary}\label{coro:main}
 Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} and set $\alpha_r = \mathcal{O}(\frac{1}{L \sqrt{R}})$. Then, if the number of local epochs is set to $T=1$, $\lambda = 0$ we have, under \textbf{H\ref{ass:boundv}}:
 \beq \label{bound1coro}
 \frac{1}{R} \EE\left[ \left\| \nabla f(\overline{\theta_R})   \right \|^2 \right] \leq \mathcal{O}\left(\sqrt{\frac{ p}{ n}} \frac{1}{\tot \sqrt{R} } \right)
 \eeq
-\end{coro}
+\end{Corollary}
 
 
 We now discuss our bound regarding several aspects in order to gain understanding of the advantages of our method:
@@ -420,7 +425,9 @@ We observe in the sequel that our method empirically confirms its edge in terms 
 Basically, our proposed method reduces the number of rounds and thus the communication cost required to achieve similar stationary points than baseline methods. 
 
 \medskip
-\noindent\textbf{Settings.} In our experiment, we will evaluate three federated learning algorithms: 1) Fed-SGD, 2) Fed-AMS and 3) our proposed Fed-LAMB (Algorithm~\ref{alg:ldams}), where the first two serve as the baseline methods. For adaptive methods 2) and 3), we set $\beta_1=0.9$, $\beta_2=0.999$ as default and recommended~\citep{RKK18}. Regarding federated learning environment, we use 50 local workers with 0.5 participation rate. That means, we randomly pick half of the workers to be active for training in each round. To best accord with real scenarios where the local training batch size is usually limited, we set a relatively small local update batch size as 32. In each round, the training samples are allocated to the active devices, and one local epoch is finished after all the local devices run one epoch over their received samples by batch training. We test different number of local epochs in our experiments. For each dataset and number of local epochs, we tune the constant learning rate $\alpha$ for each algorithm over a fine grid in logarithm scale. For Fed-LAMB, the parameter $\lambda$ in Algorithm~\ref{alg:ldams} controlling the overall scale of the layerwise gradients is tuned from $\{0,0.01,0.1\}$. For each run, we take the model performance with the best $\alpha$ and $\lambda$. The reported results are averaged over three independent runs, each with same initialization for every method.
+\noindent\textbf{Settings.} In our experiment, we will evaluate three federated learning algorithms: 1) Fed-SGD, 2) Fed-AMS and 3) our proposed Fed-LAMB (Algorithm~\ref{alg:ldams}), where the first two serve as the baseline methods. For adaptive methods 2) and 3), we set $\beta_1=0.9$, $\beta_2=0.999$ as default and recommended~\citep{RKK18}. Regarding federated learning environment, we use 50 local workers with 0.5 participation rate. That means, we randomly pick half of the workers to be active for training in each round. To best accord with real scenarios where the local training batch size is usually limited, we set a relatively small local update batch size as 32. In each round, the training samples are allocated to the active devices, and one local epoch is finished after all the local devices run one epoch over their received samples by batch training. We test different number of local epochs in our experiments. For each dataset and number of local epochs, we tune the constant learning rate $\alpha$ for each algorithm over a fine grid in logarithm scale. For Fed-LAMB, the parameter $\lambda$ in Algorithm~\ref{alg:ldams} controlling the overall scale of the layerwise gradients is tuned from $\{0,0.01,0.1\}$. 
+For each experiment, we use the identity function for $\phi(\cdot)$.
+For each run, we take the model performance with the best $\alpha$ and $\lambda$. The reported results are averaged over three independent runs, each with same initialization for every method.
 
 \medskip
 \noindent\textbf{Models.} We test the performance of different federated learning algorithms on MNIST~\citep{lecun1998mnist} and CIFAR10~\citep{krizhevsky2009learning} image classification datasets. For MNIST, we apply 1) a simple multilayer perceptron (MLP), which has one hidden layer containing 200 cells with dropout; 2) Convolutional Neural Network (CNN), which has two max-pooled convolutional layers followed by a dropout layer and two fully-connected layers with 320 and 50 cells respectively. For CIFAR10, we implement: 1) a CNN with three convolutional layers followed by two fully-connected layers, and 2) a ResNet-9 model proposed by~\citet{Proc:He-resnet16}. All the networks use ReLU as the activation function.
@@ -441,11 +448,11 @@ Similar comparison can be drawn with respect to the training and testing losses.
 
 \begin{figure}[H]
     \begin{center}
-        \mbox{
-        \includegraphics[width=0.25\textwidth]{figure/mnist_testerror_mlp_ep1_client50_iid0.eps}
-        \includegraphics[width=0.25\textwidth]{figure/mnist_testerror_mlp_ep5_client50_iid0.eps}
-        \includegraphics[width=0.25\textwidth]{figure/mnist_testerror_cnn_ep1_client60_iid0.eps}
-        \includegraphics[width=0.25\textwidth]{figure/mnist_testerror_cnn_ep5_client50_iid0.eps}
+        \mbox{\hspace{-0.1in}
+        \includegraphics[width=0.27\textwidth]{figure/mnist_testerror_mlp_ep1_client50_iid0.eps}\hspace{-0.1in}
+        \includegraphics[width=0.27\textwidth]{figure/mnist_testerror_mlp_ep5_client50_iid0.eps}\hspace{-0.1in}
+        \includegraphics[width=0.27\textwidth]{figure/mnist_testerror_cnn_ep1_client60_iid0.eps}\hspace{-0.1in}
+        \includegraphics[width=0.27\textwidth]{figure/mnist_testerror_cnn_ep5_client50_iid0.eps}
         }
     \end{center}
 	\caption{\textbf{Top Row}: Test accuracy on MNIST+MLP, with non-iid data distribution. \textbf{Bottom Row}: Test accuracy on MNIST+CNN, with non-iid data distribution. \textbf{Left panel:} 1 local epoch. \textbf{Right panel:} 5 local epochs.}
@@ -479,34 +486,49 @@ When we run 1 local epoch per device, we observe a clear advantage of \algo over
 Note that Fed-SGD again fails to achieve close performance as those two adaptive gradient methods. 
 Increasing the number of local iterations in each device per communication round leads to similar observations: our newly introduced method, namely \algo, converges the fastest, with similar generalization error as Fed-AMS. 
 
-\begin{figure}[t]
-    \begin{center}
-        \mbox{
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep1_client10_iid1_SGD.eps}
-        }
-        \mbox{
-                \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep3_client10_iid1_SGD.eps}
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid1_SGD.eps}
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid1_SGD.eps}
-        }
-    \end{center}
-	\caption{\textbf{Top Row}: Test accuracy on CIFAR+CNN, with iid data distribution. \textbf{Mid and Bottom Row}: Test accuracy on CIFAR+ResNet, with iid data distribution, 10 and 50 clients, respectively. \textbf{Left panel:} 1 local epoch. \textbf{Right panel:} 3 local epochs.}
-	\label{fig:cifar-cnn-iid}
-\end{figure}
-
-
 %\begin{figure}[t]
 %    \begin{center}
 %        \mbox{
-%        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
-%        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
+%        \includegraphics[width=0.26\textwidth]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
+%        \includegraphics[width=0.26\textwidth]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
+%        \includegraphics[width=0.26\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid1_SGD.eps}
+%        \includegraphics[width=0.26\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid1_SGD.eps}
 %        }
 %    \end{center}
-%	\caption{Test accuracy on CIFAR+CNN, with iid data distribution. \textbf{Left panel:} 1 local epoch. \textbf{Right panel:} 3 local epochs.}
+%	\caption{\textbf{Top Row}: Test accuracy on CIFAR+CNN, with iid data distribution. \textbf{Mid and Bottom Row}: Test accuracy on CIFAR+ResNet, with iid data distribution, 10 and 50 clients, respectively. \textbf{Left panel:} 1 local epoch. \textbf{Right panel:} 3 local epochs.}
 %	\label{fig:cifar-cnn-iid}
 %\end{figure}
+%
+%
+%\begin{figure}[t]
+%    \begin{center}
+%        \mbox{
+%        \includegraphics[width=0.26\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid0.eps}
+%        \includegraphics[width=0.26\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid0.eps}
+%        }
+%    \end{center}
+%	\caption{ Test accuracy on CIFAR+ResNet, with non iid data distribution, 50 clients. \textbf{Left panel:} 1 local epoch. \textbf{Right panel:} 3 local epochs.}
+%	\label{fig:cifar-cnn-iid}
+%\end{figure}
+
+
+\begin{figure}[t]
+    \begin{center}
+        \mbox{
+        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
+        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
+        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid1_SGD.eps}
+        }
+                \mbox{
+        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid1_SGD.eps}
+         \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid0.eps}
+        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid0.eps}
+        
+        }
+    \end{center}
+	\caption{Test accuracy on CIFAR+CNN and CIFAR+ResNet, with iid data distribution for 50 clients, 1 and 3 local epoch respectively. \textbf{Last two quadrants:} CIFAR+ResNet, with non-iid data distribution for 50 clients, 1 and 3 local epoch respectively.}
+	\label{fig:cifar-cnn-iid}
+\end{figure}
 
 
 %\subsection{CIFAR-10 with Residual Neural Network}
@@ -836,7 +858,7 @@ From the bound in Theorem~\ref{th:main} and with assumption \textbf{H\ref{ass:bo
 We now develop a proof for the two intermediary lemmas, Lemma~\ref{lemma:iterates} and Lemma~\ref{lemma:ratio}, in the case when each local model is obtained after more than one local update.
 Then the two quantities, either the gap between the periodically averaged parameter and each local update, \ie $\| \overline{\theta_r} - \theta_{r,i} \|^2$, and the ratio of the average gradient, more particularly its relation to the gradient of the average global model (\ie $\left\| \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}} \right\|$ and $ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\| $), are impacted.
 
-\begin{theo}\label{th:multiple update}
+\begin{Theorem}\label{th:multiple update}
 Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} with a decreasing learning rate $\alpha$. Let the number of local epochs be $T \geq 1$ and $\lambda = 0$. Then, at iteration $\tau$, we have:
 \beq \label{bound1multiple}
 \begin{split}
@@ -848,7 +870,7 @@ If one considers a deceasing stepsize as  $\alpha_\tau = \mathcal{O}(\frac{1}{L 
 \begin{align}\notag
     \frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \mathcal{O}\left( \sqrt{\frac{M^2 p}{n}} \frac{1}{\sqrt{\tot \tau}} + \frac{\sigma^2 }{\tau n\sqrt{p}}+\frac{(T-1)^2p}{\tau^{3/2}L^3}\right)
 \end{align}
-\end{theo}
+\end{Theorem}
 \textbf{Discussion on the bound:} Obviously, the last term containing the number of local updates $T$ is small as long as $T\leq \mathcal O(\frac{\tau^{1/2}L^{5/4}}{(np)^{1/4}})$. 
 Treating $p^{1/4}/L=\mathcal O(1)$ which is usually small, the result implies that we can get the same rate of convergence as the algorithm using one local update, with $\mathcal \mathcal{O}(\tau^{1/2}/n^{1/4})$ rounds of communication. 
 When the number of workers $n$ increases, then a constraint on the number of local updates $T$ is occurring, meaning that we would need more rounds of communication to achieve the same convergence rate, for a identical $\epsilon-$stationary point.
@@ -961,5 +983,28 @@ And if we set the learning rate to be of order $\mathcal{O}(\frac{1}{L \sqrt{\ta
 concluding our proof.
 
 \end{proof}
+
+\section{Additional Numerical Experiments}
+
+
+
+\subsection{CIFAR-10 with Convolutional Neural Network and Residual Neural Network}
+
+In Figure~\ref{fig:cifar-cnn-iid}, we report the test accuracies of a Convolutional Neural Network trained on CIFAR-10 dataset, where the data is iid allocated among clients. 
+When we run 1 local epoch per device, we observe a clear advantage of \algo over Fed-AMS on both test accuracy and convergence speed.
+Note that Fed-SGD again fails to achieve close performance as those two adaptive gradient methods. 
+Increasing the number of local iterations in each device per communication round leads to similar observations: our newly introduced method, namely \algo, converges the fastest, with similar generalization error as Fed-AMS. 
+
+\begin{figure}[t]
+    \begin{center}
+        \mbox{
+        \includegraphics[width=0.32\textwidth]{figure/cifar_testerror_resnet_ep1_client10_iid1_SGD.eps}
+                \includegraphics[width=0.32\textwidth]{figure/cifar_testerror_resnet_ep3_client10_iid1_SGD.eps}
+        }
+    \end{center}
+	\caption{\textbf{From Left to Right}: Test accuracy on CIFAR+ResNet, with iid data distribution. 10 clients and 1 local epoch, 3 local epoch}
+	\label{fig:cifar-cnn-iid}
+\end{figure}
+
 
 \end{document}    
