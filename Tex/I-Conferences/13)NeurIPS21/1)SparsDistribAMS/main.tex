@@ -13,7 +13,7 @@
 \input{shortcuts.tex}
 
 \begin{document}
-\title{Sparsified Distributed Adaptive Learning with Error Feedback}
+\title{Sparsified Distributed Adaptive Learning with Error Feedback: a Centralized and Decentralized View}
 
 \author{
 Xiaoyun Li \\
@@ -60,6 +60,17 @@ On the other hand, in recent years, adaptive optimization algorithms (e.g. AdaGr
 
 \subsection{Our contributions}
 
+We develop a simple optimization leveraging the adaptivity of AMSGrad, and the computational virtue of TopK sparsification, for tackling a large finite-sum of nonconvex objective functions.
+
+Our technique is shown to be both theoretically and empirically effective under \emph{the classical centralized setting} and \emph{the distributed setting}.
+
+In this contribution, 
+\begin{itemize}
+\item We derive a sparsified AMSGrad with error feedback, called \algo, with a single machine and provide its decentralized counter part.
+\item We provide a non-asymptotic convergence rate under each setting,
+\item We highlight the effectiveness of both methods through several numerical experiments
+\end{itemize}
+
 
 \section{Related Work}\label{sec:related}
 
@@ -67,22 +78,14 @@ On the other hand, in recent years, adaptive optimization algorithms (e.g. AdaGr
 
 \paragraph{Quantization.} As we mentioned before, SGD is the most commonly adopted optimization method in distributed training of deep neural nets. To reduce the expensive communication in large-scale distributed systems, extensive works have considered various compression techniques applied to the gradient transaction procedure. The first strategy is quantization. \cite{Proc:8-bit_ICLR16} condenses 32-bit floating numbers into 8-bits when representing the gradients. \cite{Proc:Seide14,bernstein2018signsgd,karimireddy2019error,Proc:Bernstein_ICLR19} use the extreme 1-bit information (sign) of the gradients, combined with tricks like momentum, majority vote and memory. Other quantization-based methods include QSGD~\cite{alistarh2017qsgd,Proc:Wu_ICML18,Proc:Zhang_ICML17} and LPC-SVRG~\cite{Proc:Yu_AISTATS19}, leveraging stochastic quantization. The saving in communication of quantization methods is moderate: for example, 8-bit quantization reduces the cost to 25\% (compared with 32-bit full-precision). Even in the extreme 1-bit case, the largest compression ratio is around $1/32\approx 3.1\%$. 
 
-\paragraph{Sparsification.} Gradient sparsification is another popular solution which may provide higher compression rate. Instead of commuting the full gradient, each local worker only passes a few coordinates to the central server. Thus, we can more freely choose higher compression ratio (e.g., 1\%, 0.1\%), still achieving impressive performance in many applications~\cite{Proc:Lin_ICLR18}. Stochastic sparsification methods, including uniform sampling and magnitude based sampling~\cite{wangni2018gradient}, select coordinates based on some sampling probability yielding unbiased gradient compressors. Deterministic methods are simpler, e.g., Random-$k$, Top-$k$~\cite{stich2018sparsified,shi2019convergence} (selecting $k$ elements with largest magnitude), Deep Gradient Compression~\cite{Proc:Lin_ICLR18}, but usually lead to biased gradient estimation. In~\cite{Proc:Ivkin_NIPS19}, the central server identifies heavy-hitters from the count-sketch of the local gradients, which can be regarded as a noisy variant of Top-$k$ strategy. More applications and analysis of compressed distributed SGD can be found in~\cite{jiang2018linear,Proc:Shen_ICML18,alistarh2018convergence,Proc:Basu_NIPS19,Proc:Jiang_SIGMOD18}, among others.
+\paragraph{Sparsification.} Gradient sparsification is another popular solution which may provide higher compression rate. Instead of commuting the full gradient, each local worker only passes a few coordinates to the central server. Thus, we can more freely choose higher compression ratio (e.g., 1\%, 0.1\%), still achieving impressive performance in many applications~\cite{Proc:Lin_ICLR18}. Stochastic sparsification methods, including uniform sampling and magnitude based sampling~\cite{wangni2018gradient}, select coordinates based on some sampling probability yielding unbiased gradient compressors. Deterministic methods are simpler, e.g., Random-$k$, Top-$k$~\cite{stich2018sparsified,shi2019convergence} (selecting $k$ elements with largest magnitude), Deep Gradient Compression~\cite{Proc:Lin_ICLR18}, but usually lead to biased gradient estimation. In~\cite{Proc:Ivkin_NIPS19}, the central server identifies heavy-hitters from the count-sketch~\cite{Proc:Charikar_ICALP02} of the local gradients, which can be regarded as a noisy variant of Top-$k$ strategy. More applications and analysis of compressed distributed SGD can be found in~\cite{jiang2018linear,Proc:Shen_ICML18,alistarh2018convergence,Proc:Basu_NIPS19,Proc:Jiang_SIGMOD18}, among others.
 
 \paragraph{Error Feedback.} Biased gradient estimation, which is a consequence of many aforementioned methods (e.g., signSGD, Top-$k$), undermines the model training, both theoretically and empirically, with slower convergence and worse generalization. The technique of \textit{error feedback} is able to ``correct for the bias'' and fix the convergence issue. In this procedure, the difference between the true stochastic gradient and the compressed one is accumulated locally, which is then added back to the local gradients in later iterations. \cite{stich2018sparsified,karimireddy2019error} prove the $\mathcal O(\frac{1}{T})$ and $\mathcal O(\frac{1}{\sqrt T})$ convergence rate of EF-SGD in strongly convex and non-convex setting respectively, matching the rates of vanilla SGD~\cite{nemirovski2009robust,ghadimi2013stochastic}.
 
 
 \subsection{Adaptive optimization}
 
-When a large number of compute engines is available, being able to train global machine learning models while mutualizing the available and \emph{decentralized} source of computation has been a growing focus for the community.
-
-Decentralized optimization methods include methods such as ADMM~\citep{boyd2011distributed}, Distributed Subgradient Descent~\citep{nedic2009distributed}, Dual Averaging~\citep{duchi2011dual}, Prox-PDA~\citep{hong2017prox}, GNSD~\citep{lu2019gnsd}, and Choco-SGD~\citep{koloskova2019decentralized}.  
-
-A recent work \citep{chen2020quantized}, which focuses on adaptive gradient methods, namely the Adam \citep{kingma2014adam} annd the  AMSGrad~\citep{reddi2019convergence} optimization methods, develops a decentralized variant of gradient based and adaptive methods in the context of gossip protocols.
-To date, very few contributions provided attempt to efficiently run adaptive gradient method is such a distributed setting.
-Apart from \citep{chen2020quantized}, \citet{nazari2019dadam} proposes a decentralized version of AMSGrad~\citep{reddi2019convergence} which provably satisfies some non-standard regret.
-Though, no sparsified variants of them have been proposed for practical purposes nor been studied in the literature.
-
+In each SGD update, all the gradient coordinates share a same learning rate, either constant or decreasing over iterations. Instead, AdaGrad~\cite{Duchi10-adagrad} divides the gradient element-wisely by $\sqrt{\sum_{t=1}^T g_{t}^2}\in \mathbb R^d$, where $g_{t}$ is the gradient of $i$-th coordinate at time $t$ and $d$ is the model dimensionality. Thus, it intrinsically assigns different learning rates to different coordinates throughout the training---elements with larger previous gradient magnitude tend to move a smaller step. AdaGrad has been shown to perform well especially under some sparsity structure. AdaDelta~\cite{Proc:adadelta} and Adam~\cite{kingma2014adam} introduce momentum and moving average of second moment estimation into AdaGrad which lead to better performance. AMSGrad~\cite{reddi2019convergence} fixes the potential convergence issue of Adam, which is presented in Algorithm. In general, adaptive optimization methods are easier to tune in practice, and usually exhibit faster convergence than SGD. Thus, they have been widely used in training deep learning models in language and computer vision applications, e.g.,~\cite{,Arxiv:Choi_2019,Proc:LAMB_ICLR20,Arxiv:Zhang_ICLR21}. In distributed setting, the work~\cite{nazari2019dadam} proposes a decentralized system in online optimization. However, communication efficiency is not considered. The recent work~\cite{chen2020quantized} is the most relevant to our paper. Yet, their method is based on Adam, and requires every local node to store a local estimation of first and second moment, thus being inefficient. We will present more detailed comparison in Section~\ref{sec:main}.
 
 
 
