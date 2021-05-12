@@ -5,6 +5,12 @@
 
 \usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem,graphicx}
 \usepackage{neurips_2021}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,
+linkcolor=red,
+urlcolor=blue,
+citecolor=green!40!black]{hyperref}
+
 
 \usepackage{subcaption}
 \usepackage{wrapfig}
@@ -153,7 +159,7 @@ As a consequence, layerwise adaptive learning rate is applied, such that in each
 This method empirically speeds up the convergence significantly in classical sequential models and can be provably faster than baseline methods.
 
 
-\medskip
+\vspace{0.05in}
 \paragraph{Federated learning.}
 An extension of the well known parameter server framework, where a model is being trained on several servers in a distributed manner, is called Federated Learning (FL), see~\citet{konevcny2016federated}.
 Here, the central server only plays the role of computing power for aggregation and global update of the model.
@@ -166,7 +172,8 @@ In \textsc{Fed-Avg}, each worker updates their own model parameters locally usin
 \section{Layerwise and Dimensionwise Adaptive Method}\label{sec:main}
 Beforehand, it is important to provide useful and important notations used throughout our paper.
 
-\paragraph{Notations:} We denote by $\theta$ the vector of parameters taking values in $\rset^d$. 
+\vspace{0.05in}
+\textbf{Notations:} We denote by $\theta$ the vector of parameters taking values in $\rset^d$. 
 For each layer $\ell \in \llbracket \tot \rrbracket$, where $\tot$ is the total number of layers of the neural networks, and each coordinate $j \in \llbracket p_\ell \rrbracket$ where $p_\ell$ is the dimension per layer $\ell$, we note $\theta_{r,i}^{\ell,t}$ its value at round $r$, local iteration $t$ and for worker $i$.
 The gradient of $f$ with respect to $\theta^\ell$ is denoted by $\nabla_{\ell} f(\theta)$.
 %The index $i \in \inter$ denotes the index of the worker $i$ in our federated framework.
@@ -179,10 +186,8 @@ We note for each communication $r>0$, the set of randomly drawn devices $D^{r}$ 
 Under our Federated setting, we stress on the important of reducing the communication cost at each round between the central server, used mainly for aggregation purposes, and the many clients used for gradient computation and local updates.
 Using Periodic Averaging after few local epochs, updating local models on each device, as developed in~\citet{mcmahan2017communication} is the gold standard for achieving such communication cost reduction.
 Intuitively, one rather shift the computation burden from the many clients to the central server as much as possible. This allows for fewer local epochs and a better global model, from a loss minimization (or model fitting) perspective.
-
 The premises of that new paradigm are SGD updates performed locally on each device then averaged periodically, see~\citet{konevcny2016federated, zhou2017convergence}.
 The heuristic efficiency of local updates using SGD and periodic averaging has been studied in~\citet{stich2018local,yu2019linear} and shown to reach a similar sublinear convergence rate as in the standard distributed optimization settings.
-
 Then, with the growing need of training far more complex models, such as deep neural networks, several efficient methods, built upon adaptive gradient algorithms, such as Local AMSGrad in~\citet{chen2020toward}, extended both empirically and theoretically, the benefits of performing local updates coupled with periodic averaging.
 
 
@@ -190,13 +195,13 @@ Then, with the growing need of training far more complex models, such as deep ne
 \subsection{Layerwise and Dimensionwise Learning with Periodic Averaging}
 
 Recall that our original problem is the following optimization task $\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)$ where $f_i(\theta)$ is the loss function associated to the client $i \in \inter$ and is parameterized, in our paper, by a deep neural network.
-The multilayer and nonconvex nature of the loss function implies having recourse to particular optimization methods in order to efficiently train our model.
-Besides, the distributed and clients low bandwidth constraints are strong motivations for improving existing methods performing \eqref{eq:opt}.  
+The multilayer and nonconvex nature of the loss function imply having recourse to particular optimization methods in order to efficiently train our model.
+Besides, the distributed and clients low bandwidth constraints are strong motivations for improving existing methods for \eqref{eq:opt}.  
 
 
 %Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm which is depicted in Figure~\ref{fig:illustrate} and detailed in Algorithm~\ref{alg:ldams}, which is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
 %In particular, while Line~\ref{line:first} and Line~\ref{line:second} corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~\ref{line:new1} and Line~\ref{line:new2} are correct the biases of those estimates, the final local update in Line~\ref{line:layer} is novel and corresponds to the specialization per layer of our federated method.
-Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm which is depicted in Figure~\ref{fig:illustrate} and detailed in Algorithm~\ref{alg:ldams}, which is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
+Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm detailed in Algorithm~\ref{alg:ldams}, which is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
 In particular, while Line~8 and Line~10 corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~9 and Line~11 are correct the biases of those estimates, the final local update in Line~13 is novel and corresponds to the specialization per layer of our federated method.
 Note that a scaling factor is applied to the learning rate $\alpha_r$ at each round $r>0$ via the quantity $\phi(\|\theta_{r,i}^{\ell,t-1}\|)$ depending on the dimensionwise and layerwise quantity computed in Line~12.
 This function is user designed and can be, for instance, set to the identity function. 
@@ -221,22 +226,21 @@ There occurs a per dimension normalization with respect to the square root of th
 \caption{\algo\ for Federated Learning} \label{alg:ldams}
 \begin{algorithmic}[1]
 %\small
-\STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, and learning rate $\alpha_t$, weight decaying parameter $\lambda \in ]0,1[$.
+\STATE \textbf{Input}: parameter $0< \beta_1, \beta_2 <1$, and learning rate $\alpha_t$, weight decaying parameter $\lambda \in ]0,1[$.
 \STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model and $\hat v_0=v_{0} = \epsilon \mathsf{1} \in \mathbb R^{d}$ and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
 \FOR{$r=1$ to $R$}
-\STATE Set $\theta_{r,i}^{0} = \bar{\theta}_{r-1}$
-
 \FOR{parallel for device $i \in D^{r}$}
-%\STATE\textbf{parallel for device $d \in D^{r}$ do}:
-\STATE Compute stochastic gradient $g_{r,i}$ at $\theta_r$.
+\STATE Set $\theta_{r,i}^{0} = \bar{\theta}_{r-1}$.
+\STATE Compute stochastic gradient $g_{r,i}$ at $\theta_{r,i}^{0}$.
 \FOR{$t=1$ to $T$}
-\STATE $m^t_{r,i} = \beta_1 m^{t-1}_{r-1,i} + (1 - \beta_1) g_{r,i}$. \label{line:first}
-\STATE $m^{t}_{r,i}=m^{t}_{r,i} /\left(1-\beta_{1}^{t}\right)$. \label{line:new1}
-\STATE $v^{t,i}_r = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) g_{r,i}^2$. \label{line:second}
-\STATE $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{t}\right)$. \label{line:new2}
-\STATE Compute ratio  $p_{r,i}^t=\frac{m^{t}_{r,i}}{\sqrt{\hat v_{r}}+\epsilon}$. \label{line:scale}
+\STATE $m^t_{r,i} = \beta_1 m^{t-1}_{r-1,i} + (1 - \beta_1) g_{r,i}$ and $m^{t}_{r,i}=m^{t}_{r,i} /\left(1-\beta_{1}^{t}\right)$. \label{line:first}
+%\STATE $m^{t}_{r,i}=m^{t}_{r,i} /\left(1-\beta_{1}^{t}\right)$. \label{line:new1}
+\STATE $v^{t}_{r,i} = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) g_{r,i}^2$ and $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{t}\right)$. \label{line:second}
+%\STATE $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{t}\right)$. \label{line:new2}
+\STATE Compute the ratio  $p_{r,i}^t=m^{t}_{r,i}/(\sqrt{\hat v_{r}}+\epsilon)$. \label{line:scale}
 \STATE Update local model for each layer $\ell \in \llbracket \tot \rrbracket$: \label{line:layer}
-$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)\frac{p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}}{ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|}$$
+%$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)\frac{p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}}{ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|}$$
+$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1})/ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|$$
 \ENDFOR
 \STATE Devices send $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $v_{r,i}^T$ to server.
 \ENDFOR
@@ -247,26 +251,7 @@ $$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{
 
 
 \section{On The Convergence of \algo}\label{sec:theory}
-We develop in this section, the theoretical analysis of Algorithm~\ref{alg:ldams}. In Table~\ref{tab:notations}, we recall some important notations that will be used in our following analysis.
-%\begin{table}[H]
-%%\caption{Table of Notations}
-%\begin{center}% used the environment to augment the vertical space
-%% between the caption and the table
-%\begin{tabular}{r c p{6cm} }
-%\toprule
-%$R, T$ & $\triangleq$ &  Number of communications rounds and local iterations (resp.)\\
-%$n, D, i$ & $\triangleq$ &  Total number of clients, portion sampled uniformly and client index \\
-%$\tot, \ell$ & $\triangleq$ &  Total number of layers in the DNN and its index \\
-%$\phi(\cdot)$ & $\triangleq$ &  Scaling factor in \algo update\\
-%$\bar{\theta}$ & $\triangleq$ &  Global model (after periodic averaging)\\
-%$p_{r,i}^{t}$ & $\triangleq$ &  ratio computed at round $r$, local iteration $t$ and for device $i$. $p_{r,i}^{\ell,t}$ denotes its component at layer $\ell$\\
-%\bottomrule
-%\end{tabular}
-%\end{center}
-%\caption{Summary of notations used in the paper.}
-%\label{tab:notations}
-%\end{table}
-
+We develop in this section, the theoretical analysis of Algorithm~\ref{alg:ldams}. 
 Based on classical result for stochastic nonconvex optimization, we provide a collection of results that aims to providing a better understanding of the convergence behavior of our distributed optimization method under the federated learning framework.
 The main challenges we ought to overcome are manifold: 
 \begin{itemize}
@@ -281,7 +266,7 @@ In the sequel, the analysis of our scheme we provide is \emph{global}, in the se
 In the particular context of nonconvex stochastic optimization for distributed clients, we assume the following:
 
 \begin{assumption}\label{ass:smooth}(Smoothness per layer)
-For $i \in \inter$ and $\ell \in \interl$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta^\ell) - \nabla f_i (\vartheta^\ell)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
+For $i \in \inter$ and $\ell \in \interl$: $\norm{\nabla f_i (\theta^\ell) - \nabla f_i (\vartheta^\ell)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
 \end{assumption}
 We add some classical assumption in the unbiased stochastic optimization realm, on the gradient of the objective function:
 \begin{assumption}\label{ass:boundgrad}(Unbiased and Bounded gradient)
@@ -300,15 +285,21 @@ For any value $a \in \rset^*_+$, there exists strictly positive constants such t
 We now state our main result regarding the non asymptotic convergence analysis of our Algorithm~\ref{alg:ldams}:
 \begin{Theorem}\label{th:main}
 Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained via Algorithm~\ref{alg:ldams} with a decreasing lr $\alpha_r$. Then, if $T=1$ and $\lambda = 0$:
+%\beq \label{bound1}
+%\begin{split}
+%  \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right] 
+%   \leq &  \sqrt{\frac{M^2 p}{n}} \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha_r R}+      \frac{\phi_M   \sigma^2}{R n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } \\
+%  +& \alpha_r \phi_M \sigma \tot p \sqrt{n}+ \frac{ \overline{L}\beta_1^2\tot(1-\beta_2)M^2 \phi^2_M n}{2(1-\beta_1)^2 v_0}    \\
+% + &\frac{\alpha_r \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} +\overline{L} \alpha_r^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{Rv_0} 
+%   \end{split}
+%\eeq
 \beq \label{bound1}
 \begin{split}
   \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right] 
-   \leq &  \sqrt{\frac{M^2 p}{n}} \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha_r R}+      \frac{\phi_M   \sigma^2}{R n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } \\
-  +& \alpha_r \phi_M \sigma \tot p \sqrt{n}+ \frac{ \overline{L}\beta_1^2\tot(1-\beta_2)M^2 \phi^2_M n}{2(1-\beta_1)^2 v_0}    \\
- + &\frac{\alpha_r \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} +\overline{L} \alpha_r^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{Rv_0} 
+   \leq   \sqrt{\frac{M^2 p}{n}} \frac{ \EE[f(\bar{\theta}_1)]  - f^*}{\tot \alpha_r R} + \frac{\phi_M}{R} \left[ \frac{(1-\beta_2)\overline{L} \alpha_r^2 M^2 \phi_Mp}{v_0} +  \frac{ \sigma^2}{n} \sqrt{\frac{1 - \beta_2}{M^2 p}  }    \right]
    \end{split}
 \eeq
-where $\overline{L} = \sum_{\ell=1}^\tot L_{\ell}$ is the sum of all smoothness constants.
+where $\overline{L} = \sum_{\ell=1}^\tot L_{\ell}$ is the sum of all smoothness constants, $\tot$ is the total number of layers and $f^* \eqdef \min \limits_{\theta \in \Theta} f(\theta)$.
 \end{Theorem}
 
 
@@ -338,7 +329,7 @@ Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained ru
 \beq
 \left\| \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}} \right\|^2 \geq \frac{1}{2} \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\|^2 - \overline{L} \alpha^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{v_0}
 \eeq
-where $M$ is defined in H\ref{ass:boundgrad}, p is the total number of dimensions $p = \sum_{\ell = 1}^\tot p_\ell$ and $\phi_M$ is defined in H\ref{ass:phi}.
+where $M$ is defined in H\ref{ass:boundgrad}, $p = \sum_{\ell = 1}^\tot p_\ell$ and $\phi_M$ is defined in H\ref{ass:phi}.
 \end{Lemma}
 
 
@@ -348,7 +339,7 @@ We focus in the next subsection on two particular papers of utmost interest for 
 
 We dedicate the following paragraph to a discussion on the bound derived above in comparison with known results in the literature.
 
-\medskip
+\vspace{0.05in}
 \textbf{LAMB bound in~\citet{you2019large}: }
 We first start our discussion with the comparison of convergence rate of \algo with that of LAMB, Theorem 3 in~\citet{you2019large}. 
 The convergence rates of \algo and LAMB differ in two ways: (i) the suboptimality, or convergence criterion, used here is $\frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right]$ for a total number of rounds $R$ as opposed to $ \EE\left[ \left\| \nabla f(\theta_\mathcal{R}) \right \|^2 \right] $ for some random termination round $\mathcal{R}$ uniformly drawn from $\llbracket R \rrbracket$.
@@ -358,7 +349,7 @@ Besides, for ease of interpretation, the LHS of \eqref{bound1} is summed over al
 (ii)  Assuming that the convergence criterion in both Theorems is of similar order (which happens for a large enough number of rounds), convergence rate of \algo displays a similar $\mathcal{O}(\frac{1}{R})$ behaviour for the initialization term, meaning that, despite the distributed (federated) settings, our dimensionwise and layerwise method benefits from the double adaptivity phenomenon explained above and exhibited in the LAMB method of~\citet{you2019large}, performed under a central server setting.
 
 
-\medskip
+\vspace{0.05in}
 \textbf{Local-AMS bound in~\citet{chen2020toward}: }
 We now discuss the similarities and differences between the distributed adaptive method developed in~\citet{chen2020toward} and named local-AMS, and our \emph{deep federated} method, namely \algo.
 We first recall their main result:
@@ -379,7 +370,7 @@ It is important to note that their rate include an analysis with respect to the 
 While our result is derived for a single local update $T=1$, we acknowledge that exhibiting a dependency on $T$ can be interesting, particularly in order to see the impact of several local updates which are, in practice, in different directions --as a byproduct of heterogeneous local training samples.
 We leave this investigation to future work.
 
-\medskip
+\vspace{0.05in}
 
 In light of the prior remarks, we give a simple variant of Theorem~\ref{th:main} as Corollary~\ref{coro:main} where we assume an upperbound on the norm of the second moment approximate~$\sqrt{ v_r^t}$:
 
@@ -396,24 +387,23 @@ Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r
 
 
 We now discuss our bound regarding several aspects in order to gain understanding of the advantages of our method:
-\begin{itemize}
-\item \textbf{Communication Complexity:} The (sublinear) dependence on the number of communication rounds of our bound matches that of most recent methods in Federated Learning, see~\citet{karimireddy2019scaffold} developing SCAFFOLD, a solution to the problem posed by heterogeneity of the data in each client, and of~\citet{reddi2020adaptive}, adapting state of the art method in optimization, here ADAM, under the federated setting. 
+
+\textbf{Communication Complexity:} The (sublinear) dependence on the number of communication rounds of our bound matches that of most recent methods in Federated Learning, see~\citet{karimireddy2019scaffold} developing SCAFFOLD, a solution to the problem posed by heterogeneity of the data in each client, and of~\citet{reddi2020adaptive}, adapting state of the art method in optimization, here ADAM, under the federated setting. 
 Yet, contrary to SCAFFOLD, our method only sends bits once per communication round while SCAFFOLD needs to send two vectors, including an additional control variate term  from the clients to the central server.
 Novelty in our bound occurs considering the sublinear dependence on the number of layer $\tot$ and the dependence on the total number of dimension of our problem $p$. For the latter, the dependency can be simplified with stronger assumption on the control of the variance of the stochastic gradient. For the former, 
 
 
-\item \textbf{Homogeneous and Heterogeneous Data:} A common assumption regarding the stochastic gradient, and its variance, considers an upper-bound of the global variance, in the sense that it applies to both the aggregated objective function \eqref{eq:opt} and each of its local component. 
+\textbf{Homogeneous and Heterogeneous Data:} A common assumption regarding the stochastic gradient, and its variance, considers an upper-bound of the global variance, in the sense that it applies to both the aggregated objective function \eqref{eq:opt} and each of its local component. 
 An alternative theoretical approach is to set apart a local variance for each local loss, and global variance for their sum, see~\citet{chen2020toward} for instance.
 Heterogeneity is of utmost importance in FL since client may store radically different data points in local devices.
 Existing methods can lead to poor convergence as detailed in~\citet{li2019federated,liang2019variance}. 
 Improvements are proposed through the use of gradient tracking techniques performed locally as seen in~\citet{haddadpour2020federated,horvath2019stochastic,karimireddy2019scaffold}.
 
 
-\item \textbf{Dependence on the dimension $p$:} The $\sqrt p$ term appearing in our bound is due to the assumption on coordinate-wise bounded variance. One may instead assume a bounded total variance to remove this term. 
+\textbf{Dependence on the dimension $p$:} The $\sqrt p$ term appearing in our bound is due to the assumption on coordinate-wise bounded variance. One may instead assume a bounded total variance to remove this term. 
 In practice, the dependence on the overall size of the vectors being transmitted back and forth from the central to the devices can be improved in various ways. Indeed, recent efficient techniques aim at reducing the number of bits communicated at each round through sketches or compression techniques, see for instance~\citep{haddadpour2020fedsketch,ivkin2019communication,li2019privacy} to name a few.
 This can be a great addition to \algo, and is naturally compatible, but is not the main focus of our contribution.
 
-\end{itemize} 
 
 
 
@@ -424,12 +414,12 @@ In this section, we conduct numerical experiments on various datasets and networ
 We observe in the sequel that our method empirically confirms its edge in terms of convergence speed.
 Basically, our proposed method reduces the number of rounds and thus the communication cost required to achieve similar stationary points than baseline methods. 
 
-\medskip
+\vspace{0.05in}
 \noindent\textbf{Settings.} In our experiment, we will evaluate three federated learning algorithms: 1) Fed-SGD, 2) Fed-AMS and 3) our proposed Fed-LAMB (Algorithm~\ref{alg:ldams}), where the first two serve as the baseline methods. For adaptive methods 2) and 3), we set $\beta_1=0.9$, $\beta_2=0.999$ as default and recommended~\citep{RKK18}. Regarding federated learning environment, we use 50 local workers with 0.5 participation rate. That means, we randomly pick half of the workers to be active for training in each round. To best accord with real scenarios where the local training batch size is usually limited, we set a relatively small local update batch size as 32. In each round, the training samples are allocated to the active devices, and one local epoch is finished after all the local devices run one epoch over their received samples by batch training. We test different number of local epochs in our experiments. For each dataset and number of local epochs, we tune the constant learning rate $\alpha$ for each algorithm over a fine grid in logarithm scale. For Fed-LAMB, the parameter $\lambda$ in Algorithm~\ref{alg:ldams} controlling the overall scale of the layerwise gradients is tuned from $\{0,0.01,0.1\}$. 
 For each experiment, we use the identity function for $\phi(\cdot)$.
 For each run, we take the model performance with the best $\alpha$ and $\lambda$. The reported results are averaged over three independent runs, each with same initialization for every method.
 
-\medskip
+\vspace{0.05in}
 \noindent\textbf{Models.} We test the performance of different federated learning algorithms on MNIST~\citep{lecun1998mnist} and CIFAR10~\citep{krizhevsky2009learning} image classification datasets. For MNIST, we apply 1) a simple multilayer perceptron (MLP), which has one hidden layer containing 200 cells with dropout; 2) Convolutional Neural Network (CNN), which has two max-pooled convolutional layers followed by a dropout layer and two fully-connected layers with 320 and 50 cells respectively. For CIFAR10, we implement: 1) a CNN with three convolutional layers followed by two fully-connected layers, and 2) a ResNet-9 model proposed by~\citet{Proc:He-resnet16}. All the networks use ReLU as the activation function.
 
 
@@ -577,6 +567,26 @@ We empirically confirm the advantage of our algorithm over baselines methods on 
 
 \appendix 
 
+
+We first recall in Table~\ref{tab:notations} some important notations that will be used in our following analysis.
+\begin{table}[H]
+%\caption{Table of Notations}
+\begin{center}% used the environment to augment the vertical space
+% between the caption and the table
+\begin{tabular}{r c p{6cm} }
+\toprule
+$R, T$ & $\triangleq$ &  Number of communications rounds and local iterations (resp.)\\
+$n, D, i$ & $\triangleq$ &  Total number of clients, portion sampled uniformly and client index \\
+$\tot, \ell$ & $\triangleq$ &  Total number of layers in the DNN and its index \\
+$\phi(\cdot)$ & $\triangleq$ &  Scaling factor in \algo update\\
+$\bar{\theta}$ & $\triangleq$ &  Global model (after periodic averaging)\\
+$p_{r,i}^{t}$ & $\triangleq$ &  ratio computed at round $r$, local iteration $t$ and for device $i$. $p_{r,i}^{\ell,t}$ denotes its component at layer $\ell$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\caption{Summary of notations used in the paper.}
+\label{tab:notations}
+\end{table}
 
 \section{Theoretical Analysis}
 We first provide the proofs for the theoretical results of the main paper, including the intermediary Lemmas and the main convergence result, Theorem~\ref{th:main}.
@@ -998,12 +1008,12 @@ Increasing the number of local iterations in each device per communication round
 \begin{figure}[t]
     \begin{center}
         \mbox{
-        \includegraphics[width=0.32\textwidth]{figure/cifar_testerror_resnet_ep1_client10_iid1_SGD.eps}
-                \includegraphics[width=0.32\textwidth]{figure/cifar_testerror_resnet_ep3_client10_iid1_SGD.eps}
+        \includegraphics[width=0.5\textwidth]{figure/cifar_testerror_resnet_ep1_client10_iid1_SGD.eps}
+                \includegraphics[width=0.5\textwidth]{figure/cifar_testerror_resnet_ep3_client10_iid1_SGD.eps}
         }
     \end{center}
-	\caption{\textbf{From Left to Right}: Test accuracy on CIFAR+ResNet, with iid data distribution. 10 clients and 1 local epoch, 3 local epoch}
-	\label{fig:cifar-cnn-iid}
+	\caption{\textbf{From Left to Right}: Test accuracy on CIFAR+ResNet, with iid data distribution. 10 clients and (Left) 1 local epoch, (Right) 3 local epoch}
+	\label{fig:cifar-cnn-iid-bis}
 \end{figure}
 
 

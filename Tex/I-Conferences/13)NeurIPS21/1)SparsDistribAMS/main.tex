@@ -56,7 +56,7 @@ Deep neural network has achieved the state-of-the-art learning performance on nu
 Among many optimization strategies, SGD is still the most popular prototype in distributed training for its simplicity and effectiveness~\cite{chilimbi2014project,Proc:Agrawal_NIPS19,mikami2018massively}. Yet, when the deep learning model is very large, the communication between local nodes and central server could be expensive. Burdensome gradient transmission would slow down the whole training system, or even be impossible because of the limited bandwidth in some applications. Thus, reducing the communication cost in distributed SGD has become an active topic, and an important ingredient of large-scale distributed systems (e.g.~\cite{Proc:Seide14}). Solutions based on quantization, sparsification and other compression techniques of the local gradients are proposed, e.g.,~\cite{alistarh2017qsgd,wen2017terngrad,wangni2018gradient,stich2018sparsified,aji2017sparse,bernstein2018signsgd,de2017understanding,yang2019swalp,Proc:Ivkin_NIPS19}. As one would expect, in most approaches, there exists a trade-off between compression and model accuracy. In particular, larger bias of the compressed gradients usually brings more significant performance downgrade. Interestingly, \cite{karimireddy2019error} shows that the technique of \textit{error feedback} is able to remedy the issue of such biased compressors, achieving same convergence rate and learning performance as full-gradient SGD.
 
 
-On the other hand, in recent years, adaptive optimization algorithms (e.g. AdaGrad~\cite{Duchi10-adagrad}, Adam~\cite{kingma2014adam} and AMSGrad~\cite{reddi2019convergence}) have become popular because of their superior empirical performance. These methods use different implicit learning rates for different coordinates that keep changing adaptively throughout the training process, based on the learning trajectory. In many learning problems, adaptive methods have been shown to converge faster than SGD, sometimes with better generalization as well. However, the body of literature that combines adaptive methods with distributed training is still very limited. In this papar, we propose a distributed optimization algorithm with AMSGrad as the backbone, along with TopK sparsification to reduce the communication cost.
+On the other hand, in recent years, adaptive optimization algorithms (e.g. AdaGrad~\cite{Duchi10-adagrad}, Adam~\cite{kingma2014adam} and AMSGrad~\cite{reddi2019convergence}) have become popular because of their superior empirical performance. These methods use different implicit learning rates for different coordinates that keep changing adaptively throughout the training process, based on the learning trajectory. In many learning problems, adaptive methods have been shown to converge faster than SGD, sometimes with better generalization as well. However, the body of literature that combines adaptive methods with distributed training is still very limited. In this papar, we propose a distributed optimization algorithm with AMSGrad as the backbone, along with Top-$k$ sparsification to reduce the communication cost.
 
 \subsection{Our contributions}
 
@@ -76,20 +76,19 @@ In this contribution,
 
 \subsection{Communication-efficient distributed SGD}
 
-\paragraph{Quantization.} As we mentioned before, SGD is the most commonly adopted optimization method in distributed training of deep neural nets. To reduce the expensive communication in large-scale distributed systems, extensive works have considered various compression techniques applied to the gradient transaction procedure. The first strategy is quantization. \cite{Proc:8-bit_ICLR16} condenses 32-bit floating numbers into 8-bits when representing the gradients. \cite{Proc:Seide14,bernstein2018signsgd,karimireddy2019error,Proc:Bernstein_ICLR19} use the extreme 1-bit information (sign) of the gradients, combined with tricks like momentum, majority vote and memory. Other quantization-based methods include QSGD~\cite{alistarh2017qsgd,Proc:Wu_ICML18,Proc:Zhang_ICML17} and LPC-SVRG~\cite{Proc:Yu_AISTATS19}, leveraging stochastic quantization. The saving in communication of quantization methods is moderate: for example, 8-bit quantization reduces the cost to 25\% (compared with 32-bit full-precision). Even in the extreme 1-bit case, the largest compression ratio is around $1/32\approx 3.1\%$. 
+\paragraph{Quantization.} As we mentioned before, SGD is the most commonly adopted optimization method in distributed training of deep neural nets. To reduce the expensive communication in large-scale distributed systems, extensive works have considered various compression techniques applied to the gradient transaction procedure. The first strategy is quantization. \cite{Proc:8-bit_ICLR16} condenses 32-bit floating numbers into 8-bits when representing the gradients. \cite{Proc:Seide14,bernstein2018signsgd,karimireddy2019error,Proc:Bernstein_ICLR19} use the extreme 1-bit information (sign) of the gradients, combined with tricks like momentum, majority vote and memory. Other quantization-based methods include QSGD~\cite{alistarh2017qsgd,Proc:Wu_ICML18,Proc:Zhang_ICML17} and LPC-SVRG~\cite{Proc:Yu_AISTATS19}, leveraging unbiased stochastic quantization. The saving in communication of quantization methods is moderate: for example, 8-bit quantization reduces the cost to 25\% (compared with 32-bit full-precision). Even in the extreme 1-bit case, the largest compression ratio is around $1/32\approx 3.1\%$. 
 
-\paragraph{Sparsification.} Gradient sparsification is another popular solution which may provide higher compression rate. Instead of commuting the full gradient, each local worker only passes a few coordinates to the central server. Thus, we can more freely choose higher compression ratio (e.g., 1\%, 0.1\%), still achieving impressive performance in many applications~\cite{Proc:Lin_ICLR18}. Stochastic sparsification methods, including uniform sampling and magnitude based sampling~\cite{wangni2018gradient}, select coordinates based on some sampling probability yielding unbiased gradient compressors. Deterministic methods are simpler, e.g., Random-$k$, Top-$k$~\cite{stich2018sparsified,shi2019convergence} (selecting $k$ elements with largest magnitude), Deep Gradient Compression~\cite{Proc:Lin_ICLR18}, but usually lead to biased gradient estimation. In~\cite{Proc:Ivkin_NIPS19}, the central server identifies heavy-hitters from the count-sketch~\cite{Proc:Charikar_ICALP02} of the local gradients, which can be regarded as a noisy variant of Top-$k$ strategy. More applications and analysis of compressed distributed SGD can be found in~\cite{jiang2018linear,Proc:Shen_ICML18,alistarh2018convergence,Proc:Basu_NIPS19,Proc:Jiang_SIGMOD18}, among others.
+\paragraph{Sparsification.} Gradient sparsification is another popular solution which may provide higher compression rate. Instead of commuting the full gradient, each local worker only passes a few coordinates to the central server and zeros out the others. Thus, we can more freely choose higher compression ratio (e.g., 1\%, 0.1\%), still achieving impressive performance in many applications~\cite{Proc:Lin_ICLR18}. Stochastic sparsification methods, including uniform sampling and magnitude based sampling~\cite{wangni2018gradient}, select coordinates based on some sampling probability yielding unbiased gradient compressors. Deterministic methods are simpler, e.g., Random-$k$, Top-$k$~\cite{stich2018sparsified,shi2019convergence} (selecting $k$ elements with largest magnitude), Deep Gradient Compression~\cite{Proc:Lin_ICLR18}, but usually lead to biased gradient estimation. In~\cite{Proc:Ivkin_NIPS19}, the central server identifies heavy-hitters from the count-sketch~\cite{Proc:Charikar_ICALP02} of the local gradients, which can be regarded as a noisy variant of Top-$k$ strategy. More applications and analysis of compressed distributed SGD can be found in~\cite{jiang2018linear,Proc:Shen_ICML18,alistarh2018convergence,Proc:Basu_NIPS19,Proc:Jiang_SIGMOD18}, among others.
 
-\paragraph{Error Feedback.} Biased gradient estimation, which is a consequence of many aforementioned methods (e.g., signSGD, Top-$k$), undermines the model training, both theoretically and empirically, with slower convergence and worse generalization. The technique of \textit{error feedback} is able to ``correct for the bias'' and fix the convergence issue. In this procedure, the difference between the true stochastic gradient and the compressed one is accumulated locally, which is then added back to the local gradients in later iterations. \cite{stich2018sparsified,karimireddy2019error} prove the $\mathcal O(\frac{1}{T})$ and $\mathcal O(\frac{1}{\sqrt T})$ convergence rate of EF-SGD in strongly convex and non-convex setting respectively, matching the rates of vanilla SGD~\cite{nemirovski2009robust,ghadimi2013stochastic}.
+\paragraph{Error Feedback.} Biased gradient estimation, which is a consequence of many aforementioned methods (e.g., signSGD, Top-$k$), undermines the model training, both theoretically and empirically, with slower convergence and worse generalization. The technique of \textit{error feedback} is able to ``correct for the bias'' and fix the problems. In this procedure, the difference between the true stochastic gradient and the compressed one is accumulated locally, which is then added back to the local gradients in later iterations. \cite{stich2018sparsified,karimireddy2019error} prove the $\mathcal O(\frac{1}{T})$ and $\mathcal O(\frac{1}{\sqrt T})$ convergence rate of EF-SGD in strongly convex and non-convex setting respectively, matching the rates of vanilla SGD~\cite{nemirovski2009robust,ghadimi2013stochastic}.
 
 
 \subsection{Adaptive optimization}
 
-In each SGD update, all the gradient coordinates share a same learning rate, either constant or decreasing over iterations. Instead, AdaGrad~\cite{Duchi10-adagrad} divides the gradient element-wisely by $\sqrt{\sum_{t=1}^T g_{t}^2}\in \mathbb R^d$, where $g_{t}$ is the gradient of $i$-th coordinate at time $t$ and $d$ is the model dimensionality. Thus, it intrinsically assigns different learning rates to different coordinates throughout the training---elements with larger previous gradient magnitude tend to move a smaller step. AdaGrad has been shown to perform well especially under some sparsity structure. AdaDelta~\cite{Proc:adadelta} and Adam~\cite{kingma2014adam} introduce momentum and moving average of second moment estimation into AdaGrad which lead to better performance. AMSGrad~\cite{reddi2019convergence} fixes the potential convergence issue of Adam, which is presented in Algorithm. In general, adaptive optimization methods are easier to tune in practice, and usually exhibit faster convergence than SGD. Thus, they have been widely used in training deep learning models in language and computer vision applications, e.g.,~\cite{,Arxiv:Choi_2019,Proc:LAMB_ICLR20,Arxiv:Zhang_ICLR21}. In distributed setting, the work~\cite{nazari2019dadam} proposes a decentralized system in online optimization. However, communication efficiency is not considered. The recent work~\cite{chen2020quantized} is the most relevant to our paper. Yet, their method is based on Adam, and requires every local node to store a local estimation of first and second moment, thus being inefficient. We will present more detailed comparison in Section~\ref{sec:main}.
+In each SGD update, all the gradient coordinates share a same learning rate, either constant or decreasing over iterations. Instead, AdaGrad~\cite{Duchi10-adagrad} divides the gradient element-wisely by $\sqrt{\sum_{t=1}^T g_{t}^2}\in \mathbb R^d$, where $g_{t}\in \mathbb R^d$ is the gradient vector at time $t$ and $d$ is the model dimensionality. Thus, it intrinsically assigns different learning rates to different coordinates throughout the training---elements with smaller previous gradient magnitude tend to move a larger step. AdaGrad has been shown to perform well especially under some sparsity structure. AdaDelta~\cite{Proc:adadelta} and Adam~\cite{kingma2014adam} introduce momentum and moving average of second moment estimation into AdaGrad which lead to better performance. AMSGrad~\cite{reddi2019convergence} fixes the potential convergence issue of Adam, which will serve as the prototype in this paper. We present the psudocode in Algorithm . In general, adaptive optimization methods are easier to tune in practice, and usually exhibit faster convergence than SGD. Thus, they have been widely used in training deep learning models in language and computer vision applications, e.g.,~\cite{,Arxiv:Choi_2019,Proc:LAMB_ICLR20,Arxiv:Zhang_ICLR21}. In distributed setting, the work~\cite{nazari2019dadam} proposes a decentralized system in online optimization. However, communication efficiency is not considered. The recent work~\cite{chen2020quantized} is the most relevant to our paper. Yet, their method is based on Adam, and requires every local node to store a local estimation of first and second moment, thus being less efficient. We will present more detailed comparison in Section~\ref{sec:main}.
 
 
-
-\section{Method}\label{sec:main}
+\section{Communication-Efficient Adaptive Optimization}\label{sec:main}
 
 Most modern machine learning tasks can be casted as a large finite-sum optimization problem written as:
 \begin{equation}\label{eq:opt}
@@ -125,7 +124,7 @@ The key difference (and interesting part) of our TopK AMSGrad compared with the 
 \begin{algorithmic}[1]
 
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
-\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{0,i}=0$ the error accumulator for each worker; sparsity parameter $k$; $n$ local workers; $m_0=0$, $v_0=0$, $\hat v_0=0$
+\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{1,i}=0$ the error accumulator for each worker; sparsity parameter $k$; $n$ local workers; $m_0=0$, $v_0=0$, $\hat v_0=0$
 
 \FOR{$t=1$ to $T$}
 
@@ -142,7 +141,7 @@ The key difference (and interesting part) of our TopK AMSGrad compared with the 
 \STATE $m_t=\beta_1 m_{t-1}+(1-\beta_1)\bar g_t$
 \STATE $v_t=\beta_2 v_{t-1}+(1-\beta_2)\bar g_t^2$
 \STATE $\hat v_t=\max(v_t,\hat v_{t-1})$ \label{line:v}
-\STATE Update global model $\theta_t=\theta_{t-1}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
+\STATE Update global model $\theta_{t+1}=\theta_{t}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
 
 \ENDFOR
 \end{algorithmic}
@@ -224,12 +223,12 @@ where $d$ denotes the dimension of the parameter vector
 \end{Lemma}
 
 
-
+\textbf{Decentralized Workers Setting:}
 
 The main theorem in the decentralized setting reads:
 
 \begin{Theorem}\label{thm:mainmultiple}
-Under A\ref{ass:smooth} to A\ref{ass:var}, with a constant stepsize $\eta_t = \eta = \frac{L}{\sqrt{\maxiter}}$, we have:
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a constant stepsize $\eta_t = \eta = \frac{L}{\sqrt{\maxiter}}$, the sequence of iterates $\{\theta_t\}_{t>0}$ output from Algorithm~\ref{alg:sparsams} satisfies:
 
 \begin{equation}
 \begin{split}
@@ -256,124 +255,17 @@ We will observe in the numerical section below that a trade-off on the level of 
 
 
 
-\textbf{Belhal Try for Single Machine Setting:}
+\textbf{Single Machine Setting:}
 
+\begin{Theorem}\label{thm:mainsingle}
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a constant stepsize $\eta_t = \eta = \frac{L}{\sqrt{\maxiter}}$, the sequence of iterates $\{\theta_t\}_{t>0}$ output from Algorithm~\ref{alg:sparsamssingle} satisfies:
 
-Define the auxiliary model
-\begin{align*}
-\theta_{t+1}'&\eqdef \theta_{t+1}- e_{t+1}\\
-&=\theta_t - \eta a_t- e_{t+1}\\
-& =\theta_t - \eta a_t- e_{t} - g_t + \tilde g_t\\ 
-& =\theta_t - \eta a_t- e_{t} - \Delta_t\\
-& =\theta_t' - \eta a_t - \Delta_t
-\end{align*}
-where $a_t \eqdef \frac{m_t}{\sqrt{\hat v_t+\epsilon}}$ and $\Delta_t \eqdef g_t - \tilde g_t$.
-By smoothness assumption we have
-\begin{align*}
-    f(\theta_{t+1}')\leq f(\theta_t')-\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
-\end{align*}
-Thus,
-\begin{align*}
-    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\mathbb E[\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
-        & \leq \eta\mathbb E[\langle \nabla f(\theta_t) -  \nabla f(\theta_t') , \eta a_t + \Delta_t \rangle] -\mathbb E[\langle  \nabla f(\theta_t), \eta  a_t + \Delta_t \rangle] +\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]
-\end{align*}
-Using the smoothness assumption A\ref{ass:smooth} we have 
-
-\begin{align*}
-\EE[\langle \nabla f(\theta_t) -  \nabla f(\theta_t') , \eta a_t + \Delta_t \rangle] \leq L \EE[\norm{\theta_t - \theta_t'}] E[\norm{\eta a_t + \Delta_t}]
-\end{align*}
-
-Hence,
-
-\begin{align*}
-    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\mathbb E[\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
-        & \leq - \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \mathbb E\|\nabla f(\theta_t)\|^2 + L \EE[\norm{\theta_t - \theta_t'}] E[\norm{\eta a_t + \Delta_t}]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
-                & \leq - \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \mathbb E\|\nabla f(\theta_t)\|^2 + L \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]
-\end{align*}
-
-Summing from $t = 0$ to $t = \maxiter -1$ and divide it by $\maxiter$ yields:
-
-
-\begin{equation}\label{eq:mainsingle}
-\begin{split}
-&  \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \\
-\leq &\sum_{t=0}^{\maxiter -1}\frac{\EE[f(\theta_t') -f(\theta_{t+1}')]}{\maxiter}  +  \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]+  \frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]
-\end{split}
-\end{equation}
-
-
-\textbf{Bounding $\frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]$:}
-
-To begin with
-\begin{equation}\label{eq:ineqe_t}
-\begin{split}
-\norm{e_t} & = \norm{e_{t-1} + g_{t-1} - \tilde g_{t-1}}\\
-& =  \norm{ g_{t-1} + e_{t-1} - TopK(g_{t-1}+e_{t-1},k)}\\
-& \leq q \norm{g_{t-1} + e_{t-1}}\\
-& \leq q \norm{g_{t-1}} +q \norm{ e_{t-1}}\\
-& \leq \sum_{k=1}^t q^{t-k} \norm{g_{k}} 
-\end{split}
-\end{equation}
-using A\ref{ass:var}.
-
-Then we have that
-
-\begin{align*}
-\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}] &\leq  \sum_{t=0}^{\maxiter -1}\sum_{k=1}^t q^{t-k}\EE[\norm{g_{k}} \norm{\eta a_t + \Delta_t}]]\\
-& \leq \frac{q}{1-q}\sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{\eta a_t + \Delta_t}]]\\
-& \leq \frac{q}{1-q}\sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{\eta \frac{m_t}{\sqrt{\hat v_t+\epsilon}}}] +\frac{q}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{\Delta_t}]]\\
-& \leq \eta \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)}  \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}}^2]  +\frac{q}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{g_t - \tilde g_t}]]
-\end{align*}
-where we have used Lemma~\ref{lem:bound} for the last inequality.
-
-Note that
-
-\begin{align*}
-\frac{q}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{g_t - \tilde g_t}]] &= \frac{q}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{\tilde g_t - (g_t+e_t) +e_t}]]\\
-&\leq \frac{q^2}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}}^2] + \left(\frac{q}{1-q}\right)^2 \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}}^2]
-\end{align*}
-
-where we have used A\ref{ass:quant} and inequality \eqref{eq:ineqe_t}
-
-
-Finally, we obtain:
-
-\begin{align*}
-\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}] & \leq 
-\left[ \eta \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)} + \frac{q^2}{1-q} + \left(\frac{q}{1-q}\right)^2 \right]\sum_{t=0}^{\maxiter -1} \EE[\norm{g_{t}}^2]
-\end{align*}
-
-Hence
-
-\begin{align*}
-\frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}] \leq \left[ \eta \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)} + \frac{q^2}{1-q} + \left(\frac{q}{1-q}\right)^2 \right] G^2
-\end{align*}
-
-
-\textbf{Bounding $\frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]$:}
-Similarly, we derive the following bound:
-\begin{align*}
-\frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2] \leq \frac{L}{2} \left[ \eta^2 \frac{q^2 +1}{\epsilon} + \left(\frac{q}{1-q}\right)^2 q^2 \right] G^2
-\end{align*}
-
-
-
-Plugging the bounds of $\frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]$ and $\frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]$ into \eqref{eq:mainsingle} gives:
-
-\begin{equation}\label{eq:mainsinglefinal}
-\begin{split}
-&  \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \\
-\leq &\sum_{t=0}^{\maxiter -1}\frac{\EE[f(\theta_t') -f(\theta_{t+1}')]}{\maxiter}  + \eta G^2 \left[ \eta \frac{L}{2} \frac{q^2+1}{\epsilon} + \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)} \right] +  G^2 \left(\frac{q}{1-q}\right)^2 \left[ \frac{L}{2}q^2 + 1 \right]\\
-\leq &\frac{\EE[f(\theta_{0}) - f(\theta_{\maxiter})]}{\maxiter}  + \eta^2 G^2\frac{L}{2} \frac{q^2+1}{\epsilon} + \eta G^2 \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)}  +  G^2 \left(\frac{q}{1-q}\right)^2 \left[ \frac{L}{2}q^2 + 1 \right]
-\end{split}
-\end{equation}
- Finally
- 
- \begin{align}
+\ \begin{align}
  \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \leq &
  \frac{\EE[f(\theta_{0}) - f(\theta_{\maxiter})]}{\maxiter(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q )} + \eta^2 G^2\frac{L}{2} \frac{q^2+1}{\epsilon(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)} \\
  & + \eta G^2 \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)}  +  \frac{G^2}{(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)} \left(\frac{q}{1-q}\right)^2 \left[ \frac{L}{2}q^2 + 1 \right]
   \end{align}
+\end{Theorem}
 
 \section{Sequential Model}
 
@@ -384,16 +276,16 @@ Single machine method
 \begin{algorithmic}[1]
 
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
-\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{0}=0$ the error accumulator; sparsity parameter $k$; $m_0=0$, $v_0=0$, $\hat v_0=0$
+\STATE Initialize: central server parameter $\theta_{1} \in \Theta \subseteq \mathbb R^d$; $e_{1}=0$ the error accumulator; sparsity parameter $k$; $m_0=0$, $v_0=0$, $\hat v_0=0$
 
 \FOR{$t=1$ to $T$}
-\STATE  Compute stochastic gradient $g_{t} = g_{t,i_t}$ at $\theta_t$ for randomly sampled index $i_t$
+\STATE  Compute stochastic gradient $g_{t} = g_{t,i_t}$ at $\theta_t$ for randomly sampled index $i_t$\label{line:stochgrad} 
 \STATE  Compute $\tilde g_{t}=TopK(g_{t}+e_{t},k)$ \label{line:topksingle} 
 \STATE  Update the error $e_{t+1}=e_{t}+g_{t}-\tilde g_{t}$
 \STATE $m_t=\beta_1 m_{t-1}+(1-\beta_1)\tilde g_t$
 \STATE $v_t=\beta_2 v_{t-1}+(1-\beta_2)\tilde g_t^2$
 \STATE $\hat v_t=\max(v_t,\hat v_{t-1})$ \label{line:vsingle}
-\STATE Update global model $\theta_t=\theta_{t-1}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
+\STATE Update global model $\theta_{t+1}=\theta_{t}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
 
 \ENDFOR
 \end{algorithmic}
@@ -414,7 +306,7 @@ Single machine method
 %\end{align*}
 
 
-Let $m_t'$ and $\hat v_t'$ be the first and second moment moving average of standard AMSGrad using full gradients. Denote
+Let $m_t'$ be the first moment moving average of standard AMSGrad using full gradients. $m_t'=(1-\beta_1)\sum_{i=1}^k\beta_1^{t-i} g_t$. Denote
 \begin{align*}
     a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad a_t'=\frac{m_t'}{\sqrt{\hat v_t'+\epsilon}}.
 \end{align*}
@@ -453,6 +345,78 @@ Current try: If we can bound the last term in the same form as the first two ter
 \begin{align*}
     \mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2&=\mathbb E\| \frac{\tilde m_t}{\sqrt{\hat v_t+\epsilon}}- \|^2
 \end{align*}
+
+\subsection{New}
+
+
+
+Let $m_t'$ be the first moment moving average of standard AMSGrad using full gradients, \ie the gradient with respect to the index data point $t_i$ computed Line~\ref{line:stochgrad} of Algorithm~\ref{alg:sparsamssingle} before applying any compression operator.
+By construction we have $m_t'=(1-\beta_1)\sum_{i=1}^k\beta_1^{t-i} g_t$. 
+
+Denote the following quantities
+
+\begin{align*}
+& \mathcal E_{t+1}\eqdef \frac{(1-\beta_1)\sum_{i=1}^{t+1} \beta_1^{t+1-i} e_i}{\sqrt{\hat v_t+\epsilon}}\\
+&\theta_{t+1}':=\theta_{t+1}-\eta\mathcal E_{t+1}
+\end{align*}
+
+Then, 
+\begin{align*}
+    \theta_{t+1}'&=\theta_{t+1}-\eta\mathcal E_{t+1}\\
+    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i}\tilde g_i+(1-\beta_1)\sum_{i=1}^{t+1} \beta_1^{t+1-i}e_i}{\sqrt{\hat v_t+\epsilon}}\\
+    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i}(\tilde g_i+e_{i+1})+(1-\beta)\beta_1^t e_1}{\sqrt{\hat v_t+\epsilon}}\\
+    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i} e_i}{\sqrt{\hat v_t+\epsilon}}-\eta\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\\
+    &\overset{(a)}{=}\theta_t'-\eta\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\eqdef \theta_t'-\eta a_t',
+\end{align*}
+where (a) uses the fact that $\tilde g_t+e_{t+1}=g_t+e_t$, $e_1=0$ at initialization and we denoted 
+\begin{align*}
+    a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad a_t'=\frac{m_t'}{\sqrt{\hat v_t'+\epsilon}}.
+\end{align*}
+
+By smoothness assumption A\ref{ass:smooth} we have
+\begin{align*}
+    f(\theta_{t+1}')\leq f(\theta_t')-\eta\langle \nabla f(\theta_t'), a_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
+\end{align*}
+Thus,
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]\\
+    &=-\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle] 
+\end{align*}
+Using Young's inequality with parameter $\rho$ and the smoothness assumption we have 
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]
+        &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\rho}{2}\| \nabla f(\theta_t)-\nabla f(\theta_t')\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
+            &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{ \rho}{2} L^2\|\theta_t - \theta_t'\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
+    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2 L^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
+    &\leq -\eta\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\sqrt{G^2+\epsilon}}+\frac{\eta}{2\rho}\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\epsilon}+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho L^2}{2}\mathbb E\|\mathcal E_{t}\|^2,
+    % &=-\eta \langle \nabla f(\theta_t), \mathbb E[a_t']\rangle+(\frac{\eta^2L}{2}+\frac{\eta}{2\rho})\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2.
+\end{align*}
+
+when $\beta_1=0$ for example. We may discard this assumption and use more complicated bound on the first two terms. The third term can be bounded by constant yielding $O(1/\sqrt T)$ rate eventually when taking decreasing learning rate.
+
+\textbf{Bounding $\mathbb E\|\mathcal E_t\|^2$.} We know that $\|e_t\|\leq \frac{q}{1-q} G$. So
+\begin{align*}
+    \|\mathcal E_t\|^2&=\left\| \frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i} e_i}{\sqrt{\hat v_t+\epsilon}} \right\|^2\\
+    &\leq \left(\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i} \|e_i\|}{\sqrt\epsilon}\right)^2 \\
+    &\leq \frac{q^2G^2}{\epsilon(1-q)^2}.
+\end{align*}
+
+\textbf{Bounding $\mathbb E\|a_t'\|^2$.} We have {\color{red} (assuming $\mathbb E\|g_t\|^2\leq \sigma^2$)}
+\begin{align*}
+    \mathbb E\|a_t'\|^2\leq \frac{\sigma^2}{\epsilon}.
+\end{align*}
+Choosing $\rho=\frac{\sqrt{G^2+\epsilon}}{\epsilon}$ and summing over $t=1,...,T$, we obtain
+\begin{align*}
+    \frac{1}{T}\sum_{t=1}^T\mathbb E\|\nabla f(\theta_t)\|^2\leq \eta\frac{\sqrt{G^2+\epsilon}}{\epsilon}L\sigma^2+\eta^2\frac{q^2G^2 \sqrt{G^2+\epsilon}}{\epsilon^2(1-q^2)},
+\end{align*}
+{\color{red} first: variance, second: compression---small vanishing term. Compression with error feedback asymptotically has no impact.} With decreasing learning rate $\eta=\frac{1}{\sqrt{T}}$, we have
+\begin{align*}
+    \frac{1}{T}\sum_{t=1}^T\mathbb E\|\nabla f(\theta_t)\|^2\leq \mathcal O(\frac{1}{\sqrt T}+\frac{1}{T}),
+\end{align*}
+matching the convergence rate of SGD with error feedback (\cite{karimireddy2019error} Theorem II).
+
+{\color{red} Xiaoyun Note: I think we should introduce the variance in the bound $\mathbb E\|g_t\|^2\leq \sigma^2$? Extend to $\beta_1>0$?}
+
 
 \newpage
 \section{Experiments}\label{sec:experiment}
@@ -940,10 +904,141 @@ d\frac{L \Delta_3}{\Delta_1 \sqrt{\maxiter}} \\
 where $\Delta_2 \eqdef q^2 + \sum_{k=t+1}^\infty  \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}$ and $\Delta_3 \eqdef \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right) (1-\beta_2)^{-1} (1 - \frac{\beta_1^{2}}{\beta_2})^{-1}$.
 
 
+\end{proof}
 
+
+\subsection{Proof of Theorem~\ref{thm:mainsingle}}
+\begin{Theorem}\label{thm:mainsingle}
+Under A\ref{ass:smooth} to A\ref{ass:var}, with a constant stepsize $\eta_t = \eta = \frac{L}{\sqrt{\maxiter}}$, the sequence of iterates $\{\theta_t\}_{t>0}$ output from Algorithm~\ref{alg:sparsamssingle} satisfies:
+
+\ \begin{align}
+ \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \leq &
+ \frac{\EE[f(\theta_{0}) - f(\theta_{\maxiter})]}{\maxiter(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q )} + \eta^2 G^2\frac{L}{2} \frac{q^2+1}{\epsilon(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)} \\
+ & + \eta G^2 \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)}  +  \frac{G^2}{(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)} \left(\frac{q}{1-q}\right)^2 \left[ \frac{L}{2}q^2 + 1 \right]
+  \end{align}
+\end{Theorem}
+
+\begin{proof}
+Define the auxiliary model
+\begin{align*}
+\theta_{t+1}'&\eqdef \theta_{t+1}- e_{t+1}\\
+&=\theta_t - \eta a_t- e_{t+1}\\
+& =\theta_t - \eta a_t- e_{t} - g_t + \tilde g_t\\ 
+& =\theta_t - \eta a_t- e_{t} - \Delta_t\\
+& =\theta_t' - \eta a_t - \Delta_t
+\end{align*}
+where $a_t \eqdef \frac{m_t}{\sqrt{\hat v_t+\epsilon}}$ and $\Delta_t \eqdef g_t - \tilde g_t$.
+By smoothness assumption we have
+\begin{align*}
+    f(\theta_{t+1}')\leq f(\theta_t')-\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
+\end{align*}
+Thus,
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\mathbb E[\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+        & \leq \eta\mathbb E[\langle \nabla f(\theta_t) -  \nabla f(\theta_t') , \eta a_t + \Delta_t \rangle] -\mathbb E[\langle  \nabla f(\theta_t), \eta  a_t + \Delta_t \rangle] +\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]
+\end{align*}
+Using the smoothness assumption A\ref{ass:smooth} we have 
+
+\begin{align*}
+\EE[\langle \nabla f(\theta_t) -  \nabla f(\theta_t') , \eta a_t + \Delta_t \rangle] \leq L \EE[\norm{\theta_t - \theta_t'}] E[\norm{\eta a_t + \Delta_t}]
+\end{align*}
+
+Hence,
+
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\mathbb E[\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+        & \leq - \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \mathbb E\|\nabla f(\theta_t)\|^2 + L \EE[\norm{\theta_t - \theta_t'}] E[\norm{\eta a_t + \Delta_t}]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+                & \leq - \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \mathbb E\|\nabla f(\theta_t)\|^2 + L \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]
+\end{align*}
+
+Summing from $t = 0$ to $t = \maxiter -1$ and divide it by $\maxiter$ yields:
+
+
+\begin{equation}\label{eq:mainsingle}
+\begin{split}
+&  \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \\
+\leq &\sum_{t=0}^{\maxiter -1}\frac{\EE[f(\theta_t') -f(\theta_{t+1}')]}{\maxiter}  +  \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]+  \frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]
+\end{split}
+\end{equation}
+
+
+\textbf{Bounding $\frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]$:}
+
+To begin with
+\begin{equation}\label{eq:ineqe_t}
+\begin{split}
+\norm{e_t} & = \norm{e_{t-1} + g_{t-1} - \tilde g_{t-1}}\\
+& =  \norm{ g_{t-1} + e_{t-1} - TopK(g_{t-1}+e_{t-1},k)}\\
+& \leq q \norm{g_{t-1} + e_{t-1}}\\
+& \leq q \norm{g_{t-1}} +q \norm{ e_{t-1}}\\
+& \leq \sum_{k=1}^t q^{t-k} \norm{g_{k}} 
+\end{split}
+\end{equation}
+using A\ref{ass:var}.
+
+Then we have that
+
+\begin{align*}
+\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}] &\leq  \sum_{t=0}^{\maxiter -1}\sum_{k=1}^t q^{t-k}\EE[\norm{g_{k}} \norm{\eta a_t + \Delta_t}]]\\
+& \leq \frac{q}{1-q}\sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{\eta a_t + \Delta_t}]]\\
+& \leq \frac{q}{1-q}\sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{\eta \frac{m_t}{\sqrt{\hat v_t+\epsilon}}}] +\frac{q}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{\Delta_t}]]\\
+& \leq \eta \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)}  \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}}^2]  +\frac{q}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{g_t - \tilde g_t}]]
+\end{align*}
+where we have used Lemma~\ref{lem:bound} for the last inequality.
+
+Note that
+
+\begin{align*}
+\frac{q}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{g_t - \tilde g_t}]] &= \frac{q}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}} \norm{\tilde g_t - (g_t+e_t) +e_t}]]\\
+&\leq \frac{q^2}{1-q} \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}}^2] + \left(\frac{q}{1-q}\right)^2 \sum_{t=0}^{\maxiter -1}\EE[\norm{g_{t}}^2]
+\end{align*}
+
+where we have used A\ref{ass:quant} and inequality \eqref{eq:ineqe_t}
+
+
+Finally, we obtain:
+
+\begin{align*}
+\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}] & \leq 
+\left[ \eta \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)} + \frac{q^2}{1-q} + \left(\frac{q}{1-q}\right)^2 \right]\sum_{t=0}^{\maxiter -1} \EE[\norm{g_{t}}^2]
+\end{align*}
+
+Hence
+
+\begin{align*}
+\frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}] \leq \left[ \eta \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)} + \frac{q^2}{1-q} + \left(\frac{q}{1-q}\right)^2 \right] G^2
+\end{align*}
+
+
+\textbf{Bounding $\frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]$:}
+Similarly, we derive the following bound:
+\begin{align*}
+\frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2] \leq \frac{L}{2} \left[ \eta^2 \frac{q^2 +1}{\epsilon} + \left(\frac{q}{1-q}\right)^2 q^2 \right] G^2
+\end{align*}
+
+
+
+Plugging the bounds of $\frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]$ and $\frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]$ into \eqref{eq:mainsingle} gives:
+
+\begin{equation}\label{eq:mainsinglefinal}
+\begin{split}
+&  \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \\
+\leq &\sum_{t=0}^{\maxiter -1}\frac{\EE[f(\theta_t') -f(\theta_{t+1}')]}{\maxiter}  + \eta G^2 \left[ \eta \frac{L}{2} \frac{q^2+1}{\epsilon} + \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)} \right] +  G^2 \left(\frac{q}{1-q}\right)^2 \left[ \frac{L}{2}q^2 + 1 \right]\\
+\leq &\frac{\EE[f(\theta_{0}) - f(\theta_{\maxiter})]}{\maxiter}  + \eta^2 G^2\frac{L}{2} \frac{q^2+1}{\epsilon} + \eta G^2 \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)}  +  G^2 \left(\frac{q}{1-q}\right)^2 \left[ \frac{L}{2}q^2 + 1 \right]
+\end{split}
+\end{equation}
+ Finally
+ 
+ \begin{align}
+ \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \leq &
+ \frac{\EE[f(\theta_{0}) - f(\theta_{\maxiter})]}{\maxiter(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q )} + \eta^2 G^2\frac{L}{2} \frac{q^2+1}{\epsilon(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)} \\
+ & + \eta G^2 \frac{q\sqrt{q^2+1}}{\sqrt{\epsilon}(1-q)(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)}  +  \frac{G^2}{(\eta\frac{1}{\sqrt{G^2+\epsilon}} + q)} \left(\frac{q}{1-q}\right)^2 \left[ \frac{L}{2}q^2 + 1 \right]
+  \end{align}
 
 
 \end{proof}
+
+
 
 
 
