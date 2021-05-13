@@ -13,7 +13,8 @@
 \input{shortcuts.tex}
 
 \begin{document}
-\title{Sparsified Distributed Adaptive Learning with Error Feedback: a Centralized and Decentralized View}
+\title{Sparsified Distributed Adaptive Learning \\
+with Error Feedback}
 
 \author{
 Xiaoyun Li \\
@@ -40,7 +41,10 @@ Xiaoyun Li \\
 \maketitle
 
 \begin{abstract}
-To be completed...
+In this paper, we present a novel optimization algorithm for single-machine and distributed learning, based on sparsification and error feedback techniques to lighten the communications between a central server and distributed workers.
+The method we introduce builds on the adaptivity of the AMSGrad method for nonconvex optimization, and includes a TopK operation to alleviate any communication bottleneck between a large amount of devices and a central computing server, combined with a correction of the natural bias induced by the latter compression operator.
+Despite the sparsity induced by our algorithm, we show that \algo reaches a stationary point in $\mathcal{O}(1/ \sqrt{T})$ iterations, matching that of state-of-the-art single-machine methods.
+We illustrate on benchmark datasets the effectiveness of our method both under the single-machine and distributed settings.
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
@@ -85,7 +89,7 @@ In this contribution,
 
 \subsection{Adaptive optimization}
 
-In each SGD update, all the gradient coordinates share a same learning rate, either constant or decreasing over iterations. Instead, AdaGrad~\cite{Duchi10-adagrad} divides the gradient element-wisely by $\sqrt{\sum_{t=1}^T g_{t}^2}\in \mathbb R^d$, where $g_{t}\in \mathbb R^d$ is the gradient vector at time $t$ and $d$ is the model dimensionality. Thus, it intrinsically assigns different learning rates to different coordinates throughout the training---elements with smaller previous gradient magnitude tend to move a larger step. AdaGrad has been shown to perform well especially under some sparsity structure. AdaDelta~\cite{Proc:adadelta} and Adam~\cite{kingma2014adam} introduce momentum and moving average of second moment estimation into AdaGrad which lead to better performance. AMSGrad~\cite{reddi2019convergence} fixes the potential convergence issue of Adam, which will serve as the prototype in this paper. We present the psudocode in Algorithm . In general, adaptive optimization methods are easier to tune in practice, and usually exhibit faster convergence than SGD. Thus, they have been widely used in training deep learning models in language and computer vision applications, e.g.,~\cite{,Arxiv:Choi_2019,Proc:LAMB_ICLR20,Arxiv:Zhang_ICLR21}. In distributed setting, the work~\cite{nazari2019dadam} proposes a decentralized system in online optimization. However, communication efficiency is not considered. The recent work~\cite{chen2020quantized} is the most relevant to our paper. Yet, their method is based on Adam, and requires every local node to store a local estimation of first and second moment, thus being less efficient. We will present more detailed comparison in Section~\ref{sec:main}.
+In each SGD update, all the gradient coordinates share a same learning rate, either constant or decreasing over iterations. Adaptive optimization methods cast different learning rate on each dimension. AdaGrad~\cite{Duchi10-adagrad} divides the gradient element-wisely by $\sqrt{\sum_{t=1}^T g_{t}^2}\in \mathbb R^d$, where $g_{t}\in \mathbb R^d$ is the gradient vector at time $t$ and $d$ is the model dimensionality. Thus, it intrinsically assigns different learning rates to different coordinates throughout the training---elements with smaller previous gradient magnitude tend to move a larger step. AdaGrad has been shown to perform well especially under some sparsity structure. AdaDelta~\cite{Proc:adadelta} and Adam~\cite{kingma2014adam} introduce momentum and moving average of second moment estimation into AdaGrad which lead to better performance. AMSGrad~\cite{reddi2019convergence} fixes the potential convergence issue of Adam, which will serve as the prototype in this paper. We present the psudocode in Algorithm . In general, adaptive optimization methods are easier to tune in practice, and usually exhibit faster convergence than SGD. Thus, they have been widely used in training deep learning models in language and computer vision applications, e.g.,~\cite{,Arxiv:Choi_2019,Proc:LAMB_ICLR20,Arxiv:Zhang_ICLR21}. In distributed setting, the work~\cite{nazari2019dadam} proposes a decentralized system in online optimization. However, communication efficiency is not considered. The recent work~\cite{chen2020quantized} is the most relevant to our paper. Yet, their method is based on Adam, and requires every local node to store a local estimation of first and second moment, thus being less efficient. We will present more detailed comparison in Section~\ref{sec:main}.
 
 
 \section{Communication-Efficient Adaptive Optimization}\label{sec:main}
@@ -368,12 +372,7 @@ Then,
     &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i} e_i}{\sqrt{\hat v_t+\epsilon}}-\eta\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\\
     &\overset{(a)}{=}\theta_t'-\eta\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\eqdef \theta_t'-\eta a_t',
 \end{align*}
-where (a) uses the fact that $\tilde g_t+e_{t+1}=g_t+e_t$, $e_1=0$ at initialization and we denoted 
-\begin{align*}
-    a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad a_t'=\frac{m_t'}{\sqrt{\hat v_t'+\epsilon}}.
-\end{align*}
-
-By smoothness assumption A\ref{ass:smooth} we have
+where (a) uses the fact that $\tilde g_t+e_{t+1}=g_t+e_t$, $e_1=0$ at initialization. By smoothness assumption A\ref{ass:smooth} we have
 \begin{align*}
     f(\theta_{t+1}')\leq f(\theta_t')-\eta\langle \nabla f(\theta_t'), a_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
 \end{align*}
@@ -383,16 +382,17 @@ Thus,
     &=-\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle] 
 \end{align*}
 Using Young's inequality with parameter $\rho$ and the smoothness assumption we have 
-\begin{align*}
+\begin{align}
     \mathbb E[f(\theta_{t+1}')-f(\theta_t')]
         &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\rho}{2}\| \nabla f(\theta_t)-\nabla f(\theta_t')\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
             &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{ \rho}{2} L^2\|\theta_t - \theta_t'\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
-    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2 L^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
-    &\leq -\eta\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\sqrt{G^2+\epsilon}}+\frac{\eta}{2\rho}\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\epsilon}+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho L^2}{2}\mathbb E\|\mathcal E_{t}\|^2,
+    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2 L^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\label{eq:eq1}\\
+    &\leq -\eta\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\sqrt{G^2+\epsilon}}+\frac{\eta}{2\rho}\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\epsilon}+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho L^2}{2}\mathbb E\|\mathcal E_{t}\|^2 \label{eq:eq2}
     % &=-\eta \langle \nabla f(\theta_t), \mathbb E[a_t']\rangle+(\frac{\eta^2L}{2}+\frac{\eta}{2\rho})\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2.
-\end{align*}
+\end{align}
+where we set $\beta_1=0$ from \eqref{eq:eq1} to \eqref{eq:eq2}. 
 
-when $\beta_1=0$ for example. We may discard this assumption and use more complicated bound on the first two terms. The third term can be bounded by constant yielding $O(1/\sqrt T)$ rate eventually when taking decreasing learning rate.
+We may discard this assumption and use more complicated bound on the first two terms. The third term can be bounded by constant yielding $O(1/\sqrt T)$ rate eventually when taking decreasing learning rate.
 
 \textbf{Bounding $\mathbb E\|\mathcal E_t\|^2$.} We know that $\|e_t\|\leq \frac{q}{1-q} G$. So
 \begin{align*}
@@ -416,6 +416,84 @@ Choosing $\rho=\frac{\sqrt{G^2+\epsilon}}{\epsilon}$ and summing over $t=1,...,T
 matching the convergence rate of SGD with error feedback (\cite{karimireddy2019error} Theorem II).
 
 {\color{red} Xiaoyun Note: I think we should introduce the variance in the bound $\mathbb E\|g_t\|^2\leq \sigma^2$? Extend to $\beta_1>0$?}
+
+\textbf{Variance bound} Yes for $\mathbb E\|g_t\|^2\leq \sigma^2$
+
+
+\textbf{For $\beta_1>0$:} why not say:
+\begin{equation}
+\norm{m_t}^2  \leq \beta_1^2 \norm{m_{t-1}}^2 + (1 - \beta_1)^2 \norm{g_t}^2
+\end{equation}
+where $g_t$ is the full gradient (not sparsed).
+Then 
+
+\begin{equation}
+\EE[\norm{m_t}^2]  \leq \beta_1^2 \EE[\norm{m_{t-1}}^2] + (1 - \beta_1)^2 \EE[\norm{g_t}^2]
+\end{equation}
+
+Since we have by initialization that $\norm{m_0}^2 \leq \sigma^2$, then we prove by induction that $\norm{m_t}^2 \leq \sigma^2$ since $\mathbb E\|g_t\|^2\leq \sigma^2$.
+
+
+
+
+\clearpage 
+
+Try as in "A Sufficient Condition for Convergences of Adam and RMSProp"
+
+
+\textbf{Bounding $-\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\left(\frac{\eta^2L}{2} + \frac{\eta}{2\rho}\right) \mathbb E[\|a_t'\|^2$} 
+
+
+Using Young's inequality with parameter $\rho$ and the smoothness assumption we have 
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')] & \leq \langle \nabla f(\theta_t'), \theta_{t+1}'-\theta_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2\\
+    & \leq \langle \nabla f(\theta_t), \theta_{t+1}'-\theta_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2 +  \langle \nabla f(\theta_t') - \nabla f(\theta_t), \theta_{t+1}'-\theta_t'\rangle \\
+            &\leq \mathbb E[\langle \nabla f(\theta_t), \delta_t\rangle]+ \nu \mathbb E[\|\delta_t\|^2]+\frac{ L^2\rho}{2} \mathbb E[ \|\theta_t - \theta_t'\|^2]\\
+\end{align*}
+
+where $\delta_t = \theta_{t+1}'-\theta_t'$ and $\nu = \left(\frac{L}{2} + \frac{1}{2\rho}\right)$. 
+
+Denote $A_t =  \mathbb E[\langle \nabla f(\theta_t), \delta_t\rangle]+ \nu \mathbb E[\|\delta_t\|^2] $.
+We have
+
+\begin{align*}
+\EE[\langle \nabla f(\theta_t), \delta_t\rangle] = \beta_1\beta_2^{-1/2} \EE[\langle \nabla f(\theta_t), \delta_{t-1}\rangle] + \EE[\langle \nabla f(\theta_t), \delta_t - \beta_1\beta_2^{-1/2} \delta_{t-1} \rangle]
+\end{align*}
+
+Yet
+
+\begin{align*}
+\EE[\langle \nabla f(\theta_t), \delta_{t-1}\rangle]  &\leq \EE[\langle \nabla f(\theta_{t-1}), \delta_{t-1}\rangle] + \EE[\langle \nabla f(\theta_t) - \nabla f(\theta_{t-1}), \delta_{t-1}\rangle]\\
+& \leq \EE[\langle \nabla f(\theta_{t-1}), \delta_{t-1}\rangle] + \nu \norm{\delta_{t-1}}^2 
+\end{align*}
+
+Hence 
+\begin{align*}
+\EE[\langle \nabla f(\theta_t), \delta_t\rangle] \leq  \beta_1\beta_2^{-1/2} A_{t-1}+ \EE[\langle \nabla f(\theta_t), \delta_t - \beta_1\beta_2^{-1/2} \delta_{t-1} \rangle]
+\end{align*}
+
+Also
+
+\begin{align*}
+\delta_t - \beta_1\beta_2^{-1/2} \delta_{t-1}  &= -\eta \frac{m_t'}{\sqrt{\hat v_t'+\epsilon}} + \eta \beta_1\beta_2^{-1/2}\frac{m_{t-1}'}{\sqrt{\hat v_{t-1}'+\epsilon}}\\
+& = - \eta \left(\frac{m_t'}{\sqrt{\hat v_t'+\epsilon}} - \frac{\beta_1\beta_2^{-1/2}m_{t-1}'}{\sqrt{\hat v_{t-1}'+\epsilon}} \right)\\
+& = - \frac{\eta (1-\beta_1) g_t}{\sqrt{\hat v_t'+\epsilon}} + \beta_1 \eta m_{t-1}' \left( \frac{\beta_2^{-1/2}}{\sqrt{\hat v_{t-1}'+\epsilon} }- \frac{1}{\sqrt{v_t' + \epsilon}}\right)
+\end{align*}
+
+
+Hence 
+\begin{align*}
+\EE[\langle \nabla f(\theta_t), \delta_t\rangle] &\leq  \beta_1\beta_2^{-1/2} A_{t-1}- \EE[\langle \nabla f(\theta_t), \frac{\eta (1-\beta_1) g_t}{\sqrt{\hat v_t'+\epsilon}}  \rangle] + \EE[\langle \nabla f(\theta_t), \beta_1 \eta m_{t-1}' \left( \frac{\beta_2^{-1/2}}{\sqrt{\hat v_{t-1}'+\epsilon} }- \frac{1}{\sqrt{v_t' + \epsilon}}\right) \rangle]\\
+& \leq  \beta_1\beta_2^{-1/2} A_{t-1}- \eta (1-\beta_1) \EE[\norm{ \nabla f(\theta_t)}^2] +  \beta_1 \eta \EE[\langle \nabla f(\theta_t), m_{t-1}' \left( \frac{\beta_2^{-1/2}}{\sqrt{\hat v_{t-1}'+\epsilon} }- \frac{1}{\sqrt{v_t' + \epsilon}}\right) \rangle]
+\end{align*}
+
+Note that for $\epsilon=0$:
+\begin{align*}
+ m_{t-1}' \left( \frac{\beta_2^{-1/2}}{\sqrt{\hat v_{t-1}'+\epsilon} }- \frac{1}{\sqrt{v_t' + \epsilon}}\right)   &=  m_{t-1}' \frac{\sqrt{v_t'} - \sqrt{\beta_2 v_{t-1}'}}{\sqrt{v_t'}\sqrt{\beta_2 v_{t-1}'}} \\
+ & = m_{t-1}' \frac{v_t' - \beta_2 v_{t-1}'}{\sqrt{v_t'}\sqrt{\beta_2 v_{t-1}'} (\sqrt{v_t'} + \sqrt{\beta_2 v_{t-1}'})} \\
+ & = m_{t-1}'\frac{ (1- \beta_2) g_{t}}{\sqrt{v_t'}\sqrt{\beta_2 v_{t-1}'} (\sqrt{v_t'} + \sqrt{\beta_2 v_{t-1}'})}\\
+  & = (1- \beta_2) g_{t} \frac{ m_{t-1}'}{\sqrt{v_t'} + \sqrt{\beta_2 v_{t-1}'}} \frac{1}{\sqrt{v_t'}\sqrt{\beta_2 v_{t-1}'}}
+\end{align*}
 
 
 \newpage
@@ -588,10 +666,10 @@ where $d$ denotes the dimension of the parameter vector
 
 
 
-Denote the following auxiliary variables at iteration $t+1$
-\begin{align}
-z_{t+1} = \theta_{t+1} + \frac{\beta_1}{1-\beta_1}(\theta_{t+1} - \theta_{t})
-\end{align}
+%Denote the following auxiliary variables at iteration $t+1$
+%\begin{align}
+%z_{t+1} = \theta_{t+1} + \frac{\beta_1}{1-\beta_1}(\theta_{t+1} - \theta_{t})
+%\end{align}
 
 By assumption Assumption~\ref{ass:smooth}, we can write the smoothness condition on the overall objective \eqref{eq:obj}, between iteration $t$ and $t+1$:
 
@@ -1037,8 +1115,6 @@ Plugging the bounds of $\frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_
 
 
 \end{proof}
-
-
 
 
 
