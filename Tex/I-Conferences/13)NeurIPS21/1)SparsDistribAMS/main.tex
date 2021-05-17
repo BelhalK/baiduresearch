@@ -149,7 +149,7 @@ The key difference (and interesting part) of our TopK AMSGrad compared with the 
 \begin{algorithmic}[1]
 
 \STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
-\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{1,i}=0$ the error accumulator for each worker; sparsity parameter $k$; $n$ local workers; $m_0=0$, $v_0=0$, $\hat v_0=0$
+\STATE Initialize: central server parameter $\theta_{1} \in \Theta \subseteq \mathbb R^d$; $e_{1,i}=0$ the error accumulator for each worker; sparsity parameter $k$; $n$ local workers; $m_0=0$, $v_0=0$, $\hat v_0=0$
 
 \FOR{$t=1$ to $T$}
 
@@ -222,7 +222,7 @@ Under Assumption~\ref{ass:smooth} to Assumption~\ref{ass:var}, the sequence of i
 
 \begin{equation}
 \begin{split}
- \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \leq \frac{\EE[ f(\theta_{0}) - f(\theta_{\maxiter})]}{ \Delta_1 \eta_t \maxiter} + 
+ \frac{1}{\maxiter}\sum_{t=1}^{\maxiter} \EE[\norm{\nabla f(\theta_t)}^2] \leq \frac{\EE[ f(\theta_{1}) - f(\theta_{\maxiter+1})]}{ \Delta_1 \eta_t \maxiter} + 
 d\frac{ \Delta_3}{\Delta_1 \eta_t \maxiter}  + \frac{\Delta_2}{ \Delta_1\maxiter} +\frac{1-\beta_1}{\Delta_1}  \epsilon^{-\frac{1}{2}} \sqrt{(q^2+1)}G^2 
 \end{split}
 \end{equation}
@@ -369,9 +369,9 @@ where $d$ denotes the dimension of the parameter vector
 Under Assumption~\ref{ass:boundgrad} and Assumption~\ref{ass:var} we have for any iteration $t >0$:
 
 \begin{equation}
-\norm{m_t}^2 \leq (q^2+1) G^2 \quad \textrm{and} \quad \hat v_t \leq (q^2+1) G^2
+\EE[\norm{m_t}^2] \leq (q^2+1) \sigma^2 \quad \textrm{and} \quad \EE[\hat v_t] \leq (q^2+1) \sigma^2
 \end{equation}
-where $m_t$ and $\hat v_t=\max(v_t,\hat v_{t-1})$ are defined Line~\ref{line:v} of Algorithm~\ref{alg:sparsams} and $G^2 = \frac{1}{n}\sum_{i=1}^N  G_{i}^2$.
+where $m_t$ and $\hat v_t=\max(v_t,\hat v_{t-1})$ are defined Line~\ref{line:v} of Algorithm~\ref{alg:sparsams} and $\sigma^2 = \frac{1}{n}\sum_{i=1}^N  \sigma_i^2$.
 \end{Lemma*}
 
 \begin{proof}
@@ -382,22 +382,22 @@ We start by writing
 
 Though, using Assumption~\ref{ass:boundgrad} and Assumption~\ref{ass:var} we have:
 \begin{equation}
-\norm{\tilde g_{t,i} }^2  = \norm{g_{t,i}  + \tilde g_{t,i}  - g_{t,i}}^2 \leq \norm{g_{t,i} }^2 + \norm{\tilde g_{t,i}  - g_{t,i}}^2 \leq (q^2+1)G_i^2
+\EE[\norm{\tilde g_{t,i} }^2]  = \EE[\norm{g_{t,i}  + \tilde g_{t,i}  - g_{t,i}}^2] \leq \EE[\norm{g_{t,i} }^2] + \EE[\norm{\tilde g_{t,i}  - g_{t,i}}^2] \leq (q^2+1)\sigma_i^2
 \end{equation}
 Hence
 \begin{equation}
-\norm{\bar g_t}^2  \leq (q^2+1) G^2
+\EE[\norm{\bar g_t}^2]  \leq (q^2+1) \sigma^2
 \end{equation}
 where $G^2 = \frac{1}{n}\sum_{i=1}^N  G_{i}^2$.
 Then, by construction in Algorithm~\ref{alg:sparsams}:
 \begin{equation}
-\norm{m_t}^2  \leq \beta_1^2 \norm{m_{t-1}}^2 + (1 - \beta_1)^2 \norm{\bar g_t}^2  \leq \beta_1^2 \norm{m_{t-1}}^2 + (1 - \beta_1)^2(q^2+1) G^2
+\EE[\norm{m_t}^2]  \leq \beta_1^2 \EE[\norm{m_{t-1}}^2] + (1 - \beta_1)^2 \EE[\norm{\bar g_t}^2]  \leq \beta_1^2\EE[ \norm{m_{t-1}}^2] + (1 - \beta_1)^2(q^2+1) \sigma^2
 \end{equation}
-Since we have by initialization that $\norm{m_0}^2 \leq G^2$, then we prove by induction that $\norm{m_t}^2 \leq (q^2+1) G^2$.
+Since we have by initialization that $\norm{m_0}^2 \leq \sigma^2$, then we prove by induction that $\EE[\norm{m_t}^2] \leq (q^2+1) \sigma^2$.
 
 Similarly
 \begin{equation}
-\hat v_t = \max(v_t,\hat v_{t-1}) = \max(\hat v_{t-1}, \beta_2 v_{t-1}+(1-\beta_2)\bar g_t^2) \leq  max(\hat v_{t-1}, \beta_2 v_{t-1}+(1-\beta_2)(q^2+1) G^2) 
+\EE[\hat v_t] = \EE[\max(v_t,\hat v_{t-1})] = \max(\hat v_{t-1}, \beta_2 v_{t-1}+(1-\beta_2)\EE[\bar g_t^2]) \leq  max(\hat v_{t-1}, \beta_2 v_{t-1}+(1-\beta_2)(q^2+1) \sigma^2) 
 \end{equation}
 \end{proof}
 
@@ -606,7 +606,7 @@ Under Assumption~\ref{ass:smooth} to Assumption~\ref{ass:var}, with a constant s
 
 \begin{equation}
 \begin{split}
- \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \leq \frac{\EE[ f(\theta_{0}) - f(\theta_{\maxiter})]}{L \Delta_1 \sqrt{\maxiter}} + 
+ \frac{1}{\maxiter}\sum_{t=1}^{\maxiter} \EE[\norm{\nabla f(\theta_t)}^2] \leq \frac{\EE[ f(\theta_{1}) - f(\theta_{\maxiter+1})]}{L \Delta_1 \sqrt{\maxiter}} + 
 d\frac{L \Delta_3}{\Delta_1 \sqrt{\maxiter}}  + \frac{\Delta_2}{\eta \Delta_1\maxiter} +\frac{1-\beta_1}{\Delta_1}  \epsilon^{-\frac{1}{2}} \sqrt{(q^2+1)}G^2 
 \end{split}
 \end{equation}
@@ -707,13 +707,13 @@ The above coupled with \eqref{eq:mainR} yields
 \end{split}
 \end{equation}
 
-We now sum from $t = 0$ to $t = \maxiter -1$  the inequality in \eqref{eq:mainR2}, and divide it by $\maxiter$:
+We now sum from $t = 1$ to $t = \maxiter$  the inequality in \eqref{eq:mainR2}, and divide it by $\maxiter$:
 
 \begin{equation}\label{eq:finalR2}
 \begin{split}
-&\eta\frac{(1-\beta_1)}{2} (\epsilon + \frac{(q^2+1)G^2}{1 - \beta_2})^{-\frac{1}{2}} \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \\
-\leq & \frac{\EE[R_0] - \EE[R_{\maxiter}]}{\maxiter} + \frac{q^2 \eta+ \sum_{k=t+1}^\infty \eta \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}}{\maxiter}\\
-& + \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right)\frac{1}{\maxiter}  \sum_{t=0}^{\maxiter -1}\EE[ \norm{\theta_{t+1} - \theta_{t}}^2]
+&\eta\frac{(1-\beta_1)}{2} (\epsilon + \frac{(q^2+1)G^2}{1 - \beta_2})^{-\frac{1}{2}} \frac{1}{\maxiter}\sum_{t=1}^{\maxiter} \EE[\norm{\nabla f(\theta_t)}^2] \\
+\leq & \frac{\EE[R_1] - \EE[R_{\maxiter+1}]}{\maxiter} + \frac{q^2 \eta+ \sum_{k=t+1}^\infty \eta \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}}{\maxiter}\\
+& + \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right)\frac{1}{\maxiter}  \sum_{t=1}^{\maxiter}\EE[ \norm{\theta_{t+1} - \theta_{t}}^2]
 \end{split}
 \end{equation}
 
@@ -722,14 +722,14 @@ where we have used the fact that $(\hat{v}^j_{t} + \epsilon )^{-1/2} - (\hat{v}^
 We now bound the two remaining terms:
 
 
-\textbf{Bounding $-\EE[R_{\maxiter}]$:}
+\textbf{Bounding $-\EE[R_{\maxiter+1}]$:}
 
 By definition \eqref{eq:defR} of $R_t$ we have, using Lemma~\ref{lem:bound}:
 \beq
 \begin{split}
--\EE[R_{\maxiter}] \leq & \sum_{k=t}^\infty \eta_{k} \beta_1^{k-t+1}\EE[\pscal{\nabla f(\theta_{t-1})}{(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}}] - f(\theta_{\maxiter})\\
-& \leq\| \sum_{k=t}^\infty \eta_{k} \beta_1^{k-t+1}\| \|\nabla f(\theta_{t-1})\| \|(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}\|\\
-& \leq \eta_{t+1} (1-\beta_1) \epsilon^{-\frac{1}{2}} \sqrt{(q^2+1)}G^2 - f(\theta_{\maxiter})
+-\EE[R_{\maxiter+1}] \leq & \sum_{k=T+1}^\infty \eta_{k} \beta_1^{k-t+1}\EE[\pscal{\nabla f(\theta_{t-1})}{(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}}] - f(\theta_{\maxiter+1})\\
+& \leq\| \sum_{k=T+1}^\infty \eta_{k} \beta_1^{k-t+1}\| \|\nabla f(\theta_{t-1})\| \|(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}\|\\
+& \leq \eta_{t+1} (1-\beta_1) \epsilon^{-\frac{1}{2}} \sqrt{(q^2+1)}G^2 - f(\theta_{\maxiter+1})
 \end{split}
 \eeq
 
@@ -738,7 +738,7 @@ By definition \eqref{eq:defR} of $R_t$ we have, using Lemma~\ref{lem:bound}:
 
 
 
-\textbf{Bounding $   \sum_{t=0}^{\maxiter -1}\EE[ \norm{\theta_{t+1} - \theta_{t}}^2]$:}
+\textbf{Bounding $   \sum_{t=1}^{\maxiter }\EE[ \norm{\theta_{t+1} - \theta_{t}}^2]$:}
 
 By definition in Algorithm~\ref{alg:sparsams}:
 
@@ -793,7 +793,7 @@ Plugging the two bounds in \eqref{eq:finalR2}, we obtain the following bound:
 
 \begin{equation}
 \begin{split}
- \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \leq & \frac{\EE[ f(\theta_{0}) - f(\theta_{\maxiter})]}{\eta \Delta_1 \maxiter} + \frac{q^2 \eta+ \sum_{k=t+1}^\infty \eta \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}}{\eta \Delta_1\maxiter}\\
+ \frac{1}{\maxiter}\sum_{t=1}^{\maxiter } \EE[\norm{\nabla f(\theta_t)}^2] \leq & \frac{\EE[ f(\theta_{1}) - f(\theta_{\maxiter+1})]}{\eta \Delta_1 \maxiter} + \frac{q^2 \eta+ \sum_{k=t+1}^\infty \eta \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}}{\eta \Delta_1\maxiter}\\
 &+\frac{1-\beta_1}{\Delta_1}  \epsilon^{-\frac{1}{2}} \sqrt{(q^2+1)}G^2 \\
 & + \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right)\frac{1}{\eta \Delta_1}  \eta^2 d (1-\beta_2)^{-1} (1 - \frac{\beta_1^{2}}{\beta_2})^{-1}
 \end{split}
@@ -805,7 +805,7 @@ where $\Delta_1 \eqdef \frac{(1-\beta_1)}{2} (\epsilon + \frac{(q^2+1)G^2}{1 - \
 With a constant stepsize $\eta = \frac{L}{\sqrt{\maxiter}}$ we get the final convergence bound as follows:
 \begin{equation}
 \begin{split}
- \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2] \leq & \frac{\EE[ f(\theta_{0}) - f(\theta_{\maxiter})]}{L \Delta_1 \sqrt{\maxiter}} + 
+ \frac{1}{\maxiter}\sum_{t=1}^{\maxiter} \EE[\norm{\nabla f(\theta_t)}^2] \leq & \frac{\EE[ f(\theta_{1}) - f(\theta_{\maxiter+1})]}{L \Delta_1 \sqrt{\maxiter}} + 
 d\frac{L \Delta_3}{\Delta_1 \sqrt{\maxiter}} \\
 & + \frac{\Delta_2}{ \Delta_1\maxiter} +\frac{1-\beta_1}{\Delta_1}  \epsilon^{-\frac{1}{2}} \sqrt{(q^2+1)}G^2 
 \end{split}
@@ -969,7 +969,7 @@ Let $m_t'$ be the first moment moving average of standard AMSGrad using full gra
 Denote
 \begin{align*}
 m_t=\beta_1 m_{t-1}+(1-\beta_1)\tilde g_t \quad & \textrm{and} \quad m_t'=\beta_1 m_{t-1}'+(1-\beta_1) g_t\\
-    a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad & \textrm{and} \quad  a_t'=\frac{m_t'}{\sqrt{\hat v_t'+\epsilon}}.
+    a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad & \textrm{and} \quad  a_t'=\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}.
 \end{align*}
 By construction we have $m_t'=(1-\beta_1)\sum_{i=1}^k\beta_1^{t-i} g_t$. 
 
@@ -1104,145 +1104,149 @@ Taking decreasing learning rate $\eta=1/\sqrt T$, we obtain
 matching the convergence rate of SGD with error feedback~\cite{karimireddy2019error}.
 
 \end{proof}
-%%We first define multiple auxiliary sequences. For the first moment, define
-%%
-%%\begin{align*}
-%%    &\bar m_t=m_t+\mathcal E_t,\\   
-%%    &\mathcal E_t=\beta_1\mathcal E_{t-1}+(1-\beta_1)(e_{t+1}-e_t),
-%%\end{align*}
-%%such that 
-%%\begin{align*} 
-%%    \bar m_t&=\bar m_t+\mathcal E_t\\
-%%    &=\beta_1(m_t+\mathcal E_t)+(1-\beta_1)(\bar g_t+e_{t+1}-e_1)\\
-%%    &=\beta_1\bar m_{t-1}+(1-\beta_1)g_t.
-%%\end{align*}
-%
-%
-%Let $m_t'$ be the first moment moving average of standard AMSGrad using full gradients. $m_t'=(1-\beta_1)\sum_{i=1}^k\beta_1^{t-i} g_t$. Denote
-%\begin{align*}
-%    a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad a_t'=\frac{m_t'}{\sqrt{\hat v_t'+\epsilon}}.
-%\end{align*}
-%Define the sequence
-%\begin{align*}
-%    \mathcal E_{t+1}=\mathcal E_t+a_t'-a_t,
-%\end{align*}
-%such that the auxiliary model
-%\begin{align*}
-%    \theta_{t+1}'&\eqdef\theta_{t+1}-\eta \mathcal E_{t+1}\\
-%    &=\theta_t-\eta a_t-\eta\mathcal E_{t+1}\\
-%    &=\theta_t-\eta a_t-\eta(\mathcal E_t+a_t'-a_t)\\
-%    &=\theta_t'-\eta a_t'
-%\end{align*}
-%follows the update of full-gradient AMSGrad. By smoothness assumption we have
-%\begin{align*}
-%    f(\theta_{t+1}')\leq f(\theta_t')-\eta\langle \nabla f(\theta_t'), a_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
-%\end{align*}
-%Thus,
-%\begin{align*}
-%    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]\\
-%    &=-\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle] \\
-%    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
-%    &\leq -\eta\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\sqrt{G^2+\epsilon}}+\frac{\eta}{2\rho}\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\epsilon}+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2,
-%    % &=-\eta \langle \nabla f(\theta_t), \mathbb E[a_t']\rangle+(\frac{\eta^2L}{2}+\frac{\eta}{2\rho})\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2.
-%\end{align*}
-%when $\beta_1=0$ for example. We may discard this assumption and use more complicated bound on the first two terms. The third term can be bounded by constant yielding $O(1/\sqrt T)$ rate eventually when taking decreasing learning rate. The key is to get a good bound on the cumulative error sequence, $\mathcal E_t$. We have the following:
-%\begin{align*}
-%    \mathbb E\|\mathcal E_{t+1}\|^2&=\mathbb E\|\mathcal E_t+a_t'-a_t+TopK(\mathcal E_t+a_t')-TopK(\mathcal E_t+a_t')\|^2\\
-%    &\leq 2\mathbb E\|\mathcal E_t+a_t'-TopK(\mathcal E_t+a_t')\|^2+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
-%    & \overset{(a)}{\leq} 2q\mathbb E\|\mathcal E_t+a_t'\|+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2\\
-%    &\leq 2q[(1+r)\mathbb E\|\mathcal E_t\|^2+(1+\frac{1}{r})\mathbb E\|a_t'\|^2]+2\mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2.
-%\end{align*}
-%where (a) uses Assumption~\ref{ass:quant}.
-%Current try: If we can bound the last term in the same form as the first two terms, then we can use recursion to get the desired result. We can have
-%\begin{align*}
-%    \mathbb E\|a_t-TopK(\mathcal E_t+a_t')\|^2&=\mathbb E\| \frac{\tilde m_t}{\sqrt{\hat v_t+\epsilon}}- \|^2
-%\end{align*}
-%
-%\subsection{New}
-%
-%
-%
-%Let $m_t'$ be the first moment moving average of standard AMSGrad using full gradients, \ie the gradient with respect to the index data point $i_t$ computed Line~\ref{line:stochgrad} of Algorithm~\ref{alg:sparsamssingle} before applying any compression operator.
-%By construction we have $m_t'=(1-\beta_1)\sum_{i=1}^k\beta_1^{t-i} g_t$. 
-%
-%Denote the following quantities
-%
-%\begin{align*}
-%& \mathcal E_{t+1}\eqdef \frac{(1-\beta_1)\sum_{i=1}^{t+1} \beta_1^{t+1-i} e_i}{\sqrt{\hat v_t+\epsilon}}\\
-%&\theta_{t+1}':=\theta_{t+1}-\eta\mathcal E_{t+1}
-%\end{align*}
-%
-%Then, 
-%\begin{align*}
-%    \theta_{t+1}'&=\theta_{t+1}-\eta\mathcal E_{t+1}\\
-%    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i}\tilde g_i+(1-\beta_1)\sum_{i=1}^{t+1} \beta_1^{t+1-i}e_i}{\sqrt{\hat v_t+\epsilon}}\\
-%    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i}(\tilde g_i+e_{i+1})+(1-\beta)\beta_1^t e_1}{\sqrt{\hat v_t+\epsilon}}\\
-%    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i} e_i}{\sqrt{\hat v_t+\epsilon}}-\eta\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\\
-%    &\overset{(a)}{=}\theta_t'-\eta\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\eqdef \theta_t'-\eta a_t',
-%\end{align*}
-%where (a) uses the fact that $\tilde g_t+e_{t+1}=g_t+e_t$, $e_1=0$ at initialization. By smoothness assumption Assumption~\ref{ass:smooth} we have
-%\begin{align*}
-%    f(\theta_{t+1}')\leq f(\theta_t')-\eta\langle \nabla f(\theta_t'), a_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
-%\end{align*}
-%Thus,
-%\begin{align}
-%    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]\\
-%    &=-\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle] 
-%\end{align}
-%Using Young's inequality with parameter $\rho$ and the smoothness assumption we have 
-%\begin{align}
-%    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]
-%        &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\rho}{2}\| \nabla f(\theta_t)-\nabla f(\theta_t')\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
-%            &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{ \rho}{2} L^2\|\theta_t - \theta_t'\|^2+\frac{1}{2\rho}\|a_t'\|^2]\\
-%    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\frac{\eta^2 L^2\rho}{2}\|\mathcal E_{t}\|^2+\frac{1}{2\rho}\|a_t'\|^2]\label{eq:eq1}\\
-%    &\leq -\eta\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\sqrt{G^2+\epsilon}}+\frac{\eta}{2\rho}\frac{\mathbb E\|\nabla f(\theta_t)\|^2}{\epsilon}+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho L^2}{2}\mathbb E\|\mathcal E_{t}\|^2 \label{eq:eq2}
-%    % &=-\eta \langle \nabla f(\theta_t), \mathbb E[a_t']\rangle+(\frac{\eta^2L}{2}+\frac{\eta}{2\rho})\mathbb E[\|a_t'\|^2]+\frac{\eta^3\rho}{2}\mathbb E\|\mathcal E_{t}\|^2.
-%\end{align}
-%where we set $\beta_1=0$ from \eqref{eq:eq1} to \eqref{eq:eq2}. 
-%
-%We may discard this assumption and use more complicated bound on the first two terms. The third term can be bounded by constant yielding $O(1/\sqrt T)$ rate eventually when taking decreasing learning rate.
-%
-%\textbf{Bounding $\mathbb E\|\mathcal E_t\|^2$.} We know that $\|e_t\|\leq \frac{q}{1-q} G$. So
-%\begin{align*}
-%    \|\mathcal E_t\|^2&=\left\| \frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i} e_i}{\sqrt{\hat v_t+\epsilon}} \right\|^2\\
-%    &\leq \left(\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i} \|e_i\|}{\sqrt\epsilon}\right)^2 \\
-%    &\leq \frac{q^2G^2}{\epsilon(1-q)^2}.
-%\end{align*}
-%
-%\textbf{Bounding $\mathbb E\|a_t'\|^2$.} We have {\color{red} (assuming $\mathbb E\|g_t\|^2\leq \sigma^2$)}
-%\begin{align*}
-%    \mathbb E\|a_t'\|^2\leq \frac{\sigma^2}{\epsilon}.
-%\end{align*}
-%Choosing $\rho=\frac{\sqrt{G^2+\epsilon}}{\epsilon}$ and summing over $t=1,...,T$, we obtain
-%\begin{align*}
-%    \frac{1}{T}\sum_{t=1}^T\mathbb E\|\nabla f(\theta_t)\|^2\leq \eta\frac{\sqrt{G^2+\epsilon}}{\epsilon}L\sigma^2+\eta^2\frac{q^2G^2 \sqrt{G^2+\epsilon}}{\epsilon^2(1-q^2)},
-%\end{align*}
-%{\color{red} first: variance, second: compression---small vanishing term. Compression with error feedback asymptotically has no impact.} With decreasing learning rate $\eta=\frac{1}{\sqrt{T}}$, we have
-%\begin{align*}
-%    \frac{1}{T}\sum_{t=1}^T\mathbb E\|\nabla f(\theta_t)\|^2\leq \mathcal O(\frac{1}{\sqrt T}+\frac{1}{T}),
-%\end{align*}
-%matching the convergence rate of SGD with error feedback (\cite{karimireddy2019error} Theorem II).
-%
-%{\color{red} Xiaoyun Note: I think we should introduce the variance in the bound $\mathbb E\|g_t\|^2\leq \sigma^2$? Extend to $\beta_1>0$?}
-%
-%\textbf{Variance bound} Yes for $\mathbb E\|g_t\|^2\leq \sigma^2$
-%
-%
-%\textbf{For $\beta_1>0$:} why not say:
-%\begin{equation}
-%\norm{m_t}^2  \leq \beta_1^2 \norm{m_{t-1}}^2 + (1 - \beta_1)^2 \norm{g_t}^2
-%\end{equation}
-%where $g_t$ is the full gradient (not sparsed).
-%Then 
-%
-%\begin{equation}
-%\EE[\norm{m_t}^2]  \leq \beta_1^2 \EE[\norm{m_{t-1}}^2] + (1 - \beta_1)^2 \EE[\norm{g_t}^2]
-%\end{equation}
-%
-%Since we have by initialization that $\norm{m_0}^2 \leq \sigma^2$, then we prove by induction that $\norm{m_t}^2 \leq \sigma^2$ since $\mathbb E\|g_t\|^2\leq \sigma^2$.
-%
-%
-%
+
+
+\section{Distributed setting}
+
+Denote the average gradient as $\bar g_t=\frac{1}{N}\sum_{i=1}^N \tilde g_{t,i}$, and $\bar g_t'=\frac{1}{N}\sum_{i=1}^N g_{t,i}$ be the average of true (uncompressed) local gradients. With a little change of notation, we denote $\bar m_0=\bar m_0'=0$, and
+\begin{align*}
+\bar m_t=\beta_1 \bar m_{t-1}+(1-\beta_1)\bar g_t \quad & \textrm{and} \quad \bar m_t'=\beta_1 \bar m_{t-1}'+(1-\beta_1) \bar g_t'\\
+    a_t=\frac{\bar m_t}{\sqrt{\hat v_t+\epsilon}},\quad & \textrm{and} \quad  a_t'=\frac{\bar m_t'}{\sqrt{\hat v_t+\epsilon}}.
+\end{align*}
+By construction we have $m_t'=(1-\beta_1)\sum_{i=1}^k\beta_1^{t-i} \bar g_t$. 
+
+Let $\bar e_t=\frac{1}{N}\sum_{i=1}^N e_{t,i}$. Denote the following auxiliary sequences,
+
+\begin{align*}
+& \mathcal E_{t+1}\eqdef \frac{(1-\beta_1)\sum_{i=1}^{t+1} \beta_1^{t+1-i} \bar e_i}{\sqrt{\hat v_t+\epsilon}}\\
+&\theta_{t+1}':=\theta_{t+1}-\eta\mathcal E_{t+1}.
+\end{align*}
+
+Then, 
+\begin{align*}
+    \theta_{t+1}'&=\theta_{t+1}-\eta\mathcal E_{t+1}\\
+    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i}\bar g_i+(1-\beta_1)\sum_{i=1}^{t+1} \beta_1^{t+1-i}\bar e_i}{\sqrt{\hat v_t+\epsilon}}\\
+    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i}(\bar g_i+\bar e_{i+1})+(1-\beta)\beta_1^t \bar e_1}{\sqrt{\hat v_t+\epsilon}}\\
+    &=\theta_t-\eta\frac{(1-\beta_1)\sum_{i=1}^{t} \beta_1^{t-i} \bar e_i}{\sqrt{\hat v_t+\epsilon}}-\eta\frac{\bar m_t'}{\sqrt{\hat v_t+\epsilon}}\\
+    &\overset{(a)}{=}\theta_t'-\eta\frac{\bar m_t'}{\sqrt{\hat v_t+\epsilon}}\eqdef \theta_t'-\eta a_t',
+\end{align*}
+where (a) uses the fact that $\tilde g_{t,i}+e_{t+1,i}=g_{t,i}+e_{t,i}$ for $\forall i\in [N]$. By Assumption~\ref{ass:smooth} we have
+\begin{align*}
+    f(\theta_{t+1}')\leq f(\theta_t')-\eta\langle \nabla f(\theta_t'), a_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
+\end{align*}
+Thus,
+\begin{align}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]\\
+    &=-\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle]\\
+    &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta^2 L\mathbb E[\| \mathcal E_t\| \|a_t'\|] \label{eq0}
+\end{align}
+
+\textbf{Bounding the first term (extracting $\nabla f$).} We have
+\begin{align*}
+    M_t\eqdef -\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]&=-\mathbb E[\langle \nabla f(\theta_t), \frac{\bar m_t'}{\sqrt{\hat v_t+\epsilon}}\rangle]\\
+    &=\underbrace{-\mathbb E[\langle \nabla f(\theta_t), \frac{\bar m_t'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]}_{I}+\underbrace{\mathbb E[\langle \nabla f(\theta_t), (\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}})\bar m_t' \rangle]}_{II}.
+\end{align*}
+To bound I, note that
+\begin{align*}
+    I&=-\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
+    &=-\mathbb E\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle|\mathcal F_{t-1}] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
+    &=-(1-\beta_1)\mathbb E[\frac{\|\nabla f(\theta_t)\|^2}{\sqrt{\hat v_{t-1}+\epsilon}}] - \mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
+    &\leq -\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]- \beta_1\mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle].
+\end{align*}
+Regarding the second term, we have
+\begin{align*}
+    - \mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]&=-\mathbb E[\langle\nabla f(\theta_{t-1}), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]- \mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_{t-1}), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
+    &=M_{t-1}+ \eta L\mathbb E[\|\frac{m_{t-1}}{\sqrt{\hat v_{t-1}+\epsilon}}\| \|\frac{m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}}\|]\\
+    &\leq M_{t-1}+\frac{\eta L(q^2+1)G^4}{\epsilon}.
+\end{align*}
+Putting parts together we obtain
+\begin{align*}
+    I\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 L(q^2+1)G^4}{\epsilon}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2].
+\end{align*}
+For II, it holds that
+\begin{align*}
+    II&\leq G^2 \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}| ].
+\end{align*}
+Thus, we arrive at
+\begin{align*}
+    M_t&\leq \beta_1 M_{t-1}+\frac{\eta\beta_1 L(q^2+1)G^4}{\epsilon}+G^2 \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}| ]-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\eqdef \beta_1 M_{t-1}+\frac{\eta\beta_1 L(q^2+1)G^4}{\epsilon}+G^2 H_t-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\leq \beta_1 M_{t-1}+\frac{\eta\beta_1 L(q^2+1)G^4}{\epsilon}+G^2 H_t.
+\end{align*}
+By induction, we have
+\begin{align*}
+    M_t&\leq \beta_1^{t-1} M_1+G^2 \sum_{i=0}^{t-2} \beta_1^i H_{t-i}+ \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
+    % &\overset{(a)}{\leq} \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}+G^2\sum_{i=1}^d \left(\frac{1}{\sqrt\epsilon}+\sum_{j=2}^{t} \left(\frac{1}{\sqrt{\hat v_{j-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_j+\epsilon}} \right)\right)-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    % &\overset{(b)}{\leq} \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}+\frac{2dG^2}{\sqrt\epsilon}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]
+\end{align*}
+since $\beta_1<1$. Summing over $t=1,...,T$, we obtain
+\begin{align*}
+    \sum_{t=1}^T M_t&\leq \sum_{t=1}^T \beta_1^{t-1} M_1+G^2\sum_{t=2}^T \sum_{i=0}^{t-2} \beta_1^i H_{t-i}+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\overset{(a)}{\leq} \frac{dG^2}{(1-\beta_1)\sqrt\epsilon}+G^2\sum_{t=2}^T (\sum_{i=0}^{T-t} \beta_1^{t-i})H_t+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\leq \frac{dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{G^2}{1-\beta_1}\sum_{t=2}^T \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}|\\
+    &\hspace{1in} + \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\overset{(b)}{\leq} \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
+\end{align*}
+where (a) is because $M_1=\mathbb E[\langle\nabla f(\theta_1),a_0'\rangle]\leq \beta_1 d G^2/\sqrt{\epsilon}$, and (b) is derived by cancelling terms due to the fact that $\{\hat v_{t}\}_{t>0}$ is a non-decreasing sequence, hence $\hat v_{t}\leq \hat v_{t-1}$. 
+It remains to bound the last two terms in (\ref{eq0}).
+
+\textbf{Bounding the variance term.} We have
+\begin{align*}
+    \mathbb E[\|a_t'\|^2]&=\mathbb E[\|\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\|^2]\leq \frac{1}{\epsilon}\mathbb E[\|m_t'\|^2],
+\end{align*}
+and by Young's inequality,
+\begin{align*}
+    \mathbb E[\|m_t'\|^2]&=\mathbb E[\|\beta_1m_{t-1}'+(1-\beta_1)g_t\|^2]\\
+    &\leq (1+\frac{\rho}{2})\beta_1^2 \mathbb E[\|m_{t-1}'\|^2]+(1+\frac{1}{2\rho})(1-\beta_1)^2 \mathbb E[\|g_t\|^2].
+\end{align*}
+Choosing $\rho=2(1-\beta_1^2)$, we derive
+\begin{align*}
+    \mathbb E[\|m_t'\|^2]&\leq \beta_1^2(2-\beta_1^2)\mathbb E[\|m_{t-1}'\|^2]+(1-\beta_1)^2(1+\frac{1}{4(1-\beta_1^2)})\mathbb E[\|g_t\|^2]\\
+    &\leq \frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})\sigma^2\eqdef C\sigma^2,
+\end{align*}
+due to $\beta_1<1$, $m_0'=0$ and the bounded variance assumption. Hence,
+\begin{align*}
+    \mathbb E[\|a_t'\|^2]\leq \frac{C\sigma^2}{\epsilon}.
+\end{align*}
+
+\textbf{Bounding the compression error.} For the last term in (\ref{eq0}), again by induction,
+\begin{equation}\label{eq:ineqe_t}
+\begin{split}
+\norm{e_t} & = \norm{e_{t-1} + g_{t-1} - \tilde g_{t-1}}\\
+& =  \norm{ g_{t-1} + e_{t-1} - TopK(g_{t-1}+e_{t-1},k)}\\
+& \leq q \norm{g_{t-1} + e_{t-1}}\\
+& \leq q \norm{ e_{t-1}}+ q \norm{g_{t-1}}\\
+& \leq \frac{q}{1-q}G.
+\end{split}
+\end{equation}
+Since $\|a_t'\|^2\leq G/\epsilon$, we derive
+\begin{align*}
+    \mathbb E[\| \mathcal E_t\| \|a_t'\|]\leq \frac{qG^2}{(1-q)\epsilon}.
+\end{align*}
+
+\textbf{Completing the proof.} Summing (\ref{eq0}) over $t=1,...,T$ and integrating things together, we have
+\begin{align*}
+    \mathbb E[f(\theta_{T+1}')-f(\theta_1')]&\leq \eta \sum_{t=1}^T M_t+\frac{T\eta^2CL\sigma^2}{2\epsilon}+\frac{T\eta^2 LqG^2}{(1-q)\epsilon}\\
+    &\leq -\sum_{t=1}^T \frac{\eta(1-\beta_1)}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]+\frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}\\
+    &\hspace{1in}+ \frac{T \eta^2\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon} +\frac{T\eta^2CL\sigma^2}{2\epsilon}+\frac{T\eta^2 LqG^2}{(1-q)\epsilon}.
+\end{align*}
+Thus,
+\begin{align*}
+    \frac{1}{T}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]&\leq C'\Big(\frac{\mathbb E[f(\theta_1')-f(\theta_{T+1}')]}{T\eta}+\frac{2dG^2}{T(1-\beta_1)\sqrt\epsilon}\\
+    &\hspace{1in} + \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon} +\frac{\eta CL\sigma^2}{2\epsilon}+\frac{\eta LqG^2}{(1-q)\epsilon} \Big)\\
+    &\leq C'\Big(\frac{\mathbb E[f(\theta_1)-f(\theta^*)]}{T\eta}+\frac{2dG^2}{T(1-\beta_1)\sqrt\epsilon}\\
+    &\hspace{1in} + \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon} +\frac{\eta CL\sigma^2}{2\epsilon}+\frac{\eta LqG^2}{(1-q)\epsilon} \Big).
+\end{align*}
+where $C'=\frac{\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$. The last inequality is because $\theta_1'=\theta_1$, and $\theta^*=\argmin_\theta f(\theta)$.
+
+Taking decreasing learning rate $\eta=1/\sqrt T$, we obtain
+\begin{align*}
+    \frac{1}{T}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\leq \mathcal O(\frac{1}{\sqrt T}+\frac{1}{T}),
+\end{align*}
+matching the convergence rate of SGD with error feedback~\cite{karimireddy2019error}.
+
+
+
 %Try as in "A Sufficient Condition for Convergences of Adam and RMSProp"
 %
 %
