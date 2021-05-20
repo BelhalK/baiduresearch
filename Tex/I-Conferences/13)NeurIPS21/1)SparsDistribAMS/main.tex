@@ -323,11 +323,121 @@ Our proposed TopK-EF with AMSGrad matches that of full AMSGrad, in distributed l
 \appendix 
 
 
+\section{Some Important Notations}
+For the following proofs, denote
+\begin{align*}
+m_t=\beta_1 m_{t-1}+(1-\beta_1)\tilde g_t \quad & \textrm{and} \quad m_t'=\beta_1 m_{t-1}'+(1-\beta_1) g_t\\
+    a_t=\frac{m_t}{\sqrt{\hat v_t+\epsilon}},\quad & \textrm{and} \quad  a_t'=\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}.
+\end{align*}
+
 \section{Single Machine Setting}
 
+\subsection{$\beta_1=0$}
+\begin{proof}
+
+Denote the following auxiliary sequences,
+
+\begin{align*}
+\theta_{t}':=\theta_{t}-\eta\frac{e_t}{\sqrt{\hat v_{t-1}+\epsilon}},
+\end{align*}
+such that
+\begin{align*}
+    \theta_{t+1}'&=\theta_{t+1}-\eta\frac{e_{t+1}}{\sqrt{\hat v_t+\epsilon}}\\
+    &=\theta_t-\eta\frac{\tilde g_t+e_{t+1}}{\sqrt{\hat v_t+\epsilon}}\\
+    &=\theta_t-\eta\frac{e_{t}}{\sqrt{\hat v_t+\epsilon}}-\eta\frac{g_t}{\sqrt{\hat v_t+\epsilon}}\\
+    &=\theta_t'-\eta\frac{g_t}{\sqrt{\hat v_t+\epsilon}}.
+\end{align*}
+where (a) uses the fact that $\tilde g_t+e_{t+1}=g_t+e_t$. By Assumption~\ref{ass:smooth} we have
+\begin{align*}
+    f(\theta_{t+1}')\leq f(\theta_t')-\eta\langle \nabla f(\theta_t'), a_t'\rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
+\end{align*}
+{\color{red} Taking expectation regarding the randomness at step $t$,}
+\begin{align}
+    \mathbb E[f(\theta_{t+1}')]-f(\theta_t')&\leq -\eta\mathbb E[\langle \nabla f(\theta_t'), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2] \nonumber\\
+    &=-\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\frac{\eta^2L}{2}\mathbb E[\|a_t'\|^2]+\eta\mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_t'),a_t'\rangle]  \nonumber\\
+ &\leq -\eta\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]+\eta^2L \mathbb E[\|a_t'\|^2]+\frac{\eta^2 L}{2}\mathbb E[\| \frac{e_t}{\sqrt{\hat v_{t-1}+\epsilon}}\|^2]\label{eq0betanull}. 
+\end{align}
+
+
+
+\textbf{The first term in \eqref{eq0betanull}.} We have
+\begin{align*}
+    M_t\eqdef -\mathbb E[\langle \nabla f(\theta_t), a_t'\rangle]&=-\mathbb E[\langle \nabla f(\theta_t), \frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\rangle]\\
+    &=\underbrace{-\mathbb E[\langle \nabla f(\theta_t), \frac{m_t'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]}_{I}+\underbrace{\mathbb E[\langle \nabla f(\theta_t), (\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}})m_t' \rangle]}_{II}.
+\end{align*}
+To bound I, note that
+\begin{align}
+    I&=-\mathbb E[\langle \nabla f(\theta_t), \frac{g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]  \nonumber\\
+    &=-\mathbb E\mathbb E[\langle \nabla f(\theta_t), \frac{g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle|\mathcal F_{t-1}]  \nonumber\\
+    &\leq -\frac{1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],  \label{eq1}
+\end{align}
+where the last inequality follows from Lemma~\ref{lemma:bound v_t}. Regarding the second term in (\ref{eq0betanull}), we have
+\begin{align*}
+    II\leq G^2 \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}| ] \leq G^2 \frac{d}{\sqrt{\epsilon}}.
+\end{align*}
+
+We obtain
+\begin{align*}
+    M_t  \leq G^2 \frac{d}{\sqrt{\epsilon}} -\frac{1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]
+\end{align*}
+ Summing over $t=1,...,T$, we obtain
+\begin{align*}
+    \sum_{t=1}^T M_t  \leq G^2 \frac{Td}{\sqrt{\epsilon}} -\frac{1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}     \sum_{t=1}^T\mathbb E[\|\nabla f(\theta_t)\|^2]
+\end{align*}
+
+
+\textbf{Bounding the last two terms in  in (\ref{eq0betanull}).} 
+For the first one we have
+\begin{align*}
+    \mathbb E[\|a_t'\|^2]&=\mathbb E[\|\frac{m_t'}{\sqrt{\hat v_t+\epsilon}}\|^2]\leq \frac{1}{\epsilon}\mathbb E[\|m_t'\|^2] \leq \frac{1}{\epsilon}\mathbb E[\|g_t\|^2]
+\end{align*}
+
+For the second, using the smoothness and the fact that $\theta_{t}' - \theta_{t} = -\eta\frac{e_t}{\sqrt{\hat v_{t-1}+\epsilon}}$
+
+\begin{align*}
+ \frac{\eta^2 L}{2}\mathbb E[\| \frac{e_t}{\sqrt{\hat v_{t-1}+\epsilon}}\|^2\leq  \frac{\eta^2 L}{2\epsilon}\frac{4q^2}{(1-q^2)^2}\sigma^2 +  \frac{\eta^2 L}{2\epsilon}\frac{2q^2}{1-q^2}\sum_{\tau=1}^t (\frac{1+q^2}{2})^{t-\tau} \mathbb E[\|\nabla f(\theta_\tau)\|^2]
+\end{align*}
+using Lemma \ref{lemma:bound e_t}
+
+Putting it all together we have 
+
+\begin{align*}
+    &\mathbb E[f(\theta_{T+1}')-f(\theta_1')]\\
+    &\leq G^2 \frac{Td}{\sqrt{\epsilon}} -\frac{\eta}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}     \sum_{t=1}^T\mathbb E[\|\nabla f(\theta_t)\|^2] + \frac{\eta^2L }{\epsilon}  \sum_{t=1}^T \mathbb E[\|g_t\|^2] \\
+    &+ \frac{T\eta^2 L}{2\epsilon}\frac{4q^2}{(1-q^2)^2}\sigma^2 +  \frac{\eta^2 L}{2\epsilon}\frac{4q^2}{(1-q^2)^2} \sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]
+\end{align*}
+
+Safe to say $\sum_{t=1}^T \mathbb E[\|g_t\|^2] =   \sum_{t=1}^T \mathbb E[\| \nabla f(\theta_t )\|^2]$  in the single machine setting?
+
+
+
+\begin{align*}
+    &\mathbb E[f(\theta_{T+1}')-f(\theta_1')]\\
+    &\leq \eta \left[ \frac{\eta L}{2\epsilon}\frac{4q^2}{(1-q^2)^2} + \frac{\eta L }{\epsilon} - \frac{1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}    \right]  \sum_{t=1}^T\mathbb E[\|\nabla f(\theta_t)\|^2] \\
+    &+ \frac{T\eta^2 L}{2\epsilon}\frac{4q^2}{(1-q^2)^2}\sigma^2 + G^2 \frac{Td}{\sqrt{\epsilon}}\\
+    &\leq \eta \left[\eta \frac{ 4 q^2 L  +  2L (1-q^2)^2 }{2\epsilon (1-q^2)^2 }  - \frac{1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}    \right]  \sum_{t=1}^T\mathbb E[\|\nabla f(\theta_t)\|^2] \\
+    &+ \frac{T\eta^2 L}{2\epsilon}\frac{4q^2}{(1-q^2)^2}\sigma^2 + G^2 \frac{Td}{\sqrt{\epsilon}}
+\end{align*}
+
+Now set $\eta \leq \frac{2\epsilon (1-q^2)^2}{4(4 q^2 L  +  2L (1-q^2)^2 )\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$, then
+
+\begin{align*}
+    &\mathbb E[f(\theta_{T+1}')-f(\theta_1')]\\
+    &\leq - \eta  \frac{3}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}   \sum_{t=1}^T\mathbb E[\|\nabla f(\theta_t)\|^2] \\
+    &+ \frac{T\eta^2 L}{2\epsilon}\frac{4q^2}{(1-q^2)^2}\sigma^2 + G^2 \frac{Td}{\sqrt{\epsilon}}
+\end{align*}
+
+Note $C_1 = \frac{3}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}  $, then
+\begin{align*}
+\frac{1}{T} \sum_{t=1}^T\mathbb E[\|\nabla f(\theta_t)\|^2]   \leq \frac{\mathbb E[f(\theta_{T+1}')-f(\theta_1')]}{C_1 T \eta} +  \frac{\eta L}{2\epsilon}\frac{4q^2}{(1-q^2)^2}\sigma^2 + G^2 \frac{d}{\eta \sqrt{\epsilon}}
+\end{align*}
+
+\end{proof}
+
+
+\clearpage
 
 \subsection{Intermediary Lemmas}
-
 
 
 \begin{Lemma} \label{lemma:m_t,m_t'}
@@ -343,9 +453,9 @@ where $C_1=(1-\beta_1^2)(1+\frac{1}{4(1-\beta_1^2)})$ and $C=\frac{C_1}{1-\beta_
 We have by Young's inequality
 \begin{align*}
     \mathbb E[\|m_t'\|^2]&=\mathbb E[\|\beta_1m_{t-1}'+(1-\beta_1)g_t\|^2]\\
-    &\leq (1+\rho)\beta_1^2 \mathbb E[\|m_{t-1}'\|^2]+(1+\frac{1}{\rho})(1-\beta_1)^2 \mathbb E[\|g_t\|^2].
+    &\leq (1+\frac{\rho}{2})\beta_1^2 \mathbb E[\|m_{t-1}'\|^2]+(1+\frac{1}{2\rho})(1-\beta_1)^2 \mathbb E[\|g_t\|^2].
 \end{align*}
-Since $\mathbb E[\|g_t\|^2]\leq \sigma^2+ \EE[\|\nabla f(\theta_t)\|^2]$, by choosing $\rho=1-\beta_1^2$, we derive
+Since $\mathbb E[\|g_t\|^2]\leq \sigma^2+ \EE[\|\nabla f(\theta_t)\|^2]$, by choosing $\rho=2(1-\beta_1^2)$, we derive
 \begin{align}
     \mathbb E[\|m_t'\|^2]&\leq \beta_1^2(2-\beta_1^2)\mathbb E[\|m_{t-1}'\|^2]+(1-\beta_1)^2(1+\frac{1}{4(1-\beta_1^2)})\mathbb E[\|g_t\|^2]\\
     &\leq \frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1^2)}(1+\frac{1}{4(1-\beta_1^2)})\sigma^2+C_1 \sum_{\tau=1}^t (\beta_1^2(2-\beta_1^2))^{t-\tau}\mathbb E[\|\nabla f(\theta_\tau)\|^2]\\
@@ -364,6 +474,9 @@ where the first inequality is because of Assumption~\ref{ass:quant} and that the
 \begin{align*}
     \mathbb E[\|m_t\|^2]&\leq (3q^2+\frac{4q^2(6q^2+3)}{(1-q^2)^2}+1)C\sigma^2+(6q^2+3)C_1\sum_{\tau=1}^t (\beta_1^2(2-\beta_1^2))^{t-\tau}\mathbb E[\|\nabla f(\theta_\tau)\|^2].
 \end{align*}
+
+
+
 
 \begin{Lemma} \label{bound:a_t}
 Suppose $\gamma=\beta_1/\beta_2<1$. Then, for $\forall t$,
@@ -437,7 +550,7 @@ by choosing $\rho=\frac{1-q^2}{2q^2}$. Now by recursion and the initialization $
     \mathbb E[\|e_{t+1}\|^2]&\leq \frac{2q^2}{1-q^2} \sum_{\tau=1}^t (\frac{1+q^2}{2})^{t-\tau} \mathbb E[\|g_\tau\|^2]\\
     &\leq \frac{4q^2}{(1-q^2)^2}\sigma^2 + \frac{2q^2}{1-q^2}\sum_{\tau=1}^t (\frac{1+q^2}{2})^{t-\tau} \mathbb E[\|\nabla f(\theta_\tau)\|^2],
 \end{align*}
-which proves the lemma.
+which proves the lemma. Meanwhile, we also have the absolute bound $\|e_{t}\|^2\leq \frac{4q^2}{(1-q^2)^2}G^2$.
 \end{proof}
 
 \begin{Lemma} \label{lemma:bound big E_t}
@@ -466,11 +579,33 @@ which gives the desired result.
 
 \end{proof}
 
+\begin{Lemma} \label{lemma:bound v_t}
+It holds that $\forall t\in [T]$, $\forall i\in [d]$, $\hat v_{t,i}\leq \frac{4(1+q^2)^3}{(1-q^2)^2}G^2$.
+
+\end{Lemma}
+
+\begin{proof}
+For any $t$, by Lemma~\ref{lemma:bound e_t} and Assumption~\ref{ass:boundgrad} we have
+\begin{align*}
+    \|\tilde g_t\|^2&=\|\mathcal C(g_t+e_t)\|^2\\
+    &\leq \|\mathcal C(g_t+e_t)-(g_t+e_t)+(g_t+e_t)\|^2\\
+    &\leq 2(q^2+1)\|g_t+e_t\|^2\\
+    &\leq 4(q^2+1)(G^2+\frac{4q^2}{(1-q^2)^2}G^2)\\
+    &=\frac{4(1+q^2)^3}{(1-q^2)^2}G^2.
+\end{align*}
+It's then easy to show by the updating rule of $\hat v_t$,
+\begin{align*}
+    \hat v_{t,i}=(1-\beta_2)\sum_{\tau=1}^t \tilde g_{t,i}^2\leq \frac{4(1+q^2)^3}{(1-q^2)^2}G^2.
+\end{align*}
+
+\end{proof}
+
+
 \subsection{Proof of Theorem~\ref{theo:single rate}}
 
 
 \begin{Theorem}  \label{theo:single rate}
-Denote $C'=\frac{4\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$, and $\gamma=\beta_1/\beta_2<1$. Under Assumption~\ref{ass:quant} to Assumption~\ref{ass:var}, with $\eta_t=\eta\leq \min\{\frac{1-\beta_1}{C},\frac{(1-q^2)^2}{2q^2}\}\frac{(1-\beta_1)\epsilon}{4L\sqrt{(q^2+1)G^2+\epsilon}}$, \algo\ satisfies
+Denote $C'=\frac{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}{1-\beta_1}$, $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$, and $\gamma=\beta_1/\beta_2<1$. Under Assumption~\ref{ass:quant} to Assumption~\ref{ass:var}, with $\eta_t=\eta\leq \min\{\frac{1-\beta_1}{C},\frac{(1-q^2)^2}{2q^2}\}\frac{(1-\beta_1)\epsilon}{4L\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$, \algo\ satisfies
 \begin{align*}
     \frac{1}{T}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]&\leq C'\Big(\frac{\mathbb E[f(\theta_1)-f(\theta^*)]}{T\eta}+\frac{2dG^2}{T(1-\beta_1)\sqrt\epsilon}+\frac{\eta LC\sigma^2}{(1-\beta_1)\epsilon}\\
     &\hspace{2in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}+\frac{2\eta L q^2\sigma^2}{(1-q^2)^2\epsilon}\Big).
@@ -521,13 +656,13 @@ Thus,
     &=\underbrace{-\mathbb E[\langle \nabla f(\theta_t), \frac{m_t'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]}_{I}+\underbrace{\mathbb E[\langle \nabla f(\theta_t), (\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}})m_t' \rangle]}_{II}.
 \end{align*}
 To bound I, note that
-\begin{align*}
-    I&=-\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
-    &=-\mathbb E\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle|\mathcal F_{t-1}] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
-    &=-(1-\beta_1)\mathbb E[\frac{\|\nabla f(\theta_t)\|^2}{\sqrt{\hat v_{t-1}+\epsilon}}] - \mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
-    &\leq -\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]- \beta_1\mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle].
-\end{align*}
-Regarding the second term, we have
+\begin{align}
+    I&=-\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] \nonumber\\
+    &=-\mathbb E\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle|\mathcal F_{t-1}] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] \nonumber\\
+    &=-(1-\beta_1)\mathbb E[\frac{\|\nabla f(\theta_t)\|^2}{\sqrt{\hat v_{t-1}+\epsilon}}] - \mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] \nonumber\\
+    &\leq -\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]- \beta_1\mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle],  \label{eq1}
+\end{align}
+where the last inequality follows from Lemma~\ref{lemma:bound v_t}. Regarding the second term in (\ref{eq1}), we have
 \begin{align}
     &- \mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] \nonumber\\
     &=-\mathbb E[\langle\nabla f(\theta_{t-1}), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]- \mathbb E[\langle \nabla f(\theta_t)-\nabla f(\theta_{t-1}), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] \nonumber\\
@@ -538,7 +673,7 @@ Regarding the second term, we have
 where Lemma~\ref{lemma:m_t,m_t'} and Lemma~\ref{bound:a_t} are used, with $C_1=(1-\beta_1^2)(1+\frac{1}{4(1-\beta_1^2)})$ and $C=\frac{C_1}{1-\beta_1^2(2-\beta_1^2)}$. Putting parts together we obtain
 \begin{align*}
     I&\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 LC\sigma^2}{\epsilon}+\frac{\eta \beta_1 LC_1}{\epsilon} \sum_{\tau=1}^t (\beta_1^2(2-\beta_1^2))^{t-\tau}\mathbb E[\|\nabla f(\theta_\tau)\|^2])\\
-    &\hspace{1.5in} +\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2].
+    &\hspace{1.5in} +\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2].
 \end{align*}
 For II, it holds that
 \begin{align*}
@@ -547,23 +682,23 @@ For II, it holds that
 Denoting $H_t\eqdef \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}| ]$, $S_t\eqdef \sum_{\tau=1}^t (\beta_1^2(2-\beta_1^2))^{t-\tau}\mathbb E[\|\nabla f(\theta_\tau)\|^2])$. We arrive at
 \begin{align*}
     M_t&\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 LC\sigma^2}{\epsilon}+\frac{\eta \beta_1 LC_1}{\epsilon} S_t+G^2 H_t\\
-    &\hspace{1in} +\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\hspace{1in} +\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
     &\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 LC\sigma^2}{\epsilon}+\frac{\eta \beta_1 LC_1}{\epsilon} S_t+G^2 H_t+\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}.
 \end{align*}
 By induction, we have
 \begin{align*}
     M_t&\leq \beta_1^{t-1} M_1+G^2 \sum_{\tau=0}^{t-2} \beta_1^\tau H_{t-\tau}+\frac{\eta \beta_1 LC_1}{\epsilon} \sum_{\tau=0}^{t-2}\beta_1^\tau S_{t-\tau}+ \frac{\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}\\
-    &\hspace{1.5in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
+    &\hspace{1.5in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
 \end{align*}
 since $\beta_1<1$. Summing over $t=1,...,T$, we obtain
 \begin{align*}
     \sum_{t=1}^T M_t&\leq \sum_{t=1}^T \beta_1^{t-1} M_1+G^2\sum_{t=2}^T \sum_{\tau=0}^{t-2} \beta_1^\tau H_{t-\tau}+\frac{\eta \beta_1 LC_1}{\epsilon}\sum_{t=2}^T\sum_{\tau=0}^{t-2}\beta_1^\tau S_{t-\tau}\\
-    &\hspace{1in} +\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\hspace{1in} +\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
     &\overset{(a)}{\leq} \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}\\
-    &\hspace{1in} +\Big[\frac{\eta L C}{(1-\beta_1)\epsilon}- \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\Big]\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
-    &\leq \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}- \frac{3(1-\beta_1)}{4\sqrt{(q^2+1)G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2],
+    &\hspace{1in} +\Big[\frac{\eta L C}{(1-\beta_1)\epsilon}- \frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\Big]\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\leq \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}- \frac{3(1-\beta_1)}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2],
 \end{align*}
-when $\eta$ is chosen to be $\eta\leq\frac{(1-\beta_1)^2\epsilon}{4LC\sqrt{(q^2+1)G^2+\epsilon}}$. Here, (a) is due to $M_1=\mathbb E[\langle\nabla f(\theta_1),a_0'\rangle]\leq \beta_1 d G^2/\sqrt{\epsilon}$ and Lemma~\ref{lemma:H,S}. It remains to bound the last two terms in (\ref{eq0}).
+when $\eta$ is chosen to be $\eta\leq\frac{(1-\beta_1)^2\epsilon}{4LC\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$. Here, (a) is due to $M_1=\mathbb E[\langle\nabla f(\theta_1),a_0'\rangle]\leq \beta_1 d G^2/\sqrt{\epsilon}$ and Lemma~\ref{lemma:H,S}. It remains to bound the last two terms in (\ref{eq0}).
 
 \textbf{Bounding the last two terms in  in (\ref{eq0}).} We have
 \begin{align*}
@@ -589,24 +724,24 @@ For the last term in (\ref{eq0}), we have by Lemma~\ref{lemma:bound big E_t}
     &\mathbb E[f(\theta_{T+1}')-f(\theta_1')]\\
     &\leq \eta \sum_{t=1}^T M_t+\frac{T\eta^2 CL\sigma^2}{\epsilon}+\frac{C\eta^2 L}{\epsilon} \sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2])\\
     &\hspace{2in} +\frac{2T\eta^2L q^2\sigma^2}{(1-q^2)^2\epsilon}+ \frac{2\eta^2 L q^2}{(1-q^2)^2\epsilon} \sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
-    &\leq \frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta^2 \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta^2 L\beta_1 d}{(1-\beta_2)(1-\gamma)}- \frac{3\eta(1-\beta_1)}{4\sqrt{(q^2+1)G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\leq \frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta^2 \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta^2 L\beta_1 d}{(1-\beta_2)(1-\gamma)}- \frac{3\eta(1-\beta_1)}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
     &\hspace{0.5in} +\frac{T\eta^2 CL\sigma^2}{\epsilon}+\Big[\frac{C\eta^2 L}{\epsilon}+\frac{2\eta^2 L q^2}{(1-q^2)^2\epsilon} \Big] \sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2])+\frac{2T\eta^2L q^2\sigma^2}{(1-q^2)^2\epsilon}\\
-    &\leq - \frac{\eta(1-\beta_1)}{4\sqrt{(q^2+1)G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]+\frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta^2 LC\sigma^2}{(1-\beta_1)\epsilon}\\
+    &\leq - \frac{\eta(1-\beta_1)}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]+\frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta^2 LC\sigma^2}{(1-\beta_1)\epsilon}\\
     &\hspace{2in} +\frac{T\eta^2 L\beta_1 d}{(1-\beta_2)(1-\gamma)}+\frac{2T\eta^2L q^2\sigma^2}{(1-q^2)^2\epsilon},
 \end{align*}
-when $\eta\leq \frac{(1-q^2)^2(1-\beta_1)\epsilon}{8Lq^2\sqrt{(q^2+1)G^2+\epsilon}}$, where the last line is because $C\eta L\leq \frac{(1-\beta_1)\epsilon}{4\sqrt{(q^2+1)G^2+\epsilon}}$ also holds. Re-arranging terms, we get that when $\eta\leq \min\{\frac{1-\beta_1}{C},\frac{(1-q^2)^2}{2q^2}\}\frac{(1-\beta_1)\epsilon}{4L\sqrt{(q^2+1)G^2+\epsilon}}$, 
+when $\eta\leq \frac{(1-q^2)^2(1-\beta_1)\epsilon}{8Lq^2\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$, where the last line is because $C\eta L\leq \frac{(1-\beta_1)\epsilon}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$ also holds. Re-arranging terms, we get that when $\eta\leq \min\{\frac{1-\beta_1}{C},\frac{(1-q^2)^2}{2q^2}\}\frac{(1-\beta_1)\epsilon}{4L\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$, 
 \begin{align*}
     \frac{1}{T}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]&\leq C'\Big(\frac{\mathbb E[f(\theta_1')-f(\theta_{T+1}')]}{T\eta}+\frac{2dG^2}{T(1-\beta_1)\sqrt\epsilon}+\frac{\eta LC\sigma^2}{(1-\beta_1)\epsilon}\\
     &\hspace{2in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}+\frac{2\eta L q^2\sigma^2}{(1-q^2)^2\epsilon}\Big)\\
     &\leq C'\Big(\frac{\mathbb E[f(\theta_1)-f(\theta^*)]}{T\eta}+\frac{2dG^2}{T(1-\beta_1)\sqrt\epsilon}+\frac{\eta LC\sigma^2}{(1-\beta_1)\epsilon}\\
     &\hspace{2in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}+\frac{2\eta L q^2\sigma^2}{(1-q^2)^2\epsilon}\Big).
 \end{align*}
-where $C'=\frac{4\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$. The last inequality is because $\theta_1'=\theta_1$, and $\theta^*=\argmin_\theta f(\theta)$. The proof is complete.
+where $C'=\frac{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$. The last inequality is because $\theta_1'=\theta_1$, and $\theta^*=\argmin_\theta f(\theta)$. The proof is complete.
 
 \end{proof}
 
 \begin{Corollary} \label{coro:single rate}
-Under the setting in Theorem~\ref{theo:single rate}, if the learning rate is chosen to be $\eta\leq \min\{\min\{\frac{1-\beta_1}{C},\frac{(1-q^2)^2}{2q^2}\}\frac{(1-\beta_1)\epsilon}{4L\sqrt{(q^2+1)G^2+\epsilon}}, \frac{1}{\sqrt T}\}$, then the convergence rate of \algo\ admits
+Under the setting in Theorem~\ref{theo:single rate}, if the learning rate is chosen to be $\eta\leq \min\{\min\{\frac{1-\beta_1}{C},\frac{(1-q^2)^2}{2q^2}\}\frac{(1-\beta_1)\epsilon}{4L\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}, \frac{1}{\sqrt T}\}$, then the convergence rate of \algo\ admits
 \begin{align*}
     \frac{1}{T}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\leq \mathcal O(\frac{1}{\sqrt T}+\frac{1}{T}).
 \end{align*}
@@ -979,7 +1114,7 @@ We bound the last term on the RHS, $ -\eta_{t+1} \EE[\pscal{\nabla f(\theta_t)}{
 Under the assumption that we use a decreasing stepsize such that $\eta_{t+1} \leq \eta_{t}$, and given that according to Line~\ref{line:v} we have that $\hat v_{t+1} \geq \hat v_{t}$ by construction, we obtain 
 \begin{equation}
 \begin{split}
-\EE[f(\theta_{t+1}) - f(\theta_{t}) ] \leq &   - \frac{\eta_{t+1}(1-\beta_1)}{2}  (\epsilon + \frac{(q^2+1)G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2] +q^2 \frac{G^2 \eta_{t+1}}{\epsilon 2n^2} \\
+\EE[f(\theta_{t+1}) - f(\theta_{t}) ] \leq &   - \frac{\eta_{t+1}(1-\beta_1)}{2}  (\epsilon + \frac{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2] +q^2 \frac{G^2 \eta_{t+1}}{\epsilon 2n^2} \\
 &- \eta_{t+1} \beta_1\EE[\pscal{\nabla f(\theta_{t-1})}{(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}}]\\
 & +  \left(\frac{L}{2} + \beta_1 L \right) \norm{\theta_t - \theta_{t-1}}^2\\
 &+   \eta_{t+1} G^2 \EE[\sum_{j=1}^d \left[(\hat{v}^j_{t+1} + \epsilon )^{-1/2} - (\hat{v}^j_{t} + \epsilon )^{-1/2}  \right] ]
@@ -1021,7 +1156,7 @@ where
 By Lemma~\ref{lem:lemma2} we have 
 \begin{equation}
 \begin{split}
-\EE[f(\theta_{t+1}) - f(\theta_{t}) ] \leq &   - \frac{\eta_{t+1}(1-\beta_1)}{2}  (\epsilon + \frac{(q^2+1)G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2] +q^2 \frac{G^2 \eta_{t+1}}{\epsilon 2n^2} \\
+\EE[f(\theta_{t+1}) - f(\theta_{t}) ] \leq &   - \frac{\eta_{t+1}(1-\beta_1)}{2}  (\epsilon + \frac{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2] +q^2 \frac{G^2 \eta_{t+1}}{\epsilon 2n^2} \\
 &- \eta_{t+1} \beta_1\EE[\pscal{\nabla f(\theta_{t-1})}{(\hat{V}_{t} + \epsilon \mathsf{I_d})^{-1/2} m_{t}}]\\
 & +  \left(\frac{L}{2} + \beta_1 L \right) \norm{\theta_t - \theta_{t-1}}^2\\
 &+   \eta_{t+1} G^2 \EE[\sum_{j=1}^d \left[(\hat{v}^j_{t+1} + \epsilon )^{-1/2} - (\hat{v}^j_{t} + \epsilon )^{-1/2}  \right] ]
@@ -1088,13 +1223,13 @@ Also, set the tuning parameters such that
 \end{split}
 \end{equation}
 
-Note that $- (\eta_{t+1}+ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2})\frac{(1-\beta_1)}{2}  (\epsilon + \frac{(q^2+1)G^2}{1 - \beta_2})^{-\frac{1}{2}}\leq - \eta_{t+1}\frac{(1-\beta_1)}{2} (\epsilon + \frac{(q^2+1)G^2}{1 - \beta_2})^{-\frac{1}{2}}$ since $ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2} \geq 0$.
+Note that $- (\eta_{t+1}+ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2})\frac{(1-\beta_1)}{2}  (\epsilon + \frac{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2}{1 - \beta_2})^{-\frac{1}{2}}\leq - \eta_{t+1}\frac{(1-\beta_1)}{2} (\epsilon + \frac{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2}{1 - \beta_2})^{-\frac{1}{2}}$ since $ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2} \geq 0$.
 
 The above coupled with \eqref{eq:mainR} yields
 
 \begin{equation}\label{eq:mainR2}
 \begin{split}
-\EE[R_{t+1}] - \EE[R_t] \leq & - \eta_{t+1}\frac{(1-\beta_1)}{2} (\epsilon + \frac{(q^2+1)G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2]+q^2 \eta_{t+1}+ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}\\
+\EE[R_{t+1}] - \EE[R_t] \leq & - \eta_{t+1}\frac{(1-\beta_1)}{2} (\epsilon + \frac{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2}{1 - \beta_2})^{-\frac{1}{2}} \EE[\norm{\nabla f(\theta_t)}^2]+q^2 \eta_{t+1}+ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}\\
 &  -  (\eta_{t+1}+ \sum_{k=t+1}^\infty \eta_{k} \beta_1^{k-t+2}) G^2 \EE[\sum_{j=1}^d \left[(\hat{v}^j_{t} + \epsilon )^{-1/2} - (\hat{v}^j_{t+1} + \epsilon )^{-1/2}  \right] ]\\
 & + \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right)  \EE[ \norm{\theta_{t+1} - \theta_{t}}^2]
 \end{split}
@@ -1104,7 +1239,7 @@ We now sum from $t = 1$ to $t = \maxiter$  the inequality in \eqref{eq:mainR2}, 
 
 \begin{equation}\label{eq:finalR2}
 \begin{split}
-&\eta\frac{(1-\beta_1)}{2} (\epsilon + \frac{(q^2+1)G^2}{1 - \beta_2})^{-\frac{1}{2}} \frac{1}{\maxiter}\sum_{t=1}^{\maxiter} \EE[\norm{\nabla f(\theta_t)}^2] \\
+&\eta\frac{(1-\beta_1)}{2} (\epsilon + \frac{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2}{1 - \beta_2})^{-\frac{1}{2}} \frac{1}{\maxiter}\sum_{t=1}^{\maxiter} \EE[\norm{\nabla f(\theta_t)}^2] \\
 \leq & \frac{\EE[R_1] - \EE[R_{\maxiter+1}]}{\maxiter} + \frac{q^2 \eta+ \sum_{k=t+1}^\infty \eta \beta_1^{k-t+2}\frac{G^2 }{\epsilon 2n^2}}{\maxiter}\\
 & + \left(\frac{L}{2} + 1+ \frac{\beta_1L}{1-\beta_1} \right)\frac{1}{\maxiter}  \sum_{t=1}^{\maxiter}\EE[ \norm{\theta_{t+1} - \theta_{t}}^2]
 \end{split}
@@ -1260,7 +1395,6 @@ $$3\frac{1}{n} \left[ \frac{1}{n}\|\sum_{i=1}^n\nabla f_i(\theta_t) -\nabla f(\t
 that should appear according to the way you defined $\sigma_g$ right?
 }
 
-
 where the first inequality is because of Assumption~\ref{ass:quant} and that the stochastic error $(g_t-\nabla f(\theta_t))$ is mean-zero and independent of other terms. The bound on $\|e_t\|^2$ in the last inequality is due to Lemma 3 of~\cite{karimireddy2019error}. Then by similar induction we can obtain
 \begin{align*}
     \mathbb E[\|m_t\|^2]&\leq \frac{C\sigma^2}{n}+(3q^2+\frac{4q^2(6q^2+3)}{(1-q^2)^2})C\sigma^2+(6q^2+3)C_1\sum_{\tau=1}^t (\beta_1^2(2-\beta_1^2))^{t-\tau}\mathbb E[\|\nabla f(\theta_\tau)\|^2].
@@ -1357,7 +1491,7 @@ To bound I, note that
     I&=-\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
     &=-\mathbb E\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle|\mathcal F_{t-1}] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
     &=-(1-\beta_1)\mathbb E[\frac{\|\nabla f(\theta_t)\|^2}{\sqrt{\hat v_{t-1}+\epsilon}}] - \mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
-    &\leq -\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]- \beta_1\mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle].
+    &\leq -\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]- \beta_1\mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle].
 \end{align*}
 Regarding the second term, we have
 \begin{align*}
@@ -1370,7 +1504,7 @@ Regarding the second term, we have
 where Lemma~\ref{lemma:m_t,m_t'} and Lemma~\ref{bound:a_t} are used, with $C_1=(1-\beta_1^2)(1+\frac{1}{4(1-\beta_1^2)})$ and $C=\frac{C_1}{1-\beta_1^2(2-\beta_1^2)}$. Putting parts together we obtain
 \begin{align*}
     I&\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 LC\sigma^2}{\epsilon}+\frac{\eta \beta_1 LC_1}{\epsilon} \sum_{\tau=1}^t (\beta_1^2(2-\beta_1^2))^{t-\tau}\mathbb E[\|\nabla f(\theta_\tau)\|^2])\\
-    &\hspace{1.5in} +\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2].
+    &\hspace{1.5in} +\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2].
 \end{align*}
 For II, it holds that
 \begin{align*}
@@ -1379,13 +1513,13 @@ For II, it holds that
 Denoting $H_t\eqdef \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}| ]$, $S_t\eqdef \sum_{\tau=1}^t (\beta_1^2(2-\beta_1^2))^{t-\tau}\mathbb E[\|\nabla f(\theta_\tau)\|^2])$. We arrive at
 \begin{align*}
     M_t&\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 LC\sigma^2}{\epsilon}+\frac{\eta \beta_1 LC_1}{\epsilon} S_t+G^2 H_t\\
-    &\hspace{1in} +\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\hspace{1in} +\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
     &\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 LC\sigma^2}{\epsilon}+\frac{\eta \beta_1 LC_1}{\epsilon} S_t+G^2 H_t+\frac{\eta L\beta_1(1-\beta_1)d}{(1-\beta_2)(1-\gamma)}.
 \end{align*}
 By induction, we have
 \begin{align*}
     M_t&\leq \beta_1^{t-1} M_1+G^2 \sum_{\tau=0}^{t-2} \beta_1^\tau H_{t-\tau}+\frac{\eta \beta_1 LC_1}{\epsilon} \sum_{\tau=0}^{t-2}\beta_1^\tau S_{t-\tau}+ \frac{\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}\\
-    &\hspace{1.5in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
+    &\hspace{1.5in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
 \end{align*}
 since $\beta_1<1$. For bounding the summations, we have the following result.
 
@@ -1393,12 +1527,12 @@ since $\beta_1<1$. For bounding the summations, we have the following result.
 Summing over $t=1,...,T$, we obtain
 \begin{align*}
     \sum_{t=1}^T M_t&\leq \sum_{t=1}^T \beta_1^{t-1} M_1+G^2\sum_{t=2}^T \sum_{\tau=0}^{t-2} \beta_1^\tau H_{t-\tau}+\frac{\eta \beta_1 LC_1}{\epsilon}\sum_{t=2}^T\sum_{\tau=0}^{t-2}\beta_1^\tau S_{t-\tau}\\
-    &\hspace{1in} +\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\hspace{1in} +\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
     &\overset{(a)}{\leq} \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}\\
-    &\hspace{1in} +\Big[\frac{\eta L C}{(1-\beta_1)\epsilon}- \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\Big]\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
-    &\leq \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}- \frac{3(1-\beta_1)}{4\sqrt{(q^2+1)G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2],
+    &\hspace{1in} +\Big[\frac{\eta L C}{(1-\beta_1)\epsilon}- \frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\Big]\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\leq \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}- \frac{3(1-\beta_1)}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2],
 \end{align*}
-when $\eta$ is chosen to be $\eta\leq\frac{(1-\beta_1)^2\epsilon}{4LC\sqrt{(q^2+1)G^2+\epsilon}}$. Here, (a) is due to $M_1=\mathbb E[\langle\nabla f(\theta_1),a_0'\rangle]\leq \beta_1 d G^2/\sqrt{\epsilon}$ and Lemma~\ref{lemma:H,S}. It remains to bound the last two terms in (\ref{eq0}).
+when $\eta$ is chosen to be $\eta\leq\frac{(1-\beta_1)^2\epsilon}{4LC\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$. Here, (a) is due to $M_1=\mathbb E[\langle\nabla f(\theta_1),a_0'\rangle]\leq \beta_1 d G^2/\sqrt{\epsilon}$ and Lemma~\ref{lemma:H,S}. It remains to bound the last two terms in (\ref{eq0}).
 
 \textbf{Bounding the last two terms in  in (\ref{eq0}).} We have
 \begin{align*}
@@ -1424,19 +1558,19 @@ For the last term in (\ref{eq0}), we have by Lemma~\ref{lemma:bound big E_t}
     &\mathbb E[f(\theta_{T+1}')-f(\theta_1')]\\
     &\leq \eta \sum_{t=1}^T M_t+\frac{T\eta^2 CL\sigma^2}{\epsilon}+\frac{C\eta^2 L}{\epsilon} \sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2])\\
     &\hspace{2in} +\frac{2T\eta^2L q^2\sigma^2}{(1-q^2)^2\epsilon}+ \frac{2\eta^2 L q^2}{(1-q^2)^2\epsilon} \sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
-    &\leq \frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta^2 \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta^2 L\beta_1 d}{(1-\beta_2)(1-\gamma)}- \frac{3\eta(1-\beta_1)}{4\sqrt{(q^2+1)G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
+    &\leq \frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta^2 \beta_1 LC\sigma^2}{(1-\beta_1)\epsilon}+\frac{T\eta^2 L\beta_1 d}{(1-\beta_2)(1-\gamma)}- \frac{3\eta(1-\beta_1)}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]\\
     &\hspace{0.5in} +\frac{T\eta^2 CL\sigma^2}{\epsilon}+\Big[\frac{C\eta^2 L}{\epsilon}+\frac{2\eta^2 L q^2}{(1-q^2)^2\epsilon} \Big] \sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2])+\frac{2T\eta^2L q^2\sigma^2}{(1-q^2)^2\epsilon}\\
-    &\leq - \frac{\eta(1-\beta_1)}{4\sqrt{(q^2+1)G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]+\frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta^2 LC\sigma^2}{(1-\beta_1)\epsilon}\\
+    &\leq - \frac{\eta(1-\beta_1)}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]+\frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{T\eta^2 LC\sigma^2}{(1-\beta_1)\epsilon}\\
     &\hspace{2in} +\frac{T\eta^2 L\beta_1 d}{(1-\beta_2)(1-\gamma)}+\frac{2T\eta^2L q^2\sigma^2}{(1-q^2)^2\epsilon},
 \end{align*}
-when $\eta\leq \frac{(1-q^2)^2(1-\beta_1)\epsilon}{8Lq^2\sqrt{(q^2+1)G^2+\epsilon}}$, where the last line is because $C\eta L\leq \frac{(1-\beta_1)\epsilon}{4\sqrt{(q^2+1)G^2+\epsilon}}$ also holds. Re-arranging terms, we get that when $\eta\leq \min\{\frac{1-\beta_1}{C},\frac{(1-q^2)^2}{2q^2}\}\frac{(1-\beta_1)\epsilon}{4L\sqrt{(q^2+1)G^2+\epsilon}}$, 
+when $\eta\leq \frac{(1-q^2)^2(1-\beta_1)\epsilon}{8Lq^2\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$, where the last line is because $C\eta L\leq \frac{(1-\beta_1)\epsilon}{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$ also holds. Re-arranging terms, we get that when $\eta\leq \min\{\frac{1-\beta_1}{C},\frac{(1-q^2)^2}{2q^2}\}\frac{(1-\beta_1)\epsilon}{4L\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}$, 
 \begin{align*}
     \frac{1}{T}\sum_{t=1}^T \mathbb E[\|\nabla f(\theta_t)\|^2]&\leq C'\Big(\frac{\mathbb E[f(\theta_1')-f(\theta_{T+1}')]}{T\eta}+\frac{2dG^2}{T(1-\beta_1)\sqrt\epsilon}+\frac{\eta LC\sigma^2}{(1-\beta_1)\epsilon}\\
     &\hspace{2in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}+\frac{2\eta L q^2\sigma^2}{(1-q^2)^2\epsilon}\Big)\\
     &\leq C'\Big(\frac{\mathbb E[f(\theta_1)-f(\theta^*)]}{T\eta}+\frac{2dG^2}{T(1-\beta_1)\sqrt\epsilon}+\frac{\eta LC\sigma^2}{(1-\beta_1)\epsilon}\\
     &\hspace{2in} +\frac{\eta L\beta_1 d}{(1-\beta_2)(1-\gamma)}+\frac{2\eta L q^2\sigma^2}{(1-q^2)^2\epsilon}\Big).
 \end{align*}
-where $C'=\frac{4\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$. The last inequality is because $\theta_1'=\theta_1$, and $\theta^*=\argmin_\theta f(\theta)$. The proof is complete.
+where $C'=\frac{4\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$. The last inequality is because $\theta_1'=\theta_1$, and $\theta^*=\argmin_\theta f(\theta)$. The proof is complete.
 
 \end{proof}
 
@@ -1555,7 +1689,7 @@ where $C'=\frac{4\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_
 %     I&=-\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
 %     &=-\mathbb E\mathbb E[\langle \nabla f(\theta_t), \frac{(1-\beta_1)g_t}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle|\mathcal F_{t-1}] -\mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
 %     &=-(1-\beta_1)\mathbb E[\frac{\|\nabla f(\theta_t)\|^2}{\sqrt{\hat v_{t-1}+\epsilon}}] - \mathbb E[\langle \nabla f(\theta_t), \frac{\beta_1 m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle]\\
-%     &\leq -\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]- \beta_1\mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle].
+%     &\leq -\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]- \beta_1\mathbb E[\langle \nabla f(\theta_t), \frac{ m_{t-1}'}{\sqrt{\hat v_{t-1}+\epsilon}} \rangle].
 % \end{align*}
 % Regarding the second term, we have
 % \begin{align*}
@@ -1565,7 +1699,7 @@ where $C'=\frac{4\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_
 % \end{align*}
 % Putting parts together we obtain
 % \begin{align*}
-%     I\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 L(q^2+1)G^4}{\epsilon}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2].
+%     I\leq \beta_1 M_{t-1}+\frac{\eta \beta_1 L(q^2+1)G^4}{\epsilon}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2].
 % \end{align*}
 % For II, it holds that
 % \begin{align*}
@@ -1573,23 +1707,23 @@ where $C'=\frac{4\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_
 % \end{align*}
 % Thus, we arrive at
 % \begin{align*}
-%     M_t&\leq \beta_1 M_{t-1}+\frac{\eta\beta_1 L(q^2+1)G^4}{\epsilon}+G^2 \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}| ]-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
-%     &\eqdef \beta_1 M_{t-1}+\frac{\eta\beta_1 L(q^2+1)G^4}{\epsilon}+G^2 H_t-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+%     M_t&\leq \beta_1 M_{t-1}+\frac{\eta\beta_1 L(q^2+1)G^4}{\epsilon}+G^2 \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}| ]-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+%     &\eqdef \beta_1 M_{t-1}+\frac{\eta\beta_1 L(q^2+1)G^4}{\epsilon}+G^2 H_t-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
 %     &\leq \beta_1 M_{t-1}+\frac{\eta\beta_1 L(q^2+1)G^4}{\epsilon}+G^2 H_t.
 % \end{align*}
 % By induction, we have
 % \begin{align*}
-%     M_t&\leq \beta_1^{t-1} M_1+G^2 \sum_{i=0}^{t-2} \beta_1^i H_{t-i}+ \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
-%     % &\overset{(a)}{\leq} \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}+G^2\sum_{i=1}^d \left(\frac{1}{\sqrt\epsilon}+\sum_{j=2}^{t} \left(\frac{1}{\sqrt{\hat v_{j-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_j+\epsilon}} \right)\right)-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
-%     % &\overset{(b)}{\leq} \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}+\frac{2dG^2}{\sqrt\epsilon}-\frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]
+%     M_t&\leq \beta_1^{t-1} M_1+G^2 \sum_{i=0}^{t-2} \beta_1^i H_{t-i}+ \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
+%     % &\overset{(a)}{\leq} \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}+G^2\sum_{i=1}^d \left(\frac{1}{\sqrt\epsilon}+\sum_{j=2}^{t} \left(\frac{1}{\sqrt{\hat v_{j-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_j+\epsilon}} \right)\right)-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+%     % &\overset{(b)}{\leq} \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}+\frac{2dG^2}{\sqrt\epsilon}-\frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]
 % \end{align*}
 % since $\beta_1<1$. Summing over $t=1,...,T$, we obtain
 % \begin{align*}
-%     \sum_{t=1}^T M_t&\leq \sum_{t=1}^T \beta_1^{t-1} M_1+G^2\sum_{t=2}^T \sum_{i=0}^{t-2} \beta_1^i H_{t-i}+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
-%     &\overset{(a)}{\leq} \frac{dG^2}{(1-\beta_1)\sqrt\epsilon}+G^2\sum_{t=2}^T (\sum_{i=0}^{T-t} \beta_1^{t-i})H_t+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+%     \sum_{t=1}^T M_t&\leq \sum_{t=1}^T \beta_1^{t-1} M_1+G^2\sum_{t=2}^T \sum_{i=0}^{t-2} \beta_1^i H_{t-i}+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+%     &\overset{(a)}{\leq} \frac{dG^2}{(1-\beta_1)\sqrt\epsilon}+G^2\sum_{t=2}^T (\sum_{i=0}^{T-t} \beta_1^{t-i})H_t+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
 %     &\leq \frac{dG^2}{(1-\beta_1)\sqrt\epsilon}+\frac{G^2}{1-\beta_1}\sum_{t=2}^T \mathbb E[\sum_{i=1}^d |\frac{1}{\sqrt{\hat v_{t-1}+\epsilon}}-\frac{1}{\sqrt{\hat v_t+\epsilon}}|\\
-%     &\hspace{1in} + \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
-%     &\overset{(b)}{\leq} \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
+%     &\hspace{1in} + \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]\\
+%     &\overset{(b)}{\leq} \frac{2dG^2}{(1-\beta_1)\sqrt\epsilon}+ \frac{T \eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon}-\sum_{t=1}^T \frac{1-\beta_1}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2],
 % \end{align*}
 % where (a) is because $M_1=\mathbb E[\langle\nabla f(\theta_1),a_0'\rangle]\leq \beta_1 d G^2/\sqrt{\epsilon}$, and (b) is derived by cancelling terms due to the fact that $\{\hat v_{t}\}_{t>0}$ is a non-decreasing sequence, hence $\hat v_{t}\leq \hat v_{t-1}$. 
 % It remains to bound the last two terms in (\ref{eq0}).
@@ -1631,7 +1765,7 @@ where $C'=\frac{4\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_
 % \textbf{Completing the proof.} Summing (\ref{eq0}) over $t=1,...,T$ and integrating things together, we have
 % \begin{align*}
 %     \mathbb E[f(\theta_{T+1}')-f(\theta_1')]&\leq \eta \sum_{t=1}^T M_t+\frac{T\eta^2CL\sigma^2}{2\epsilon}+\frac{T\eta^2 LqG^2}{(1-q)\epsilon}\\
-%     &\leq -\sum_{t=1}^T \frac{\eta(1-\beta_1)}{\sqrt{(q^2+1)G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]+\frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}\\
+%     &\leq -\sum_{t=1}^T \frac{\eta(1-\beta_1)}{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}\mathbb E[\|\nabla f(\theta_t)\|^2]+\frac{2\eta dG^2}{(1-\beta_1)\sqrt\epsilon}\\
 %     &\hspace{1in}+ \frac{T \eta^2\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon} +\frac{T\eta^2CL\sigma^2}{2\epsilon}+\frac{T\eta^2 LqG^2}{(1-q)\epsilon}.
 % \end{align*}
 % Thus,
@@ -1641,7 +1775,7 @@ where $C'=\frac{4\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_
 %     &\leq C'\Big(\frac{\mathbb E[f(\theta_1)-f(\theta^*)]}{T\eta}+\frac{2dG^2}{T(1-\beta_1)\sqrt\epsilon}\\
 %     &\hspace{1in} + \frac{\eta\beta_1 L(q^2+1)G^4}{(1-\beta_1)\epsilon} +\frac{\eta CL\sigma^2}{2\epsilon}+\frac{\eta LqG^2}{(1-q)\epsilon} \Big).
 % \end{align*}
-% where $C'=\frac{\sqrt{(q^2+1)G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$. The last inequality is because $\theta_1'=\theta_1$, and $\theta^*=\argmin_\theta f(\theta)$.
+% where $C'=\frac{\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}}{1-\beta_1}$, and $C=\frac{(1-\beta_1)^2}{1-\beta_1^2(2-\beta_1)^2}(1+\frac{1}{4(1-\beta_1^2)})$. The last inequality is because $\theta_1'=\theta_1$, and $\theta^*=\argmin_\theta f(\theta)$.
 
 % Taking decreasing learning rate $\eta=1/\sqrt T$, we obtain
 % \begin{align*}
