@@ -284,7 +284,6 @@ The matrix $W$ satisfies: \textsc{(i)} $\sum_{j=1}^N W_{i,j} = 1$,  $\sum_{i=1}^
 \vspace{-0.1in}
 \end{minipage}\end{wrapfigure}
 Recently,~\citet{nazari2019dadam} initiated an attempt to bring adaptive gradient methods into decentralized optimization with Decentralized ADAM (DADAM), shown in Algorithm \ref{alg: dadam}.
-
 DADAM is essentially a decentralized version of ADAM and the key modification is the use of a consensus step on the optimization variable $x$ to transmit information across the network, encouraging its convergence. The matrix $W$ is a doubly stochastic matrix (which satisfies A\ref{a:matrixW}) for achieving  average consensus of $x$. 
 Introducing such mixing matrix is standard for decentralizing an algorithm, such as distributed gradient descent~\citep{nedic2009distributed, yuan2016convergence}. 
 It is proven in~\citep{nazari2019dadam} that DADAM admits a non-standard regret bound in the online setting. Nevertheless, whether the algorithm can converge to stationary points in standard offline settings such training neural networks is still unknown.
@@ -345,12 +344,12 @@ Intuitively, if the adaptive learning rates can consent fast enough, the differe
 Consequently, no extra communication costs need to be introduced.
 We now develop this exact idea within the existing adaptive methods stressing on the need for a relatively low-cost and easy-to-implement consensus of adaptive learning rates. 
 
+Below is main archetype of the adaptive rates consensus mechanism within a decentralized framework.
 
-In the following subsection, we introduced the main archetype of the consensus of adaptive learning rates mechanism within a decentralized framework
 
 \subsection{Unifying Decentralized Adaptive Gradient Framework}
 
-\begin{wrapfigure}[18]{r}{.5\linewidth}\vspace{-0.3in}
+\begin{wrapfigure}[17]{r}{.5\linewidth}\vspace{-0.35in}
 \begin{minipage}{\linewidth}
 \begin{algorithm}[H]
 	\caption{Decentralized Adaptive Gradient Method (with N nodes)}
@@ -380,7 +379,6 @@ Algorithm~\ref{alg: dadaptive} can become different adaptive gradient methods by
 The intuition of using average consensus is that for adaptive gradient methods such as AdaGrad or Adam, $\hat v_{t,i}$ approximates the second moment of the gradient estimator, the average of the estimations of those second moments from different nodes is an estimation of second moment on the whole network.  
 Also, this design will not introduce any extra hyperparameters that can potentially complicate the tuning process ($\epsilon$ in line 9 is important for numerical stability as in vanilla Adam).  
 The following result gives a finite-time convergence rate for our framework described in Algorithm~\ref{alg: dadaptive}.
-The rate reads as follows:
 
 \begin{theorem}\label{thm: dagm_converge}
 Assume A\ref{a:diff}-A\ref{a:matrixW}. %Set $\alpha = 1/\sqrt{Td}$.
@@ -401,39 +399,48 @@ where $\| \cdot\|_{abs}$  denotes the entry-wise $L_1$ norm of a matrix (i.e $\|
 	$C_5 =   2/ (\epsilon^{2}(1-\lambda))   L  (\lambda + \beta_1/(1-\beta_1)) G_{\infty}^2  + 4/ (\epsilon^{2}(1-\lambda))   L    G_{\infty}^2$ are independent of $d$, $T$ and $N$. In addition, $\frac{1}{N}\sum_{i=1}^N\left\| {  x_{t,i} -   \overline X_{t}}  \right\|^2   \leq \alpha^2 \left (\frac{1}{1-\lambda} \right)^2 d G_{\infty}^2 \frac{1}{\epsilon}$ which quantifies the consensus error.
 \end{theorem}
 
-In addition, one can specify $\alpha$ to show convergence in terms of $T$, $d$, and $N$. An immediate result is by setting $\alpha = \sqrt{N}/\sqrt{Td}$, which is shown in Corollary \ref{corl: adm_convergence}.
+In addition, one can specify $\alpha$ to show convergence in terms of $T$, $d$, and $N$. 
+An immediate result, shown in Corollary \ref{corl: adm_convergence}, is by setting $\alpha = \sqrt{N}/\sqrt{Td}$:
 \begin{corollary}\label{corl: adm_convergence}
 Assume A\ref{a:diff}-A\ref{a:matrixW}. Set $\alpha = \sqrt{N}/\sqrt{Td}$.
-	When $\alpha  \leq \frac{\epsilon^{0.5}}{16L} $, 
-	  Algorithm~\ref{alg: dadaptive} yields the following regret bound
+When $\alpha  \leq \frac{\epsilon^{0.5}}{16L} $, Algorithm~\ref{alg: dadaptive} yields:
+ {\small
 	\begin{align}\label{eq: thm1}
 	\frac{1}{T}\sum_{t=1}^T  \mathbb E \left [\left\|\frac{\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2  \right]
 &	\leq   C_1 \frac{\sqrt{d}}{\sqrt{TN}} \left(( \mathbb E  [f( Z_{1})]  -  \min_x  f(x)) +    \sigma^2 \right)  +  C_2 \frac{N}{T} \nonumber \\
 	&+  C_3 \frac{N^{1.5}}{T^{1.5}d^{0.5}} 
     +  \left(C_4 \frac{1}{T\sqrt{N}} +  C_5   \frac{1}{T^{1.5}d^{0.5}}\right) \mathbb E \left[\mathcal V_T \right] 
 	\end{align}
+	}
+% {\small
+%	\begin{align}\label{eq: thm1}
+%	\frac{1}{T}\sum_{t=1}^T  \mathbb E \left [\left\|\frac{\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2  \right]
+%	\leq    \frac{C_1\sqrt{d} (( \mathbb E  [f( Z_{1})]  -  \min_x  f(x)) +    \sigma^2 )}{\sqrt{TN}}  +   \frac{C_2 N}{T} +   \frac{C_3 N^{1.5}}{T^{1.5}d^{0.5}} 
+%    +  \left( \frac{C_4}{T\sqrt{N}} +     \frac{C_5}{T^{1.5}d^{0.5}}\right) \mathbb E \left[\mathcal V_T \right] 
+%	\end{align}
+%	}
 	where $ \mathcal{V}_T : = \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs}$ and $C_1$, $C_2$, $C_3$, $C_4$,  $C_5$ are defined in Theorem \ref{thm: dagm_converge}.
 \end{corollary}
 Corollary~\ref{corl: adm_convergence} indicates that if  $  \mathbb E [\mathcal{V}_T  ]  = o(T)$ and $\bar U_t$ is upper bounded, then Algorithm~\ref{alg: dadaptive} is guaranteed to converge to stationary points of the loss function. 
 Intuitively, this means that if the adaptive learning rates on different nodes do not change too fast, the algorithm can converge. In convergence analysis, the term $  \mathbb E [\mathcal{V}_T  ] $ upper bounds the total bias in update direction caused by the correlation between $m_{t,i}$ and $\hat v_{t,i}$.
 It is shown in~\citep{chen2018convergence} that when $N=1$, $  \mathbb E [\mathcal{V}_T  ]  = \tilde O (d) $ for AdaGrad and AMSGrad. Besides, $\mathbb E [\mathcal{V}_T  ]  = \tilde O (Td) $ for Adam which do not converge.  {Later, we will show convergence of decentralized versions of AMSGrad and AdaGrad by bounding this term as $O(Nd)$ and $O(Nd \log (T))$, respectively.}
  %The intuition $  \mathbb E [\mathcal{V}_T  ]  = o(T)$ can guarantee divergence is that the correlation between $\hat v_{t,i}$ and $m_{t,i}$ (due to their shared dependency on historical gradients) can make update direction negatively correlated with true gradient in expectation, leading to a non-negligible bias in updates. However, the total bias across $T$ iterations introduced by such a correlation is bounded by the term $  \mathbb E [\mathcal{V}_T  ] $. Thus, if $  \mathbb E [\mathcal{V}_T  ] $ grows sublinearly with $T$, convergence can still be guaranteed. 
- 
  Corollary~\ref{corl:  adm_convergence} also conveys the benefits of using more nodes in the graph employed. 
 When $T$ is large enough such that the term $O(\sqrt{d}/\sqrt{TN})$ dominates the right hand side of \eqref{eq: thm1}, then linear speedup can be achieved by increasing the number of nodes $N$.   
 
 %Indeed, as $N$ becomes larger, the term $\sigma^2/N$ will be small. 
 %This is also strengthened by the fact that with a larger $N$, the training process tends to be more stable. 
-
+\vspace{-0.05in}
 \subsection{Application to AMSGrad algorithm}\label{sec:amsgrad}
+\vspace{-0.05in}
 
 We now present, in Algorithm~\ref{alg: damsgrad}, a notable special case of our algorithmic framework, namely Decentralized AMSGrad, which is a decentralized variant of AMSGrad.
 Compared with DADAM, the above algorithm exhibits a dynamic average consensus mechanism to keep track of the average of $\{\hat v_{t,i}\}_{i=1}^N$, stored as $\tilde u_{t,i}$ on $i$th node, and uses $u_{t,i} := \max(\tilde u_{t,i}, \epsilon)$ for updating the adaptive learning rate for $i$th node. 
 As the number of iteration grows, even though $\hat v_{t,i}$ on different nodes can converge to different constants, the $u_{t,i}$ will converge to the same number $ \lim \limits_{t \rightarrow \infty} \frac{1}{N} \sum_{i=1}^N\hat v_{t,i} $ if the limit exists. 
-\begin{wrapfigure}[20]{r}{.5\linewidth}\vspace{-0.3in}
+\begin{wrapfigure}[19]{r}{.5\linewidth}\vspace{-0.3in}
 \begin{minipage}{\linewidth}
 \begin{algorithm}[H]
-	\caption{Decentralized AMSGrad (with N nodes)}
+	\caption{Decentralized AMSGrad (N nodes)}
 	\label{alg: damsgrad}
 	\begin{algorithmic}[1]
 		\STATE {\bfseries Input:} learning rate $\alpha$, initial point $x_{1,i} = x_{init}, u_{\frac{1}{2},i} = \hat v_{0,i} = \epsilon \mathbf 1\ (\text{with } \epsilon \geq 0), m_{0,i}=0$, mixing matrix $W$ 
@@ -473,13 +480,15 @@ Similar convergence guarantees will hold since one can easily modify our proof o
 As stated above, Algorithm~\ref{alg: damsgrad} converges, with the following rate:
 \begin{theorem}\label{thm: dams_converge}
 Assume A\ref{a:diff}-A\ref{a:matrixW}.
-Set $\alpha = 1/\sqrt{Td}$. When $\alpha  \leq \frac{\epsilon^{0.5}}{16L} $, Algorithm \ref{alg: damsgrad} yields the following regret bound
+Set $\alpha = 1/\sqrt{Td}$. When $\alpha  \leq \frac{\epsilon^{0.5}}{16L} $, then Algorithm \ref{alg: damsgrad} satisfies:
+ {\small
 	  \begin{align}\notag
 	  \frac{1}{T}\sum_{t=1}^T  \mathbb E \left [\left\|\frac{\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2  \right]
 	  \leq  C_1' \frac{\sqrt{d}}{\sqrt{TN}} \left(D_f +    \sigma^2 \right) +  C_2' \frac{N}{T}  +  C_3' \frac{N^{1.5}}{T^{1.5}d^{0.5}} 
 +  C_4' \frac{\sqrt{N}d}{T} +  C_5'  \frac{Nd^{0.5}}{T^{1.5}}  \ ,
 	  \end{align}
-	where $D_f := \mathbb E  [f( Z_{1})]  -  \min_x  f(x)$, $C_1' = C_1$, $C_2' = C_2$, $C_3' = C_3$, $C_4' = C_4G_{\infty}^2$ and $C_5' = C_5 G_{\infty}^2 $. $C_1,C_2, C_3, C_4, C_5$ are constants independent of $d$, $T$ and $N$ defined in Theorem \ref{thm: dagm_converge}. In addition, the consensus of variables at different nodes is given by $\frac{1}{N}\sum_{i=1}^N\left\| {  x_{t,i} -   \overline X_{t}}  \right\|^2   \leq \frac{N}{T} \left (\frac{1}{1-\lambda} \right)^2  G_{\infty}^2 \frac{1}{\epsilon}$. 
+	  }
+	where $D_f := \mathbb E  [f( Z_{1})]  -  \min_x  f(x)$, $C_1' = C_1$, $C_2' = C_2$, $C_3' = C_3$, $C_4' = C_4G_{\infty}^2$ and $C_5' = C_5 G_{\infty}^2 $. $C_1,C_2, C_3, C_4, C_5$ are independent of $d$, $T$ and $N$ defined in Theorem \ref{thm: dagm_converge}. In addition, the consensus of variables at different nodes is given by $\frac{1}{N}\sum_{i=1}^N\left\| {  x_{t,i} -   \overline X_{t}}  \right\|^2   \leq \frac{N}{T} \left (\frac{1}{1-\lambda} \right)^2  G_{\infty}^2 \frac{1}{\epsilon}$. 
 \end{theorem}
 
 Theorem~\ref{thm: dams_converge} shows that Algorithm~\ref{alg: damsgrad} converges with a rate of  $\mathcal{O}(\sqrt{d}/\sqrt{T})$ when $T$ is large, which is the best known convergence rate under the given assumptions. 
@@ -489,13 +498,15 @@ using the fact that $\|\overline U_{t}\|_{\infty} \leq G_{\infty}^2$  (by update
 
 
 
-\textbf{Proof Sketch of Theorem \ref{thm: dagm_converge}:} The detailed proofs of this section are reported in the supplementary material.
+\textbf{Proof Sketch of Theorem \ref{thm: dagm_converge}:} The detailed proofs are reported in the supplementary material.
 
-We now present a proof sketch for out main convergence result of Algorithm~\ref{alg: dadaptive}. 
+%We now present a proof sketch for out main convergence result of Algorithm~\ref{alg: dadaptive}. 
 \textsl{Step 1: Reparameterization.} \hspace{0.01in} Similarly to~\citep{yan2018unified, chen2018convergence} with SGD (with momentum) and centralized adaptive gradient methods, define the following auxiliary sequence:
+ {\small
  \begin{align}\label{eq: seq_z_sketch}
  Z_{t} = \overline X_t + \frac{\beta_1}{1-\beta_1} (\overline X_t - \overline X_{t-1}) \, ,
  \end{align}
+ }
 with $\overline X_{0} \triangleq \overline X_1$.
 Such an auxiliary sequence can help us deal with the bias brought by the momentum and simplifies the convergence analysis. 
 % An intermediary result needed to conduct our proof reads:
@@ -510,21 +521,27 @@ Such an auxiliary sequence can help us deal with the bias brought by the momentu
 % This simplification is convenient since it is directly related to the current gradients instead of the exponential average of past gradients.
  
  \textsl{Step 2: Smoothness.} \hspace{0.01in} Using smoothness assumption A\ref{a:diff} involves the following scalar product term: $\kappa_t := \langle \nabla f( Z_{t}), \frac{1}{N} \sum_{i=1}^N \nabla f_i( x_{t,i})/\sqrt{\overline U_{t}} \rangle$ which can be lower bounded by:
+  {\small
  \begin{align} \notag
  \kappa_t \geq  \frac{1}{2} \left\|\frac{\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2   - \frac{3}{2} \left\|\frac{\nabla f( Z_{t}) -\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2 - \frac{3}{2} \left\|  \frac{ \frac{1}{N}\sum_{i=1}^N \nabla f_i( x_{t,i}) -  \nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}  \right\|^2 \, .
  \end{align}
+}
  The above inequality substituted in the smoothness condition $ f( Z_{t+1}) \leq f( Z_{t}) + \langle \nabla f( Z_{t}),  Z_{t+1}-  Z_{t} \rangle + \frac{L}{2}\| Z_{t+1}-  Z_{t}\|^2 $ yields:
+  {\small
  \begin{align} \label{eq: exp_telescope_sketchmain}
  \frac{1}{T}\sum_{t=1}^T  \mathbb E \left [\left\|\frac{\nabla f( \overline X_{t})}{\overline U_{t}^{1/4}}\right\|^2  \right] \leq \frac{2}{T\alpha}  \mathbb E  [\Delta_f] 
  + \frac{2}{T}\frac{\beta_1 D_1}{1-\beta_1} 
   + \frac{2 D_2}{T}  + \frac{3 D_3}{T} + \frac{L}{T\alpha} \sum_{t=1}^T\mathbb E\left[\| Z_{t+1}-  Z_{t}\|^2 \right]\, ,
  \end{align}
+ }
 where $\Delta_f : = \mathbb E [f( Z_{1})] - \mathbb E [f( Z_{T+1})]$ $D_1, D_2$ and $D_3$ are three terms, defined in the supplementary material, and which can be tightly bounded from above. 
 We first bound $D_3$ using the following quantities of interest:
+ {\small
  \begin{align}\notag
 \sum_{t=1}^T\left\|  Z_{t} -  \overline X_{t}\right\|^2 \leq T \left( \frac{\beta_1}{1-\beta_1}\right)^2 \alpha^2 d \frac{G_{\infty}^2}{\epsilon} \text{\ \ and\ \ } 
 \sum_{t=1}^T\frac{1}{N}\sum_{i=1}^N\left\| {  x_{t,i} -   \overline X_{t}}  \right\|^2 \leq T \alpha^2 \left (\frac{1}{1-\lambda} \right)^2 d G_{\infty}^2 \frac{1}{\epsilon} \,.
  \end{align}
+ }
  where $\lambda = \max (|\lambda_2|,|\lambda_N|)$ and recall that $\lambda_i$ is $i$th largest eigenvalue of $W$.
  
  
@@ -544,23 +561,29 @@ We first bound $D_3$ using the following quantities of interest:
 % \end{align}
 
 
-\textsl{Step 3: Bounding the drift term variance.}\hspace{0.01in} An important term that needs upper bounding in our proof is the variance of the gradients multiplied (element-wise) by the adaptive learning rate:
- \begin{align}\notag
- \mathbb E\left[ \left\| \frac{1}{N} \sum_{i=1}^N \frac{g_{t,i}}{\sqrt{u_{t,i}}} \right\|^2 \right]  \leq   \mathbb E [\| \Gamma_{u}^f\|^2 ] + \frac{d}{N}  
- \frac{ \sigma^2 }{\epsilon} \, ,
- \end{align}
+\textsl{Step 3: Bounding the drift term variance.}\hspace{0.01in} An important term that needs upper bounding in our proof is the variance of the gradients multiplied (element-wise) by the adaptive learning rate, $ \mathbb E\left[ \left\| \frac{1}{N} \sum_{i=1}^N \frac{g_{t,i}}{\sqrt{u_{t,i}}} \right\|^2 \right]  \leq   \mathbb E [\| \Gamma_{u}^f\|^2 ] + \frac{d}{N}   \frac{ \sigma^2 }{\epsilon}$,
+% {\small
+% \begin{align}\notag
+% \mathbb E\left[ \left\| \frac{1}{N} \sum_{i=1}^N \frac{g_{t,i}}{\sqrt{u_{t,i}}} \right\|^2 \right]  \leq   \mathbb E [\| \Gamma_{u}^f\|^2 ] + \frac{d}{N}  
+% \frac{ \sigma^2 }{\epsilon} \, ,
+% \end{align}
+% }
  where $ \Gamma_{u}^f := 1/N \sum_{i=1}^N \nabla f_i(x_{t,i})/\sqrt{u_{t,i}} $. Two consecutive and simple bounding of the above yields:
+  {\small
  \begin{align}\notag
 \sum_{t=1}^T \mathbb E [  \|\Gamma_{u}^f\|^2 ]  
   \leq  2\sum_{t=1}^T \mathbb E [\|\Gamma_{\overline{U}}^f \|^2] 
 + 2 \sum_{t=1}^T \mathbb E \left[  \frac{1}{N} \sum_{i=1}^N G_{\infty}^2  \frac{1}{\sqrt{\epsilon}}\left\|     \frac{1}{\sqrt{u_{t,i}}} - \frac{1}{\sqrt{\overline U_{t}}}  \right\|_1     \right]
  \end{align}
+ }
  and
+  {\small
  \begin{align}\label{eq: to_merge_sketchmain}
 \sum_{t=1}^T \mathbb E [\|\Gamma_{\overline{U}}^f \|^2]  
  \leq  2 \sum_{t=1}^T \mathbb E \left[  \left\| \frac{\nabla f(\overline X_{t})}{\sqrt{\overline U_t}  } \right\|^2 \right] 
 + 2 \sum_{t=1}^T \mathbb E \left[  \left\|\frac{1}{N} \sum_{i=1}^N \frac{\nabla f_i(\overline X_t) - \nabla f_i(x_{t,i})}{\sqrt{\overline U_t}  } \right\|^2 \right].
  \end{align}
+ }
 Then, by plugging the LHS of \eqref{eq: to_merge_sketchmain} in \eqref{eq: exp_telescope_sketchmain}, and further bounding as operated for $D_2, D_3$ (see supplement), we obtain the desired bound in Theorem \ref{thm: dagm_converge}.
 
 \textbf{Proof of Theorem \ref{thm: dams_converge}:} 
@@ -572,14 +595,14 @@ $
 $.
 Besides, since for all $t,i$, $\|g_{t,i}\|_{\infty} \leq G_{\infty}$ and $v_{t,i}$ is an exponential moving average of $g_{k,i}^2, k=1,2,\cdots,t$, we have $|[v_{t,i}]_j| \leq G^2_{\infty}$ for all $t,i,j$. 
 By construction of $\hat V_t$, we also observe that each element of $\hat V_{t}$ cannot be greater than $G^2_{\infty}$, i.e. $|[\hat v_{t,i}]_j| \leq G^2_{\infty}$ for all $t,i,j$.
-Given that $[\hat v_{0,i}]_j \geq 0$ , we have 
+Given that $[\hat v_{0,i}]_j \geq 0$ , we have $\mathbb E \left[ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} \right] \leq  \sum_{i=1}^N \sum_{j=1}^d  \mathbb E[G_{\infty}^2]=  Nd G_{\infty}^2$.
 %\begin{align} \notag
 %&\mathbb E \left[ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} \right] =\mathbb E \left[   \sum_{i=1}^N \sum_{j=1}^d    (- [\hat v_{0,i}]_j + [\hat v_{T-1,i}]_j ) \right]   \nonumber \\
 %\leq & \sum_{i=1}^N \sum_{j=1}^d  \mathbb E[G_{\infty}^2]=  Nd G_{\infty}^2 \, .
 %\end{align}
-\begin{align} \notag
-\mathbb E \left[ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} \right] \leq  \sum_{i=1}^N \sum_{j=1}^d  \mathbb E[G_{\infty}^2]=  Nd G_{\infty}^2 \, .
-\end{align}
+%\begin{align} \notag
+%\mathbb E \left[ \sum_{t=1}^{T}   \|    (- \hat V_{t-2} + \hat V_{t-1} ) \|_{abs} \right] \leq  \sum_{i=1}^N \sum_{j=1}^d  \mathbb E[G_{\infty}^2]=  Nd G_{\infty}^2 \, .
+%\end{align}
 Substituting into \eqref{eq: thm1} yields the desired convergence bound for Algorithm~\ref{alg: damsgrad}.
 
 
@@ -640,7 +663,7 @@ Set $\alpha = \sqrt{N}/\sqrt{Td}$. When $\alpha  \leq \frac{\epsilon^{0.5}}{16L}
 
 
 
-\vspace{-0.05in}
+\vspace{-0.15in}
 \section{Numerical Experiments} \label{sec:numerical}
 \vspace{-0.05in}
 
@@ -651,7 +674,8 @@ We set $\epsilon = 10^{-6}$ for both Decentralized AMSGrad and DADAM.
 The learning rate is chosen from the grid $[10^{-1}, 10^{-2}, 10^{-3}, 10^{-4}, 10^{-5}, 10^{-6}]$ based on validation accuracy for all algorithms. 
 In the following experiments, the graph contains 5 nodes and each node can only communicate with its two adjacent neighbors forming a cycle.
 Regarding the mixing matrix $W$, we set $W_{ij} = 1/3$ if nodes $i$ and $j$ are neighbors and $W_{ij} = 0$ otherwise.
-More details and experiments can be found in the supplementary material of our paper.\vspace{-0.05in}
+More details and experiments can be found in the supplementary material of our paper.
+\vspace{-0.05in}
 \begin{figure}[t]
 \mbox{\hspace{-0.1in}
     \begin{subfigure}[b]{0.52\textwidth}
@@ -687,44 +711,78 @@ We can see that each algorithm converges significantly slower than with homogene
 Especially, the performance of DADAM deteriorates significantly. 
 Decentralized AMSGrad achieves the best training and testing performance in that setting as observed in Figure~\ref{fig: homo_data}(b).
 
+\vspace{-0.05in}
 \subsection{Sensitivity to the Learning Rate}
+\vspace{-0.05in}
 
+
+\begin{wrapfigure}[25]{r}{.27\linewidth}\vspace{-0.65in}
+\begin{minipage}{\linewidth}
+\begin{figure}[H]
+\centering
+    \begin{subfigure}[b]{\textwidth}
+    \mbox{
+		\includegraphics[width=\textwidth]{figures/sgd_test.eps}
+            }
+      \caption{ DGD}
+    \end{subfigure}
+    \begin{subfigure}[b]{\textwidth}
+    \mbox{
+		\includegraphics[width=\textwidth]{figures/amsgrad_test.eps}
+            }
+      \caption{Decentralized AMS}
+    \end{subfigure}
+        \begin{subfigure}[b]{\textwidth}
+    \mbox{
+		\includegraphics[width=\textwidth]{figures/adam_test.eps}
+            }
+      \caption{Decentralized Adam}
+    \end{subfigure}
+	\caption{Test accuracy comparison of different stepsizes for various methods}
+	\label{fig: stepsize}
+	\vspace{-0.15in}
+  \end{figure}
+
+\vspace{-0.1in}
+\end{minipage}\end{wrapfigure}
 We compare the testing accuracies of different algorithms, namely Decentralized Stochastic Gradient Descent (DGD), Decentralized Adam (DADAM) and our proposed Decentralized AMSGrad,  with different stepsizes on \emph{heterogeneous} data distribution. 
 We use 5 nodes and the heterogeneous data distribution is created by assigning each node with data of only two labels.
 Note that there are no overlapping labels between different nodes. 
 %For all algorithms, we compare stepsizes in the grid $[10^{-1}, 10^{-2}, 10^{-3}, 10^{-4}, 10^{-5}, 10^{-6}]$. 
 %Figure \ref{fig: sgd_curve} shows the training loss and test accuracy for DGD algorithm.
 We observe Figure\ref{fig: stepsize}(a) that the stepsize $10^{-3}$ works best for DGD in terms of test accuracy and $10^{-1}$ works best in terms of training loss. 
-This difference is caused by the inconsistency among the value of parameters on different nodes when the stepsize is large. 
-%The training loss is calculated as the average of the loss value of different local models evaluated on their local training batch. 
-%Thus, while the training loss is small at a particular node, the test accuracy will be low when evaluating data with labels not seen by the node (recall that each node contains data with different labels since we are in the heterogeneous setting).
+This difference is caused by the inconsistency among the parameters on different nodes when the stepsize is large. 
 
-\begin{figure}[t]
-\centering
-\mbox{\hspace{-0.1in}
-    \begin{subfigure}[b]{0.28\textwidth}
-    \mbox{
-		\includegraphics[width=\textwidth]{figures/sgd_test.eps}
-            }
-      \caption{ DGD}
-    \end{subfigure}\hspace{-0.1in}
-    \begin{subfigure}[b]{0.28\textwidth}
-    \mbox{
-		\includegraphics[width=\textwidth]{figures/amsgrad_test.eps}
-            }
-      \caption{Decentralized AMS}
-    \end{subfigure}
-        \begin{subfigure}[b]{0.28\textwidth}
-    \mbox{
-		\includegraphics[width=\textwidth]{figures/adam_test.eps}
-            }
-      \caption{Decentralized Adam}
-    \end{subfigure}
-}
-	\caption{Performance comparison of different stepsizes for various methods}
-	\label{fig: stepsize}
-	\vspace{-0.15in}
-  \end{figure}
+
+
+
+%
+%\begin{figure}[H]
+%\centering
+%\mbox{\hspace{-0.1in}
+%    \begin{subfigure}[b]{0.25\textwidth}
+%    \mbox{
+%		\includegraphics[width=\textwidth]{figures/sgd_test.eps}
+%            }
+%      \caption{ DGD}
+%    \end{subfigure}\hspace{-0.1in}
+%    \begin{subfigure}[b]{0.25\textwidth}
+%    \mbox{
+%		\includegraphics[width=\textwidth]{figures/amsgrad_test.eps}
+%            }
+%      \caption{Decentralized AMS}
+%    \end{subfigure}
+%        \begin{subfigure}[b]{0.25\textwidth}
+%    \mbox{
+%		\includegraphics[width=\textwidth]{figures/adam_test.eps}
+%            }
+%      \caption{Decentralized Adam}
+%    \end{subfigure}
+%}
+%	\caption{Performance comparison of different stepsizes for various methods}
+%	\label{fig: stepsize}
+%	\vspace{-0.15in}
+%  \end{figure}
   
 Figure \ref{fig: stepsize}(b) shows the performance of decentralized AMSGrad with different stepsizes.
 We see that its best performance is better than the one of DGD and the performance is more stable (the test performance is less sensitive to stepsize tuning).
@@ -732,11 +790,6 @@ We see that its best performance is better than the one of DGD and the performan
 As expected, the performance of DADAM is not as good as DGD or decentralized AMSGrad, see Figure \ref{fig: stepsize}(c).
 Its divergence characteristic, highlighted Section~\ref{sec:divergence}, coupled with the heterogeneity in the data amplify its non-convergence issue in our experiments.  
 From the experiments above, we can see the advantages of decentralized AMSGrad in terms of both performance and ease of parameter tuning, and the importance of ensuring the theoretical convergence of any newly proposed methods in the presented setting. 
-
-
-
-
-
 
 \vspace{-0.05in}
 \section{Conclusion}\label{sec:conclusion}
@@ -765,57 +818,57 @@ Experiments show that the proposed algorithm achieves better performance than th
 \item For all authors...
 \begin{enumerate}
   \item Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
-    \answerTODO{}
+    \answerYes{}
   \item Did you describe the limitations of your work?
-    \answerTODO{}
+    \answerYes{}
   \item Did you discuss any potential negative societal impacts of your work?
-    \answerTODO{}
+    \answerNA{}
   \item Have you read the ethics review guidelines and ensured that your paper conforms to them?
-    \answerTODO{}
+    \answerYes{}
 \end{enumerate}
 
 \item If you are including theoretical results...
 \begin{enumerate}
   \item Did you state the full set of assumptions of all theoretical results?
-    \answerTODO{}
+    \answerYes{}
 	\item Did you include complete proofs of all theoretical results?
-    \answerTODO{}
+    \answerYes{}
 \end{enumerate}
 
 \item If you ran experiments...
 \begin{enumerate}
   \item Did you include the code, data, and instructions needed to reproduce the main experimental results (either in the supplemental material or as a URL)?
-    \answerTODO{}
+    \answerNo{Available upon demand}
   \item Did you specify all the training details (e.g., data splits, hyperparameters, how they were chosen)?
-    \answerTODO{}
+    \answerYes{}
 	\item Did you report error bars (e.g., with respect to the random seed after running experiments multiple times)?
-    \answerTODO{}
+    \answerNo{}
 	\item Did you include the total amount of compute and the type of resources used (e.g., type of GPUs, internal cluster, or cloud provider)?
-    \answerTODO{}
+    \answerNA{}
 \end{enumerate}
 
 \item If you are using existing assets (e.g., code, data, models) or curating/releasing new assets...
 \begin{enumerate}
   \item If your work uses existing assets, did you cite the creators?
-    \answerTODO{}
+    \answerYes{}
   \item Did you mention the license of the assets?
-    \answerTODO{}
+    \answerNo{}
   \item Did you include any new assets either in the supplemental material or as a URL?
-    \answerTODO{}
+    \answerNo{}
   \item Did you discuss whether and how consent was obtained from people whose data you're using/curating?
-    \answerTODO{}
+    \answerNA{Open source code and datasets.}
   \item Did you discuss whether the data you are using/curating contains personally identifiable information or offensive content?
-    \answerTODO{}
+    \answerNA{}
 \end{enumerate}
 
 \item If you used crowdsourcing or conducted research with human subjects...
 \begin{enumerate}
   \item Did you include the full text of instructions given to participants and screenshots, if applicable?
-    \answerTODO{}
+    \answerNA{}
   \item Did you describe any potential participant risks, with links to Institutional Review Board (IRB) approvals, if applicable?
-    \answerTODO{}
+    \answerNA{}
   \item Did you include the estimated hourly wage paid to participants and the total amount spent on participant compensation?
-    \answerTODO{}
+    \answerNA{}
 \end{enumerate}
 
 \end{enumerate}
@@ -1400,14 +1453,14 @@ The detailed proofs of this section are reported in the supplementary material.
 \textbf{Proof of Theorem \ref{thm: dagm_converge}:} 
 We now present a proof sketch for out main convergence result of Algorithm~\ref{alg: dadaptive}. 
 \textsl{Step 1: Reparameterization.} \hspace{0.01in} Similarly to~\citep{yan2018unified, chen2018convergence} with SGD (with momentum) and centralized adaptive gradient methods, define the following auxiliary sequence:
- \begin{align}\label{eq: seq_z_sketch}
+ \begin{align}\label{eq: seq_z_sketchapp}
  Z_{t} = \overline X_t + \frac{\beta_1}{1-\beta_1} (\overline X_t - \overline X_{t-1}) \, ,
  \end{align}
 with $\overline X_{0} \triangleq \overline X_1$.
 Such an auxiliary sequence can help us deal with the bias brought by the momentum and simplifies the convergence analysis. 
  An intermediary result needed to conduct our proof reads:
  \begin{lemma}\label{lem: z_diff} 
-	For the sequence defined in \eqref{eq: seq_z_sketch}, we have
+	For the sequence defined in \eqref{eq: seq_z_sketchapp}, we have
 	\begin{align}\notag
 	Z_{t+1} - Z_t = \alpha \frac{\beta_1}{1-\beta_1}  \frac{1}{N} \sum_{i=1}^N m_{t-1	,i} \odot (\frac{1}{\sqrt{u_{t-1,i}}} - \frac{1}{\sqrt{u_{t,i}}}) 
 	- \alpha \frac{1}{N} \sum_{i=1}^N \frac{g_{t,i}}{\sqrt{u_{t,i}}} \, .

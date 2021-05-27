@@ -42,23 +42,25 @@ Xiaoyun Li \\
 
 \maketitle
 
+\vspace{-0.1in}
 \begin{abstract}
 This paper presents a new algorithm -- \algo\ -- for tackling single-machine and distributed optimization.
 Unlike prior works which rely on full gradient communication between the workers and the parameter-server, we design a distributed adaptive optimization method with gradient compression coupled with an error-feedback technique to alleviate the bias introduced by the compression.
 While the former permits to transmit fewer bits of gradient vectors to the server, we show that using the latter, which correct for the bias, our methods reach a stationary point in $\mathcal{O}(1/ \sqrt{T})$ iterations, matching that of state-of-the-art single-machine and distributed methods, without any error-feedback.
 We illustrate our theoretical results by showing the effectiveness of our method both under the single-machine and distributed settings on various benchmark datasets.
-%In this paper, we present a novel optimization algorithm for single-machine and distributed learning, based on sparsification and error feedback techniques to lighten the communications between a central server and distributed workers.
-%The method we introduce builds on the adaptivity of the AMSGrad method for nonconvex optimization, and includes a TopK operation to alleviate any communication bottleneck between a large amount of devices and a central computing server, combined with a correction of the natural bias induced by the latter compression operator.
-%Despite the sparsity induced by our algorithm, we show that \algo reaches a stationary point in $\mathcal{O}(1/ \sqrt{T})$ iterations, matching that of state-of-the-art single-machine methods.
 \end{abstract}
 
+\vspace{-0.05in}
 \section{Introduction}\label{sec:introduction}
+\vspace{-0.05in}
 
-Deep neural network has achieved the state-of-the-art learning performance on numerous AI applications, e.g., computer vision~\cite{Proc:GAN_NIPS14,Proc:Resnet_CVPR16,CV_review18}, Natural Language Processing~\cite{Proc:Graves_ICASSP13,NLP_review18,sentiment_review18}, Reinforcement Learning~\cite{Arxiv:MnihKSGAWR13,AlphaGo_17} and recommendation systems~\cite{Proc:Covington_2016,Article:Wei_2017}. With the increasing size of both data and deep networks, standard single-machine training confronts with at least two major challenges:
+Deep neural network has achieved the state-of-the-art learning performance on numerous AI applications, e.g., computer vision~\cite{Proc:GAN_NIPS14,Proc:Resnet_CVPR16,CV_review18}, Natural Language Processing~\cite{Proc:Graves_ICASSP13,NLP_review18,sentiment_review18}, Reinforcement Learning~\cite{Arxiv:MnihKSGAWR13,AlphaGo_17} and recommendation systems~\cite{Proc:Covington_2016,Article:Wei_2017}. 
+With the sheet size of data observations and the increasing complexity of deep neural networks, standard single-machine training procedures encounter at least two major challenges:
 \begin{itemize}
-    \item Due to the limited computing power of a single-machine, it would take a long time to process the massive number of data samples---training would be slow.
+    \item Due to the limited computing power of a single-machine, processing the massive number of data samples takes a long time --- training is too slow. Many real-world applications can not even afford spending that much time on training.
   
-    \item In many practical scenarios, data are typically stored in multiple servers, possibly at different locations, due to the storage constraints (massive user behavior data, Internet images, etc.) or privacy reasons~\cite{Proc:Chang18}. Transmitting data might be costly.
+    \item In many practical scenarios, data are typically stored in multiple servers, possibly at different locations, due to the storage constraints (massive user behavior data, Internet images, etc.) or privacy reasons~\cite{Proc:Chang18}. 
+    Hence, transmitting data among servers might be costly.
 \end{itemize}
 \textit{Distributed learning} framework~\cite{Proc:Dean_NIPS12} has been a common training strategy to tackle the above two issues. For example, in centralized distributed stochastic gradient descent (SGD) protocol, data are located at $n$ local nodes, at which the gradients of the model are computed in parallel. In each iteration, a central server aggregates the local gradients, updates the global model, and transmits back the updated model to the local nodes for subsequent gradient computation. As we can see, this setting naturally solves aforementioned issues: 1) We use $n$ computing nodes to train the model, so the time per training epoch can be largely reduced; 2) There is no need to transmit the local data to central server. Besides, distributed training also provides stronger error tolerance since the training process could continue even one local machine breaks down. As a result of these advantages, there has been a surge of study and applications on distributed systems~\cite{boyd2011distributed,nedic2009distributed,duchi2011dual,Arxiv:Goyal17,hong2017prox,lu2019gnsd,koloskova2019decentralized}.
 
@@ -67,20 +69,21 @@ Among many optimization strategies, SGD is still the most popular prototype in d
 
 On the other hand, in recent years, adaptive optimization algorithms (e.g. AdaGrad~\cite{Duchi10-adagrad}, Adam~\cite{kingma2014adam} and AMSGrad~\cite{reddi2019convergence}) have become popular because of their superior empirical performance. These methods use different implicit learning rates for different coordinates that keep changing adaptively throughout the training process, based on the learning trajectory. In many learning problems, adaptive methods have been shown to converge faster than SGD, sometimes with better generalization as well. Despite of the great popularity of adaptive methods, the body of literature that extends them to distributed training is still very limited. In particular, even the simple gradient averaging approach, though appearing standard, has not been considered for adaptive optimization algorithms. Meanwhile, adopting gradient compression in adaptive methods has also been rarely studied in literature. We try to fill this gap in this paper, by studying \algo , a distributed adaptive optimization framework using the gradient averaging protocol. Gradient compression is incorporated to reduce the communication cost. We provide theoretical analysis and show that our method can achieve satisfactory performance with significantly reduced communication overhead. 
 
-
+\vspace{-0.05in}
 \subsection{Our Contributions}
+\vspace{-0.05in}
 
-Specifically, we develop a simple optimization framework leveraging the adaptivity of AMSGrad, and focus on the computational virtue of local gradient compression technique.
-
-Our technique is shown to be both theoretically and empirically effective under \emph{the classical centralized setting} and \emph{the distributed setting}.
-
-In this contribution, 
+Specifically, in this contribution, we develop a \emph{simple optimization framework} leveraging the \emph{adaptivity} of AMSGrad, and focus on the computational virtue of \emph{local gradient compression technique}.
+Our technique is shown to be both theoretically and empirically effective under both \emph{the classical centralized setting} and \emph{the distributed setting}.
+Our contributions summarize as follows:
 \begin{itemize}
-\item We derive \algo, a distributed optimization method with gradient compression occurring at the worker level. Our scheme is coupled with a error-feedback technique to reduce the bias implied by the compression step.
+\item We derive \algo, a distributed optimization method with gradient compression occurring at the worker level. Our scheme is coupled with an error-feedback technique to reduce the bias implied by the compression step. Both compression and error-feedback computation are performed at the worker level and transferred back to the central server.
 \item Throughout this paper, we provide single-machine and decentralized views of our method both on the empirical and theoretical levels.
 We exhibits the advantage of the compression and error-feedback steps within an adaptive optimization trajectory under those two settings.
+Additionally, two compression schemes are compared in this work, namely \textbf{Block-Sign} and \textbf{Top-$k$} operators.
 \item Under mild assumptions, such as nonconvexity and smoothness, we provide a non-asymptotic convergence rate of \algo\ in the general case, \ie when the number of workers is equal to $n$ and with unspecified values for the hyperparameters. 
-Our theoretical analysis includes the special cases of single-machine setting ($n=1$) and exhibits a linear speedup (linear in $n$) of our method in the particular case of $\beta_1 = 0$.
+Our theoretical analysis includes the special cases of single-machine setting ($n=1$) and exhibits a linear speedup (linear in $n$) of our method under some additional assumptions.
+From the general case to the sub-cases mentioned above, our method finds an $\epsilon-$stationary point in $\mathcal O(1/\sqrt{\epsilon}+d/\epsilon)$ iterations.
 \item We highlight the effectiveness of our compressed adaptive method through several numerical experiments for single-machine and distributed optimization tasks.
 \end{itemize}
 
@@ -103,8 +106,9 @@ Numerical results are illustrated in Section~\ref{sec:experiment} to show the ef
 \paragraph{Error Feedback (EF).} Biased gradient estimation, which is a consequence of many aforementioned methods (e.g., signSGD, Top-$k$), undermines the model training, both theoretically and empirically, with slower convergence and worse generalization~\cite{ajalloeian2020analysis,Arxiv:Beznosikov20}. The technique of \textit{error feedback} is able to ``correct for the bias'' and fix the convergence issues. 
 In this procedure, the difference between the true stochastic gradient and the compressed one is accumulated locally, which is then added back to the local gradients in later iterations. \cite{stich2018sparsified,karimireddy2019error} prove the $\mathcal O(\frac{1}{T})$ and $\mathcal O(\frac{1}{\sqrt T})$ convergence rate of EF-SGD in strongly convex and non-convex setting respectively, matching the rates of vanilla SGD~\cite{nemirovski2009robust,ghadimi2013stochastic}. More works on the convergence rate of SGD with error feedback include~\cite{Proc:Zheng_NIPS19,Article:Stich_arxiv19}, among other related papers.
 
-
+\vspace{-0.05in}
 \subsection{Adaptive Optimization}
+\vspace{-0.05in}
 
 In each SGD update, all the gradient coordinates share the same learning rate.
 This latter is either constant or decreasing through the iterations. 
@@ -135,7 +139,7 @@ AMSGrad~\cite{reddi2019convergence} fixes the potential convergence issue of Ada
 We present the pseudocode in Algorithm~\ref{alg:amsgrad}.
 
 
-In general, adaptive optimization methods are easier to tune in practice, and usually exhibit faster convergence than SGD. Thus, they have been widely used in training deep learning models in language and computer vision applications, e.g.,~\cite{,Arxiv:Choi_2019,Proc:LAMB_ICLR20,Arxiv:Zhang_ICLR21}. In distributed setting, the work~\cite{nazari2019dadam} proposes a decentralized system in online optimization. However, communication efficiency is not considered. The recent work~\cite{chen2020quantized} is the most relevant to our paper. Yet, their method is based on Adam, and requires every local node to store a local estimation of the moments of the gradient. Thus, one has to keep extra two more tensors of the model size on each local worker, which may be less feasible in terms of memory especially with large models. We will present more detailed comparison in Section~\ref{sec:main}.
+In general, adaptive optimization methods are easier to tune in practice, and usually exhibit faster convergence than SGD. Thus, they have been widely used in training deep learning models in language and computer vision applications, e.g.,~\cite{,Arxiv:Choi_2019,Proc:LAMB_ICLR20,Arxiv:Zhang_ICLR21}. In distributed setting, the work~\cite{nazari2019dadam} proposes a decentralized system in online optimization. However, communication efficiency is not considered. The recent work~\cite{chen2020quantized} is the most relevant to our paper. Yet, their method is based on Adam, and requires every local node to store a local estimation of the moments of the gradient. Thus, one has to keep extra two more tensors of the model size on each local worker, which may be less feasible in terms of memory particularly with large models. We will present more detailed comparison in Section~\ref{sec:main}.
 
 
 \section{Communication-Efficient Adaptive Optimization}\label{sec:main}
@@ -183,7 +187,7 @@ For $x\in\mathbb R^d$, define $M$ blocks indexed by $\mathcal B_i$, $i=1,...,M$,
 It is well-known~\cite{stich2018sparsified,Proc:Zheng_NIPS19} that for \textbf{Top-$k$}, $q^2=1-\frac{k}{d}$; for \textbf{Block-Sign}, by Cauchy-Schwartz inequality we have $q^2=1-\min_{i\in [M]} \frac{1}{d_i}$ where $M$ and $d_i$ are defined in Definition~\ref{def:sign}.
 \end{Remark}
 
-The intuition of \textbf{Top-$k$} is that, it has been observed in many deep neural networks that during training, most gradients are typically very small and can be regarded as redundant---gradients with large magnitude contain most information. The \textbf{Block-Sign} compressor is a simple extension of the 1-bit \textbf{SIGN} compressor~\cite{Proc:Seide14,bernstein2018signsgd}, adapted to different gradient magnitude in different blocks, which, for neural nets, are usually set as the distinct network layers. The scaling factor in Definition~\ref{def:sign} is to preserve the (possibly very different) gradient magnitude in each layer. In principle, \textbf{Top-$k$} would perform the best when the gradient is sparse, or only has a few very large absolute values, while \textbf{Block-Sign} compressor is beneficial when most gradients have similar magnitude within each layer.
+The intuition behind \textbf{Top-$k$} is that, it has been observed during many deep neural networks training procedure, most gradients are typically very small and can be regarded as redundant---gradients with large magnitude contain most information. The \textbf{Block-Sign} compressor is a simple extension of the 1-bit \textbf{SIGN} compressor~\cite{Proc:Seide14,bernstein2018signsgd}, adapted to different gradient magnitude in different blocks, which, for neural nets, are usually set as the distinct network layers. The scaling factor in Definition~\ref{def:sign} is to preserve the (possibly very different) gradient magnitude in each layer. In principle, \textbf{Top-$k$} would perform the best when the gradient is sparse, or only has a few very large absolute values, while \textbf{Block-Sign} compressor is beneficial when most gradients have similar magnitude within each layer.
 
 
 \subsection{\algo\ for Distributed Optimization}
@@ -281,6 +285,8 @@ Denote $C_0=\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}$, $C_1=\frac{\beta_1
 %\end{Theorem}
 
 The LHS of Theorem~\ref{theo:rate} is the expected squared norm of the gradient from a uniformly chosen iterate $t\in [T]$, which is a common convergence measure. From Theorem~\ref{theo:rate}, we see that the more compression we apply to the gradient vectors (\ie larger $q$), the larger the upper bound of the stationary condition is, \ie the slower the algorithm converges. This is intuitive as heavier compression loses more gradient information which would slower down the learner to find a good solution.
+
+In the following paragraphs, we provide two interesting extension of our main result Theorem~\ref{theo:rate}. We begin with the single-machine case, when $n=1$ and then provide a linear speedup of our methods in the general distributed optimization case.
 
 \textbf{Single machine rate ($n=1$).} Note that, \algo\ with $n=1$ naturally reduces to the single machine (sequential) AMSGrad (Algorithm~\ref{alg:amsgrad}) with compressed gradients instead of full-precision ones. The paper~\cite{karimireddy2019error} shows that for SGD, error feedback fixes the convergence issue of biased compressors in the sense that SGD-EF (with compressed gradients) has the same convergence rate as vanilla SGD using full gradients. For AMSGrad, we have a similar result.
 
@@ -410,7 +416,7 @@ In Corollary~\ref{coro:mainsingle}, we established that for standard single mach
 
 
 
-\begin{figure}
+\begin{figure}[H]
     \begin{center}
     \mbox{\hspace{-0.1in}
         \includegraphics[width=2.8in]{fig/mnist_cnn_train_loss_1_Qadamsign.eps}\hspace{-0.1in}
@@ -427,7 +433,7 @@ From the train loss and test accuracy in Figure~\ref{fig:mnist-1}, we observe:
     
     \item \textbf{Top-$k$}-EF-0.01 performs better than \textbf{Top-$k$}-EF-0.001, which justifies the influence of $q$ in Theorem~\ref{theo:rate} that higher compression ratio would undermine the learning performance.
     
-    \item MVSS-0.01 is beaten by the proposed EF-corrected \textbf{Block-Sign} and \textbf{Top-$k$} even with 0.001 sparsity. This suggests that using biased compressors with EF in \algo\ is more effective than using unbiased stochastic compressors.
+    \item MVSS-0.01 is outperformed by the proposed EF-corrected \textbf{Block-Sign} and \textbf{Top-$k$} even with 0.001 sparsity. This suggests that using biased compressors with EF in \algo\ is more effective than using unbiased stochastic compressors.
 \end{itemize}
 
 \subsection{Linear Speedup of \algo}
@@ -449,7 +455,7 @@ Corollary~\ref{coro:linear speedup} reveals the linear speedup of \algo\ in dist
 
 In this section, we present general evaluation on more datasets and compare the communication efficiency. For CIFAR-10 image classification, we train a larger CNN model with 3 convolutional layers (more detailed architecture can be found in the supplement). For IMDB movie review sentiment analysis task, we train a LSTM network with 64 cells, equipped with an embedding layer which embeds top 1000 words in the movie reviews into 32-dimensional vectors.
 
-\begin{figure}
+\begin{figure}[H]
     \begin{center}
     \mbox{\hspace{-0.1in}
         \includegraphics[width=1.95in]{fig/mnist_cnn_test_accuracy_16_Qadamsign.eps}\hspace{-0.1in}
