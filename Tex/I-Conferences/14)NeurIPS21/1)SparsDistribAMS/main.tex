@@ -194,13 +194,13 @@ We present in Algorithm~\ref{alg:sparsams} our proposed communication-efficient 
 In Algorithm~\ref{alg:sparsams}, line 7-8 depict the error feedback operation at local nodes. $e_{t,i}$ is the accumulated error from gradient compression on the $i$-th worker up to time $t-1$. This residual is added back to $g_{t,i}$ to get the ``correct'' gradient. In Section~\ref{sec:theory} and Section~\ref{sec:experiment}, we will show that error feedback, similar to the case of SGD, also brings good convergence behavior under gradient compression in adaptive optimization methods.
 
 
-\textbf{Comparison with Quantized Adam~\cite{chen2020quantized}.}\hspace{0.1in}The first difference of \algo\ compared with \citep{chen2020quantized} which develops a quantized variant of Adam~\cite{kingma2014adam} is that they use Adam as the underlying algorithm. It does not use the variable $\hat v$ (line 15 of Algorithm~\ref{alg:sparsams}) that guarantees non-decreasing second moment estimation, which has been shown to be an important factor for the desired convergence guarantee~\cite{reddi2019convergence,Proc:Chen_ICLR19}. Indeed, the convergence rate given by~\cite{chen2020quantized} does not match the rate of vanilla AMSGrad (in fact it does not converge to 0) when decreasing learning rate (e.g., $\mathcal O(\frac{1}{\sqrt T})$) is taken, which could be problematic both intuitively and given the fact that decreasing learning rate is standard in theoretical analysis and practical implementation. In this paper, we prove the good convergence behavior of \algo\ that matches the rate of full-gradient AMSGrad.
+\textbf{Comparison with Quantized Adam~\cite{chen2020quantized}.}\hspace{0.1in}The first difference of \algo\ compared with \citep{chen2020quantized} which develops a quantized variant of Adam~\cite{kingma2014adam} is that they use Adam as the underlying algorithm. It does not use the variable $\hat v$ (line 15 of Algorithm~\ref{alg:sparsams}) that ensures non-decreasing second moment estimation, which has been shown to be an important factor for the convergence guarantee~\cite{reddi2019convergence,Proc:Chen_ICLR19}. Indeed, the convergence rate given by~\cite{chen2020quantized} does not match the rate of vanilla AMSGrad (in fact it does not converge to 0) when decreasing learning rate (e.g., $\mathcal O(\frac{1}{\sqrt T})$) is taken, which could be problematic both intuitively and given the fact that decreasing learning rate is standard in theoretical analysis and practical implementation. In this paper, we will prove the good convergence behavior of \algo\ that matches the rate of full-gradient AMSGrad (Section~\ref{sec:theory}).
 
 
 Another key difference is that, in \algo, only compressed gradients are transmitted from the workers to the central server. 
 In \citep{chen2020quantized}, each worker keeps a local copy of the moment estimates commonly noted $m$ and $v$, and compresses and transmits the ratio $\frac{m}{v}$ as a whole to the server. 
 Thus, that method is very much like the compressed distributed SGD, with the exception that the ratio $\frac{m}{v}$ plays the role of the gradient vector $g$ communication-wise. Thus, two local moment estimators are additionally required, which have same size as the deep learning model.
-In our optimization method in Algorithm~\ref{alg:sparsams}, the moment estimates $m$ and $v$ are kept and updated only at the central server, thus not introducing any extra variables (tensors) during training (except for the error accumulator). In other words, \algo\ is not only effective in communication reduction, but also efficient in terms of memory (space), which is favorable for the distributed adaptive training of large-scale learners like BERT and CTR prediction models, e.g.~\cite{Proc:BERT,Proc:Zhao_MLsys20}, to lower the hardware consumption happening in practice.
+In our optimization method in Algorithm~\ref{alg:sparsams}, the moment estimates $m$ and $v$ are kept and updated only at the central server, thus not introducing any extra variables (tensors) on local nodes during training (except for the error accumulator). In other words, \algo\ is not only effective in communication reduction, but also efficient in terms of memory (space), which is favorable for the distributed adaptive training of large-scale learners like BERT and CTR prediction models, e.g.~\cite{Proc:BERT,Proc:Zhao_MLsys20}, to lower the hardware consumption happening in practice.
 
 
 \begin{algorithm}[H]
@@ -282,7 +282,7 @@ Denote $C_0=\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}$, $C_1=\frac{\beta_1
 
 The LHS of Theorem~\ref{theo:rate} is the expected squared norm of the gradient from a uniformly chosen iterate $t\in [T]$, which is a common convergence measure. From Theorem~\ref{theo:rate}, we see that the more compression we apply to the gradient vectors (\ie larger $q$), the larger the upper bound of the stationary condition is, \ie the slower the algorithm converges. This is intuitive as heavier compression loses more gradient information which would slower down the learner to find a good solution.
 
-\textbf{Single machine rate.} Note that, \algo\ with $n=1$ naturally reduces to the single machine (sequential) AMSGrad (Algorithm~\ref{alg:amsgrad}) with compressed gradients instead of full-precision ones. The paper~\cite{karimireddy2019error} shows that for SGD, error feedback fixes the convergence issue of biased compressors in the sense that SGD-EF (with compressed gradients) has the same convergence rate as vanilla SGD using full gradients. For AMSGrad, we have a similar result.
+\textbf{Single machine rate ($n=1$).} Note that, \algo\ with $n=1$ naturally reduces to the single machine (sequential) AMSGrad (Algorithm~\ref{alg:amsgrad}) with compressed gradients instead of full-precision ones. The paper~\cite{karimireddy2019error} shows that for SGD, error feedback fixes the convergence issue of biased compressors in the sense that SGD-EF (with compressed gradients) has the same convergence rate as vanilla SGD using full gradients. For AMSGrad, we have a similar result.
 
 \begin{Corollary}\label{coro:mainsingle}
 Assume $n=1$. Under Assumption~\ref{ass:quant} to Assumption~\ref{ass:var}, setting the stepsize as $\eta = \min\{\frac{\epsilon}{3C_0\sqrt{2L \max\{2L,C_2\}}}, \frac{1}{\sqrt{\maxiter}}\}$, the sequence of iterates $\{\theta_t\}_{t>0}$ output from Algorithm~\ref{alg:sparsams} satisfies:
@@ -293,7 +293,7 @@ Assume $n=1$. Under Assumption~\ref{ass:quant} to Assumption~\ref{ass:var}, sett
 
 Corollary~\ref{coro:mainsingle} states that with error feedback, single machine AMSGrad with biased compressed gradients can also match the convergence rate $\mathcal O(\frac{1}{\sqrt{T}}+\frac{d}{T})$ of standard AMSGrad~\cite{Arxiv:Zhou_18} in non-convex optimization. It also achieves the same rate $\mathcal O(\frac{1}{\sqrt T})$ of vanilla SGD~\cite{karimireddy2019error} when $T$ is sufficiently large. In other words, EF also fixes the convergence issue of using compressed gradients in AMSGrad. To the best of our knowledge, this is the first result in literature showing that compressed adaptive methods with EF converges as fast as the standard counterpart. We will validate this benefit of EF in our numerical experiments.
 
-\textbf{Linear Speedup.} In Theorem~\ref{theo:rate}, the convergence rate is derived assuming constant learning rate. By carefully choosing a decreasing learning rate dependent on the number of workers, we have the following result.
+\textbf{Linear Speedup ($n>1$).} In Theorem~\ref{theo:rate}, the convergence rate is derived assuming constant learning rate. By carefully choosing a decreasing learning rate dependent on the number of workers, we have the following result.
 
 \begin{Corollary}\label{coro:linear speedup}
 Under the same setting as Theorem~\ref{theo:rate}, set $\eta = \min\{\frac{\epsilon}{3C_0\sqrt{2L \max\{2L,C_2\}}}, \frac{\sqrt n}{\sqrt{\maxiter}}\}$. Ignoring irrelevant quantities, we have
@@ -302,7 +302,7 @@ Under the same setting as Theorem~\ref{theo:rate}, set $\eta = \min\{\frac{\epsi
 \end{align}
 \end{Corollary}
 
-In Corollary~\ref{coro:linear speedup}, we see that the global variance $\sigma_g^2$ appears in the $\mathcal O(\frac{1}{T})$ term, which says that it asymptotically has no impact on the convergence. This matches the result of momentum SGD~\cite{Proc:Yu_ICML19}. When $T\geq \mathcal O(n^3)$ is sufficiently large, the third term in \eqref{label:eq:linear speedup} vanishes, and the convergence rate becomes $\mathcal O(\frac{1}{\sqrt nT})$. Therefore, to reach a $\mathcal O(\delta)$ stationary point, one worker ($n=1$) needs $T=\mathcal O(\frac{1}{\delta^2})$ iterations, while distributed training with $n$ workers requires only $T=\mathcal O(\frac{1}{N\delta^2})$ iterations, which is $n$ times faster than single machine training. That is, \algo\ has a linear speedup in terms of the number of the local workers. Such acceleration effect has also been reported for compressed SGD with error feedback~\cite{Proc:Zheng_NIPS19,jiang2018linear} and momentum SGD~\cite{Proc:Yu_ICML19}. To our knowledge, this is also the first result showing the linear speedup for distributed adaptive methods.
+In Corollary~\ref{coro:linear speedup}, we see that the global variance $\sigma_g^2$ appears in the $\mathcal O(\frac{1}{T})$ term, which says that it asymptotically has no impact on the convergence. This matches the result of momentum SGD~\cite{Proc:Yu_ICML19}. When $T\geq \mathcal O(n^3)$ is sufficiently large, the third term in \eqref{label:eq:linear speedup} vanishes, and the convergence rate becomes $\mathcal O(\frac{1}{\sqrt nT})$. Therefore, to reach a $\mathcal O(\delta)$ stationary point, one worker ($n=1$) needs $T=\mathcal O(\frac{1}{\delta^2})$ iterations, while distributed training with $n$ workers requires only $T=\mathcal O(\frac{1}{N\delta^2})$ iterations, which is $n$ times faster than single machine training. That is, \algo\ has a linear speedup in terms of the number of the local workers. Such acceleration effect has also been reported for compressed SGD with error feedback~\cite{Proc:Zheng_NIPS19,jiang2018linear} and momentum SGD~\cite{Proc:Yu_ICML19}. To our knowledge, this is also the first result showing the linear speedup for distributed adaptive methods under compression.
 
 
 % \begin{Corollary}\label{coro:mainmultiple}
@@ -391,11 +391,11 @@ In Corollary~\ref{coro:linear speedup}, we see that the global variance $\sigma_
 
 \section{Experiments}\label{sec:experiment}
 
-In this section, we provide numerical results on image classification problems. Our main objective is to validate the theoretical results, and demonstrate that the proposed \algo\ can give satisfactory learning performance with significantly reduced communication costs. 
+In this section, we provide numerical results on several real-world datasets. Our main objective is to validate the theoretical results, and demonstrate that the proposed \algo\ can give satisfactory learning performance with significantly reduced communication costs. 
 
 \subsection{Error Feedback Fixes the Convergence of Compressed AMSGrad}
 
-In Corollary~\ref{coro:mainsingle}, we established that for standard single machine AMSGrad under compression, EF helps achieve same convergence rate as the full-gradient AMSGrad. We implement \algo\ with a single worker and different gradient compressors, with or without EF, to justify this claim. We train MNIST clssification using a simple Convolutional Neural Network (CNN). The model has two convolutional layers followed by two fully connected layers with ReLu activation. Dropout is applied after the convolutional layer with rate 0.5. The training batch size is 200. The parameters in \algo\ are set as default $\beta_1=0.9$ and $\beta_2=0.999$, which is true for all the experiments in this paper. The learning rate is searched over a fine grid and the best result is reported. In Figure~\ref{fig:mnist-1}, we plot the training loss and test accuracy. The methods are (all performed on single worker):
+In Corollary~\ref{coro:mainsingle}, we established that for standard single machine AMSGrad under compression, EF helps achieve same convergence rate as the full-gradient AMSGrad. We implement \algo\ with a single worker and different gradient compressors, with or without EF, to justify this claim. We train MNIST clssification using a simple Convolutional Neural Network (CNN). The model has two convolutional layers followed by two fully connected layers with ReLu activation. Dropout is applied after the max-pooled convolutional layer with rate 0.5. The training batch size is 200. The parameters in \algo\ are set as default $\beta_1=0.9$ and $\beta_2=0.999$, which is true for all the experiments in this paper. The learning rate is searched over a fine grid and the best result is reported. In Figure~\ref{fig:mnist-1}, the methods are (all performed on single worker):
 \begin{itemize}
     \item TopK-EF-0.01: \algo\ (Algorithm~\ref{alg:sparsams}) and \textbf{Top-$k$} compressor, with sparsity 0.01 (i.e., keeping 1\% gradient coordinates with largest magnitude).
     
@@ -421,9 +421,9 @@ In Corollary~\ref{coro:mainsingle}, we established that for standard single mach
 	\label{fig:mnist-1}
 \end{figure}
 
-From Figure~\ref{fig:mnist-1}, we observe:
+From the train loss and test accuracy in Figure~\ref{fig:mnist-1}, we observe:
 \begin{itemize}
-    \item AMSGrad without EF (dash curves) performs very poorly in terms of both convergence speed (more fluctuations in later epochs) and generalization (much worse test accuracy). With error feedback (solid curves), the training loss and test accuracy of \algo\ both approach those of full-gradient AMSGrad. The issue of biased compression is fixed.
+    \item AMSGrad without EF (dash curves) performs very poorly in terms of both convergence speed (more fluctuations in later epochs) and generalization (much worse test accuracy). With error feedback, the training loss and test accuracy both approach those of full-gradient AMSGrad with faster convergence. The issue of biased compression is fixed.
     
     \item \textbf{Top-$k$}-EF-0.01 performs better than \textbf{Top-$k$}-EF-0.001, which justifies the influence of $q$ in Theorem~\ref{theo:rate} that higher compression ratio would undermine the learning performance.
     
@@ -446,6 +446,27 @@ From Figure~\ref{fig:mnist-1}, we observe:
 Corollary~\ref{coro:linear speedup} reveals the linear speedup of \algo\ in distributed training. We validate this claim in Figure~\ref{fig:speedup}, where the training loss on MNIST against the number of iterations is provided. Here we use \algo\ with \textbf{Top-$k$} and 0.01 sparsity. We test $n=1,2,4,8$, where the local mini-batch size is 100. As suggested by the theory, we use $10^{-4}\sqrt n$ as the learning rate. From Figure~\ref{fig:speedup}, we observe that the number of iterations for multiple workers to achieve a certain loss decreases as $n$ increases. For example, to achieve 0.5 loss, we need around $700,400,240,120$ iterations for $n=1,2,4,8$ respectively, which decreases approximately linearly. This numerically justifies the linear speedup effect ($\mathcal O(\frac{1}{\sqrt{nT}})$ convergence rate) of \algo.
 
 \subsection{General Evaluation and Communication Efficiency}
+
+In this section, we present general evaluation on more datasets and compare the communication efficiency. For CIFAR-10 image classification, we train a larger CNN model with 3 convolutional layers (more detailed architecture can be found in the supplement). For IMDB movie review sentiment analysis task, we train a LSTM network with 64 cells, equipped with an embedding layer which embeds top 1000 words in the movie reviews into 32-dimensional vectors.
+
+\begin{figure}
+    \begin{center}
+    \mbox{\hspace{-0.1in}
+        \includegraphics[width=1.95in]{fig/mnist_cnn_test_accuracy_16_Qadamsign.eps}\hspace{-0.1in}
+        \includegraphics[width=1.95in]{fig/cifar_lenet_test_accuracy_16_Qadamsign.eps}
+        \hspace{-0.1in}
+        \includegraphics[width=1.95in]{fig/imbd_lstm_test_accuracy_8_Qadamsign.eps}
+    }
+    \mbox{\hspace{-0.1in}
+        \includegraphics[width=1.95in]{fig/mnist_cnn_test_accuracy_16_vs_bits_Qadamsign.eps}\hspace{-0.1in}
+        \includegraphics[width=1.95in]{fig/cifar_lenet_test_accuracy_16_vs_bits_Qadamsign.eps}
+        \hspace{-0.1in}
+        \includegraphics[width=1.95in]{fig/imbd_lstm_test_accuracy_8_vs_bits_Qadamsign.eps}
+    }
+    \end{center}
+	\caption{Test accuracy of distributed \algo. Top row: accuracy vs. epochs. Bottom row: accuracy vs. number of bits transmitted per worker.}
+	\label{fig:test accuracy dist}
+\end{figure}
 
 
 \section{Conclusion}\label{sec:conclusion}
@@ -1199,6 +1220,35 @@ where the last inequality follows from Lemma~\ref{lemma:bound difference}. Re-ar
     &\hspace{0.7in} + \frac{12\eta^2q^2LC_0\sigma_g^2}{(1-q^2)^2\epsilon^2}+\frac{ (1+C_1)G^2d}{T\sqrt\epsilon}+\frac{\eta (1+2C_1)C_1LG^2d}{T\epsilon} \Big),
 \end{align*}
 where $C_0=\sqrt{\frac{4(1+q^2)^3}{(1-q^2)^2}G^2+\epsilon}$, $C_1=\frac{\beta_1}{1-\beta_1}+\frac{2q}{1-q^2}$. The last inequality is because $\theta_1'=\theta_1$, $\theta^* \eqdef \argmin_\theta f(\theta)$ and the fact that $C_2\leq C_1$. This completes the proof.
+
+
+\section{Additional content}
+
+\subsection{Extension to the single-machine setting}
+
+We first provide in this subsection the formulation of our method in the single-worker setting, see Algorithm~\ref{alg:sparsamssingle}.
+Here, the computations, of the stochastic gradient and the various moment estimates, are all performed on a single-machine and the data is stored in this same worker.
+Then, we establish its convergence rate with similar compression and error-feedback techniques, as seen prior.
+
+\begin{algorithm}[H]
+\caption{\algo\ with error-feedback for a single-machine} \label{alg:sparsamssingle}
+\begin{algorithmic}[1]
+
+\STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
+\STATE Initialize: central server parameter $\theta_{1} \in \Theta \subseteq \mathbb R^d$; $e_{1}=0$ the error accumulator; sparsity parameter $k$; $m_0=0$, $v_0=0$, $\hat v_0=0$
+
+\FOR{$t=1$ to $T$}
+\STATE  Compute stochastic gradient $g_{t} \eqdef g_{t,i_t}$ at $\theta_t$ for randomly sampled index $i_t$ among the available observations indices. \label{line:stochgrad} 
+\STATE  Compute $\tilde g_{t}=\textbf{Top-$k$}(g_{t}+e_{t},k)$ \label{line:topksingle} 
+\STATE  Update the error $e_{t+1}=e_{t}+g_{t}-\tilde g_{t}$
+\STATE $m_t=\beta_1 m_{t-1}+(1-\beta_1)\tilde g_t$
+\STATE $v_t=\beta_2 v_{t-1}+(1-\beta_2)\tilde g_t^2$
+\STATE $\hat v_t=\max(v_t,\hat v_{t-1})$ \label{line:vsingle}
+\STATE Update the global model $\theta_{t+1}=\theta_{t}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
+
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
 
 
 % ---------------------------------
