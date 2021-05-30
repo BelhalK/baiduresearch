@@ -75,7 +75,6 @@ citecolor=blue!90!black]{hyperref}
 
 \begin{abstract}\vspace{-0.1in}
 In the emerging paradigm of Federated Learning (FL), large amount of clients, such as mobile devices, are used to train possibly high-dimensional models on their respective data.
-%Under the orchestration of a central server, the data needs to remain decentralized, as it cannot be shared among clients or with the central server.
 Due to the low bandwidth of mobile devices, decentralized optimization methods need to shift the computation burden from those clients to the computation server while preserving \emph{privacy} and reasonable \emph{communication cost}.
 In this paper, we focus on the training of deep, as in multilayered, neural networks, under the FL settings.
 We present, \algo, a novel Federated Learning method based on a \emph{layerwise} and \emph{dimensionwise} updates of the local models, alleviating the nonconvexity and the multilayeredness of the optimization task at hand.
@@ -112,7 +111,7 @@ Our contributions are as follows:
 \begin{itemize}
 \item We develop a novel optimization algorithm for federated learning, namely \algo, following a principled layerwise adaptation strategy to accelerate training of deep neural networks. Our method is provably and empirically communication-efficient for compositional structural models.
 \item We provide a rigorous theoretical understanding of the non asymptotic convergence rate of \algo. 
-Based on the recent progress on nonconvex stochastic optimization, we derive for a any number of rounds performed by our method, a characterization of the rate at which the classical suboptimality condition, \ie, the second order moment of the gradient of the objective function, decreases. Our bound  in $\mathcal{O}\left(\sqrt{\frac{ p}{ n}} \frac{1}{\sqrt{\tot R} } \right)$ matches state of the art methods in Federated Learning reaching a sublinear convergence in the total number of rounds.
+Based on the recent progress on nonconvex stochastic optimization, we derive for a any number of rounds performed by our method, a characterization of the rate at which the classical suboptimality condition, \ie, the second order moment of the gradient of the objective function, decreases. Our bound  in $\mathcal{O}\left(\sqrt{\frac{ p}{ n}} \frac{1}{\sqrt{\tot R} } \right)$, where $\tot$ is the total number of layers and $p$ denotes the dimension, matches state of the art methods in Federated Learning reaching a sublinear convergence in the total number of rounds.
 \item We exhibit the advantages of our method to reach similar, or better, test accuracy than baseline methods with less number of communication rounds, on several benchmarks supervised learning methods on both homogeneous and heterogeneous settings.
 \end{itemize}
 
@@ -178,7 +177,7 @@ Beforehand, it is important to provide useful and important notations used throu
 
 \vspace{0.05in}
 \textbf{Notations:} We denote by $\theta$ the vector of parameters taking values in $\rset^d$. 
-For each layer $\ell \in \llbracket \tot \rrbracket$, where $\tot$ is the total number of layers of the neural networks, and each coordinate $j \in \llbracket p_\ell \rrbracket$ where $p_\ell$ is the dimension per layer $\ell$.
+For each layer $\ell \in \llbracket \tot \rrbracket$, where $\tot$ is the total number of layers of the neural networks, and each coordinate $j \in \llbracket p_\ell \rrbracket$ where $p_\ell$ is the dimension per layer $\ell$ ($p := \sum_{\ell=1}^\tot p_\ell$ denotes the total dimension).
 We also note $\theta_{r,i}^{\ell,t}$ its value for layer $\ell$ at round $r$, local iteration $t$ and for worker $i$.
 The gradient of $f$ with respect to $\theta^\ell$ is denoted by $\nabla_{\ell} f(\theta)$.
 %The index $i \in \inter$ denotes the index of the worker $i$ in our federated framework.
@@ -188,38 +187,38 @@ We note by $D^{r}$ for each communication $r>0$, the set of randomly drawn devic
 
 
 \subsection{AMSGrad, Local AMSGrad and Periodic Averaging}
-Under our Federated setting, we stress on the important of reducing the communication cost at each round between the central server, used mainly for aggregation purposes, and the many clients used for gradient computation and local updates.
+Under the federated learning setting, we stress on the importance of reducing, at each round, the communication cost between the central server, used mainly for aggregation purposes, and the many clients used for gradient computation and local updates.
 Using Periodic Averaging after few local epochs, updating local models on each device, as developed in~\citep{mcmahan2017communication} is the gold standard for achieving such communication cost reduction.
-Intuitively, one rather shift the computation burden from the many clients to the central server as much as possible. This allows for fewer local epochs and a better global model, from a loss minimization (or model fitting) perspective.
+Intuitively, one rather shifts the computation burden from the many clients to the central server as much as possible. 
+This technique allows for fewer local epochs and a better global model, from a loss minimization (or model fitting) perspective.
 The premises of that new paradigm are SGD updates performed locally on each device then averaged periodically, see~\citep{konevcny2016federated, zhou2017convergence}.
 The heuristic efficiency of local updates using SGD and periodic averaging has been studied in~\citep{stich2018local,yu2019linear} and shown to reach a similar sublinear convergence rate as in the standard distributed optimization settings.
-Then, with the growing need of training far more complex models, such as deep neural networks, several efficient methods, built upon adaptive gradient algorithms, such as Local AMSGrad in~\citep{chen2020toward}, extended both empirically and theoretically, the benefits of performing local updates coupled with periodic averaging.
+Then, with the growing need of training far more complex models, e.g. deep neural networks, several efficient methods, built upon adaptive gradient algorithms, such as Local AMSGrad in~\citep{chen2020toward}, extended both empirically and theoretically, the benefits of performing local updates coupled with periodic averaging.
 
 
 
 \subsection{Layerwise and Dimensionwise Learning with Periodic Averaging}
 
 Recall that our original problem is the following optimization task $\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)$ where $f_i(\theta)$ is the loss function associated to the client $i \in \inter$ and is parameterized, in our paper, by a deep neural network.
-The multilayer and nonconvex nature of the loss function imply having recourse to particular optimization methods in order to efficiently train our model.
-Besides, the distributed and clients low bandwidth constraints are strong motivations for improving existing methods for \eqref{eq:opt}.  
+The stacking and nonconvex nature of the loss function imply having recourse to particular optimization methods in order to efficiently train our model.
+Besides, the decentralized clients low-bandwidth constraints are strong motivations for improving existing methods for \eqref{eq:opt}.  
 
 
 Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm which is depicted in Figure~\ref{fig:illustrate} and detailed in Algorithm~\ref{alg:ldams}, which is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
-In particular, while Line~\ref{line:new1} and Line~\ref{line:new2} corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~\ref{line:new1} and Line~\ref{line:new2} are correct the biases of those estimates, the final local update in Line~\ref{line:layer} is novel and corresponds to the specialization per layer of our federated method.
+In particular, while Line~\ref{line:new1} and Line~\ref{line:new2} corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~\ref{line:new1} and Line~\ref{line:new2} are correct the biases of those estimates, the final local update in Line~11 is novel and corresponds to the specialization per layer of our federated method.
 %Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm detailed in Algorithm~\ref{alg:ldams}, which is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
 %In particular, while Line~8 and Line~10 corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~9 and Line~11 are correct the biases of those estimates, the final local update in Line~13 is novel and corresponds to the specialization per layer of our federated method.
 Note that a scaling factor is applied to the learning rate $\alpha_r$ at each round $r>0$ via the quantity $\phi(\|\theta_{r,i}^{\ell,t-1}\|)$ depending on the dimensionwise and layerwise quantity computed in Line~12.
 This function is user designed and can be, for instance, set to the identity function. 
 In other words, we normalize the gradient in each layer according to the magnitude of the layer's weight.
-
 The adaptivity of our federated learning method is thus manifold. 
-There occurs a per dimension normalization with respect to the square root of the second moment used in adaptive gradient methods and a layerwise normalization obtained via the final local update (Line~13).
+There occurs a normalization per dimension with respect to the square root of the second moment used in adaptive gradient methods and a layerwise normalization obtained via the final local update (Line~13).
 
 
 \begin{figure}[H]
 \centering
 \mbox{\hspace{-0.15in}
-        \includegraphics[width=0.6\textwidth]{plot/plot1.pdf}
+        \includegraphics[width=0.7\textwidth]{plot/plot1.pdf}
 }
 	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network and $\phi(x)=x$ as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i} =  [\theta_{r,i}^{\ell}]_{\ell =1}^{\tot}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
 	\label{fig:illustrate}\vspace{-0.1in}
@@ -314,7 +313,7 @@ We also report the complete proof of our bound in the Appendix of this paper.
 
 The first result gives a characterization of the gap between the averaged model, that is computed by the central server in a periodic manner, and each of the local models stored in each client $i \in \inter$.
 \begin{Lemma}\label{lemma:iterates}
-Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then for $i \in \inter$ and $r > 0$:
+Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then for $i \in \inter$ and $r > 0$, the gap $\| \overline{\theta_r} - \theta_{r,i} \|^2$ satisfies:
 \beq
 \| \overline{\theta_r} - \theta_{r,i} \|^2 \leq \alpha_r^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{v_0}
 \eeq
@@ -340,18 +339,21 @@ We now state our main result regarding the non asymptotic convergence analysis o
 Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} with a constant learning rate $\alpha$. Let the number of local epochs be $T \geq 1$ and $\lambda = 0$. Then, for any round $R > 0$, we have:
 \beq \label{bound1multiple}
 \begin{split}
-&  \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq    \sqrt{\frac{M^2 p}{n}}  \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha_r R} +      \frac{\phi_M   \sigma^2}{R n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } \\
+&  \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq    \sqrt{\frac{M^2 p}{n}}  \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha R} +      \frac{\phi_M   \sigma^2}{R n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } \\
     &   +4\alpha \left[ \frac{\alpha^2 L_\ell}{\sqrt{v_0}} M^2 (T-1)^2 \phi_M^2 (1-\beta_2)p + \frac{M^2}{\sqrt{v_0}}+\phi_M^2\sqrt{M^2+p\sigma^2} + \phi_M \frac{\tot \sigma^2}{\sqrt{n}}\right]   + cst. \\
    \end{split}
 \eeq
-If one considers a constant stepsize as  $\alpha = \mathcal{O}(\frac{1}{ \sqrt{\tot R}})$, then:
-\begin{align}\notag
-    \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \mathcal{O}\left( \sqrt{\frac{M^2 p}{n}} \frac{1}{\sqrt{\tot R}} + \frac{\sigma^2 }{R n\sqrt{p}}+\frac{(T-1)^2p}{R^{3/2}}\right)
-\end{align}
+
 \end{Theorem}
-\textbf{Discussion on the bound:} Obviously, the last term containing the number of local updates $T$ is small as long as $T\leq \mathcal O(\frac{R^{1/2}L^{5/4}}{(np)^{1/4}})$. 
-Treating $p^{1/4}/L=\mathcal O(1)$ which is usually small, the result implies that we can get the same rate of convergence as the algorithm using one local update, with $\mathcal \mathcal{O}(R^{1/2}/n^{1/4})$ rounds of communication. 
-When the number of workers $n$ increases, then a constraint on the number of local updates $T$ is occurring, meaning that we would need more rounds of communication to achieve the same convergence rate, for a identical $\epsilon-$stationary point.
+
+By choosing a suitable learning rate, we have the following simplified result.
+\begin{Corollary}\label{coro:main}
+Under the same setting as Theorem~\ref{th:multiple update}, with $\alpha = \mathcal{O}(\frac{1}{ \sqrt{\tot R}})$, it holds that
+\begin{align} \label{coro:rate}
+    \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \mathcal{O}\left( \sqrt{\frac{ p}{n}} \frac{1}{\sqrt{\tot R}} + \frac{\sigma^2 }{R n\sqrt{p}}+\frac{(T-1)^2p}{\tot^3 R^{3/2}}\right).
+\end{align}
+\end{Corollary}
+
 %We recall that a $\epsilon-$stationary point is defined by the number of communication rounds $R$ such that $\frac{1}{R}\sum_{t=1}^\mathcal{R}  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \epsilon$.
 
 
@@ -375,59 +377,67 @@ When the number of workers $n$ increases, then a constraint on the number of loc
 %\end{Theorem}
 
 
-We focus in the next subsection on two particular papers of utmost interest for our contribution.
-\subsection{Comparison with LAMB and Local-AMS methods}
+\subsection{Comparisons and discussions}
 
-We dedicate the following paragraph to a discussion on the bound derived above in comparison with known results in the literature.
+We dedicate the following paragraph to a discussion on the bound derived above in comparison with known results most relevant to our interest in the literature.
 
 \vspace{0.05in}
 \textbf{LAMB bound in~\citet{you2019large}: }
-We first start our discussion with the comparison of convergence rate of \algo with that of LAMB, Theorem 3 in~\citep{you2019large}. 
-The convergence rates of \algo and LAMB differ in two ways: (i) the suboptimality, or convergence criterion, used here is $\frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right]$ for a total number of rounds $R$ as opposed to $ \EE\left[ \left\| \nabla f(\theta_\mathcal{R}) \right \|^2 \right] $ for some random termination round $\mathcal{R}$ uniformly drawn from $\llbracket R \rrbracket$.
-First, note that the characterization is given at the averaged parameters noted $\overline{\theta_\mathcal{r}}$ due to our distributed settings. 
+We first start our discussion with the comparison of convergence rate of \algo\ with that of LAMB, Theorem 3 in~\citep{you2019large}. 
+The convergence rates of \algo and LAMB differ in two ways: 
+(i) First, note that the characterization, on the suboptimality, or convergence criterion, is given at the averaged parameters noted $\overline{\theta_r}$ due to our distributed settings. 
 It is thus natural to consider the evolution of our objective function, precisely its gradient, evaluated at some global model values --as opposed to the outcome of a single step drift in the central server paradigm. 
 Besides, for ease of interpretation, the LHS of \eqref{bound1multiple} is summed over all rounds instead of a fictive random termination point. A simple calculation would lead to such characterization, found in several nonconvex stochastic optimization paper such as~\citep{ghadimi2013stochastic}.
-(ii)  Assuming that the convergence criterion in both Theorems is of similar order (which happens for a large enough number of rounds), convergence rate of \algo displays a similar $\mathcal{O}(1/R)$ behaviour for the initialization term, meaning that, despite the distributed (federated) settings, our dimensionwise and layerwise method benefits from the double adaptivity phenomenon explained above and exhibited in the LAMB method of~\citep{you2019large}, performed under a central server setting.
+(ii)  Assuming that the convergence criterion in both Theorems is of similar order (which happens for a large enough number of rounds), convergence rate of \algo\ displays a similar $\mathcal{O}(1/R)$ behaviour for the initialization term, meaning that, despite the distributed (federated) settings, our dimensionwise and layerwise method benefits from the double adaptivity phenomenon explained above and exhibited in the LAMB method of~\citep{you2019large}, performed under a central server setting.
 
 
 \vspace{0.05in}
 \textbf{Local-AMS bound in~\citet{chen2020toward}: }
-We now discuss the similarities and differences between the distributed adaptive method developed in~\citep{chen2020toward} and named local-AMS, and our \emph{deep federated} method, namely \algo.
-We first recall their main result:
+We now discuss the similarities and differences between local-AMS, the distributed adaptive method developed in~\citep{chen2020toward}, and our \emph{layerwise federated} method, namely \algo.
+We recall their main result under our notations:
 \begin{Theorem}[Theorem 5.1 in~\citep{chen2020toward}]
-Under some regularity conditions on the local losses and similar arguments as ours, Local-AMS reaches a stationary point with the following rate:
+Under some regularity conditions on the local losses and similar assumption as ours, with $\alpha=\mathcal O(\sqrt{n}/\sqrt{Rp})$, Local-AMS has the following convergence rate:
+% \beq 
+% \begin{split}
+%  \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right]     \leq  8 \sqrt{\frac{p}{Rn}} \left[ f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{R+1})] \right]  +    8 L_{s} \sqrt{\frac{p}{Rn}}  \frac{  \sigma^2}{\epsilon} + cst.
+%  \end{split}
+% \eeq
+
 \beq 
 \begin{split}
- \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right]     \leq  8 \sqrt{\frac{p}{Rn}} \left[ f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{R+1})] \right]  +    8 L_{s} \sqrt{\frac{p}{Rn}}  \frac{  \sigma^2}{\epsilon} + cst.
+ \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right]     \leq  \mathcal O( \sqrt{\frac{p}{Rn}} +   \sqrt{\frac{p}{Rn}}\sigma^2 +\frac{n(T-1)^2}{R} ).
  \end{split}
 \eeq
+
 where $\epsilon$ corresponds to their initialization of the vector $\hat v_0$ and $L_{s}$ is the sum of the local smoothness constants.
 \end{Theorem}
 
-The first two terms of their results and ours, standard in convergence analysis, displays a strong dependence of the convergence rate on the initialization, which tends to be forgotten, and the bounded variance assumption of the stochastic gradient, see H\ref{ass:var}.
-The acceleration of our layerwise scheme is exhibited in the dependence on $\frac{1}{R}$ in those two terms, while results in~\citep{chen2020toward} are of order $\frac{1}{\sqrt{R}}$.
-Note that the boundedness assumption is done on each dimension in H\ref{ass:var} and leads to a manifestation of the term $\sqrt{p}$ in both rates. This can be handled for simplicity and clarity of the results when H\ref{ass:var} is assumed globally.
-It is important to note that their rate include an analysis with respect to the number of local updates, noted $T$ in this paper.
-While our result is derived for a single local update $T=1$, we acknowledge that exhibiting a dependency on $T$ can be interesting, particularly in order to see the impact of several local updates which are, in practice, in different directions --as a byproduct of heterogeneous local training samples.
-We leave this investigation to future work.
+The first two terms of their results and ours, standard in convergence analysis, displays a dependence of the convergence rate on the initialization and the bounded variance assumption of the stochastic gradient, see H\ref{ass:var}. In general, when the number of rounds $R$ is sufficiently large, both rates are dominated by $\mathcal O(\frac{\sqrt p}{\sqrt{n R}})$, matching the convergence rate of AMSGrad (e.g.~\cite{Arxiv:Zhou_18}).
+The acceleration of our layerwise scheme is exhibited in the $\mathcal O(1/(n R))$ term and the dependence on the number of layers $\mathcal O(1/(h^3 R^{3/2}))$ term. Note that the boundedness assumption is done on each dimension in H\ref{ass:var} and leads to a manifestation of the term $\sqrt{p}$ in both rates. This can be handled for simplicity and clarity of the results when H\ref{ass:var} is assumed globally.
 
-\vspace{0.05in}
+In \eqref{coro:rate}, the last term containing the number of local updates $T$ is small as long as $T\leq \mathcal O(\frac{R^{1/2}h^{5/4}}{(np)^{1/4}})$. 
+Treating $p^{1/4}/h=\mathcal O(1)$, the result implies that we can get the same rate of convergence as vanilla AMSGrad, with $R/T\geq \mathcal{O}(R^{1/2}n^{1/4})$ rounds of communication. For Local-AMS, by similar argument we know that, it requires $\mathcal O(R^{3/4}n^{3/4})$ communication rounds. Thus, our result reduces the number of communication rounds needed to reach a $\epsilon$-stationary point compared with~\cite{chen2020toward}, hence improving the communication efficiency.
 
-In light of the prior remarks, we give a simple variant of Theorem~\ref{th:main} as Corollary~\ref{coro:main} where we assume an upperbound on the norm of the second moment approximate~$\sqrt{ v_r^t}$:
+% It is important to note that their rate include an analysis with respect to the number of local updates, noted $T$ in this paper.
+% While our result is derived for a single local update $T=1$, we acknowledge that exhibiting a dependency on $T$ can be interesting, particularly in order to see the impact of several local updates which are, in practice, in different directions --as a byproduct of heterogeneous local training samples.
+% We leave this investigation to future work.
 
-\begin{assumption}\label{ass:boundv}
-For $t >0$ and $r>0$, there exists some constant such that $\| \sqrt{ v_r^t} \| \leq V^2 $.
-\end{assumption}
+% \vspace{0.05in}
 
-\begin{Corollary}\label{coro:main}
-Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} and set $\alpha_r = \mathcal{O}(\frac{1}{L \sqrt{R}})$. Then, if the number of local epochs is set to $T=1$, $\lambda = 0$ we have, under \textbf{H\ref{ass:boundv}}:
-\beq \label{bound1coro}
-\frac{1}{R} \EE\left[ \left\| \nabla f(\overline{\theta_R})   \right \|^2 \right] \leq \mathcal{O}\left(\sqrt{\frac{ p}{ n}} \frac{1}{\tot \sqrt{R} } \right)
-\eeq
-\end{Corollary}
+% In light of the prior remarks, we give a simple variant of Theorem~\ref{th:main} as Corollary~\ref{coro:main} where we assume an upperbound on the norm of the second moment approximate~$\sqrt{ v_r^t}$:
 
+% \begin{assumption}\label{ass:boundv}
+% For $t >0$ and $r>0$, there exists some constant such that $\| \sqrt{ v_r^t} \| \leq V^2 $.
+% \end{assumption}
 
-We now discuss our bound regarding several aspects in order to gain understanding of the advantages of our method:
+% \begin{Corollary}\label{coro:main}
+% Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} and set $\alpha_r = \mathcal{O}(\frac{1}{L \sqrt{R}})$. Then, if the number of local epochs is set to $T=1$, $\lambda = 0$ we have, under \textbf{H\ref{ass:boundv}}:
+% \beq \label{bound1coro}
+% \frac{1}{R} \EE\left[ \left\| \nabla f(\overline{\theta_R})   \right \|^2 \right] \leq \mathcal{O}\left(\sqrt{\frac{ p}{ n}} \frac{1}{\tot \sqrt{R} } \right)
+% \eeq
+% \end{Corollary}
+
+We now discuss our bound regarding several aspects in order to gain understanding on \algo\ :
 
 \textbf{Communication Complexity:} The (sublinear) dependence on the number of communication rounds of our bound matches that of most recent methods in Federated Learning, see~\citep{karimireddy2019scaffold} developing SCAFFOLD, a solution to the problem posed by heterogeneity of the data in each client, and of~\citep{reddi2020adaptive}, adapting state of the art method in optimization, here ADAM, under the federated setting. 
 Yet, contrary to SCAFFOLD, our method only sends bits once per communication round while SCAFFOLD needs to send two vectors, including an additional control variate term  from the clients to the central server.
@@ -465,7 +475,7 @@ For each run, we take the model performance with the best $\alpha$ and $\lambda$
 
 \vspace{0.05in}
 \noindent\textbf{Models.} We test the performance of different federated learning algorithms on MNIST~\citep{lecun1998mnist} and CIFAR10~\citep{krizhevsky2009learning} image classification datasets. For MNIST, we apply 1) a simple multilayer perceptron (MLP), which has one hidden layer containing 200 cells with dropout; 2) Convolutional Neural Network (CNN), which has two max-pooled convolutional layers followed by a dropout layer and two fully-connected layers with 320 and 50 cells respectively. For CIFAR10, we implement: 1) a CNN with three convolutional layers followed by two fully-connected layers, and 2) a ResNet-9 model proposed by~\citep{Proc:He-resnet16}. 
-%All the networks use ReLU as the activation function.
+For each, we use both iid and non-iid data.
 
 
 \vspace{-0.1in}
@@ -515,8 +525,9 @@ As a side note, the poor performance of Fed-SGD is, to some extent, consistent w
 %	\label{fig:mnist-cnn-noniid}
 %\end{figure}
 
-
+\vspace{-0.05in}
 \subsection{CIFAR-10 with Convolutional Neural Network and Residual Neural Network}
+\vspace{-0.05in}
 
 In Figure~\ref{fig:cifar-cnn-iid}, we report the test accuracies of a Convolutional Neural Network trained on CIFAR-10 dataset, where the data is either iid allocated among clients or non-iid.
 When we run 1 local epoch per device, we observe a clear advantage of \algo over Fed-AMS on both test accuracy and convergence speed.
@@ -549,26 +560,51 @@ Increasing the number of local iterations in each device per communication round
 %\end{figure}
 
 
-\begin{figure}[t]
+%\begin{figure}[t]
+%    \begin{center}
+%        \mbox{
+%        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep1_client10_iid1_SGD.eps}
+%         \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep3_client10_iid1_SGD.eps}
+%                   \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid1_SGD.eps}
+%        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid1_SGD.eps}
+%        }
+%                \mbox{
+%                 \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid0.eps}
+%        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid0.eps}
+%        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
+%        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
+%        
+%        }
+%    \end{center}
+%	\caption{\textbf{Top Row:} Test accuracy on CIFAR+ResNet , with iid data distribution for 10 clients (Left) 50 clients (Right), 1 and 3 local epoch respectively. \textbf{Bottom Row:} Test accuracy on CIFAR+ResNet with non-iid data distribution (Left) for 50 clients, 1 and 3 local epoch respectively and on CIFAR+CNN with iid data distribution for 50 clients (Right).}
+%	\label{fig:cifar-cnn-iid}
+%\end{figure}
+
+
+\begin{figure}[H]
     \begin{center}
         \mbox{
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep1_client10_iid1_SGD.eps}
-         \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep3_client10_iid1_SGD.eps}
-                   \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid1_SGD.eps}
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid1_SGD.eps}
+        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep1_client10_iid1_SGD.eps}
+         \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep3_client10_iid1_SGD.eps}
+                   \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid1_SGD.eps}
         }
                 \mbox{
-                 \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid0.eps}
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid0.eps}
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
-        \includegraphics[width=0.25\textwidth]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
-        
+                        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid1_SGD.eps}
+                                \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_cnn_ep1_client50_iid1.eps}
+        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_cnn_ep3_client50_iid1.eps}
+
+        }
+                        \mbox{
+                 \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep1_client50_iid0.eps}
+        \includegraphics[width=0.33\textwidth]{figure/cifar_testerror_resnet_ep3_client50_iid0.eps}        
         }
     \end{center}
-	\caption{\textbf{Top Row}: Test accuracy on CIFAR+ResNet , with iid data distribution for 10 clients (Left) 50 clients (Right), 1 and 3 local epoch respectively. \textbf{Bottom Rown:} Test accuracy on CIFAR+ResNet with non-iid data distribution (Left) for 50 clients, 1 and 3 local epoch respectively and on CIFAR+CNN with iid data distribution for 50 clients (Right).}
+	\caption{\textbf{Top Row}: Test accuracy on CIFAR+ResNet, with iid data distribution for 10 clients 1 and 3 local epochs and 50 clients 1 local epoch respectively. 
+	\textbf{Middle Row:} Test accuracy on CIFAR+ResNet with iid data distribution for 50 clients 3 local epochs and on CIFAR+CNN with iid data distribution for 50 clients 1 and 3 local epochs respectively.
+	\textbf{Bottom Row:} Test accuracy on CIFAR+CNN with non iid data distribution for 50 clients and 3 local epochs.}
 	\label{fig:cifar-cnn-iid}
 \end{figure}
-
+\vspace{-0.15in}
 
 %\subsection{CIFAR-10 with Residual Neural Network}
 
@@ -965,6 +1001,10 @@ Then using the fact that $\vartheta_1 = \theta_1$ and that for all $\vartheta \i
 
 \subsection{Proof Corollary~\ref{coro:main}}
 
+ \begin{assumption}\label{ass:boundv}
+ For $t >0$ and $r>0$, there exists some constant such that $\| \sqrt{ v_r^t} \| \leq V^2 $.
+ \end{assumption}
+
 \begin{Corollary*}
 Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then, if the number of local epochs is set to $T=1$, $\epsilon = \lambda = 0$ we have, under \textbf{H\ref{ass:boundv}}:
 \beq \notag
@@ -1095,7 +1135,8 @@ where the last line is due to (\ref{eqn:B1}). Therefore, we have obtained
 \end{align*}
 Substitute back into (\ref{eqn1}), and leave other derivations unchanged. Assuming $M\leq 1$, we have the following:
 \begin{align*}
-    \frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] & \lesssim  \sqrt{\frac{M^2 p}{n}} \frac{ f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{\tau+1})]}{\tot \alpha_t \tau}+   \frac{\alpha_t}{n^2}  \sum_{r=1}^\tau  \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \left\|\frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v_t} \|p_{r,i}^{\ell}\|} \right\|^2 \right] +\frac{2\alpha^3 L_\ell p\phi_M^2}{ \sqrt{v_0}}\frac{\beta_1^2}{(1-\beta_1)^2} \nonumber\\
+    &\frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \\
+    & \lesssim  \sqrt{\frac{M^2 p}{n}} \frac{ f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{\tau+1})]}{\tot \alpha_t \tau}+   \frac{\alpha_t}{n^2}  \sum_{r=1}^\tau  \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \left\|\frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v_t} \|p_{r,i}^{\ell}\|} \right\|^2 \right] +\frac{2\alpha^3 L_\ell p\phi_M^2}{ \sqrt{v_0}}\frac{\beta_1^2}{(1-\beta_1)^2} \nonumber\\
    &   +4\alpha_t \left[ \frac{\alpha_t^2 L_\ell}{\sqrt{v_0}}  M^2 (T-1)^2 \phi_M^2 (1-\beta_2)p + \frac{M^2}{\sqrt{v_0}}+\phi_M^2\sqrt{M^2+p\sigma^2} + \phi_M \frac{\tot \sigma^2}{\sqrt{n}}\right] + \frac{ \overline{L}\beta_1^2\tot(1-\beta_2)M^2 \phi^2_M n}{2(1-\beta_1)^2 v_0}   \nonumber \\
    &  +\frac{\alpha_t \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} +\overline{L} \alpha_t^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{Tv_0} \nonumber\\
    & \leq   \sqrt{\frac{M^2 p}{n}}  \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha_t \tau} +      \frac{\phi_M   \sigma^2}{\tau n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } \nonumber\\
