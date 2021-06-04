@@ -547,7 +547,7 @@ VFG achieves similar MSE values but with much smaller performance variance compa
 
 \subsection{ELBO and Likelihood}\label{sec:exp:elbo}
 
-In Table~\ref{tab:elbo}, the negative evidence lower bound~(-ELBO) and the estimated negative likelihood~(NLL) for baseline methods on three datasets, MNIST, Caltech101, and Omniglot. The results of the baseline methods are from~\cite{berg2018sylvester}. These methods are VAE based methods  enhanced with  normalizing flows.  They use 16 flows to improve the posterior estimation. SNF is orthogonal sylvester flow method with a bottleneck of M = 32. We set the VFG coupling block number with  $d=4$, and following~\cite{berg2018sylvester} we run multiple times to get the mean and standard derivation as well. Compared to VAE based methods, the proposed VFG model can achieve significant improvement on both ELBO and NLL values on these datasets.
+In Table~\ref{tab:elbo}, the negative evidence lower bound~(-ELBO) and the estimated negative likelihood~(NLL) for baseline methods on three datasets, MNIST, Caltech101, and Omniglot. The results of the baseline methods are from~\cite{berg2018sylvester}. These methods are VAE based methods  enhanced with  normalizing flows.  They use 16 flows to improve the posterior estimation. SNF is orthogonal sylvester flow method with a bottleneck of M = 32. We set the VFG coupling block number with  $b=4$, and following~\cite{berg2018sylvester} we run multiple times to get the mean and standard derivation as well. Compared to VAE based methods, the proposed VFG model can achieve significant improvement on both ELBO and NLL values on these datasets.
 
 \begin{center}
 {\footnotesize
@@ -720,11 +720,12 @@ Future work includes applying our VFG model to fine grained data relational stru
 {\LARGE \textbf{Supplemental File for `Variational Flow Graphical Model'}}
 \end{center}
 
-The proposed variational flow graphical models assemble flow functions with tree or DAG structures via variational inference on aggregation nodes. 
+The proposed variational flow graphical models assemble flow functions with tree or DAG structures via variational inference on aggregation nodes. In this supplemental file, we first present more results, then we give more details on  techniques/methodology of VFG models. 
 
 
 \section{Additional Numerical Experiments}
-In all the experiments of the paper, we use the same  coupling block~\cite{Dinh2016DensityEU} to construct different flow functions. 
+All the experiments are conducted on NVIDIA-TITAN X (Pascal) GPUs. 
+In  our experiments, we use the same  coupling block~\cite{Dinh2016DensityEU} to construct different flow functions. 
 The coupling block consists in three fully connected layers~(of dimension $64$) separated by two RELU layers along with the coupling trick. 
 Each flow function has block number $b\geqslant 2$. 
 All latent variables, $\mathbf{h}^{i}, i \in \mathcal{V}$ are forced to be non-negative via Sigmoid or RELU functions. 
@@ -772,9 +773,8 @@ VFG & \textbf{1.356} \\
 %     \captionof{figure}{The tree structure for MNIST.}
 %     \label{fig:struct}
 % \end{figure}
- 
-\subsection{Inference on DAGs}
-In this set of experiments, we compare VFGs against Bayesian networks and sum-product networks on inference capabilities. 
+% \subsection{Inference on DAGs}
+% In this set of experiments, we compare VFGs against Bayesian networks and sum-product networks on inference capabilities. 
 
 \subsection{Representation Learning with MNIST}
 For MNIST, we construct a tree structure VFG model depicted in Figure~\ref{fig:struct}.  
@@ -793,11 +793,6 @@ Figure~\ref{fig:z_no_Y} presents the t-SNE plot of the root latent variables fro
 \end{figure}
  
 \subsubsection{Disentanglement on MNIST}
-We study disentanglement on MNIST with our proposed VFG model introduced in section~\ref{sec:exp:mnist}. But different from the model in section~\ref{sec:exp:mnist}, here, the distribution parameter $\lambda$ for all latent variables are set to be trainable across all layers.  
-Each digit has its trainable vector,  $\lambda \in \mathbb{R}^d$ that is used across all layers. 
-To show the disentanglement of learned latent representation, we first obtain the root latent variables of a set of images through forward message passing. Each latent variable's values are changed increasingly within a range centered at the value of the latent variable obtained from last step. 
-This perturbation is performed for each image in the set.
-Figure~\ref{fig:mnist_dis} shows the change of images by increasing one latent variable from a small value to a larger one. The figure presents some of the latent variables that have obvious effects on images, and most of the $d=196$ variables do not impact the generation significantly. Latent variables $i=6$ and $i=60$ control the digit width. Variable $i=19$ affects the brightness.  $i=92, i=157$ and some of the variables not displayed here control the style of the generated digits. 
 
 \begin{figure}[H]
 	\begin{center}
@@ -831,6 +826,13 @@ Figure~\ref{fig:mnist_dis} shows the change of images by increasing one latent v
   \captionof{figure}{MNIST: Increasing each latent variable from a small value to a larger one.}\label{fig:mnist_dis}
 \end{figure}
 
+We study disentanglement on MNIST with our proposed VFG model introduced in section~\ref{sec:exp:mnist}. But different from the model in section~\ref{sec:exp:mnist}, here, the distribution parameter $\lambda$ for all latent variables are set to be trainable across all layers.  
+Each digit has its trainable vector,  $\lambda \in \mathbb{R}^d$ that is used across all layers. 
+To show the disentanglement of learned latent representation, we first obtain the root latent variables of a set of images through forward message passing. Each latent variable's values are changed increasingly within a range centered at the value of the latent variable obtained from last step. 
+This perturbation is performed for each image in the set.
+Figure~\ref{fig:mnist_dis} shows the change of images by increasing one latent variable from a small value to a larger one. The figure presents some of the latent variables that have obvious effects on images, and most of the $d=196$ variables do not impact the generation significantly. Latent variables $i=6$ and $i=60$ control the digit width. Variable $i=19$ affects the brightness.  $i=92, i=157$ and some of the variables not displayed here control the style of the generated digits. 
+
+
 \section{ELBO Calculation}\label{sec:vfg_inference}
 %We use generative model to denote the mapping 
 The recognition model in a VFG is the neural network~(encoder) used to approximate the posterior of latent variables. 
@@ -856,7 +858,7 @@ Maximize the ELBOs~(\ref{eq:elbo},\ref{eq:elbo_dag}) requires evaluation of both
 
 
 \subsubsection{Generative Model}~\label{sec:generative}
-In a tree VFG, the sample reconstruction in the generative model consists of layer-wise backward message passing, i.e., latent variable generation in each layer.  For any $l, 0 \leq l \leq L-1$, latent variable $\widehat{\mathbf{h}}^{l}$ is propagated   from layer $l+1$ via the flow function $\mathbf{f}_l$ between the two layers with $\widehat{\mathbf{h}}^{l}= \mathbf{f}_l^{-1}(\widehat{\mathbf{h}}^{l+1})$. 
+In a tree VFG, the sample reconstruction in the generative model consists of layer-wise backward message passing, i.e., latent variable generation in each layer.  For any $l, 0 \leq l \leq L-1$, latent variable backward state~(reconstruction) $\widehat{\mathbf{h}}^{l}$ is propagated   from layer $l+1$ via the flow function $\mathbf{f}_l$ between the two layers with $\widehat{\mathbf{h}}^{l}= \mathbf{f}_l^{-1}(\widehat{\mathbf{h}}^{l+1})$. 
 
 
 The prior $p(\mathbf{h}^L)$ for the root latent variable $\mathbf{h}^L$ is  Laplace(0,1). With a sample $\widehat{\mathbf{h}}^L$ from the posterior, i.e., $\widehat{\mathbf{h}}^L=\mathbf{h}^L \sim q(\cdot | \mathbf{h}^{L-1}) $,  the conditional distribution for latent variable in layer $l$ is   $p(\cdot | \widehat{\mathbf{h}}^{l+1}):=\text{Laplace}(\widehat{\mathbf{h}}^l, 1)$. Here the location parameter is generated from layer $l+1$, i.e., $\widehat{\mathbf{h}}^{l}= \mathbf{f}_l^{-1}(\widehat{\mathbf{h}}^{l+1})$. 
@@ -869,7 +871,7 @@ Here $d = dim(\mathbf{h}^l)$. Hence, minimizing  $\mathbf{KL}$s is to minimize t
 
 
 \subsubsection{Recognition Model}
-The forward message passing in the recognition model consists of  layer-wise sample generation. In layer $l, 1 \leq l \leq L$, latent variable $\mathbf{h}^{l}$ is propagated   from layer $l-1$ via the flow function $\mathbf{f}_{l-1}$ between the two layers with $\mathbf{h}^{l}= \mathbf{f}_{l-1}(\mathbf{h}^{l-1})$. 
+The forward message passing in the recognition model consists of  layer-wise sample generation. In layer $l, 1 \leq l \leq L$, latent variable forward state $\mathbf{h}^{l}$ is propagated   from layer $l-1$ via the flow function $\mathbf{f}_{l-1}$ between the two layers with $\mathbf{h}^{l}= \mathbf{f}_{l-1}(\mathbf{h}^{l-1})$. 
 
  We assume each entry of  hidden variable $\mathbf{h}^{l}$ follows a Laplace distribution, i.e., $\mathbf{h}_j^{l} \sim \text{Laplace}(\mu_j^{l}, s_j^{l})$ for layer $l$'s $j$th entry. Here $\mu_j^{l}$ is the location and $s_j^{l}$ is the scale. Compared with other distributions, Laplace can introduce sparsity to the model and it works well in practice. At level $l \in [L]$, we set $q(\cdot|\mathbf{h}^{l-1}) := \text{Laplace}(\mathbf{\mu}^l, \mathbf{s}^l)$ with
 \begin{align}\label{eq:posteriorapp}
@@ -917,42 +919,58 @@ For a VFG model, we set $M=1$. In the last term,  $p(\mathbf{x}| \widehat{\mathb
 
 Let $\mathbf{f}_{(i, j)}$ be the direct edge~(function) from node $i$ to node $j$, and $\mathbf{f}^{-1}_{ (i, j)}$ or  $\mathbf{f}_{ (j, i)}$ defined as its inverse function. Then, at an aggregation node $i$ that has multiple~($|ch(i)|$) children, its latent variable in forward message passing is the mean of all children's output, i.e.,
  %{\small
- \begin{align*}
+ \begin{align}\label{eq:child_avg}
 &  \mathbf{h}^{(i)} = \frac{1}{|ch(i)|} \sum_{j \in ch(i) } \mathbf{f}_{(j,i)}(\mathbf{h}^{(j)})  .
-\end{align*}
+\end{align}
 
 On the other hand, if node $i$ in a DAG  has multiple parents, the reconstruction of its latent variable is the mean of all parents' output , i.e.,
- \begin{align*}
+ \begin{align}\label{eq:parent_avg}
  &\widehat{\mathbf{h}}^{(i)} = \frac{1}{|pa(i)|} \sum_{j \in pa(i) } \mathbf{f}^{-1}_{ (i,j)}(\widehat{\mathbf{h}}^{(j)}) \, .
-\end{align*}%} 
+\end{align}%} 
 Notice that the above two equations hold even when node $i$ has only one child or parent.
-
 
 \begin{figure}[H]
 \begin{center}
- \includegraphics[width=0.3\linewidth]{fig/dag_aggr.png}
+ \includegraphics[width=0.23\linewidth]{fig/dag_aggr.png}
 \end{center}
 %\vspace{-0.2in}
-\caption{ {\small  Aggregation nodes on a DAG.}}
+\caption{ {\small  Aggregation node on a DAG.}}
 \label{fig:dag_aggr}
 %\vspace{-0.08in}
 \end{figure}
 
-Besides averaging, the aggregation nodes also ensure the latent variable are \emph{consistent}. We use node $i$ in the DAG presented in Figure~\ref{fig:dag_aggr} as an example. Node $i$ has two parents, $u$ and $v$; and two children, $d$ and $e$. 
+Besides averaging, the aggregation nodes also ensure the latent variable on the two ends of an identity function are \emph{consistent}. We use node $i$ in the DAG presented in Figure~\ref{fig:dag_aggr} as an example. Node $i$ has two parents, $u$ and $v$; and two children, $d$ and $e$. Node $i$  connects its parents and children with identity functions. According to~(\ref{eq:child_avg}) and~(\ref{eq:parent_avg}), we have $\mathbf{h}^{(i)} = (\mathbf{h}^{(d)}+\mathbf{h}^{(e)})/2$  and $\widehat{\mathbf{h}}^{(i)} = (\widehat{\mathbf{h}}^{(u)}+\widehat{\mathbf{h}}^{(v)})/2$.
+Here aggregation consistent means, for $i$'s children, their forward state should be consistent with $i$'s backward state, i.e., 
+\begin{align}\label{eq:i_child}
+\mathbf{h}^{(d)} = \mathbf{h}^{(e)} = \widehat{\mathbf{h}}^{(i)} .
+\end{align}%} 
+For $i$'s parents, their backward state should be consistent with $i$'s forward state, i.e.,
+\begin{align}\label{eq:i_parent}
+\widehat{\mathbf{h}}^{(u)}  = \widehat{\mathbf{h}}^{(v)}  = \mathbf{h}^{(i)} .
+\end{align}%} 
+We utilize the $\mathbf{KL}$ term in the ELBOs to ensure~(\ref{eq:i_child}) and~(\ref{eq:i_parent}) can be satisfied during parameter updating. The $\mathbf{KL}$ term regarding node $i$ is
+\begin{align*}%\label{eq:kl_i}
+\textbf{\text{KL}}^{(i)} = \mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[  \log q(\mathbf{h}^{(i)}|\mathbf{h}^{ch(i)})  - \log p(\mathbf{h}^{(i)}|\widehat{\mathbf{h}}^{pa(i)}) \big]  \simeq  \log q(\mathbf{h}^{(i)}|\mathbf{h}^{ch(i)})  - \log p(\mathbf{h}^{(i)}|\widehat{\mathbf{h}}^{pa(i)}).
+\end{align*} 
+Here 
+\begin{align} \notag
+\log p(\mathbf{h}^{(i)}|\widehat{\mathbf{h}}^{pa(i)}) = &\frac{1}{2}\big(\log p(\mathbf{h}^{(i)}|\widehat{\mathbf{h}}^{(u)}) + p(\mathbf{h}^{(i)}|\widehat{\mathbf{h}}^{(v)})\big)\\ \notag
+=& \frac{1}{2}\big(-\|\mathbf{h}^{(i)}- \widehat{\mathbf{h}}^{(u)}\|_1 -\|\mathbf{h}^{(i)}- \widehat{\mathbf{h}}^{(v)}\|_1-2d\cdot\log2 \big).
+\end{align}
+Hence minimizing $\textbf{\text{KL}}^{(i)}$ is equal to minimize $\{\|\mathbf{h}^{(i)}- \widehat{\mathbf{h}}^{(u)}\|_1 + \|\mathbf{h}^{(i)}- \widehat{\mathbf{h}}^{(v)}\|_1 \}$ which achieves the objective in~\eqref{eq:i_parent}. 
 
-The aggregation consistent means 
-
-
-%For example, we use $\widehat{\mathbf{h}}$
-
-
-%With the identity function between the  parent and its children, there are two aggregation rules regarding an average aggregation node: (a) the parent value is the mean of its children, i.e., $\mathbf{h}^{(i)} = \frac{1}{|ch(i)|} \sum_{j \in ch(i)} \mathbf{h}^{(j)}$; (b) the  child node have the same reconstruction value with its parent, i.e., $\widehat{\mathbf{h}}^{(j)} = \widehat{\mathbf{h}}^{(i)}, \forall j \in ch(i)$. 
+Similarly,  $\textbf{\text{KL}}$s  of $i$'s children intend to realize consistency given in~\eqref{eq:i_child}. We use node $d$ as an example.  The $\textbf{\text{KL}}$ term regarding $d$ is 
+\begin{align*}%\label{eq:kl_i}
+\textbf{\text{KL}}^{(d)} = \mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[  \log q(\mathbf{h}^{(d)}|\mathbf{h}^{ch(d)})  - \log p(\mathbf{h}^{(d)}|\widehat{\mathbf{h}}^{pa(d)}) \big]  \simeq  \log q(\mathbf{h}^{(d)}|\mathbf{h}^{ch(d)})  - \log p(\mathbf{h}^{(d)}|\widehat{\mathbf{h}}^{pa(d)}).
+\end{align*} 
+With 
+\begin{align*}%\label{eq:kl_i}
+ \log p(\mathbf{h}^{(d)}|\widehat{\mathbf{h}}^{pa(d)})= & \log p(\mathbf{h}^{(d)}|\widehat{\mathbf{h}}^{(i)}) 
+ = -\|\mathbf{h}^{(d)}- \widehat{\mathbf{h}}^{(i)}\|_1 - d\cdot\log2,
+\end{align*} 
+minimizing $\textbf{\text{KL}}^{(d)}$ is to minimize $\|\mathbf{h}^{(d)}- \widehat{\mathbf{h}}^{(i)}\|_1$ that targets at \eqref{eq:i_child}. In summary, by maximizing the ELBO of a VFG, the aggregation consistency can be  attained along with fitting the model to the data. 
 
 \section{More Details on Inference}
-%We present in this section the proofs for our Lemma~\ref{lm:apprx} and Theorem~\ref{thm:identif}.
-%\subsection{Inference on Trees}
-%\subsection{Proof of Lemma~\ref{lm:apprx}}\label{appd:proof_lm1}
-
 \textbf{Lemma 1.} {\it Let $\mathcal{G}$ be a well trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. 
 Given observed value at node $i$, the value of node $j$ can be approximated with $\widehat{\mathbf{x}}^{(j)} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. 
 }
@@ -962,6 +980,10 @@ According to the aggregation rule (b) discussed in section~\ref{sec:node_aggr}, 
 The reconstruction of the child node $j$ can be approximated with the reconstruction of the parent node, i.e., $\widehat{\mathbf{h}}^{(j)} \approx \mathbf{f}_{(a,j)}(\widehat{\mathbf{h}}^{a)})$. 
 Recalling the reconstruction term in the ELBO~(\ref{eq:elbo}), at each node we have $\mathbf{h}^{(a)} \approx \widehat{\mathbf{h}}^{(a)}$. Hence for node $a$'s descendent $j$, we have $\widehat{\mathbf{h}}^{(j)} \approx \mathbf{f}_{(a,j)}(\mathbf{h}^{(a)})$, and $\mathbf{f}_{(a,j)}$ is the flow function path from $a$ to $j$. 
 The value of node $a$ can be approximated by the value of its descendent $i$ that has observation, i.e., $\mathbf{h}^{(a)} \approx \mathbf{f}_{(i,a)}(\mathbf{h}^{(i)})$. Hence, we have $\widehat{\mathbf{x}}^{(j)} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$.
+\end{proof}
+
+Lemma~\ref{lm:apprx} and Remark~\ref{rmk:apprx_mul} provide an approach to conduct inference on a tree and impute missing values in the dataset. It is easy to extend the inference method to DAG VFG models. 
+
 
 % To compute  node $j$'s conditional distribution given the observed node $i$, we can use the forward passing to compute the root's reconstruction  value $\widehat{\mathbf{h}}^L$. 
 % Node $j$'s reconstruction value $\widehat{\mathbf{x}}^{(j)}$ can be imputed by backward passing the message at the root. The density value of $\widehat{\mathbf{h}}^L$ can be computed with the prior distribution of the root. The conditional density of $\widehat{\mathbf{x}}^{(j)}$ can be computed using the change of variable theorem, and it is known in the context of geometric measure theory ~\cite{Book:Hanson_1994,Article:Krantz_2008}. It reads 
@@ -969,13 +991,12 @@ The value of node $a$ can be approximated by the value of its descendent $i$ tha
 % &  p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)} ) \approx p(\widehat{\mathbf{h}}^L)\det\big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top  \mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L\big)^{-\frac{1}{2}}.
 % \end{align*}
 % Applying the logarithm operator on both sides concludes the proof of our Lemma.
-\end{proof}
 
 % \begin{remark}\label{rmk:apprx_mulapp}
 % Let $O$ be the set of observed leaf nodes, $j$ be an unobserved node, and $a$ the closest ancestor of $O \cup \{a\}$. 
 % Then the state of $j$ can be imputed with $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(O, a)}(\mathbf{x}^{(i)}))$, where $\mathbf{f}_{(O, a)}$ is the flow function path from all nodes in $O$ to $a$.
 % \end{remark}
-%\subsection{Inference on DAGs}
+% \subsection{Inference on DAGs}
 
 
 %\section{Appendix}
@@ -1067,8 +1088,9 @@ When $l=L$,
 $$\mathbf{KL}^L =  \mathbb{E}_{q(\mathbf{h}^{L}|\mathbf{h}^{L-1})}\big[  \log q(\mathbf{h}^{L}|\mathbf{h}^{L-1})- \log p(\mathbf{h}^{L})  \big].$$
 
 \subsection{Improve ELBO Estimation with Flows}
+%To compute the EBLO, one way is to approximate  $\mathbf{KL}$ terms with the latent values generated from a batch of training data samples.
 
-To compute the EBLO, one way is to approximate  $\mathbf{KL}$ terms with the latent values generated from a batch of training data samples. In this paper we follow the approach in~\cite{rezende2015variational,kingma2016improving,berg2018sylvester}  using normalizing flows to further improve posterior estimation. At each layer,  minimizing  $\mathbf{KL}$ term is to is to optimize the parameters of the network so that the posterior is closer to the prior. As shown in Figure~\ref{fig:tree_message2}, for layer $l$,  we can take the  encoding-decoding procedures~(discussed in section~\ref{sec:vfg_inference}) as transformation of the posterior distribution from layer $l$ to $l+1$, and then transform it back. By  counting in the transformation difference~\cite{rezende2015variational,kingma2016improving,berg2018sylvester}, the $\mathbf{KL}$ at layer $l$ becomes 
+In this paper we follow the approach in~\cite{rezende2015variational,kingma2016improving,berg2018sylvester}  using normalizing flows to further improve posterior estimation on a tree VFG model. At each layer,  minimizing  $\mathbf{KL}$ term is to is to optimize the parameters of the network so that the posterior is closer to the prior. As shown in Figure~\ref{fig:tree_message2}, for layer $l$,  we can take the  encoding-decoding procedures~(discussed in section~\ref{sec:vfg_inference}) as transformation of the posterior distribution from layer $l$ to $l+1$, and then transform it back. By  counting in the transformation difference~\cite{rezende2015variational,kingma2016improving,berg2018sylvester}, the $\mathbf{KL}$ at layer $l$ becomes 
 \begin{align*}
 \mathbf{KL}^l=&\mathbb{E}_{q(\mathbf{h}^{1:L}|\mathbf{x})}\bigg[  \log q(\mathbf{h}^{l}|\mathbf{h}^{l-1}) +\log \bigg|\det \frac{\partial \mathbf{h}^{l}}{\partial \mathbf{h}^{l+1}}\bigg| + \log \bigg|\det \frac{\partial \widehat{\mathbf{h}}^{l+1}}{\partial \widehat{\mathbf{h}}^{l}}\bigg|   - \log p(\mathbf{h}^{l}|\widehat{\mathbf{h}}^{l+1}) \bigg]\\
 \simeq & \frac{1}{M}\sum_{m=1}^M\bigg[ \log q(\mathbf{h}^{l}_m|\mathbf{h}^{l-1}) +\log \bigg|\det \frac{\partial \mathbf{h}^{l}_m}{\partial \mathbf{h}^{l+1}_m}\bigg| + \log \bigg|\det \frac{\partial \widehat{\mathbf{h}}^{l+1}_m}{\partial \widehat{\mathbf{h}}^{l}_m}\bigg|   - \log p(\mathbf{h}^{l}_m|\widehat{\mathbf{h}}_m^{l+1}) \bigg].
@@ -1123,18 +1145,18 @@ q(\mathbf{h}^{l}|\mathbf{h}^{1:l-1})=q(\mathbf{h}^{l}|\mathbf{h}^{ch(l)}), \quad
 Hence,
  \begin{align} \label{eq:dag_kl_lL}
 \textbf{\text{KL}}^{l:L} 
-=&  \underbrace{\mathbb{E}_{q(\mathbf{h}^{1:L}|\mathbf{x})}\big[  q(\mathbf{h}^{l}|\mathbf{h}^{ch(l)})  - p(\mathbf{h}^{l}|\mathbf{h}^{pa(l)}) \big]}_{\textbf{\text{KL}}^{l}} +\textbf{\text{KL}}^{l+1:L} 
+=&  \underbrace{\mathbb{E}_{q(\mathbf{h}^{1:L}|\mathbf{x})}\big[ \log q(\mathbf{h}^{l}|\mathbf{h}^{ch(l)})  - \log p(\mathbf{h}^{l}|\mathbf{h}^{pa(l)}) \big]}_{\textbf{\text{KL}}^{l}} +\textbf{\text{KL}}^{l+1:L} 
 \end{align}
 For nodes in layer $l$,
 \begin{align} \notag
-\textbf{\text{KL}}^{l} =& \sum_{i \in l} \underbrace{\mathbb{E}_{q(\mathbf{h}^{1:L}|\mathbf{x})}\big[  q(\mathbf{h}^{(i)}|\mathbf{h}^{ch(i)})  - p(\mathbf{h}^{(i)}|\mathbf{h}^{pa(i)}) \big]}_{\textbf{\text{KL}}^{(i)}} .
+\textbf{\text{KL}}^{l} =& \sum_{i \in l} \underbrace{\mathbb{E}_{q(\mathbf{h}^{1:L}|\mathbf{x})}\big[  \log q(\mathbf{h}^{(i)}|\mathbf{h}^{ch(i)})  - \log p(\mathbf{h}^{(i)}|\mathbf{h}^{pa(i)}) \big]}_{\textbf{\text{KL}}^{(i)}} .
 \end{align}
 Recurrently applying~(\ref{eq:dag_kl_lL}) to (\ref{eq:dag_elbo}) yields
 \begin{align}\notag %\label{eq:elbo_dag_1}
 \mathcal{L}(\mathbf{x}; \theta) =& \mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[ \log p(\mathbf{x}|\mathbf{h})  \big] -  \sum_{i \in \mathcal{V}  \setminus  \mathcal{R}_{ \mathcal{G} }} \textbf{\text{KL}}^{(i)} -    \sum_{i \in  \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   || p(\mathbf{h}^{(i)})  \big) .
 \end{align}
 For node $i$, 
-$$\textbf{\text{KL}}^{(i)} = \mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[  q(\mathbf{h}^{(i)}|\mathbf{h}^{ch(i)})  - p(\mathbf{h}^{(i)}|\mathbf{h}^{pa(i)}) \big].$$
+$$\textbf{\text{KL}}^{(i)} = \mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[  \log q(\mathbf{h}^{(i)}|\mathbf{h}^{ch(i)})  - \log p(\mathbf{h}^{(i)}|\mathbf{h}^{pa(i)}) \big].$$
 
 
 
