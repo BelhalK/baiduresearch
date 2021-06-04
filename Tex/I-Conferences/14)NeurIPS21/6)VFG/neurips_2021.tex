@@ -720,6 +720,9 @@ Future work includes applying our VFG model to fine grained data relational stru
 {\LARGE \textbf{Supplemental File for `Variational Flow Graphical Model'}}
 \end{center}
 
+The proposed variational flow graphical models assemble flow functions with tree or DAG structures via variational inference on aggregation nodes. 
+
+
 \section{Additional Numerical Experiments}
 In all the experiments of the paper, we use the same  coupling block~\cite{Dinh2016DensityEU} to construct different flow functions. 
 The coupling block consists in three fully connected layers~(of dimension $64$) separated by two RELU layers along with the coupling trick. 
@@ -771,7 +774,7 @@ VFG & \textbf{1.356} \\
 % \end{figure}
  
 \subsection{Inference on DAGs}
-In this set of experiments, we compare VFGs against Bayesian networks and sum-products nets on inference capabilities. 
+In this set of experiments, we compare VFGs against Bayesian networks and sum-product networks on inference capabilities. 
 
 \subsection{Representation Learning with MNIST}
 For MNIST, we construct a tree structure VFG model depicted in Figure~\ref{fig:struct}.  
@@ -829,37 +832,74 @@ Figure~\ref{fig:mnist_dis} shows the change of images by increasing one latent v
 \end{figure}
 
 \section{ELBO Calculation}\label{sec:vfg_inference}
+%We use generative model to denote the mapping 
+The recognition model in a VFG is the neural network~(encoder) used to approximate the posterior of latent variables. 
+With invertible neural networks~(flows), the recognition model and the generative model in a VFG share the same structure and parameters.  As shown in Figure~\ref{fig:tree_message2},    the recognition and generative models are realized with  forward and backward message passing, respectively.
 
-\subsection{Distribution of Latent Variable}
- We assume each entry of a hidden node follows a Laplace distribution, i.e., $\mathbf{h}_j^{(i)} \sim \text{Laplace}(\mu_j^{(i)}, s_j^{(i)})$ for node $i$'s $j$th entry. Here $\mu_j^{(i)}$ is the location and $s_j^{(i)}$ is the scale. Compared to other distributions, Laplace can introduce sparsity to the model and it works well in practice. At level $l \in [L]$, we set $q(\cdot|\mathbf{h}^{l-1}) := \text{Laplace}(\mathbf{\mu}^l, \mathbf{s}^l)$ with
-\begin{align} \notag
-&\mathbf{\mu}^l = \text{median}\big(H\big), \ \  \mathbf{s}^l =\frac{1}{B}\sum_{b=1}^B|\mathbf{h}_b^l - \mathbf{\mu}^l| \ .
-\end{align}
-Here $H=\{\mathbf{h}^l_b| 1\leqslant b \leqslant B\}$ is a batch of latent values generated from a batch of data samples with size $B$. 
-We also set the prior as $p(\cdot | \widehat{\mathbf{h}}^{l+1}):=\text{Laplace}(\widehat{\mathbf{h}}^l, 1)$. Thus for a latent variable $\mathbf{h}^l$, the log-likelihood of its construction in~(\ref{eq:kl_est}) is given by 
+Maximize the ELBOs~(\ref{eq:elbo},\ref{eq:elbo_dag}) requires evaluation of both the reconstruction and the $\mathbf{KL}$ terms. It involves samples from both the recognition and generative models. In this section, we first gives the conditional distributions in both   generative model and the posterior, then give more details on ELBO computation. We start from tree models, and it is easy to extend to DAG models.
+
+
+\begin{figure}[H]
+\begin{center}
+ \includegraphics[width=0.4\linewidth]{fig/tree_message2.png}
+\end{center}
+\vspace{-0.2in}
+\caption{ The recognition model consists of froward message from  data to approximate the posterior distributions; the generative model is realized by backward message from the root node. }
+\label{fig:tree_message2}
+\vspace{-0.15in}
+\end{figure}
+
+%\subsection{Message Passing}
+
+
+\subsection{Distributions of Latent Variables}
+
+
+\subsubsection{Generative Model}~\label{sec:generative}
+In a tree VFG, the sample reconstruction in the generative model consists of layer-wise backward message passing, i.e., latent variable generation in each layer.  For any $l, 0 \leq l \leq L-1$, latent variable $\widehat{\mathbf{h}}^{l}$ is propagated   from layer $l+1$ via the flow function $\mathbf{f}_l$ between the two layers with $\widehat{\mathbf{h}}^{l}= \mathbf{f}_l^{-1}(\widehat{\mathbf{h}}^{l+1})$. 
+
+
+The prior $p(\mathbf{h}^L)$ for the root latent variable $\mathbf{h}^L$ is  Laplace(0,1). With a sample $\widehat{\mathbf{h}}^L$ from the posterior, i.e., $\widehat{\mathbf{h}}^L=\mathbf{h}^L \sim q(\cdot | \mathbf{h}^{L-1}) $,  the conditional distribution for latent variable in layer $l$ is   $p(\cdot | \widehat{\mathbf{h}}^{l+1}):=\text{Laplace}(\widehat{\mathbf{h}}^l, 1)$. Here the location parameter is generated from layer $l+1$, i.e., $\widehat{\mathbf{h}}^{l}= \mathbf{f}_l^{-1}(\widehat{\mathbf{h}}^{l+1})$. 
+
+For a latent variable  $\mathbf{h}^l$ sampling from the posterior, its log-likelihood regarding $p(\cdot | \widehat{\mathbf{h}}^{l+1})$ in~(\ref{eq:KL_l}) is given by 
 \begin{align} \notag
 & \log p(\mathbf{h}^l | \widehat{\mathbf{h}}^{l+1}) = -\|\mathbf{h}^l- \widehat{\mathbf{h}}^l\|_1 -d\cdot\log2  .
 \end{align}
-Here $d = dim(\mathbf{h}^l)$. Hence, minimizing  $\mathbf{KL}$s is to minimize the $\ell_1$ distance between latent variables and their reconstructions. In practice, we set $M=1$ for efficiency. With a batch of training samples, $\mathbf{x}_b, 1 \leqslant b \leqslant B$, the structure of flow functions make the  forward  and  backward message passing very efficient, and  thus the estimation of the ELBO.  
+Here $d = dim(\mathbf{h}^l)$. Hence, minimizing  $\mathbf{KL}$s is to minimize the $\ell_1$ distance between latent variables and their reconstructions. 
+
+
+\subsubsection{Recognition Model}
+The forward message passing in the recognition model consists of  layer-wise sample generation. In layer $l, 1 \leq l \leq L$, latent variable $\mathbf{h}^{l}$ is propagated   from layer $l-1$ via the flow function $\mathbf{f}_{l-1}$ between the two layers with $\mathbf{h}^{l}= \mathbf{f}_{l-1}(\mathbf{h}^{l-1})$. 
+
+ We assume each entry of  hidden variable $\mathbf{h}^{l}$ follows a Laplace distribution, i.e., $\mathbf{h}_j^{l} \sim \text{Laplace}(\mu_j^{l}, s_j^{l})$ for layer $l$'s $j$th entry. Here $\mu_j^{l}$ is the location and $s_j^{l}$ is the scale. Compared with other distributions, Laplace can introduce sparsity to the model and it works well in practice. At level $l \in [L]$, we set $q(\cdot|\mathbf{h}^{l-1}) := \text{Laplace}(\mathbf{\mu}^l, \mathbf{s}^l)$ with
+\begin{align}\label{eq:posteriorapp}
+&\mathbf{\mu}^l = \text{median}\big(H\big), \ \  \mathbf{s}^l =\frac{1}{B}\sum_{b=1}^B|\mathbf{h}^l(\mathbf{x}_b) - \mathbf{\mu}^l| \ .
+\end{align}
+Here $H=\{\mathbf{h}^l(\mathbf{x}_b)| 1\leqslant b \leqslant B\}$ is a batch of latent values generated from a batch of data samples with size $B$, i.e., $X_{B} = \{\mathbf{x}_b | 1\leqslant b \leqslant B\}$. The median operation is performed element-wisely. For each $\mathbf{x}_b$, $\mathbf{h}^l(\mathbf{x}_b)=\mathbf{f}^{l-1}\big(\mathbf{h}^{l-1}(\mathbf{x}_b)\big)$.
 
 \subsection{$\mathbf{KL}$ Term}
-For any $l \in [L]$, the calculation of the $\mathbf{KL}^l$ term is done in a similar manner, and  \eqref{eq:kl} requires  both  forward message  from  the posterior and backward message from the generative model, i.e.,
-\begin{align}\label{eq:KL_l}
+For any $l,  1 \leq l \leq L-1$, the calculation of the $\mathbf{KL}^l$ term~(\ref{eq:kl}) requires  message passing and samples  from both recognition and  generative models, i.e.,
+\begin{align}\label{eq:KL_lapp}
 \mathbf{KL}^l&=\mathbb{E}_{q(\mathbf{h}^{1:L}|\mathbf{x})}\big[  \log q(\mathbf{h}^{l}|\mathbf{h}^{l-1})   - \log p(\mathbf{h}^{l}|\widehat{\mathbf{h}}^{l+1}) \big] \simeq  \log q(\mathbf{h}^{l}|\mathbf{h}^{l-1})   - \log p(\mathbf{h}^{l}|\widehat{\mathbf{h}}^{l+1}).
 \end{align} 
-We use Laplace distribution to model latent distributions. $q(\cdot|\mathbf{h}^{l-1})$ is a Laplace with location and scale equal to the median and scale of a batch of $\mathbf{h}^{l}$, respectively; $p(\cdot|\widehat{\mathbf{h}}^{l+1})$ is a  Laplace parameterized  with  $(\widehat{\mathbf{h}}^{l}, 1.0)$ as the location and scale parameters. Hence with $\mathbf{h}^{l}$ we can compute the log-likelihoods on RHS of~(\ref{eq:KL_l}) and thus the $\mathbf{KL}^l$ value.
+%We use Laplace distribution to model latent distributions.
+Here $q(\cdot|\mathbf{h}^{l-1})$ is a Laplace with location and scale equal to the median and scale defined in~\eqref{eq:posteriorapp}; $p(\cdot|\widehat{\mathbf{h}}^{l+1})$ is a  Laplace parameterized  with  $(\widehat{\mathbf{h}}^{l}, 1.0)$ as discussed in~\ref{sec:generative}. Hence with $\mathbf{h}^{l}$ we can compute the log-likelihoods on RHS of~(\ref{eq:KL_lapp}) and thus the $\mathbf{KL}^l$ value. When $l=L$, 
+$\mathbf{KL}^L =  \mathbb{E}_{q(\mathbf{h}^{1:L}|\mathbf{x})}\big[  \log q(\mathbf{h}^{L}|\mathbf{h}^{L-1})- \log p(\mathbf{h}^{L})  \big] \simeq \log q(\mathbf{h}^{L}|\mathbf{h}^{L-1})- \log p(\mathbf{h}^{L}) .$
 
 
-If several nodes have multiple parents, the graph will be a DAG. It is easy to extend the computation of the ELBO~(\ref{eq:elbo}) to DAGs with topology ordering of the nodes (and thus of the layers). 
-Let $ch(i)$ and $pa(i)$ denote node $i$'s child set and parent set, respectively.
-Then, the ELBO for a DAG structure reads:
-\begin{align}\label{eq:elbo_dag_2}
-\mathcal{L}(\mathbf{x}; \theta) =& \mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[ \log p(\mathbf{x}|\mathbf{h})  \big] -  \sum_{i \in \mathcal{V}  \setminus  \mathcal{R}_{ \mathcal{G} }} \textbf{\text{KL}}^{(i)}   -    \sum_{i \in  \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   || p(\mathbf{h}^{(i)})  \big) .
-\end{align}
-Here $\mathbf{KL}^{(i)}=\mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[  \log q(\mathbf{h}^{(i)}|\mathbf{h}^{ch(i)})   - \log p(\mathbf{h}^{(i)}|\mathbf{h}^{pa(i)}) \big]$. $\mathcal{V}$ stands for the node set of DAG $\mathcal{G} = \{\mathcal{V}, \mathbf{f}\}$, and $\mathcal{R}_{ \mathcal{G}}$ is the set of root or source nodes. 
  
 Assuming there are $k$ leaf nodes on a tree or a DAG model, corresponding to $k$ sections of the input sample $\mathbf{x} = [\mathbf{x}^{(1)}, ..., \mathbf{x}^{(k)}]$, then the hidden variables in both~(\ref{eq:elbo}) and~(\ref{eq:elbo_dag}) are computed with forward and backward message passing. 
 Next, we provide more details about the nodes.
+
+In practice, we set $M=1$ for efficiency. With a batch of training samples, $\mathbf{x}_b, 1 \leqslant b \leqslant B$, the structure of flow functions make the  forward  and  backward message passing very efficient, and  thus the estimation of the ELBO.  
+
+% If several nodes have multiple parents, the graph will be a DAG. It is easy to extend the computation of the ELBO~(\ref{eq:elbo}) to DAGs with topology ordering of the nodes (and thus of the layers). 
+% Let $ch(i)$ and $pa(i)$ denote node $i$'s child set and parent set, respectively.
+% Then, the ELBO for a DAG structure reads:
+% \begin{align}\label{eq:elbo_dag_2}
+% \mathcal{L}(\mathbf{x}; \theta) =& \mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[ \log p(\mathbf{x}|\mathbf{h})  \big] -  \sum_{i \in \mathcal{V}  \setminus  \mathcal{R}_{ \mathcal{G} }} \textbf{\text{KL}}^{(i)}   -    \sum_{i \in  \mathcal{R}_{ \mathcal{G} }  }  \textbf{\text{KL}}\big(q(\mathbf{h}^{(i)} | \mathbf{h}^{ch(i)} )   || p(\mathbf{h}^{(i)})  \big) .
+% \end{align}
+% Here $\mathbf{KL}^{(i)}=\mathbb{E}_{q(\mathbf{h}|\mathbf{x})}\big[  \log q(\mathbf{h}^{(i)}|\mathbf{h}^{ch(i)})   - \log p(\mathbf{h}^{(i)}|\mathbf{h}^{pa(i)}) \big]$. $\mathcal{V}$ stands for the node set of DAG $\mathcal{G} = \{\mathcal{V}, \mathbf{f}\}$, and $\mathcal{R}_{ \mathcal{G}}$ is the set of root or source nodes. 
 
 \subsection{Reconstruction Term}
 
@@ -872,44 +912,50 @@ The reconstruction term in ELBO~(\ref{eq:elbo}) can be computed with the backwar
 For a VFG model, we set $M=1$. In the last term,  $p(\mathbf{x}| \widehat{\mathbf{h}}^{1})$ is either Gaussian or Binary distribution parameterized with $\widehat{\mathbf{x}}$ generated via the flow function with $\widehat{\mathbf{h}}^{1}$ as the input. 
 
 
-\vspace{-0.1in}
-\subsection{Improve KL Computation}
- 
-
-\begin{figure}[H]
-\begin{center}
- \includegraphics[width=0.6\linewidth]{fig/message.png}
-\end{center}
-\vspace{-0.2in}
-\caption{ {\small  Layer-wise sampling of the posterior and the prior corresponds to forward~(encoding) and backward~(decoding) message passing, respectively.}}
-\label{fig:message}
-\vspace{-0.15in}
-\end{figure}
-
-Adjacent layers are connected with one or multiple flow functions, and the prior and posterior use the same structure.  We follow the approach in~\cite{rezende2015variational,berg2018sylvester}  using normalizing flows to improve ELBO estimation. The $\mathbf{KL}$ term can be improved as
-\begin{align} \label{eq:kl_est}
-\mathbf{KL}^l
-\simeq & \frac{1}{M}\sum_{m=1}^M\bigg[ \log q(\mathbf{h}^{l}_m|\mathbf{h}^{l-1}) +\log \bigg|\det \frac{\partial \mathbf{h}^{l}_m}{\partial \mathbf{h}^{l+1}_m}\bigg| + \log \bigg|\det \frac{\partial \widehat{\mathbf{h}}^{l+1}_m}{\partial \widehat{\mathbf{h}}^{l}_m}\bigg|   - \log p(\mathbf{h}^{l}_m|\widehat{\mathbf{h}}_m^{l+1}) \bigg].
-\end{align}
 
 \section{Aggregation Node}
 
+Let $\mathbf{f}_{(i, j)}$ be the direct edge~(function) from node $i$ to node $j$, and $\mathbf{f}^{-1}_{ (i, j)}$ or  $\mathbf{f}_{ (j, i)}$ defined as its inverse function. Then, at an aggregation node $i$ that has multiple~($|ch(i)|$) children, its latent variable in forward message passing is the mean of all children's output, i.e.,
+ %{\small
+ \begin{align*}
+&  \mathbf{h}^{(i)} = \frac{1}{|ch(i)|} \sum_{j \in ch(i) } \mathbf{f}_{(j,i)}(\mathbf{h}^{(j)})  .
+\end{align*}
+
+On the other hand, if node $i$ in a DAG  has multiple parents, the reconstruction of its latent variable is the mean of all parents' output , i.e.,
+ \begin{align*}
+ &\widehat{\mathbf{h}}^{(i)} = \frac{1}{|pa(i)|} \sum_{j \in pa(i) } \mathbf{f}^{-1}_{ (i,j)}(\widehat{\mathbf{h}}^{(j)}) \, .
+\end{align*}%} 
+Notice that the above two equations hold even when node $i$ has only one child or parent.
+
+
+\begin{figure}[H]
+\begin{center}
+ \includegraphics[width=0.3\linewidth]{fig/dag_aggr.png}
+\end{center}
+%\vspace{-0.2in}
+\caption{ {\small  Aggregation nodes on a DAG.}}
+\label{fig:dag_aggr}
+%\vspace{-0.08in}
+\end{figure}
+
+Besides averaging, the aggregation nodes also ensure the latent variable are \emph{consistent}. We use node $i$ in the DAG presented in Figure~\ref{fig:dag_aggr} as an example. Node $i$ has two parents, $u$ and $v$; and two children, $d$ and $e$. 
+
+The aggregation consistent means 
+
+
+%For example, we use $\widehat{\mathbf{h}}$
+
+
+%With the identity function between the  parent and its children, there are two aggregation rules regarding an average aggregation node: (a) the parent value is the mean of its children, i.e., $\mathbf{h}^{(i)} = \frac{1}{|ch(i)|} \sum_{j \in ch(i)} \mathbf{h}^{(j)}$; (b) the  child node have the same reconstruction value with its parent, i.e., $\widehat{\mathbf{h}}^{(j)} = \widehat{\mathbf{h}}^{(i)}, \forall j \in ch(i)$. 
+
 \section{More Details on Inference}
 %We present in this section the proofs for our Lemma~\ref{lm:apprx} and Theorem~\ref{thm:identif}.
-
-\subsection{Inference on Trees}
-
-
+%\subsection{Inference on Trees}
 %\subsection{Proof of Lemma~\ref{lm:apprx}}\label{appd:proof_lm1}
 
 \textbf{Lemma 1.} {\it Let $\mathcal{G}$ be a well trained tree structured variational flow graphical model with $L$ layers, and $i$ and $j$ are two leaf nodes with $a$ as the closest common ancestor. 
 Given observed value at node $i$, the value of node $j$ can be approximated with $\widehat{\mathbf{x}}^{(j)} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$. Here $\mathbf{f}_{(i, a)}$ is the flow function path from node $i$ to node $a$. 
-The conditional density of $\mathbf{x}^{(j)}$ given $\mathbf{x}^{(i)}$ can be approximated with 
-\begin{align*} %\label{eq:cond_llk}
-\log p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)}) &\approx  \log p(\widehat{\mathbf{h}}^L) -  \frac{1}{2} \log \big(\det \big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)\big) \big) \, .
-\end{align*}
 }
-
 \begin{proof}
 Without loss generality, we assume that there are relationships among different data sections, and the value of one section can be partially or approximately imputed by other sections. 
 According to the aggregation rule (b) discussed in section~\ref{sec:node_aggr}, at an aggregation node  $a$, the latent value of a child node $j$ has the same reconstruction value as the parent node.  
@@ -917,33 +963,19 @@ The reconstruction of the child node $j$ can be approximated with the reconstruc
 Recalling the reconstruction term in the ELBO~(\ref{eq:elbo}), at each node we have $\mathbf{h}^{(a)} \approx \widehat{\mathbf{h}}^{(a)}$. Hence for node $a$'s descendent $j$, we have $\widehat{\mathbf{h}}^{(j)} \approx \mathbf{f}_{(a,j)}(\mathbf{h}^{(a)})$, and $\mathbf{f}_{(a,j)}$ is the flow function path from $a$ to $j$. 
 The value of node $a$ can be approximated by the value of its descendent $i$ that has observation, i.e., $\mathbf{h}^{(a)} \approx \mathbf{f}_{(i,a)}(\mathbf{h}^{(i)})$. Hence, we have $\widehat{\mathbf{x}}^{(j)} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(i, a)}(\mathbf{x}^{(i)}))$.
 
-To compute  node $j$'s conditional distribution given the observed node $i$, we can use the forward passing to compute the root's reconstruction  value $\widehat{\mathbf{h}}^L$. 
-Node $j$'s reconstruction value $\widehat{\mathbf{x}}^{(j)}$ can be imputed by backward passing the message at the root. The density value of $\widehat{\mathbf{h}}^L$ can be computed with the prior distribution of the root. The conditional density of $\widehat{\mathbf{x}}^{(j)}$ can be computed using the change of variable theorem, and it is known in the context of geometric measure theory ~\cite{Book:Hanson_1994,Article:Krantz_2008}. It reads 
-\begin{align*} %\label{eq:llk_est1}
-&  p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)} ) \approx p(\widehat{\mathbf{h}}^L)\det\big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top  \mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L\big)^{-\frac{1}{2}}.
-\end{align*}
-Applying the logarithm operator on both sides concludes the proof of our Lemma.
+% To compute  node $j$'s conditional distribution given the observed node $i$, we can use the forward passing to compute the root's reconstruction  value $\widehat{\mathbf{h}}^L$. 
+% Node $j$'s reconstruction value $\widehat{\mathbf{x}}^{(j)}$ can be imputed by backward passing the message at the root. The density value of $\widehat{\mathbf{h}}^L$ can be computed with the prior distribution of the root. The conditional density of $\widehat{\mathbf{x}}^{(j)}$ can be computed using the change of variable theorem, and it is known in the context of geometric measure theory ~\cite{Book:Hanson_1994,Article:Krantz_2008}. It reads 
+% \begin{align*} %\label{eq:llk_est1}
+% &  p(\mathbf{x}^{(j)} | \mathbf{x}^{(i)} ) \approx p(\widehat{\mathbf{h}}^L)\det\big(\mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L)^\top  \mathbf{J}_{\widehat{\mathbf{x}}^{(j)}}(\widehat{\mathbf{h}}^L\big)^{-\frac{1}{2}}.
+% \end{align*}
+% Applying the logarithm operator on both sides concludes the proof of our Lemma.
 \end{proof}
 
-\begin{remark}\label{rmk:apprx_mulapp}
-Let $O$ be the set of observed leaf nodes, $j$ be an unobserved node, and $a$ the closest ancestor of $O \cup \{a\}$. 
-Then the state of $j$ can be imputed with $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(O, a)}(\mathbf{x}^{(i)}))$, where $\mathbf{f}_{(O, a)}$ is the flow function path from all nodes in $O$ to $a$.
-\end{remark}
-
-
-
-\subsection{Inference on DAGs}
-\begin{figure}[H]
-\begin{center}
- \includegraphics[width=0.25\linewidth]{fig/dag_aggr.png}
-\end{center}
-\vspace{-0.2in}
-\caption{ {\small  Aggregation node in a DAG.}}
-\label{fig:dag_aggr}
-\vspace{-0.15in}
-\end{figure}
-
-
+% \begin{remark}\label{rmk:apprx_mulapp}
+% Let $O$ be the set of observed leaf nodes, $j$ be an unobserved node, and $a$ the closest ancestor of $O \cup \{a\}$. 
+% Then the state of $j$ can be imputed with $\widehat{\mathbf{x}}^{j} \approx  \mathbf{f}_{(a,j)}(\mathbf{f}_{(O, a)}(\mathbf{x}^{(i)}))$, where $\mathbf{f}_{(O, a)}$ is the flow function path from all nodes in $O$ to $a$.
+% \end{remark}
+%\subsection{Inference on DAGs}
 
 
 %\section{Appendix}
@@ -952,7 +984,7 @@ Then the state of $j$ can be imputed with $\widehat{\mathbf{x}}^{j} \approx  \ma
 
 Let each data sample has $k$ sections, i.e., $\mathbf{x} = [\mathbf{x}^{(1)}, ..., \mathbf{x}^{(k)}]$. VFGs are graphical models that can integrate different sections or components of the dataset.  We assume that for each pair of connected nodes, the edge is an invertible flow function. 
 The vector of parameters for all the edges is denoted by $\theta$. 
-The forward message passing starts from $\mathbf{x}$ and ends at $\mathbf{h}^L$, and backward message passing in the reverse direction. We start with the hierarchical generative tree network structure illustrated by an example in Figure~\ref{fig:tree3}. 
+The forward message passing starts from $\mathbf{x}$ and ends at $\mathbf{h}^L$, and backward message passing in the reverse direction. We start with the hierarchical generative tree network structure illustrated by an example in Figure~\ref{fig:tree_vfg}. 
 Then the marginal likelihood term of the data reads
 \begin{align*}
 p(\mathbf{x}| \mathbf{\theta}) = \sum_{\mathbf{h}^1, ..., \mathbf{h}^L} p(\mathbf{h}^L | \theta)p(\mathbf{h}^{L-1} | \mathbf{h}^{L},\theta) \cdot \cdot  \cdot  p(\mathbf{x} | \mathbf{h}^{1}, \theta) \, .
@@ -960,9 +992,9 @@ p(\mathbf{x}| \mathbf{\theta}) = \sum_{\mathbf{h}^1, ..., \mathbf{h}^L} p(\mathb
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=2.3in]{fig/tree3.png}
-    \caption{A VFG tree with $L=3$.}
-    \label{fig:tree3}
+    \includegraphics[width=1.8in]{fig/tree_vfg.png}
+    \caption{A  tree VFG with $L=5$ and three aggregation nodes.}
+    \label{fig:tree_vfg}
 \end{figure}
 
 The hierarchical prior distribution is given by factorization
@@ -1036,22 +1068,27 @@ $$\mathbf{KL}^L =  \mathbb{E}_{q(\mathbf{h}^{L}|\mathbf{h}^{L-1})}\big[  \log q(
 
 \subsection{Improve ELBO Estimation with Flows}
 
-To compute the EBLO, one way is to approximate  $\mathbf{KL}$ terms with the latent values generated from a batch of training data samples. In this paper we follow the approach in~\cite{rezende2015variational,kingma2016improving,berg2018sylvester}  using normalizing flows to further improve posterior estimation. At each layer,  minimizing  $\mathbf{KL}$ term is to is to optimize the parameters of the network so that the posterior is closer to the prior. As shown in Figure~\ref{fig:message}, for layer $l$,  we can take the  encoding-decoding procedures~(discussed in section~\ref{sec:vfg_inference}) as transformation of the posterior distribution from layer $l$ to $l+1$, and then transform it back. By  counting in the transformation difference~\cite{rezende2015variational,kingma2016improving,berg2018sylvester}, the $\mathbf{KL}$ at layer $l$ becomes 
+To compute the EBLO, one way is to approximate  $\mathbf{KL}$ terms with the latent values generated from a batch of training data samples. In this paper we follow the approach in~\cite{rezende2015variational,kingma2016improving,berg2018sylvester}  using normalizing flows to further improve posterior estimation. At each layer,  minimizing  $\mathbf{KL}$ term is to is to optimize the parameters of the network so that the posterior is closer to the prior. As shown in Figure~\ref{fig:tree_message2}, for layer $l$,  we can take the  encoding-decoding procedures~(discussed in section~\ref{sec:vfg_inference}) as transformation of the posterior distribution from layer $l$ to $l+1$, and then transform it back. By  counting in the transformation difference~\cite{rezende2015variational,kingma2016improving,berg2018sylvester}, the $\mathbf{KL}$ at layer $l$ becomes 
 \begin{align*}
 \mathbf{KL}^l=&\mathbb{E}_{q(\mathbf{h}^{1:L}|\mathbf{x})}\bigg[  \log q(\mathbf{h}^{l}|\mathbf{h}^{l-1}) +\log \bigg|\det \frac{\partial \mathbf{h}^{l}}{\partial \mathbf{h}^{l+1}}\bigg| + \log \bigg|\det \frac{\partial \widehat{\mathbf{h}}^{l+1}}{\partial \widehat{\mathbf{h}}^{l}}\bigg|   - \log p(\mathbf{h}^{l}|\widehat{\mathbf{h}}^{l+1}) \bigg]\\
 \simeq & \frac{1}{M}\sum_{m=1}^M\bigg[ \log q(\mathbf{h}^{l}_m|\mathbf{h}^{l-1}) +\log \bigg|\det \frac{\partial \mathbf{h}^{l}_m}{\partial \mathbf{h}^{l+1}_m}\bigg| + \log \bigg|\det \frac{\partial \widehat{\mathbf{h}}^{l+1}_m}{\partial \widehat{\mathbf{h}}^{l}_m}\bigg|   - \log p(\mathbf{h}^{l}_m|\widehat{\mathbf{h}}_m^{l+1}) \bigg].
 \end{align*}
 
 
+
+
+
 \subsection{ELBO of DAG Models}\label{appd:dag_elbo}
 Note that if we reverse the edge directions in a DAG, the resulting graph is still a DAG graph.  
 The nodes can be listed in a topological order regarding the DAG structure as shown in Figure~\ref{fig:dag}. 
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=2.3in]{fig/dag.png}
-    \caption{DAG structure. The inverse topology order is \big\{ \{1,2,3\}, \{4,5\}, \{6\},  \{7\} \big\}, and it corresponds to layers 0 to 3.  }
+    \caption{A DAG  with inverse topology order \big\{ \{1,2,3\}, \{4,5\}, \{6\},  \{7\} \big\}, and they  correspond to layers 0 to 3.  }
     \label{fig:dag}
 \end{figure}
+%{\color{red} aggregation node}
 
 By taking the topology order as the layers in tree structures, we can derive the ELBO for DAG structures.  
 Assume the DAG structure has $L$ layers, and the root nodes are in layer $L$. 
