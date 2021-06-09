@@ -84,14 +84,14 @@
 \begin{abstract}
 We propose a new variant of AMSGrad \citep{RKK18}, a popular adaptive gradient based optimization algorithm widely used for training deep neural networks. 
 Our algorithm adds prior knowledge about the sequence of consecutive mini-batch gradients and leverages its underlying structure making the gradients sequentially predictable. 
-By exploiting the predictability and ideas from optimistic online learning, the proposed algorithm can accelerate the convergence and increase sample efficiency.
-After establishing a tighter upper bound under some convexity conditions on the regret, we offer a complimentary view of our algorithm which generalizes the offline and stochastic version of nonconvex optimization. 
+By exploiting the predictability process and ideas from optimistic online learning, the proposed algorithm can accelerate the convergence and increase its sample efficiency.
+After establishing a tighter upper bound under some convexity conditions on the regret, we offer a complimentary view of our algorithm which generalizes to the offline and stochastic nonconvex optimization settings. 
 In the nonconvex case, we establish a non-asymptotic convergence bound independent of the initialization.
 We illustrate, via numerical experiments, the practical speedup on several deep learning models and benchmark datasets.
 
 \end{abstract}
 \begin{keywords}
-List of keywords
+optimization, adaptive, optimistic, online, stochastic
 \end{keywords}
 
 \section{Introduction}
@@ -118,18 +118,17 @@ There have been some related works in \textsc{Optimistic Online learning} \citep
 \cite{DISZ18} build on these related works and show that \textsc{Optimistic-Mirror-Descent} can avoid the cycle behavior in a bilinear zero-sum game accelerating the convergence. 
 In contrast, in this paper, the proposed algorithm is designed to accelerate nonconvex optimization (e.g., empirical risk minimization).
 To the best of our knowledge, this is the first work exploring towards this direction and bridging the unfilled \emph{theoretical} gap at the crossroads of online learning and stochastic optimization.
-
 The \textbf{contributions} of our paper are as follows:
 \begin{itemize}
 \item We derive an optimistic variant of \textsc{AMSGrad} borrowing techniques from online learning procedures. Our method relies on \textsf{(I)} the addition of \emph{prior knowledge} in the sequence of model parameter estimates leveraging a predictable process able to provide guesses of gradients through the iterations; \textsf{(II)} the construction of a \emph{double update} algorithm done sequentially. We interpret this two-projection step as the learning of the global parameter and of an underlying scheme which makes the gradients sequentially predictable.
 \item We focus on the  \emph{theoretical} justifications of our method by establishing novel \emph{non-asymptotic} and \emph{global} convergence rates in both convex and nonconvex cases.  Based on \emph{convex regret minimization} and \emph{nonconvex stochastic optimization} views, we prove, respectively, that our algorithm suffers regret of $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t  \|^2_{\psi_{t-1}}})$ and achieves a convergence rate $\mathcal{O}(\sqrt{d/T} +d/T )$, where $g_t$ is the gradient and $m_t$ is its prediction.
+\item Besides the complete convergence analysis of \textsc{OPT-AMSGrad}, we conduct numerical experiments and show that the proposed algorithm not only accelerates the training procedure, but also leads to better empirical generalization performance.
 \end{itemize}
-The proposed algorithm adapts to the informative dimensions, exhibits momentum, and also exploits a good guess of the next gradient to facilitate acceleration. 
-Besides the complete convergence analysis of \textsc{OPT-AMSGrad}, we conduct numerical experiments and show that the proposed algorithm not only accelerates the training procedure, but also leads to better empirical generalization performance.
+% The proposed algorithm adapts to the informative dimensions, exhibits momentum, and also exploits a good guess of the next gradient to facilitate acceleration. 
 
-%Section~\ref{sec:prelim} is devoted to introductory notions on online learning for regret minimization and adaptive learning methods for nonconvex stochastic optimization. We introduce in Section~\ref{sec:opt} our new algorithm, namely \textsc{OPT-AMSGrad} and provide a comprehensive global analysis in both \emph{convex}/\emph{online}  and \emph{nonconvex}/\emph{offline} settings in Section~\ref{sec:analysis}.
-%We illustrate the benefits of our method on several finite-sum nonconvex optimization problems in Section~\ref{sec:numerical}.
-%The supplementary material of this paper is devoted to the proofs of our theoretical results.
+Section~\ref{sec:prelim} is devoted to introductory notions on online learning for regret minimization and adaptive learning methods for nonconvex stochastic optimization. We introduce in Section~\ref{sec:opt} our new algorithm, namely \textsc{OPT-AMSGrad} and provide a comprehensive global analysis in both \emph{convex}, \emph{online}  and \emph{nonconvex}, \emph{offline} settings in Section~\ref{sec:analysis}.
+We illustrate the benefits of our method on several finite-sum nonconvex optimization problems in Section~\ref{sec:numerical}.
+The supplementary material of this paper is devoted to the proofs of our theoretical results.
 
 \textbf{Notations:} 
 We follow the notations of adaptive optimization \citep{KB15,RKK18}. 
@@ -162,9 +161,6 @@ where $\{m_{t}\}_{t>0}$ is a predictable process incorporating (possibly arbitra
 Under the assumption that the loss functions are convex, it has been shown in \citep{SALS15} that the regret of \textsc{Optimistic-FTRL} is at most $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t \|_*^2 } )$.
 
 \textit{Remark:} Note that the usual worst-case bound is preserved even when the predictors $\{m_{t}\}_{t>0}$ do not predict well the gradients. Indeed, if we take the example of \textsc{Optimistic-FTRL}, the bound reads $\sqrt{\sum_{t=1}^T \| g_t - m_t \|_*^2 } \leq 2 \max \limits_{w \in \Theta} \| \nabla \ell_t(w) \| \sqrt{T}$ which is equal to the usual bound up to a factor $2$~\citep{RS13b}, under certain boundedness assumptions on $\Theta$ detailed below.
-Yet, when the predictors $\{m_{t}\}_{t>0}$ are well designed, the resulting regret will be lower. 
-We will have a similar argument when comparing \textsc{OPT-AMSGrad} and \textsc{AMSGrad} regret bounds in Section~\ref{sec:convex}.
-
 \begin{wrapfigure}[10]{r}{.5\linewidth}\vspace{-0.8cm}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
@@ -186,6 +182,8 @@ We will have a similar argument when comparing \textsc{OPT-AMSGrad} and \textsc{
 \end{algorithm}
 \vspace{-0.1in}
 \end{minipage}\end{wrapfigure}
+Yet, when the predictors $\{m_{t}\}_{t>0}$ are well designed, the resulting regret will be lower. 
+We will have a similar argument when comparing \textsc{OPT-AMSGrad} and \textsc{AMSGrad} regret bounds in Section~\ref{sec:convex}.
 
 We emphasize, Section~\ref{sec:opt}, the importance of leveraging a good guess $m_t$ for updating $w_t$ in order to get a fast convergence rate (or equivalently, small regret) and introduce in Section~\ref{sec:numerical} a simple predictable process $\{m_{t}\}_{t>0}$ leading to empirical acceleration on various applications.
 
@@ -215,22 +213,7 @@ The learner first updates an auxiliary variable $\tilde{w}_{t+1} \in \Theta$ (li
 Observe that the proposed algorithm does not reduce to \textsc{AMSGrad} when $m_{t}=0$, contrary to the optimistic variant of \textsc{FTRL}.
 Furthermore, combining line 8 and line 9 yields the following single step $w_{t+1}= \tilde{w}_{t}  - \eta_t (\theta_t + h_{t+1} )/ \sqrt{\hat{v}}_t $. 
 
-Compared to \textsc{AMSGrad}, the algorithm is characterized by a \emph{two-level} update that interlinks some \emph{auxiliary state} $\tilde{w}_{t}$ and the model parameter state, $w_t$, similarly to the \textsc{Optimistic Mirror Descent} algorithm developed in \citep{RS13b}.
-It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}$, which exploits the guess $m_{t+1}$, see Figure \ref{fig:scheme}.
-
-
-
-
-In the following analysis, we show that this interleaving actually leads to some cancellation in the regret bound.
-Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citep{CJ12}.
-The gradient prediction process plays an important role as discussed in Section~\ref{sec:numerical}.
-The proposed \textsc{OPT-AMSGrad} algorithm inherits three properties: \textsf{(i)} Adaptive learning rate of each dimension as \textsc{AdaGrad}~\citep{DHS11} (line 6, line 8 and line 9). \textsf{(ii)} Exponential moving average of the past gradients as \textsc{Nesterov's method} \citep{N04} and the \textsc{Heavy-Ball} method~\citep{P64} (line 5). \textsf{(iii)} Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as in optimistic online learning algorithms~\citep{CJ12,RS13b,SALS15} (line 9).
-The first property helps for acceleration when the gradient has a sparse structure.
-The second one is from the long-established idea of momentum which can also help for acceleration. 
-The last property can lead to an acceleration when the prediction of the next gradient is good as mentioned above when introducing the regret bound for the \textsc{Optimistic-FTRL} algorithm.
-This property will be elaborated whilst establishing the theoretical analysis of \textsc{OPT-AMSGrad}.
-
-\begin{minipage}{0.5\linewidth}
+\hspace{-0.2in}\begin{minipage}{0.5\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
 \begin{algorithmic}[1] 
@@ -261,12 +244,30 @@ where $h_{t+1}:= \beta_{1} \theta_{t-1} + (1 - \beta_{1}) m_{t+1}$ with $m_{t+1}
 \end{figure}
 \end{minipage}
 
+\vspace{0.1in}
+Compared to \textsc{AMSGrad}, the algorithm is characterized by a \emph{two-level} update that interlinks some \emph{auxiliary state} $\tilde{w}_{t}$ and the model parameter state, $w_t$, similarly to the \textsc{Optimistic Mirror Descent} algorithm developed in \citep{RS13b}.
+It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}$, which exploits the guess $m_{t+1}$, see Figure \ref{fig:scheme}.
+
+
+
+
+In the following analysis, we show that this interleaving actually leads to some cancellation in the regret bound.
+Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citep{CJ12}.
+The gradient prediction process plays an important role as discussed in Section~\ref{sec:numerical}.
+The proposed \textsc{OPT-AMSGrad} algorithm inherits three properties: \textsf{(i)} Adaptive learning rate of each dimension as \textsc{AdaGrad}~\citep{DHS11} (line 6, line 8 and line 9). \textsf{(ii)} Exponential moving average of the past gradients as \textsc{Nesterov's method} \citep{N04} and the \textsc{Heavy-Ball} method~\citep{P64} (line 5). \textsf{(iii)} Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as in optimistic online learning algorithms~\citep{CJ12,RS13b,SALS15} (line 9).
+The first property helps for acceleration when the gradient has a sparse structure.
+The second one is from the long-established idea of momentum which can also help for acceleration. 
+The last property can lead to an acceleration when the prediction of the next gradient is good as mentioned above when introducing the regret bound for the \textsc{Optimistic-FTRL} algorithm.
+This property will be elaborated whilst establishing the theoretical analysis of \textsc{OPT-AMSGrad}.
+
+
+
 
 \vspace{-0.05in}
-\section{Non-Asymptotic Convergence Analysis}\label{sec:analysis}
+\section{Theoretical Convergence Analysis}\label{sec:analysis}
 \vspace{-0.05in}
 
-\textbf{More notations.}\hspace{0.1in}
+\textbf{Analysis notations.}\hspace{0.1in}
 We denote the Mahalanobis norm by $\|\cdot\|_H := \sqrt{ \langle \cdot, H \cdot \rangle }$ for some positive semidefinite (PSD) matrix $H$.
 We let $\psi_t(x) := \langle x, \text{diag}\{\hat{v}_t\}^{1/2} x \rangle$ for a PSD matrix $H_t^{1/2}:= \text{diag}\{\hat{v}_t\}^{1/2}$, where $\text{diag}\{\hat{v}_t\}$ represents the diagonal matrix which $i_{th}$ diagonal element is $\hat{v}_t[i]$ defined in Algorithm~\ref{alg:optamsgrad}.
 We define its corresponding Mahalanobis norm by $\| \cdot \|_{\psi_t}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$,
@@ -281,7 +282,7 @@ The proofs of the results are deferred to the Appendix.
 \subsection{Convex Regret Analysis}\label{sec:convex}
 \vspace{-0.05in}
 
-In the following, we assume convexity of $\{\ell_t\}_{t>0}$ and that $\Theta$ has a bounded diameter $D_{\infty}$, which is a standard assumption for adaptive methods \citep{RKK18,KB15} and is necessary in regret analysis.
+In this subsection only, we assume convexity of $\{\ell_t\}_{t>0}$ and that $\Theta$ has a bounded diameter $D_{\infty}$, which is a standard assumption for adaptive methods \citep{RKK18,KB15} and is necessary in regret analysis.
 % since if the boundedness assumption is lifted, one might construct a scenario such that the benchmark is $w^* = \infty$ and the learner's regret is infinite. 
 \begin{Theorem} \label{THM:MAINCONVEX}\vspace{0.05in}
 Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
