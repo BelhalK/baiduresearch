@@ -133,12 +133,6 @@ To be completed
 \end{abstract}
 
 
-\section{sEM methods for Federated Learning}
-\begin{itemize}
-\item Exact expectations
-\item Incremental and variance reduced methods
-\end{itemize}
-
 \section{SAEM algorithm for Federated Learning}
 \begin{itemize}
 \item SA of the expectations
@@ -149,7 +143,107 @@ To be completed
 \item Applications to PK-PD modeling
 \end{itemize}
 
-\section{Numerical Examples}
+\section{Notations and Algorithm}
+
+We minimize the negated log incomplete data likelihood 
+\begin{align} \label{eq:em_motivate}
+\begin{split} 
+ \min_{ \theta \in \Theta }~ \overline{L} ( \theta ) \eqdef  L ( \theta ) + r (\theta) \quad \text{with}~~L(\theta) = \frac{1}{n} \sum_{i=1}^n L_i( \theta) \eqdef  \frac{1}{n} \sum_{i=1}^n \big\{ - \log g( y_i ; \theta ) \big\}\eqs,
+\end{split} 
+\end{align}
+
+
+Consider a curved exponential family
+\beq \label{eq:exp}
+f(z_i,y_i; \theta) = h  (z_i,y_i) \textrm{exp} ( \pscal{S(z_i,y_i)}{\phi(\theta)} - \psi(\theta) )\eqs,
+\eeq
+
+Then EM reads
+
+\begin{align}\label{eq:definition-overline-bss}
+\overline{s}_i(\theta) \eqdef \int_{\Zset} S(z_i,y_i) p(z_i|y_i;\theta) \mu(\rmd z_i) \eqsp,
+\end{align}
+%\begin{align}\label{eq:definition-overline-bss}
+%\begin{split} 
+%& \overline{s}(\theta)= \frac{1}{n} \sum_{i=1}^n \overline{s}_i(\theta) \\
+%& \text{where}  \quad \overline{s}_i(\theta)= \int_{\Zset} S(z_i,y_i) p(z_i|y_i;\theta) \mu(\rmd z_i) \eqsp,
+%\end{split} 
+%\end{align}
+and the \textit{M-step} is given by
+\begin{align}\label{eq:mstep}
+\overline{\theta}( \overline{s}(\theta) ) \eqdef \argmin_{ \vartheta \in \theta } ~\big\{ \Pen( \vartheta ) + \psi( \vartheta) - \pscal{ \overline{s}(\theta)}{ \phi ( \vartheta) } \big\} \eqsp.
+\end{align}
+
+
+In the case where the expectations are intractable, then \eqref{eq:definition-overline-bss} becomes:
+
+\beq\label{eq:stats}
+\begin{split}
+ \tilde{S}^{(k+1)} \eqdef \frac{1}{n} \sum_{i=1}^n \tilde{S}^{(k+1)}_i = \frac{1}{n} \sum_{i=1}^n\frac{1}{M_k} \sum_{m=1}^{M_k} S(z_{i,m}^{(k)}, y_i) \eqs,
+\end{split}
+\eeq
+
+
+
+\subsection{Periodic averaging of the local models}
+
+\begin{algorithm}[H]
+\caption{FL-SAEM with parameter averaging} \label{alg:flsaem}
+\begin{algorithmic}[1]
+%\small
+\STATE \textbf{Input}: .
+\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
+\FOR{$r=1$ to $R$}
+\FOR{parallel for device $i \in D^{r}$}
+\STATE Set $\hat{\theta}^{(0,k)}_i = \hat{\theta}^{(k)}$.
+\FOR{$t=1$ to $T$}
+\STATE Draw M samples $\{z_{i,m}^{(t,k)}\}_{m=1}^{M}$ under model $\hat{\theta}^{(t,k)}_i$
+\STATE Compute the surrogate sufficient statistics $\tilde{S}_{i}^{(t,k+1)}$
+\STATE Update local model:
+$$
+\hat{\theta}^{(t,k+1)}_i = \overline{\theta}( \tilde{S}_i^{(t,k+1)}) 
+$$
+\ENDFOR
+\STATE Devices send $\hat{\theta}^{(T,k+1)}_i$ to server.
+\ENDFOR
+\STATE Server computes \textbf{the average of the local models}:
+$$
+\hat{\theta}^{(k+1)} = \frac{1}{n} \sum_{i=1}^n \hat{\theta}^{(T,k+1)}_i
+$$ 
+and send global model back to the devices. \label{line:final}
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Periodic averaging of the local statistics}
+
+\begin{algorithm}[H]
+\caption{FL-SAEM with statistics averaging} \label{alg:flsaem2}
+\begin{algorithmic}[1]
+%\small
+\STATE \textbf{Input}: .
+\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
+\FOR{$r=1$ to $R$}
+\FOR{parallel for device $i \in D^{r}$}
+\STATE Set $\hat{\theta}^{(0,k)}_i = \hat{\theta}^{(k)}$.
+\FOR{$t=1$ to $T$}
+\STATE \textcolor{red}{ Here one local iteration, $T=1$}
+\STATE Draw M samples $z_{i,m}^{(k)}$ under model $\hat{\theta}^{(t,k)}_i$
+\STATE Compute the surrogate sufficient statistics $\tilde{S}_{i}^{(t,k+1)}$
+\ENDFOR
+\STATE Devices send local statistics $\tilde{S}_{i}^{(t,k+1)}$ to server.
+\ENDFOR
+\STATE Server computes \textbf{global model using the aggregated statistics}:
+$$
+\hat{\theta}^{(k+1)} = \overline{\theta}( \tilde{S}^{(t,k+1)}) 
+$$
+where $\tilde{S}^{(t,k+1)} = (\tilde{S}_i^{(t,k+1)}, i \in D_r)$  and send global model back to the devices. 
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+
 
 \newpage
 
