@@ -11,8 +11,10 @@ IEM = data(len*3+1:len*3+len,3);
 EM = data(end-3:end-2,3);
 saem = data(end-1:end,3);
 
-% x = (0:1e5)/1e5; 
-x = 0:1e5; 
+% x = 0:1e5; 
+
+x = (0:1e5)/1e5; 
+
 
 figure;box on; grid on; 
 semilogy(x,isaem,'r-','linewidth',2);hold on; grid on;
@@ -24,7 +26,6 @@ plot(x([1 end]),saem,'r-.','linewidth',2);hold on; grid on;
 set(gca,'fontsize',20);
 xlabel('Iterations');
 ylabel('|\mu - \mu^*|^2');
-%legend('isaem','isamesaga','isaemvr','IEM','EM','saem');
 h = legend('iSAEM','vrTTEM','fiTTEM','iEM','EM','SAEM')
 rect = [0.25, 0.25, .25, .25];
 set(h, 'Position', rect)
@@ -32,5 +33,3 @@ set(gca,'yminorgrid','off');
 ax = gca;
 ax.XRuler.Exponent = 0;
 set(gca,'xtick',[1:1e4:1e5]);
-
-
