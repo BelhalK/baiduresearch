@@ -10,8 +10,8 @@ theme_set(theme_bw())
 options(digits = 2)
 
 ### IMPORTANT PARAMS ####
-n <- 10000
-nsim=10
+n <- 100
+nsim=2
 nb.epochs <- 1
 ########################
 
@@ -142,5 +142,5 @@ variance <- rbind(isaem[,c(1,4,8)],
 graphConvMC2_new(variance, title="",legend=TRUE)
 
 # save.image("gmm_tts.RData")
-write.csv(variance, file = "runtts.csv")
+# write.csv(variance, file = "runtts.csv")
 

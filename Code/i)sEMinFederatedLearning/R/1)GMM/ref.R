@@ -10,8 +10,8 @@ theme_set(theme_bw())
 options(digits = 2)
 
 ### IMPORTANT PARAMS ####
-n <- 100000
-nsim=30
+n <- 100
+nsim=2
 nb.epochs <- 1
 ########################
 
@@ -93,7 +93,8 @@ for (j in (1:nsim))
   df.saem[[j]] <- df
   print('saem done')
 
-  df <- mixt.isaem(x[,j],theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr)
+  xisaem <- x[,j]
+  df <- mixt.isaem(xisaem,theta0, nb.epochs*n/nbr, K1=K/2, alpha=0.6, M=nb.chains,nbr)
   df[,2:7] <- (df[,2:7] - ML[,2:7])^2
   df.isaem[[j]] <- df
   print('isaem done')
@@ -137,6 +138,9 @@ variance <- rbind(isaem[,c(1,4,8)],
                   em[,c(1,4,8)],
                   saem[,c(1,4,8)])
 
-save(variance, file = "saved/gmm_tts.RData")
-write.csv(variance, file = "saved/runtts.csv")
+
+graphConvMC2_new(variance, title="",legend=TRUE)
+
+# save.image("gmm_tts.RData")
+# write.csv(variance, file = "runtts.csv")
 
