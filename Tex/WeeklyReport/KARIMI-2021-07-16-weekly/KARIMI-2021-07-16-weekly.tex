@@ -22,6 +22,136 @@
 \date{}
 \maketitle
 
+This week, I have mainly focussed my work towards developing a Federated EM settings.
+Two settings are possible: 
+\begin{itemize}
+\item The expectations are tractable and we want to scale to large datasets with a random data index sampling while being distributed and private (this would be a sEM method, where sEM stands for Stochastic EM).
+\item The expectations are not tractable and thus we would use the SAEM under the FL settings (this is the setting of the my talk from last week).
+\end{itemize}
 
+\section{SAEM for Federated Learning}
+
+For computational purposes and privacy enhanced matter, I have chosen to study and develop the second algorithms that I proposed in my last week's report.
+In that algorithm, one does not compute a periodic averaging of the local models (this would requires performing as many M-steps as there are workers).
+Rather, workers compute local statistics and send them to the central server for a periodic averaging of those vectors and the latter computes one M-step to update the global model.
+
+\begin{algorithm}[H]
+\caption{FL-SAEM with statistics averaging} \label{alg:flsaem2}
+\begin{algorithmic}[1]
+%\small
+\STATE \textbf{Input}: \textcolor{red}{TO COMPLETE}
+\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
+\FOR{$r=1$ to $R$}
+\FOR{parallel for device $i \in D^{r}$}
+\STATE Set $\hat{\theta}^{(0,r)}_i = \hat{\theta}^{(r)}$.
+\STATE Draw M samples $z_{i,m}^{(r)}$ under model $\hat{\theta}^{(r)}_i$ \label{line:sampling}
+\STATE Compute the surrogate sufficient statistics $\tilde{S}_{i}^{(r+1)}$ \label{line:compute}
+\STATE Devices send local statistics $\tilde{S}_{i}^{(k+1)}$ to server.
+\ENDFOR
+\STATE Server computes \textbf{global model using the aggregated statistics}:
+$$
+\hat{\theta}^{(r+1)} = \overline{\theta}( \tilde{S}^{(r+1)}) 
+$$
+where $\tilde{S}^{(r+1)} = (\tilde{S}_i^{(r+1)}, i \in D_r)$  and send global model back to the devices. 
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Challenges with Algorithm~\ref{alg:flsaem2}}
+While Algorithm~\ref{alg:flsaem2} is a distributed variant of the SAEM, it is neither (a) \emph private nor (b) \emph communication-efficient.
+Indeed, we remark that broadcasting the vector of statistics are a potential breach to the data observations as their expression is related $y$ and the latent data $z$. With a simple knowledge of the model used, the data could be retrieved if one extracts those statistics.
+Also regarding (b), the broadcast of $n$ vector of statistics $S(y_i,z_i)$ can be cumbersome when the size of the latent space and the parameter space of the model are huge.
+
+I am incorporating respective solutions to those problems below.
+
+\subsection{Algorithmic solutions}
+
+\textbf{Line~\ref{line:sampling} -- Quantization:} 
+The first step is to quantize the gradient in the Stochastic Langevin Dynamics step used in our sampling scheme Line~\ref{line:sampling} of Algorithm~\ref{alg:flsaem2}.
+Inspired by \citep{alistarh2017qsgd}, we use an extension of the QSGD algorithm for our latent samples.
+Define the quantization operator as follows:
+
+\beq\label{eq:operator}
+\mathsf{C}_{j}^{(\ell)}\left(g, \xi_{j}\right)=\|v\| \cdot \textrm{sign}\left(g_{j}\right) \cdot\left(\left\lfloor \ell \left|g_{j}\right| /\|v\|\right\rfloor+\mathbf{1}\left\{\xi_{j} \leq \ell \left|g_{j}\right| /\|v\|-\left\lfloor \ell \left|g_{j}\right| /\|v\|\right\rfloor\right\}\right) /\ell
+\eeq
+where $\ell$ is the level of quantization and $j \in [d]$ denotes the dimension of the gradient.
+
+Hence, for the sampling step, Line~\ref{line:sampling}, we use the modified SGLD below, to be compliant with the privacy of our method.
+\begin{algorithm}[H]
+\caption{Langevin Dynamics with Quantization for worker $i$} \label{alg:quant}
+\begin{algorithmic}[1]
+%\small
+\STATE \textbf{Input}: Current local model $\hat{\theta}^{(r)}_i$ for worker $i \in \inter$.
+
+\STATE Draw $M$ samples $\{ z_{i}^{(r,m} \}_{m=1}^M$ from the posterior distirbution $p(z_i| y_i; \hat{\theta}^{(k)}_i)$ via Langevin diffusion with a quantized gradient:\label{line:langevin}
+\FOR{$k=1$ to $K$}
+\STATE Compute the quantized gradient of $\nabla \log p(z_i| y_i; \hat{\theta}^{(k)}_i)$:
+\beq\label{eq:grad}
+g_i{(k,m)} = \mathsf{C}_{j}^{(\ell)}\left(\nabla_j f_{\theta_t}(z_i^{(k-1,m)}), \xi^{(k)}_{j}\right)
+\eeq
+where $\xi^{(k)}_{j}$ is a realization of a uniform random variable.
+\STATE Construct the Markov Chain:
+\beq\label{eq:lang}
+z_i^{(k,m)} = z_i^{(k-1,m)} + \frac{\gamma_k}{2}  g_i{(k,m)} + \sqrt{\gamma_k}  \mathsf{B}_k \eqsp,
+\eeq
+where $\mathsf{B}_t$ denotes the Brownian motion.
+\ENDFOR
+\STATE Assign $\{ z_{i}^{(r,m} \}_{m=1}^M \leftarrow \{ z_i^{(K,m)} \}_{m=1}^M$.
+\STATE \textbf{Output:} latent data $z_{i,m}^{(k)}$ under model $\hat{\theta}^{(t,k)}_i$ 
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+\noindent \textbf{Line~\ref{line:compute} -- Compression MCMC output:}
+We use the notorious \textbf{Top-$k$} operator that we define as $\mathcal C(x)_i=x_i$, if $i\in \mathcal S$; $\mathcal C(x)_i=0$ otherwise and where $\mathcal S$ is the set of size $k<p$.
+Recall that after Line~\ref{line:sampling} we compute the local statistics $\tilde{S}_{i}^{(k+1)}$ using the output latent variables from Algorithm~\ref{alg:quant}.
+We now use those statistics and compress them using Algorithm~\ref{alg:spars} as follows:
+
+\begin{algorithm}[H]
+\caption{Sparsified Statistics with \textbf{Top-$k$}} \label{alg:spars}
+\begin{algorithmic}[1]
+%\small
+\STATE \textbf{Input}: Current local statistics $\tilde{S}_{i}^{(k+1)}$ for worker $i \in \inter$. Sparsification level $k$.
+\STATE Apply \textbf{Top-$k$}:
+\beq\label{eq:topkstats}
+\ddot{S}_{i}^{(k+1)} = \textbf{Top-$k$} \left( \tilde{S}_{i}^{(k+1)}\right)
+\eeq
+\STATE \textbf{Output:} Compressed local statistics for worker $i$ denoted $\ddot{S}_{i}^{(k+1)}$.
+\end{algorithmic}
+\end{algorithm}
+
+
+%
+%Final method:
+%
+%\begin{algorithm}[H]
+%\caption{FL-SAEM with Periodic Compressed and Quantized Statistics Averaging} \label{alg:flsaem}
+%\begin{algorithmic}[1]
+%%\small
+%\STATE \textbf{Input}: .
+%\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
+%\FOR{$r=1$ to $R$}
+%\FOR{parallel for device $i \in D^{r}$}
+%\STATE Set $\hat{\theta}^{(0,k)}_i = \hat{\theta}^{(k)}$.
+%\FOR{$t=1$ to $T$}
+%\STATE Draw M samples $z_{i,m}^{(k)}$ under model $\hat{\theta}^{(t,k)}_i$
+%\STATE Compute the surrogate sufficient statistics $\tilde{S}_{i}^{(t,k+1)}$
+%\ENDFOR
+%\STATE Devices send local statistics $\tilde{S}_{i}^{(t,k+1)}$ to server.
+%\ENDFOR
+%\STATE Server computes \textbf{global model using the aggregated statistics}:
+%$$
+%\hat{\theta}^{(k+1)} = \overline{\theta}( \tilde{S}^{(t,k+1)}) 
+%$$
+%where $\tilde{S}^{(t,k+1)} = (\tilde{S}_i^{(t,k+1)}, i \in D_r)$  and send global model back to the devices. 
+%\ENDFOR
+%\end{algorithmic}
+%\end{algorithm}
+\bibliographystyle{plain}
+\bibliography{ref}
 
 \end{document} 
