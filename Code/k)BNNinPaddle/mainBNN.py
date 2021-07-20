@@ -16,22 +16,24 @@ from __future__ import print_function
 import argparse
 import ast
 import numpy as np
+
+
 from PIL import Image
 import os
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.optimizer import MissoOptimizer
+from paddle.fluid.optimizer import SGDOptimizer
+# from paddle.fluid.optimizer import MissoOptimizer
+from bayesian.framework.BNN import BayesianNeuralNet
+
 
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 import os
-
-# for creating heterogeneous data loader
-from het_reader import heterogenenous_reader
 import itertools
-
 import scipy.io
+
+
 
 epsilon = 1e-6
 lr = 0.001
@@ -86,7 +88,6 @@ for i in range(1000):
 
 
 
-
 def parse_args():
     parser = argparse.ArgumentParser("Training for Mnist.")
     parser.add_argument(
@@ -106,53 +107,58 @@ def parse_args():
     return args
 
 
-class ConvPool(fluid.dygraph.Layer):
-    def __init__(self,
-                 name_scope,
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 pool_size,
-                 pool_stride,
-                 pool_padding=0,
-                 pool_type='max',
-                 global_pooling=False,
-                 conv_stride=1,
-                 conv_padding=0,
-                 conv_dilation=1,
-                 conv_groups=1,
-                 act=None,
-                 use_cudnn=False,
-                 param_attr=None,
-                 bias_attr=None):
-        super(ConvPool, self).__init__(name_scope)
 
-        self._conv2d = Conv2D(
-            self.full_name(),
-            num_filters=num_filters,
-            filter_size=filter_size,
-            stride=conv_stride,
-            padding=conv_padding,
-            dilation=conv_dilation,
-            groups=conv_groups,
-            param_attr=None,
-            bias_attr=None,
-            act=act,
-            use_cudnn=use_cudnn)
+# Bayesian Neural Network
+class Net(BayesianNet):
+    def __init__(self, layer_sizes, n_particles):
+        super().__init__()
+        self.layer_sizes = layer_sizes
+        self.n_particles = n_particles
+        self.y_logstd = self.create_parameter(shape=[1], dtype='float32')
 
-        self._pool2d = Pool2D(
-            self.full_name(),
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn)
+    def forward(self, observed):
+        self.observe(observed)
+        
+        x = self.observed['x']
+        h = paddle.tile(x, [self.n_particles, *len(x.shape)*[1]])
 
-    def forward(self, inputs):
-        x = self._conv2d(inputs)
-        x = self._pool2d(x)
-        return x
+        batch_size = x.shape[0]
+
+        for i, (n_in, n_out) in enumerate(zip(self.layer_sizes[:-1], self.layer_sizes[1:])):
+            w = self.sn('Normal',
+                        name="w" + str(i), 
+                        mean=fluid.layers.zeros(shape=[n_out, n_in + 1], dtype='float32'), 
+                        std=fluid.layers.ones(shape=[n_out, n_in +1], dtype='float32'),
+                        group_ndims=2, 
+                        n_samples=self.n_particles,
+                        reduce_mean_dims=[0])
+
+            w = fluid.layers.unsqueeze(w, axes=[1])
+            w = paddle.tile(w, [1, batch_size, 1,1])
+            h = paddle.concat([h, fluid.layers.ones(shape=[*h.shape[:-1], 1], dtype='float32')], -1)
+            h = paddle.reshape(h, h.shape + [1])
+            p = fluid.layers.sqrt(paddle.to_tensor(h.shape[2], dtype='float32'))
+            h = paddle.matmul(w, h)  / p
+            h = paddle.squeeze(h, [-1])
+
+            if i < len(self.layer_sizes) - 2:
+                h = paddle.nn.ReLU()(h)
+
+        y_mean = fluid.layers.squeeze(h, [2])
+
+        y = self.observed['y']
+        y_pred = fluid.layers.reduce_mean(y_mean,[0])
+        self.cache['rmse'] = fluid.layers.sqrt(fluid.layers.reduce_mean((y - y_pred)**2))
+
+        self.sn('Normal',
+                name='y',
+                mean=y_mean,
+                logstd=self.y_logstd,
+                reparameterize=True,
+                reduce_mean_dims=[0,1],
+                multiplier=456,) ## training data size
+
+        return self
 
 
 class MNIST(fluid.dygraph.Layer):
@@ -289,9 +295,6 @@ def train_mnist(args):
         mnist_reader = paddle.dataset.mnist.train()
         images = data_train_x
         labels = data_train_y
-     #   for item in mnist_reader():
-    #        images.append(item[0])
-   #         labels.append(item[1])
         idx = np.argsort(labels)
 
         y_train_sorted = [labels[i] for i in idx]
@@ -326,7 +329,8 @@ def train_mnist(args):
 
         for i in range(n_workers):
             mnist = MNIST("mnist"+str(i))
-            optimizer = MissoOptimizer(learning_rate=args.lr)
+            # optimizer = MissoOptimizer(learning_rate=args.lr)
+            optimizer = SGDOptimizer(learning_rate=args.lr)
             dist_models.append(mnist)
             optimizers.append(optimizer)
             adaptive_learning_rates.append({})
@@ -371,14 +375,11 @@ def train_mnist(args):
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)
                 label.stop_gradient = True
-# average models and update adaptive learning rates
+# average models and update adaptive learning ratesƒ
                 if itr % (n_workers*k_period) == 0:
                     model_main = dist_models[0]
                     cost, acc = model_main(img, label)   
-#                    avg = fluid.average.WeightedAverage()
-#                    scope = fluid.global_scope();
-#                    print('printing all variable')
-#                    print(list(fluid.default_main_program().list_vars()))
+
 # initialize the dictionary of moment2 and initialize all models
                     if itr == 0:  
                         for i in range(n_workers):
@@ -427,53 +428,26 @@ def train_mnist(args):
 
 # calculate averated parameters and averaged moment2
                     avg_dict = []
-#                    avg_dic_moment2 = []
                     avg_dic_tilde_u = []
                     for i in range(n_workers):
                         avg_dict.append({})
-#                        avg_dic_moment2.append({})
                         avg_dic_tilde_u.append({})
-#                    avg_dict = {}
-#                    avg_dic_moment2 = {}
                     
                         for param in model_main.parameters():
                             avg_dict[i][param.name[6:]] = fluid.average.WeightedAverage()
-#                            avg_dic_moment2[i][param.name[6:]] = fluid.average.WeightedAverage()
                             avg_dic_tilde_u[i][param.name[6:]] = fluid.average.WeightedAverage()
                     for i in range(n_workers):
                         for j in range(n_workers):
-#                            moment2_dic = adaptive_learning_rates[i]
                             alg_tilde_u_dic = alg_tilde_u[j]
                             for param in dist_models[j].parameters():
                                 # compute weighted average of parameters
                                 avg_dict[i][param.name[6:]].add(param.numpy(),W[i,j])
                                 # compute weighted average of tilde_u
                                 avg_dic_tilde_u[i][param.name[6:]].add(alg_tilde_u_dic[param.name].numpy(),W[i,j])
-#                                print(param.name)
-#                                print(adaptive_learning_rates_max[j][param.name].numpy())
-#                                avg_dic_moment2[i][param.name[6:]].add(moment2_dic[param.name].numpy(),1)
                         for param in dist_models[i].parameters():
                             alg_u[i][param.name]._ivar.value().get_tensor().set(np.maximum(avg_dic_tilde_u[i][param.name[6:]].eval(), delta),
                                        fluid.CPUPlace())
-    # initialize max of moment2 at the first iteration
-#                    if itr == 0:
-#                        for i in range(n_workers):
-#                            for name, avg_moment2 in avg_dic_moment2[i].items():
-#                                avg_dic_moment2_max[i][name] = to_variable(avg_moment2.eval())
-#                                avg_dic_moment2_max[i][name].persistable = True
-                    #        print(param.name)
-    # update the max parameters
-#                    for i in range(n_workers):
-#                        for name, avg_moment2 in avg_dic_moment2[i].items():
-#                            val_max_moment2 = avg_dic_moment2_max[i][name].numpy()
-#                            val_max_moment2 = np.maximum(val_max_moment2,avg_moment2.eval())
-#                            avg_dic_moment2_max[i][name]._ivar.value().get_tensor().set(val_max_moment2,
-#                                       fluid.CPUPlace())
-
     
-    
-                #    name_parameters = list(avg_dict)
-                #    for name in name_parameters:
     # average the parameters of all models
                     for i in range(n_workers):
                         for param in dist_models[i].parameters():
@@ -483,10 +457,9 @@ def train_mnist(args):
                             tensor.set(avg_dict[i][param.name[6:]].eval(),
                                        fluid.CPUPlace())
 #                            param.get_tensor().set(avg_dict[param.name[6:]].eval(),fluid.CPUPlace())
-#                            print(param.name)
 #                            a = scope.find_var('mnist'+str(i)+name)
-#                            print(a)
 #                            scope.find_var('mnist'+str(i)+name).get_tensor().set(avg_dict[name].eval(),fluid.CPUPlace())
+            
             # switch to ith worker
                 mnist = dist_models[id_worker]
             #    print(mnist.parameters())
@@ -499,9 +472,6 @@ def train_mnist(args):
             #    scope = fluid.global_scope();
             #    scope.list_vars()
                 itr = itr + 1
-                
-
-
 
 #                if args.use_data_parallel:
 #                    avg_loss = mnist.scale_loss(avg_loss)
@@ -550,25 +520,6 @@ def train_mnist(args):
 #                    moment2.append(moment2_param)
 #                    moment2.append(avg_dic_moment2_max[param_and_grad[0].name[6:]])
                     moment2.append(moment2_max_param)
-#                print(len(moment2))
-#                print('params backwarded')
-#
-#                for param in mnist.parameters():
-#                    print(param.name)
-#                    param_array = param.numpy()
-#              #      grad = param_and_grad[0].numpy()
-#              #      print(grad)
-#                    moment2_param = np.ones(param_array.shape)
-#                #    moment2_param.astype(np.float32)
-#                    moment2_param_var = to_variable(moment2_param.astype(np.float32))
-#                    moment2_param_var.stop_gradient = True
-#                    moment2.append(moment2_param_var)
-#                var_list = []
-#                for param in mnist.parameters():
-#                    var_list.append(param)
-#                    print(param.name)
-#                print(var_list)
-#                    , parameter_list = mnist.parameters()
                 
                 optimizer.minimize(avg_loss, parameter_list = var_list, moment2 = moment2)
                 mnist.clear_gradients()
@@ -584,34 +535,7 @@ def train_mnist(args):
                     test_loss_sav.append(test_cost)
                     test_acc_sav.append(test_acc)
                     mnist.train()
-                
-  ####### # added another model to train       
-            #    mnist2 = MNIST("mnist2")
-            #    mnist2.clear_gradients()
-#                cost2, acc2 = mnist2(img, label)
-#                loss2 = fluid.layers.cross_entropy(cost2, label)
-#                avg_loss2 = fluid.layers.mean(loss2)
-#                moment2 = []
-#                for param in mnist2.parameters():
-#                   # print(param.name)
-#                    param_array = param.numpy()
-#              #      grad = param_and_grad[0].numpy()
-#              #      print(grad)
-#                    moment2_param = np.ones(param_array.shape)
-#                #    moment2_param.astype(np.float32)
-#                    moment2_param_var = to_variable(moment2_param.astype(np.float32))
-#                    moment2_param_var.stop_gradient = True
-#                    moment2.append(moment2_param_var)
-#                avg_loss2.backward()
-#                params_grads = optimizer2.backward(avg_loss2)
-#                optimizer2.minimize(avg_loss2, parameter_list = mnist2.parameters(), moment2 = moment2)
-#                mnist2.clear_gradients()
-#                # save checkpoint
-#                if batch_id % 100 == 0:
-#                    print("Loss at epoch {} step {}: {:}".format(
-#                        epoch, batch_id, avg_loss2.numpy()))
-########
-  
+
   
             mnist.eval()
             test_cost, test_acc = test_mnist(test_reader_2, mnist, 1000)

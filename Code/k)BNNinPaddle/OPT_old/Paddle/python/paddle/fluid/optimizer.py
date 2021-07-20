@@ -55,7 +55,6 @@ class Optimizer(object):
     User should not use this class directly,
     but need to use one of it's implementation.
     """
-
     @imperative_base.no_grad
     def __init__(self, learning_rate, regularization=None, name=None):
         if framework.in_dygraph_mode():
