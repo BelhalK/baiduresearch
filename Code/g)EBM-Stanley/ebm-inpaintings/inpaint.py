@@ -34,15 +34,21 @@ def main():
 
     with tf.compat.v1.Session(graph=tf.Graph()) as sess:
         # export_dir = "{}/model/anila_celebA".format(args.save)
-        export_dir = "model/anila_celebA"
+        # export_dir = "model/anila_celebA"
+        export_dir = "model/anila_flowers"
         model = tf.compat.v1.saved_model.loader.load(sess, [tf.compat.v1.saved_model.tag_constants.SERVING], export_dir)
         loaded_graph = tf.compat.v1.get_default_graph()
 
-        inputTensorXName = model.signature_def['predict_images'].inputs['x'].name
+        # pdb.set_trace()
+
+        inputTensorXName = model.signature_def['predict_images'].inputs['x'].name # 
+        # inputTensorXName = 'x:0'
         inputTensorX = loaded_graph.get_tensor_by_name(inputTensorXName)
-        inputTensory0Name = model.signature_def['predict_images'].inputs['y0'].name
+        inputTensory0Name = model.signature_def['predict_images'].inputs['y0'].name # 'y:0'
+        # inputTensory0Name = 'y:0'
         inputTensory0 = loaded_graph.get_tensor_by_name(inputTensory0Name)
-        outputTensorName = model.signature_def['predict_images'].outputs['yn'].name
+        outputTensorName = model.signature_def['predict_images'].outputs['yn'].name # 'add_29:0'
+        # outputTensorName = 'add_29:0'
         outputTensor = loaded_graph.get_tensor_by_name(outputTensorName)
 
         I = npr.randint(numTrain, size=10000)
