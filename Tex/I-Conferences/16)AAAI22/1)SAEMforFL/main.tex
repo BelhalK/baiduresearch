@@ -330,41 +330,47 @@ We now use those statistics and compress them using Algorithm~\ref{alg:spars} as
 \end{algorithm}
 
 
-%
-%Final method:
-%
-%\begin{algorithm}[H]
-%\caption{FL-SAEM with Periodic Compressed and Quantized Statistics Averaging} \label{alg:flsaem}
-%\begin{algorithmic}[1]
-%%\small
-%\STATE \textbf{Input}: .
-%\STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
-%\FOR{$r=1$ to $R$}
-%\FOR{parallel for device $i \in D^{r}$}
-%\STATE Set $\hat{\theta}^{(0,k)}_i = \hat{\theta}^{(k)}$.
-%\FOR{$t=1$ to $T$}
-%\STATE Draw M samples $z_{i,m}^{(k)}$ under model $\hat{\theta}^{(t,k)}_i$
-%\STATE Compute the surrogate sufficient statistics $\tilde{S}_{i}^{(t,k+1)}$
-%\ENDFOR
-%\STATE Devices send local statistics $\tilde{S}_{i}^{(t,k+1)}$ to server.
-%\ENDFOR
-%\STATE Server computes \textbf{global model using the aggregated statistics}:
-%$$
-%\hat{\theta}^{(k+1)} = \overline{\theta}( \tilde{S}^{(t,k+1)}) 
-%$$
-%where $\tilde{S}^{(t,k+1)} = (\tilde{S}_i^{(t,k+1)}, i \in D_r)$  and send global model back to the devices. 
-%\ENDFOR
-%\end{algorithmic}
-%\end{algorithm}
+Final method
+
+\begin{algorithm}
+\caption{FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaem2}
+\begin{algorithmic}[1]
+\STATE \textbf{Input}: Compression operator $\mathcal C(\cdot)$, number of rounds $R$, initial parameter $\theta_{0}$.
+	\FOR{$r=1$ to $R$}%
+		\FOR{parallel for device $i \in D^{r}$}
+		\STATE Set $\hat{\theta}^{(0,r)}_i = \hat{\theta}^{(r)}$. \algorithmiccomment{\textcolor{blue}{Initialize each worker with current global model}}
+		\STATE Draw M samples $z_{i,m}^{(r)}$ under model $\hat{\theta}^{(r)}_i$ via Quantized LD: \algorithmiccomment{\textcolor{blue}{Local MCMC step}}
+			\FOR{$k=1$ to $K$}
+			\STATE Compute the quantized gradient of $\nabla \log p(z_i| y_i; \hat{\theta}^{(k)}_i)$: 
+			$$g_i{(k,m)} = \mathsf{C}_{j}^{(\ell)}\left(\nabla_j f_{\theta_t}(z_i^{(k-1,m)}), \xi^{(k)}_{j}\right)$$
+			\qquad\qquad\quad  where $\xi^{(k)}_{j}$ is a realization of a uniform random variable.
+			\STATE Sample the latent data using the following chain:
+			\begin{equation}\notag
+			z_i^{(k,m)} = z_i^{(k-1,m)} + \frac{\gamma_k}{2}  g_i{(k,m)} + \sqrt{\gamma_k}  \mathsf{B}_k ,
+			\end{equation}
+			\qquad\qquad\quad  where $\mathsf{B}_t$ denotes the Brownian motion and $m \in [M]$ denotes the MC sample.
+			\ENDFOR
+		\STATE Assign $\{ z_{i}^{(r,m} \}_{m=1}^M \leftarrow \{ z_i^{(K,m)} \}_{m=1}^M$.
+		\STATE Compute $\tilde{S}_{i}^{(r+1)}$ and its \textbf{Top-$k$} variant $\ddot{S}_{i}^{(k+1)} = \mathcal C \left( \tilde{S}_{i}^{(k+1)}\right)$. \label{line:compute} \algorithmiccomment{\textcolor{blue}{Compressed Local Statistics}}
+		\STATE Workers send local statistics $\tilde{S}_{i}^{(k+1)}$ to server. \algorithmiccomment{\textcolor{blue}{Single round of communication}}
+          \ENDFOR
+          \STATE Server computes \textbf{global model}: \algorithmiccomment{\textcolor{blue}{(Global) M-Step using Complete Statistics}}
+$$
+\hat{\theta}^{(r+1)} = \overline{\theta}( \ddot{S}^{(r+1)}) 
+$$
+\qquad where $\ddot{S}^{(r+1)} = (\ddot{S}_i^{(r+1)}, i \in D_r)$  and send global model back to the devices. 
+
+    \ENDFOR
+  \end{algorithmic}
+\end{algorithm}
 
 
-
+\clearpage
+\section{Theoretical Findings}
 
 
 
 \clearpage
-
-
 \section{Numerical Experiments}
 
 
