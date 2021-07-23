@@ -263,9 +263,9 @@ print(kiter)
     if(opt$stepsize[kiter]>0) {
   ############# Stochastic Approximation
       
-      if(saemix.options$algo=="vr"){
+      if(saemix.options$algo=="dist"){
 
-        xstoch<-mstep.vr(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, 
+        xstoch<-mstep.dist(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, 
           varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,
           phi.e.0, suffStat.vr)
         phi.e.0 <- xstoch$phi.e.0

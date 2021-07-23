@@ -26,9 +26,7 @@ source('R/zzz.R')
 
 #new
 source('R/main_estep.R')
-source('R/main_estep_fi.R')
-source('R/main_mstep_vr.R') 
-source('R/main_mstep_fi.R') 
+source('R/main_mstep_dist.R') 
 source('R/mixtureFunctions.R')
 source('R/plots.R')
 
@@ -86,48 +84,30 @@ fit.50<-saemix(saemix.model,saemix.data,options.50)
 fit.50 <- data.frame(fit.50$param)
 fit.50 <- cbind(iterations, fit.50[-1,])
 
-### Variance Reduced ###
-options.vr.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
-                          nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),nbiter.sa=0,
-                          nbiter.burn =0, nb.replacement=50,sampling='randomiter',gamma=gamma,algo="vr", rho =0.01)
-fit.vr.50<-saemix(saemix.model,saemix.data,options.vr.50)
-fit.vr.50 <- data.frame(fit.vr.50$param)
-fit.vr.50 <- cbind(iterations, fit.vr.50[-1,])
 
-# ### Fast Iterative ###
-options.fi.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
+### dist-SAEM ###
+### Plain distributed SAEM with avaeraging of the local models
+options.dist.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
                           nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),nbiter.sa=0,
-                          nbiter.burn =0, nb.replacement=50,sampling='seq',gamma=gamma,algo="fi", rho =0.1)
-fit.fi.50<-saemix(saemix.model,saemix.data,options.fi.50)
-# fit.fi.50 <- data.frame(fit.fi.50$param)
-# fit.fi.50 <- cbind(iterations, fit.fi.50[-1,])
+                          nbiter.burn =0, nb.replacement=50,sampling='randomiter',gamma=gamma,algo="dist", rho =0.01)
+fit.dist.50<-saemix(saemix.model,saemix.data,options.dist.50)
+fit.dist.50 <- data.frame(fit.dist.50$param)
+fit.dist.50 <- cbind(iterations, fit.dist.50[-1,])
+
+
+# ### FL-SAEM ###
+# ### Quantized and Compressed FL-SAEM with periodic averaging of the local statistics
+# options.fl.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, nbiter.mcmc = c(2,2,2,0), 
+#                           nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),nbiter.sa=0,
+#                           nbiter.burn =0, nb.replacement=50,sampling='randomiter',gamma=gamma,algo="fl", rho =0.01)
+# fit.fl.50<-saemix(saemix.model,saemix.data,options.fl.50)
+# fit.fl.50 <- data.frame(fit.fl.50$param)
+# fit.fl.50 <- cbind(iterations, fit.fl.50[-1,])
+
 
 fit.ref.scaled <- fit.ref
-# fit.25.scaled <- fit.25
-# fit.75.scaled <- fit.75
-# fit.25.scaled$iterations = fit.25.scaled$iterations*0.25
-# fit.75.scaled$iterations = fit.75.scaled$iterations*0.75
 fit.50.scaled <- fit.50
 fit.50.scaled$iterations = fit.50.scaled$iterations*0.5
-fit.50.vr.scaled <- fit.vr.50
-fit.50.vr.scaled$iterations = fit.50.vr.scaled$iterations*0.5
-graphConvMC_5(fit.ref.scaled,fit.50.scaled,fit.50.scaled,fit.50.scaled,fit.50.vr.scaled)
+graphConvMC_5(fit.ref.scaled,fit.50.scaled,fit.50.scaled,fit.50.scaled,fit.50.scaled)
 #black, blue, red, yellow, pink
 
-
-
-
-
-# options.75<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, 
-#   nbiter.mcmc = c(2,2,2,0), nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),
-#   nbiter.sa=0,nbiter.burn =0, nb.replacement=75,sampling='randomiter',gamma=gamma,algo="minibatch")
-# fit.75<-saemix(saemix.model,saemix.data,options.75)
-# fit.75 <- data.frame(fit.75$param)
-# fit.75 <- cbind(iterations, fit.75[-1,])
-
-# options.25<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains = nchains, 
-#   nbiter.mcmc = c(2,2,2,0), nbiter.saemix = c(K1,K2),displayProgress=FALSE, map.range=c(0),
-#   nbiter.sa=0,nbiter.burn =0, nb.replacement=25,sampling='seq',gamma=gamma,algo="minibatch")
-# fit.25<-saemix(saemix.model,saemix.data,options.25)
-# fit.25 <- data.frame(fit.25$param)
-# fit.25 <- cbind(iterations, fit.25[-1,])

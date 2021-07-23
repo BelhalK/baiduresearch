@@ -1,5 +1,5 @@
 ################## Stochastic approximation - compute sufficient statistics (M-step) #####################
-mstep.vr<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,phi.e.0,suffStat.vr) {
+mstep.dist<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varList, phi, betas, suffStat,nb_replacement,indchosen,saemix.options,phi.e.0,suffStat.vr) {
 	# M-step - stochastic approximation
 	# Input: kiter, Uargs, structural.model, DYF, phiM (unchanged)
 	# Output: varList, phi, betas, suffStat (changed)
@@ -21,16 +21,31 @@ mstep.vr<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varLis
 		fpred<-log(cutoff(fpred))
 	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
 	for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
+
+
 	
-	
-	### SAEM-vr#####
-	if(saemix.options$algo=="vr"){
+	### dist-SAEM #####
+	if(saemix.options$algo=="dist"){
 		block <- setdiff(1:Dargs$N,indchosen)
-		if(kiter%%round(Dargs$N/length(indchosen))==0){
-			phi.e.0 <- phi #update the temp phi at each epoch
-		} 
+		# create phi for each worker (k workers)
+		phiG <- list(phi,phi)
+		phi.e.0.G <- list(phi.e.0,phi.e.0)
+
+		#select the vector of sufficient statistics per worker
+		k<-Dargs$n/n.workers
+
+		for (wi in 0:(n.workers-1)){
+			phiG[[wi]] = phi[wi*k+1:(wi+1)*k]
+			phi.e.0.G[[wi]] <- phiG[[wi]]
+		}
+
 	}
 
+	length(block)
+	length(indchosen)
+	dim(phi)
+
+	browser()
 	stat1.e.0<-apply(phi.e.0[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
 	stat2.e.0<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
 	stat3.e.0<-apply(phi.e.0**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
