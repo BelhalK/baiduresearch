@@ -330,31 +330,30 @@ We now use those statistics and compress them using Algorithm~\ref{alg:spars} as
 \end{algorithm}
 
 
-Final method
+Final method:
 
 \begin{algorithm}
-\caption{FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaem2}
+\caption{Quantized and Compressed FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaem2}
 \begin{algorithmic}[1]
 \STATE \textbf{Input}: Compression operator $\mathcal C(\cdot)$, number of rounds $R$, initial parameter $\theta_{0}$.
 	\FOR{$r=1$ to $R$}%
 		\FOR{parallel for device $i \in D^{r}$}
 		\STATE Set $\hat{\theta}^{(0,r)}_i = \hat{\theta}^{(r)}$. \algorithmiccomment{\textcolor{blue}{Initialize each worker with current global model}}
-		\STATE Draw M samples $z_{i,m}^{(r)}$ under model $\hat{\theta}^{(r)}_i$ via Quantized LD: \algorithmiccomment{\textcolor{blue}{Local MCMC step}}
+		\STATE Draw M samples $z_{i,m}^{(r)}$ under model $\hat{\theta}^{(r)}_i$ via Quantized LD: \algorithmiccomment{\textcolor{blue}{Local Quantized MCMC step}}
 			\FOR{$k=1$ to $K$}
 			\STATE Compute the quantized gradient of $\nabla \log p(z_i| y_i; \hat{\theta}^{(k)}_i)$: 
-			$$g_i{(k,m)} = \mathsf{C}_{j}^{(\ell)}\left(\nabla_j f_{\theta_t}(z_i^{(k-1,m)}), \xi^{(k)}_{j}\right)$$
-			\qquad\qquad\quad  where $\xi^{(k)}_{j}$ is a realization of a uniform random variable.
+			$$g_i{(k,m)} = \mathsf{C}_{j}^{(\ell)}\left(\nabla_j f_{\theta_t}(z_i^{(k-1,m)}), \xi^{(k)}_{j}\right) \quad \textrm{where} \quad \xi^{(k)}_{j} \sim \mathcal{U}_{[a,b]} $$
 			\STATE Sample the latent data using the following chain:
 			\begin{equation}\notag
 			z_i^{(k,m)} = z_i^{(k-1,m)} + \frac{\gamma_k}{2}  g_i{(k,m)} + \sqrt{\gamma_k}  \mathsf{B}_k ,
 			\end{equation}
 			\qquad\qquad\quad  where $\mathsf{B}_t$ denotes the Brownian motion and $m \in [M]$ denotes the MC sample.
 			\ENDFOR
-		\STATE Assign $\{ z_{i}^{(r,m} \}_{m=1}^M \leftarrow \{ z_i^{(K,m)} \}_{m=1}^M$.
-		\STATE Compute $\tilde{S}_{i}^{(r+1)}$ and its \textbf{Top-$k$} variant $\ddot{S}_{i}^{(k+1)} = \mathcal C \left( \tilde{S}_{i}^{(k+1)}\right)$. \label{line:compute} \algorithmiccomment{\textcolor{blue}{Compressed Local Statistics}}
-		\STATE Workers send local statistics $\tilde{S}_{i}^{(k+1)}$ to server. \algorithmiccomment{\textcolor{blue}{Single round of communication}}
+		\STATE Assign $\{ z_{i}^{(r,m)} \}_{m=1}^M \leftarrow \{ z_i^{(K,m)} \}_{m=1}^M$.
+		\STATE Compute $\tilde{S}_{i}^{(r+1)}$ and its \textbf{Top-$k$} variant $\ddot{S}_{i}^{(r+1)} = \mathcal C \left( \tilde{S}_{i}^{(r+1)}\right)$. \label{line:compute} \algorithmiccomment{\textcolor{blue}{Compressed local statistics}}
+		\STATE Worker send local statistics $\tilde{S}_{i}^{(r+1)}$ to server. \algorithmiccomment{\textcolor{blue}{Single round of communication}}
           \ENDFOR
-          \STATE Server computes \textbf{global model}: \algorithmiccomment{\textcolor{blue}{(Global) M-Step using Complete Statistics}}
+          \STATE Server computes \textbf{global model}: \algorithmiccomment{\textcolor{blue}{(Global) M-Step using aggregated statistics}}
 $$
 \hat{\theta}^{(r+1)} = \overline{\theta}( \ddot{S}^{(r+1)}) 
 $$
@@ -364,6 +363,37 @@ $$
   \end{algorithmic}
 \end{algorithm}
 
+
+
+
+
+
+
+We can also consider the plain distributed version of the sEM which does not tackle any privacy or communication bottlenecks.
+It goes as follows:
+
+\begin{algorithm}
+\caption{Distributed SAEM with Periodic Locals Models Averaging} \label{alg:distsaem}
+\begin{algorithmic}[1]
+\STATE \textbf{Input}: Compression operator $\mathcal C(\cdot)$, number of rounds $R$, initial parameter $\theta_{0}$.
+	\FOR{$r=1$ to $R$}%
+		\FOR{parallel for device $i \in D^{r}$}
+		\STATE Set $\hat{\theta}^{(r)}_i = \hat{\theta}^{(r)}$. \algorithmiccomment{\textcolor{blue}{Initialize each worker with current global model}}
+		\STATE Draw M samples $z_{i,m}^{(r+1)}$ under model $\hat{\theta}^{(r)}_i$ via MCMC: \algorithmiccomment{\textcolor{blue}{Local MCMC step}}
+		\STATE Compute the local statistics $\tilde{S}_{i}^{(r+1)} = S(z_{i,m}^{(r+1)})$. \label{line:compute} \algorithmiccomment{\textcolor{blue}{Local statistics}}
+		\STATE Worker computes \textbf{local model}: \algorithmiccomment{\textcolor{blue}{(Local) M-Step using local statistics}}
+		$$
+		\hat{\theta}^{(r+1)}_i = \overline{\theta}( \tilde{S}_{i}^{(r+1)}) 
+		$$
+		\STATE Worker sends local model $\hat{\theta}^{(r+1)}_i$ to server.
+          \ENDFOR
+          \STATE Server computes \textbf{global model} by periodic averaging \algorithmiccomment{\textcolor{blue}{Local model averaging}}
+          $$
+	\hat{\theta}^{(r+1)} \eqdef \frac{1}{n} \sum_{i=1}^n	\hat{\theta}^{(r+1)}_i
+	$$
+    \ENDFOR
+  \end{algorithmic}
+\end{algorithm}
 
 \clearpage
 \section{Theoretical Findings}
