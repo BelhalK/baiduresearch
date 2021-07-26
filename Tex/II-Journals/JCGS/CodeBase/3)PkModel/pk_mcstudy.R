@@ -1,4 +1,3 @@
-load("Rdata/pk100tlag_mcstudy.RData")
 library("mlxR")
 library("rlist")
 library("psych")
@@ -28,8 +27,6 @@ iter.mcmc = c(2,2,2,0)
 iterations = 0:(K1+K2-1)
 end = K1+K2
 nchains = 1
- 
-
 
 
 
@@ -133,51 +130,10 @@ error.vr.scaled$iterations = error.vr.scaled$iterations*0.5
 error.fi.scaled <- error.fi.df
 error.fi.scaled$iterations = error.fi.scaled$iterations*0.5
 
-max.iter = 100
-graphConvMC_5(error.batch.scaled[1:max.iter,c(1,2)],
-              error.inc.scaled[1:max.iter,c(1,2)],
-              error.vr.scaled[1:max.iter,c(1,2)],
-              error.fi.scaled[1:max.iter,c(1,2)],
-              error.fi.scaled[1:max.iter,c(1,2)])
-
-
-error.batch.scaled$algo <- 'Batch'
-error.inc.scaled$algo <- 'Inc.'
-error.vr.scaled$algo <- 'VR'
-error.fi.scaled$algo <- 'Fast Inc.'
-
-
-max.iter.final = 60
-variance <- rbind(error.batch.scaled[1:max.iter.final,],
-              error.inc.scaled[1:max.iter.final,],
-              error.vr.scaled[1:max.iter.final,],
-              error.fi.scaled[1:max.iter.final,])
-
-write.csv(variance, file = "notebooks/pk500_mcstudy.csv")
-
-
-
 
 error.batch.df <- data.frame(error.batch.rep)
 error.inc.df <- data.frame(error.inc.rep)
 error.vr.df <- data.frame(error.vr.rep)
 error.fi.df <- data.frame(error.fi.rep)
 
-head(error.inc.df)
 test.batch <- error.batch.df[rep(seq_len(nrow(error.batch.df)), each = 2), ]
-
-
-test.batch$algo <- 'Batch'
-error.inc.df$algo <- 'Inc.'
-error.vr.df$algo <- 'VR'
-error.fi.df$algo <- 'Fast Inc.'
-
-
-max.iter.final = 30
-variance <- rbind(test.batch[1:max.iter.final,],
-              error.inc.df[1:max.iter.final,],
-              error.vr.df[1:max.iter.final,],
-              error.fi.df[1:max.iter.final,])
-
-write.csv(variance, file = "notebooks/pk500_mcstudy2.csv")
-
