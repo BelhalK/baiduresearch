@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# python3 inpaint.py --allTest 0 --allImagesPath imgs/flowers/ --testImagesPath imgs/flowers/
+# python3 inpaint.py --allTest 1
 
 import tensorflow as tf
 import numpy as np
@@ -34,8 +36,8 @@ def main():
 
     with tf.compat.v1.Session(graph=tf.Graph()) as sess:
         # export_dir = "{}/model/anila_celebA".format(args.save)
-        # export_dir = "model/anila_celebA"
-        export_dir = "model/anila_flowers"
+        export_dir = "model/anila_celebA"
+        # export_dir = "model/anila_flowers"
         model = tf.compat.v1.saved_model.loader.load(sess, [tf.compat.v1.saved_model.tag_constants.SERVING], export_dir)
         loaded_graph = tf.compat.v1.get_default_graph()
 
@@ -66,7 +68,7 @@ def main():
         cw = 10
         if numTestImgs < 10:
             cw = numTestImgs % 10
-        ut.saveImgs(valXBatch, resImg, valYBatch, "{}/results/anila".format(args.save), colWidth=cw)
+        ut.saveImgs(valXBatch, resImg, valYBatch, "{}/results/flowers".format(args.save), colWidth=cw)
 
 
 if __name__=='__main__':
