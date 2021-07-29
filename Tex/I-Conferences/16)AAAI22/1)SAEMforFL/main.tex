@@ -3,7 +3,7 @@
 
 % if you need to pass options to natbib, use, e.g.:
 %\PassOptionsToPackage{numbers}{natbib}
-\usepackage{natbib,fullpage}
+\usepackage{natbib}
 \usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem}
 \usepackage{wrapfig,lipsum}
 \usepackage[textwidth=1cm,textsize=footnotesize]{todonotes}
@@ -243,7 +243,7 @@ In that algorithm, one does not compute a periodic averaging of the local models
 Rather, workers compute local statistics and send them to the central server for a periodic averaging of those vectors and the latter computes one M-step to update the global model.
 
 \begin{algorithm}[H]
-\caption{FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaem2}
+\caption{FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaemreg}
 \begin{algorithmic}[1]
 %\small
 \STATE \textbf{Input}: \textcolor{red}{TO COMPLETE}
@@ -251,8 +251,8 @@ Rather, workers compute local statistics and send them to the central server for
 \FOR{$r=1$ to $R$}
 \FOR{parallel for device $i \in D^{r}$}
 \STATE Set $\hat{\theta}^{(0,r)}_i = \hat{\theta}^{(r)}$.
-\STATE Draw M samples $z_{i,m}^{(r)}$ under model $\hat{\theta}^{(r)}_i$ \label{line:sampling}
-\STATE Compute the surrogate sufficient statistics $\tilde{S}_{i}^{(r+1)}$ \label{line:compute}
+\STATE Draw M samples $z_{i,m}^{(r)}$ under model $\hat{\theta}^{(r)}_i$ \label{line:samplingreg}
+\STATE Compute the surrogate sufficient statistics $\tilde{S}_{i}^{(r+1)}$ \label{line:computereg}
 \STATE Workers send local statistics $\tilde{S}_{i}^{(k+1)}$ to server.
 \ENDFOR
 \STATE Server computes \textbf{global model using the aggregated statistics}:
@@ -265,8 +265,8 @@ where $\tilde{S}^{(r+1)} = (\tilde{S}_i^{(r+1)}, i \in D_r)$  and send global mo
 \end{algorithm}
 
 
-\subsection{Challenges with Algorithm~\ref{alg:flsaem2}}
-While Algorithm~\ref{alg:flsaem2} is a distributed variant of the SAEM, it is neither (a) \emph private nor (b) \emph communication-efficient.
+\subsection{Challenges with Algorithm~\ref{alg:flsaemreg}}
+While Algorithm~\ref{alg:flsaemreg} is a distributed variant of the SAEM, it is neither (a) \emph private nor (b) \emph communication-efficient.
 
 \textbf{Privacy:} Indeed, we remark that broadcasting the vector of statistics are a potential breach to the data observations as their expression is related $y$ and the latent data $z$. With a simple knowledge of the model used, the data could be retrieved if one extracts those statistics.
 
@@ -274,8 +274,8 @@ While Algorithm~\ref{alg:flsaem2} is a distributed variant of the SAEM, it is ne
 
 \subsection{Algorithmic solutions}
 
-\textbf{Line~\ref{line:sampling} -- Quantization:} 
-The first step is to quantize the gradient in the Stochastic Langevin Dynamics step used in our sampling scheme Line~\ref{line:sampling} of Algorithm~\ref{alg:flsaem2}.
+\textbf{Line~\ref{line:samplingreg} -- Quantization:} 
+The first step is to quantize the gradient in the Stochastic Langevin Dynamics step used in our sampling scheme Line~\ref{line:samplingreg} of Algorithm~\ref{alg:flsaemreg}.
 Inspired by \citep{alistarh2017qsgd}, we use an extension of the QSGD algorithm for our latent samples.
 Define the quantization operator as follows:
 
@@ -284,7 +284,7 @@ Define the quantization operator as follows:
 \eeq
 where $\ell$ is the level of quantization and $j \in [d]$ denotes the dimension of the gradient.
 
-Hence, for the sampling step, Line~\ref{line:sampling}, we use the modified SGLD below, to be compliant with the privacy of our method.
+Hence, for the sampling step, Line~\ref{line:samplingreg}, we use the modified SGLD below, to be compliant with the privacy of our method.
 \begin{algorithm}[H]
 \caption{Langevin Dynamics with Quantization for worker $i$} \label{alg:quant}
 \begin{algorithmic}[1]
@@ -311,9 +311,9 @@ where $\mathsf{B}_t$ denotes the Brownian motion and $m \in [M]$ denotes the MC 
 
 
 
-\noindent \textbf{Line~\ref{line:compute} -- Compression MCMC output:}
+\noindent \textbf{Line~\ref{line:computereg} -- Compression MCMC output:}
 We use the notorious \textbf{Top-$k$} operator that we define as $\mathcal C(x)_i=x_i$, if $i\in \mathcal S$; $\mathcal C(x)_i=0$ otherwise and where $\mathcal S$ is defined as the size-$k$ set of $i\in[p]$.
-Recall that after Line~\ref{line:sampling} we compute the local statistics $\tilde{S}_{i}^{(k+1)}$ using the output latent variables from Algorithm~\ref{alg:quant}.
+Recall that after Line~\ref{line:samplingreg} we compute the local statistics $\tilde{S}_{i}^{(k+1)}$ using the output latent variables from Algorithm~\ref{alg:quant}.
 We now use those statistics and compress them using Algorithm~\ref{alg:spars} as follows:
 
 \begin{algorithm}[H]
@@ -381,7 +381,7 @@ It goes as follows:
 		\FOR{parallel for device $i \in D^{r}$}
 		\STATE Set $\hat{\theta}^{(r)}_i = \hat{\theta}^{(r)}$. \algorithmiccomment{\textcolor{blue}{Initialize each worker with current global model}}
 		\STATE Draw M samples $z_{i,m}^{(r+1)}$ under model $\hat{\theta}^{(r)}_i$ via MCMC: \algorithmiccomment{\textcolor{blue}{Local MCMC step}}
-		\STATE Compute the local statistics $\tilde{S}_{i}^{(r+1)} = S(z_{i,m}^{(r+1)})$. \label{line:compute} \algorithmiccomment{\textcolor{blue}{Local statistics}}
+		\STATE Compute the local statistics $\tilde{S}_{i}^{(r+1)} = S(z_{i,m}^{(r+1)})$. \label{line:computedist} \algorithmiccomment{\textcolor{blue}{Local statistics}}
 		\STATE Worker computes \textbf{local model}: \algorithmiccomment{\textcolor{blue}{(Local) M-Step using local statistics}}
 		$$
 		\hat{\theta}^{(r+1)}_i = \overline{\theta}( \tilde{S}_{i}^{(r+1)}) 
@@ -412,7 +412,16 @@ It goes as follows:
 \textcolor{red}{Same for Private settings with Sketched SGD or another good baseline}
 
 
+\paragraph{Fitting a linear mixed model on Oxford boys dataset \citep{pinheiro2006mixed}}
+
+\paragraph{Fitting a nonlinear mixed model on Warfarin dataset \citep{international2009estimation}}
+
+
 \subsection{Probabilistic Latent Dirichlet Allocation}
+
+
+
+\subsection{Bi-factor models under the Federated Learning settings}
 
 \newpage
 

@@ -46,6 +46,8 @@ mstep.dist<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varL
 	dim(phi)
 
 	browser()
+
+	
 	stat1.e.0<-apply(phi.e.0[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
 	stat2.e.0<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
 	stat3.e.0<-apply(phi.e.0**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
@@ -101,7 +103,6 @@ mstep.dist<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varL
 	stat2.e.0 = stat2.e.0 + stat2.indiv - stat2.indiv.e.0
 	stat3.e.0[indchosen,] = stat3.e.0[indchosen,] + stat3.indiv - stat3.indiv.e.0
 	statr.e.0 = statr.e.0 + statr.indiv - statr.indiv.e.0
-
 
 	#Variance Reduction Update
 	rho = saemix.options$rho
