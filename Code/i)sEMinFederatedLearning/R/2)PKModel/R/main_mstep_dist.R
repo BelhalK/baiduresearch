@@ -22,8 +22,7 @@ mstep.dist<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varL
 	ff<-matrix(fpred,nrow=Dargs$nobs,ncol=Uargs$nchains)
 	for(k in 1:Uargs$nchains) phi[,,k]<-phiM[((k-1)*Dargs$N+1):(k*Dargs$N),]
 
-
-	
+	n.workers = 4
 	### dist-SAEM #####
 	if(saemix.options$algo=="dist"){
 		block <- setdiff(1:Dargs$N,indchosen)
@@ -41,13 +40,14 @@ mstep.dist<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varL
 
 	}
 
+	browser()
+	
 	length(block)
 	length(indchosen)
 	dim(phi)
 
-	browser()
 
-	
+
 	stat1.e.0<-apply(phi.e.0[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
 	stat2.e.0<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
 	stat3.e.0<-apply(phi.e.0**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension

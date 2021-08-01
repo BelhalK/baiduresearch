@@ -64,7 +64,6 @@ batchsize25 = 25
 batchsize50 = 50 
 
 seed0=3456
-
 nchains = 1
 gamma = 1
 
@@ -93,6 +92,7 @@ options.dist.50<-list(seed=seed0,map=F,fim=F,ll.is=F,save.graphs=FALSE,nb.chains
 fit.dist.50<-saemix(saemix.model,saemix.data,options.dist.50)
 fit.dist.50 <- data.frame(fit.dist.50$param)
 fit.dist.50 <- cbind(iterations, fit.dist.50[-1,])
+
 
 
 # ### FL-SAEM ###
