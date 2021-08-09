@@ -3,6 +3,9 @@
 
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
 \usepackage{hyperref}       % hyperlinks
 \usepackage{url}            % simple URL typesetting
 \usepackage{booktabs}       % professional-quality tables
@@ -20,7 +23,7 @@
 
 
 
-\textbf{Reviewer J9Ez (7;4):}
+\section{Reviewer J9Ez (7;4):}
 
 Weaknesses:
 
@@ -47,9 +50,28 @@ In general, my suggestion is to address in the experimental section to what exte
 \textcolor{purple}{Our reply:}
 Thank you for your detailed review and suggestions.
 
+In order to avoid the confusion about the convergence of MISSO in the Resnet-18 example, we will extend the number of training epochs to 200.
+200 epochs will stabilize the ELBO for MISSO, reaching similar values as MC-Adam.
+While both methods reach the same local minima, we acknowledge that in this particular example, MC-Adam does reach an $\epsilon-$stationary points in fewer iterations than MISSO, probably suffering from a high variance, hence the twists and turns in the objective loss function.
+At this stage, we are not sure if it is possible to generalize a class of problems where baselines can beat MISSO in terms of convergence speed.
+
+We thank you for your references and will make sure to include more baselines relevant to training BNNs.
+
+Lastly, we stress  that while the MISSO scheme does not beat  the SOTA (such as MC-ADAM) on every example, this paper proposes a simple yet \emph{general} incremental optimization framework which encompasses several existing algorithms for large-scale data. 
+We have tackled the challenging analysis for an algorithm with double stochasticity (index and latent variable sampling), which is not a minor contribution in our opinion.
 
 
-\textbf{Reviewer N978 (5;2):}
+\textbf{Verification of Assumptions:} 
+Assumption H2 in particular can be easily checked considering that the surrogate function can include the nonsmooth component of the objective function and hence the gap, noted $e$, verifies a smoothness condition (which trivially implies H2).
+
+
+Our analysis also requires the parameter to be in a compact set.
+For the two estimation problems considered, in practice this can be enforced by restricting the parameters in a ball. 
+In our simulation, we did not implement the algorithms that stick closely to the compactness requirement for illustrative purposes. However, we observe empirically that the parameters are always bounded.
+The update rules can be easily modified to respect the requirement, e.g., for logistic regression, we can use $\|\beta\| \leq R_1, \Omega \succeq \delta {\rm I}, {\rm Tr}(\Omega) \leq R_2$ and adding log-barrier functions as regularizer; for VI, we recall the surrogate functions are quadratic (Eq.(11)) and indeed a simple projection step suffices to ensure boundedness of the iterates.
+
+
+\section{Reviewer N978 (5;2):}
 
 My rating is based on several concerns listed below.
 
@@ -62,14 +84,16 @@ What would go wrong if we abstractly merge the n distributions into one distribu
 \textcolor{purple}{Our reply:}
 
 Thank you for your review.
-We would like to clarify that our method applies when those surrogate functions are not directly computable but rather require an approximation (as explaine example 1 and 2).
-The subproblem that you rightly mentioned is always easily solvable at each MISSO iteration specifically because the surrogate functions are user designed and hence are tractable and convex. Just like we explain in example 2 (VI), the surrogate functions are quadratic and the subproblem you are mentioning is solved using a single gradient step. As for general Majorization-Minimization methods, the surrogate minimization does not add substantial cost to the overall, and complex, optimization problem.
+We would like to clarify that our method applies when those surrogate functions are not directly computable but rather require an approximation (as explained example 1 and 2).
+The subproblem that you rightly mentioned is always easily solvable at each MISSO iteration specifically because the surrogate functions are user-designed and hence are convex and tractable. 
+Just like we explain in example 2 (VI), the surrogate functions are quadratic and the subproblem you are mentioning is solved using a single gradient step. 
+As for general Majorization-Minimization methods, the surrogate minimization does not add substantial cost to the overall, and complex, optimization problem.
 
 
 
 
 
-\textbf{Reviewer 2PVe (4;4):}
+\section{Reviewer 2PVe (4;4):}
 
 Cons and my concerns:
 
@@ -96,10 +120,38 @@ Overall, the presentation of this paper should be improved.
 
 \textcolor{purple}{Our reply:}
 
+We thank you for your detailed analysis of our paper.
+
+The smoothness of the gap function noted $e$ (or assumption H2) is easily checked when considering that the nonsmooth component of the objective function (1) can be included in the surrogate function. That way, both nonsmooth parts cancel out when computing the function $e$.
+
+For clarity, the general objective function we are considering can be written as $\cal L(\theta) = f(\theta) + r(\theta)$ where $f$ is possibly nonconvex and $r$ is possibly nonsmooth (acting most of the time as a regularizer). In that case, the surrogate function $\hat L(\theta, \vartheta)$ can include $r(\vartheta)$ so that the gap function noted $\widehat{e}(\theta ; \{ \theta_i \}_{i=1}^n ) = \frac{1}{n} \sum_{i=1}^n \hat L_i(\theta;\theta_i) - {\cal L}( \theta)$ cancels out this undesirable quantity.
+Assumption H2 is hence derived from the smoothness of the gap between two smooth functions as follows:
+we know that under assumption H1, the gap is always positive or null, i.e. $0 \leq \hat{e}( \vartheta ; \{ \theta_i \}_{i=1}^n)$ for any $\vartheta \in \Theta$. In particular for $\vartheta = \theta - (1/L)*\nabla \hat{e}(\theta; \{ \theta_i \}_{i=1}^n)$ we have:
+$$
+0 \leq \hat{e}\big( \theta - (1/L)*\nabla \hat{e}(\theta; \{ \theta_i \}_{i=1}^n) ; \{ \theta_i \}_{i=1}^n\big)  \, .
+$$
+
+Hence, due to the smoothness of the function $\hat{e}$, we have
+\begin{equation}
+\begin{split}
+    0 \leq \hat{e}( \theta - (1/L)*\nabla \hat{e}(\theta) ; \{ \theta_i \}_{i=1}^n) \leq \hat{e} ( \theta ; \{ \theta_i \}_{i=1}^n)) - (1/2L) || \nabla \hat{e}( \theta ; \{ \theta_i \}_{i=1}^n) ||^2
+\end{split}
+\end{equation}
+Finally rearranging the terms yields:
+
+$$
+|| \nabla \hat{e}( \theta; \{ \theta_i \}_{i=1}^n)  ||^2 \leq 2L *  \hat{e} ( \theta; \{ \theta_i \}_{i=1}^n) 
+$$
+proving assumption H2 for all $\theta \in \Theta$.
 
 
 
-\textbf{Reviewer 1meD (6;4):}
+
+
+The quantity $M_{(k)}$ is defined in Algorithm 2 Line 1 and Line 6 and corresponds to the number of Monte Carlo samples used in the approximation of the surrogate function.
+Thank you for the typo Eq.(15) and (16): $(k)$ index should be $(K_{\sf max})$.
+
+\section{Reviewer 1meD (6;4):}
 
 Clarity: The paper is well-motivated and clearly written. For example, I can follow the intro very easily and understand the main idea of the paper and the distinction from prior works. The main theorems and experiments are also clear to me.
 
@@ -112,6 +164,18 @@ Significance: Researchers working on stochastic optimization and (non-)convex an
 Other Comments: Does it make sense to specialize Theorems 1-2 to Examples 1-2, or to logistic regression or fitting Bayesian networks? Please make a clarification here. It is of interest to see how large L is in those applications, as Theorem 1 requires $(nL^3)/\epsilon$ samples.
 
 \textcolor{purple}{Our reply:}
+We would like to thank the reviewer for the suggestions.
+We would like to recall the nature of our contribution to address the concerns on the originality and relevance of our work raised by the reviewer.
+
+We want to stress on the generality of our incremental optimization framework, which tackles a \emph{constrained}, \emph{non-convex} and \emph{non-smooth} optimization problem. 
+The main contribution of this paper is to propose and analyze a \textbf{unifying framework} for a large class of optimization algorithms which includes many well-known but not so well-studied algorithms.
+The major idea here is to relax the class of surrogate functions used in MISO [Mairal, 2015] and to allow for intractable surrogate that can only be evaluated by Monte-Carlo approximations.
+We provide a general algorithm and global convergence rate analysis under mild assumptions on the model and show that two examples, MLE for latent data models and Variational Inference, are its special instances.
+Working at the crossroads of \emph{Optimization} and \emph{Sampling} constitutes what we believe to be the novelty and the technicality of our theoretical results, and is not a straightforward work.
+
+As example 1 and 2 are indeed popular applications and algorithms, we actually show how our unifying framework can be applied. Making it a great tool and scheme to study popular and widely used methods. We also stress on the high applicability and usage of those models by ML practicioners.
+
+% Regarding the quantification of the smoothness constant
 
 
 \end{document}
