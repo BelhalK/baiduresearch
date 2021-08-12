@@ -142,12 +142,12 @@ We consider the distributed minimization of the following negated log incomplete
  \min_{ \theta \in \Theta }~ \overline{L} ( \theta ) \eqdef  L ( \theta ) + r (\theta) \quad \text{with}~~L(\theta) = \frac{1}{n} \sum_{i=1}^n L_i( \theta) \eqdef  \frac{1}{n} \sum_{i=1}^n \big\{ - \log g( y_i ; \theta ) \big\}\eqs,
 \end{split} 
 \end{align}
-where $n$ denotes the number of workers, $\{y_i\}_{i=1}^n$ are observations, $\Param \subset \rset^d$ is the parameters set and $\Pen : \Param \rightarrow \rset$ is a smooth regularizer.
+where $n$ denotes the number of workers, $\{y_i\}_{i=1}^n$ are observations, $\theta \subset \rset^d$ is the parameters set and $\Pen : \theta \rightarrow \rset$ is a smooth regularizer.
 
 The objective  $L( \theta )$ is possibly {nonconvex} and is assumed to be lower bounded. 
-In the latent data model, the likelihood $g(y_i ; \param)$, is the marginal distribution of the complete~data likelihood, noted $f(z_i,y_i; \param)$, such that 
+In the latent data model, the likelihood $g(y_i ; \theta)$, is the marginal distribution of the complete~data likelihood, noted $f(z_i,y_i; \theta)$, such that 
 \begin{align}
-g(y_i; \param) = \int_{\Zset} f (z_i,y_i;\param) \mu(\rmd z_i),    
+g(y_i; \theta) = \int_{\Zset} f (z_i,y_i;\theta) \mu(\rmd z_i),    
 \end{align}
 where $\{ z_i \}_{i=1}^n$ are the vectors of latent variables associated to the observations $\{y_i\}_{i=1}^n$.
 
@@ -155,10 +155,31 @@ We also consider a special case of that problem since the complete likelihood pe
 \beq \label{eq:exp}
 f(z_i,y_i; \theta) = h  (z_i,y_i) \textrm{exp} ( \pscal{S(z_i,y_i)}{\phi(\theta)} - \psi(\theta) )\eqs,
 \eeq
-where $\psi(\theta)$, $h(z_i,y_i)$ are scalar functions, $\phi(theta) \in \rset^k$ is a vector function, and $\{S(z_i,y_i) \in \rset^k\}_{i=1}^n$ is the vector of sufficient statistics.
+where $\psi(\theta)$, $h(z_i,y_i)$ are scalar functions, $\phi(\theta) \in \rset^k$ is a vector function, and $\{S(z_i,y_i) \in \rset^k\}_{i=1}^n$ is the vector of sufficient statistics.
 We refer the readers to \citep{efron1975defining} for details on this subclass of problems which is of high interest given the broad range of problems that fall under this assumption.
+In the centralized settings, \ie when all data points are stored in a central server, a reference tool for learning such a model is called the EM algorithm~\citep{dempster1977Maximum, wu1983convergence}. Comprised of two steps, the E-step computes an aggregated sum of expectations as follows:
+
+\beq \label{eq:estep}
+\overline{s}(\theta) = \frac{1}{n}\sum_{i=1}^n \overline{s}_i(\theta) \quad \textrm{where} \quad \overline{s}_i(\theta) \eqdef \int_{\Zset} S(z_i,y_i) p(z_i|y_i;\theta) \rmd z_i \eqsp,
+\eeq
+
+and the {M-step} is given by
+\begin{align}\label{eq:mstep}
+\overline{\theta}( \overline{s}(\theta) ) \eqdef \argmin_{ \vartheta \in \theta } ~\big\{ r( \vartheta ) + \psi( \vartheta) - \pscal{ \overline{s}(\theta)}{ \phi ( \vartheta) } \big\} \eqsp.
+\end{align}
+
+\subsection{Our motivations}
+
+\textbf{Expectations are not tractable:} Sampling for those approximations are costly.
 
 
+\textbf{Need for distributed computing: } MovieLens, Large n, compute time, decentralized infrastructure
+
+
+\textbf{Need for privacy and communication efficiency: } Sensible data (hospital, user data...) that can not be moved. Low bandwidth devices (compute should be light).
+
+
+\subsection{Our contributions}
 
 %\subsection{Periodic averaging of the local models}
 %
@@ -218,9 +239,65 @@ We refer the readers to \citep{efron1975defining} for details on this subclass o
 %\end{algorithmic}
 %\end{algorithm}
 
+\clearpage
+\section{Related Work}
+
+\textbf{EM algorithms:}
+
+
+\textbf{Distributed methods:}
+
+
+\textbf{MCMC and Quantization:}
+
+
+\textbf{Federated Learning methods:}
+
 
 \clearpage
-\section{Algorithms}
+\section{On the Decentralization of the EM algorithm}
+
+
+
+\subsection{Distributed SAEM}
+
+We first consider the plain distributed version of the sEM which does not tackle any privacy or communication bottlenecks.
+We precise that we perform periodic locals models averaging.
+It goes as follows:
+
+\begin{algorithm}[H]
+\caption{Distributed SAEM with Periodic Locals Models Averaging} \label{alg:distsaem}
+\begin{algorithmic}[1]
+\STATE \textbf{Input}: Compression operator $\mathcal C(\cdot)$, number of rounds $R$, initial parameter $\theta_{0}$.
+	\FOR{$r=1$ to $R$}%
+		\FOR{parallel for device $i \in D^{r}$}
+		\STATE Set $\hat{\theta}^{(r)}_i = \hat{\theta}^{(r)}$. \algorithmiccomment{\textcolor{blue}{Initialize each worker with current global model}}
+		\STATE Draw M samples $z_{i,m}^{(r+1)}$ under model $\hat{\theta}^{(r)}_i$ via MCMC: \algorithmiccomment{\textcolor{blue}{Local MCMC step}}
+		\STATE Compute the local statistics $\tilde{S}_{i}^{(r+1)} = S(z_{i,m}^{(r+1)})$. \label{line:computedist} \algorithmiccomment{\textcolor{blue}{Local statistics}}
+		\STATE Worker computes \textbf{local model}: \algorithmiccomment{\textcolor{blue}{(Local) M-Step using local statistics}}
+		$$
+		\hat{\theta}^{(r+1)}_i = \overline{\theta}( \tilde{S}_{i}^{(r+1)}) 
+		$$
+		\STATE Worker sends local model $\hat{\theta}^{(r+1)}_i$ to server.
+          \ENDFOR
+          \STATE Server computes \textbf{global model} by periodic averaging \algorithmiccomment{\textcolor{blue}{Local model averaging}}
+          $$
+	\hat{\theta}^{(r+1)} \eqdef \frac{1}{n} \sum_{i=1}^n	\hat{\theta}^{(r+1)}_i
+	$$
+    \ENDFOR
+  \end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Federated SAEM with Quantization and Compression}
+
+
+While Algorithm~\ref{alg:flsaemreg} is a distributed variant of the SAEM, it is neither (a) \emph private nor (b) \emph communication-efficient.
+
+\textbf{Privacy:} Indeed, we remark that broadcasting the vector of statistics are a potential breach to the data observations as their expression is related $y$ and the latent data $z$. With a simple knowledge of the model used, the data could be retrieved if one extracts those statistics.
+
+\textbf{Communication bottlenecks:} Also regarding (b), the broadcast of $n$ vector of statistics $S(y_i,z_i)$ can be cumbersome when the size of the latent space and the parameter space of the model are huge.
+
 
 For computational purposes and privacy enhanced matter, I have chosen to study and develop the second algorithms that I proposed in my last week's report.
 In that algorithm, one does not compute a periodic averaging of the local models (this would requires performing as many M-steps as there are workers).
@@ -249,14 +326,9 @@ where $\tilde{S}^{(r+1)} = (\tilde{S}_i^{(r+1)}, i \in D_r)$  and send global mo
 \end{algorithm}
 
 
-\subsection{Challenges with Algorithm~\ref{alg:flsaemreg}}
-While Algorithm~\ref{alg:flsaemreg} is a distributed variant of the SAEM, it is neither (a) \emph private nor (b) \emph communication-efficient.
 
-\textbf{Privacy:} Indeed, we remark that broadcasting the vector of statistics are a potential breach to the data observations as their expression is related $y$ and the latent data $z$. With a simple knowledge of the model used, the data could be retrieved if one extracts those statistics.
 
-\textbf{Communication bottlenecks:} Also regarding (b), the broadcast of $n$ vector of statistics $S(y_i,z_i)$ can be cumbersome when the size of the latent space and the parameter space of the model are huge.
-
-\subsection{Algorithmic solutions}
+\subsection{Embedded Engines to comply with Federated settings}
 
 \textbf{Line~\ref{line:samplingreg} -- Quantization:} 
 The first step is to quantize the gradient in the Stochastic Langevin Dynamics step used in our sampling scheme Line~\ref{line:samplingreg} of Algorithm~\ref{alg:flsaemreg}.
@@ -314,8 +386,8 @@ We now use those statistics and compress them using Algorithm~\ref{alg:spars} as
 \end{algorithm}
 
 
-\section{FL and Distributed Algorithmic Contributions}
-Final method:
+
+We present our final method in Algorithm~\ref{alg:flsaem2}, that performs SAEM under the federated settings.
 
 \begin{algorithm}[H]
 \caption{Quantized and Compressed FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaem2}
@@ -354,34 +426,10 @@ $$
 
 
 
-We can also consider the plain distributed version of the sEM which does not tackle any privacy or communication bottlenecks.
-It goes as follows:
 
-\begin{algorithm}[H]
-\caption{Distributed SAEM with Periodic Locals Models Averaging} \label{alg:distsaem}
-\begin{algorithmic}[1]
-\STATE \textbf{Input}: Compression operator $\mathcal C(\cdot)$, number of rounds $R$, initial parameter $\theta_{0}$.
-	\FOR{$r=1$ to $R$}%
-		\FOR{parallel for device $i \in D^{r}$}
-		\STATE Set $\hat{\theta}^{(r)}_i = \hat{\theta}^{(r)}$. \algorithmiccomment{\textcolor{blue}{Initialize each worker with current global model}}
-		\STATE Draw M samples $z_{i,m}^{(r+1)}$ under model $\hat{\theta}^{(r)}_i$ via MCMC: \algorithmiccomment{\textcolor{blue}{Local MCMC step}}
-		\STATE Compute the local statistics $\tilde{S}_{i}^{(r+1)} = S(z_{i,m}^{(r+1)})$. \label{line:computedist} \algorithmiccomment{\textcolor{blue}{Local statistics}}
-		\STATE Worker computes \textbf{local model}: \algorithmiccomment{\textcolor{blue}{(Local) M-Step using local statistics}}
-		$$
-		\hat{\theta}^{(r+1)}_i = \overline{\theta}( \tilde{S}_{i}^{(r+1)}) 
-		$$
-		\STATE Worker sends local model $\hat{\theta}^{(r+1)}_i$ to server.
-          \ENDFOR
-          \STATE Server computes \textbf{global model} by periodic averaging \algorithmiccomment{\textcolor{blue}{Local model averaging}}
-          $$
-	\hat{\theta}^{(r+1)} \eqdef \frac{1}{n} \sum_{i=1}^n	\hat{\theta}^{(r+1)}_i
-	$$
-    \ENDFOR
-  \end{algorithmic}
-\end{algorithm}
 
 \clearpage
-\section{Theoretical Findings}
+\section{Theoretical Analysis}
 
 
 
@@ -406,6 +454,11 @@ It goes as follows:
 
 
 \subsection{Bi-factor models under the Federated Learning settings}
+
+\clearpage
+
+\section{Conclusion}
+
 
 \newpage
 

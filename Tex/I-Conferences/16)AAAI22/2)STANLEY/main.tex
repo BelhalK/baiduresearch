@@ -254,7 +254,7 @@ Our contributions of are summarized~as~follows:
 \item We develop \algo, an Energy-Based model training method that embeds a newly proposed \emph{convergent} and \emph{efficient} MCMC sampling scheme, focusing on curvature informed metrics of the target distribution one wants to sample from.
 \item Based on an anisotropic stepsize, our method, which is an improvement of the Langevin Dynamics, achieves to obtain negative samples from the Energy-Based model data distribution and improves the overall optimization algorithm.
 \item We prove the geometric ergodicity uniformly on any compact set of our MCMC method assuming some regularity conditions on the target distribution and on the backbone of our EBM.
-\item We empirically assess the effectiveness of our method on several image generation tasks, both on synthetic and real datasets including the Oxford Flowers 102 dataset, CIFAR-10 and CelebA. We conclude the work with a Inpainting experiment on benchmark datasets.
+\item We empirically assess the effectiveness of our method on several image generation tasks, both on synthetic and real datasets including the Oxford Flowers 102 dataset, CIFAR-10 and CelebA. We conclude the work with an Image inpainting experiment on benchmark datasets.
 \end{itemize}
 
 Section~\ref{sec:mcmc} introduces important notations and related work.
@@ -292,9 +292,9 @@ Given the general form defined in~\eqref{eq:ebm}, we have that:
 \eeq
 and a simple Monte Carlo approximation of $\nabla \log p(\theta)$ yields the following important expression of the gradient
 \beq\label{eq:mcapprox}
-\nabla \log p(\theta) \approx  \frac{1}{n} \sum_{i=1}^n \nabla_\theta f_\theta(x^{q}_i) - \frac{1}{m} \sum_{j=1}^m \nabla_\theta f_\theta(z_j) \eqsp,
+\nabla \log p(\theta) \approx  \frac{1}{n} \sum_{i=1}^n \nabla_\theta f_\theta(x^{q}_i) - \frac{1}{M} \sum_{m=1}^M \nabla_\theta f_\theta(z_m) \eqsp,
 \eeq
-where $\{z_j\}_{j=1}^m$ are samples obtained from the EBM $p(x,\theta)$ and $\{x^{q}_i\}_{i=1}^n$ are drawn uniformly from the true data distribution $q(x)$.
+where $\{z_m\}_{m=1}^M$ are samples obtained from the EBM $p(x,\theta)$ and $\{x^{q}_i\}_{i=1}^n$ are drawn uniformly from the true data distribution $q(x)$.
 While drawing samples from the data distribution is trivial, the challenge during the EBM training phase is to obtain good samples from the EBM distribution $p(x,\theta)$ for any model parameter $\theta \in \Theta$.
 This task is generally done using MCMC methods.
 State-of-the-art MCMC used in the EBM literature include Langevin Dynamics, see \cite{grenander1994representations,roberts1996exponential} and Hamiltonian Monte Carlo (HMC), see \cite{neal2011mcmc}.
@@ -356,7 +356,7 @@ Given the drawbacks of current MCMC methods used for training EBMs, we introduce
 \caption{\algo\ for Energy-Based model} \label{alg:anila}
 \begin{algorithmic}[1]
 %\small
-\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$, sequence of global learning rate $\{\eta_t\}_{t >0}$, stepsize threshold $\thresh$,  sequence of MCMC stepsizes ${\gamma_k}_{k >0}$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$ and observations $\{ x_{i} \}_{i=1}^n$.
+\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$, sequence of global learning rate $\{\eta_t\}_{t >0}$, stepsize threshold $\thresh$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$ and observations $\{ x_{i} \}_{i=1}^n$.
 \FOR{$t=1$ to $T$}
 \STATE Compute the anisotropic stepsize as follows: \label{line:step}
 \beq\label{eq:step}
@@ -366,18 +366,18 @@ Given the drawbacks of current MCMC methods used for training EBMs, we introduce
 \FOR{$k=1$ to $K$}
 \STATE Construct the Markov Chain as follows:
 \beq\label{eq:anila}
-z_{k}^{m} = z_{k-1}^m + \stepsize_t/2  \nabla f_{\theta_t}(z_{k-1}^m) + \sqrt{\stepsize_k} \mathsf{B}_k \eqsp,
+z_{k}^{m} = z_{k-1}^m + \stepsize_t/2  \nabla f_{\theta_t}(z_{k-1}^m) + \sqrt{\stepsize_t} \mathsf{B}_k \eqsp,
 \eeq
-where $\mathsf{B}_t$ denotes the Brownian motion.
+where $\mathsf{B}_k$ denotes the Brownian motion.
 \ENDFOR
-\STATE Assign $\{ z_{t}^m \}_{m=1}^M \leftarrow \{ z_{K}^m \}_{m=1}^M$.
+%\STATE Assign $\{ z_{t}^m \}_{m=1}^M \leftarrow \{ z_{K}^m \}_{m=1}^M$.
 \STATE Sample $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
 \STATE Compute the gradient of the empirical log-EBM~\eqref{eq:ebm}:
 \beq\notag
 \begin{split}
 \nabla \log p(\theta_t) 
  =& \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\\
- &\hspace{-0.6in}\approx  \frac{1}{n} \sum_{i=1}^{n} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)\eqsp.
+ &\hspace{-0.6in}\approx  \frac{1}{n} \sum_{i=1}^{n} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{M} \sum_{m=1}^{M} \nabla_{\theta} f_{\theta_t}\left(z_K^m\right)\eqsp.
 \end{split}
 \eeq
 \STATE Update the vector of global parameters of the EBM:\label{line:gradient}
@@ -404,7 +404,7 @@ However, it does not provide a good guess of the variability during the first it
 Moreover, in  \cite{girolami2011riemann}, the authors consider the approximation of a constant. Even though this simplification leads to ease of implementation, the curvature metric chosen by the authors need to be inverted, step that can be a computational burden if not intractable. 
 Especially in the case we are considering in our paper, \ie\ ConvNet-based EBM, where the high nonlinearity would lead to intractable expectations.
 
-Therefore, in~\eqref{eq:step} and~\eqref{eq:anila} of Algorithm~\ref{alg:anila}, we propose a variant of Langevin Dynamics, in order to sample from a target distribution, using a full anisotropic covariance matrix based on the anisotropy and correlations of the target distribution, see the $\sqrt{\stepsize_t} \mathsf{B}_t$ term. 
+Therefore, in~\eqref{eq:step} and~\eqref{eq:anila} of Algorithm~\ref{alg:anila}, we propose a variant of Langevin Dynamics, in order to sample from a target distribution, using a full anisotropic covariance matrix based on the anisotropy and correlations of the target distribution, see the $\sqrt{\stepsize_t} \mathsf{B}_k$ term. 
 
 
 \section{Geometric ergodicity of \algo\ sampler}\label{sec:theory}
@@ -756,7 +756,7 @@ We run each method during $T = 50\,000$ iterations and plot the results using th
         
 }
 \end{center}
-	\caption{(FID values per method against 100k iterations elapsed). Left: Oxford Flowers dataset. Right: CIFAR-10 dataset.}
+	\caption{(FID values per method against 50k iterations elapsed). CelebA \cite{liu2015deep} dataset.}
 	\label{fig:fidceleb}
 \end{figure}
 
@@ -766,9 +766,9 @@ We run each method during $T = 50\,000$ iterations and plot the results using th
 
 \begin{figure}
   \centering
-  \subfloat{\includegraphics[width=0.5\textwidth]{figs/celeb1.jpg}} \\
-  \subfloat{\includegraphics[width=0.5\textwidth]{figs/celeb2.jpg}}
-	\caption{(Image inpainting). CelebA dataset.}
+  \subfloat{\includegraphics[width=0.5\textwidth]{figs/celebStanley.jpg}} \\
+  \subfloat{\includegraphics[width=0.5\textwidth]{figs/celebVanilla.jpg}}
+	\caption{(Image inpainting). CelebA dataset. \textbf{Top row:} \algo\ \textbf{Bottom row:} Vanilla Langevin.}
 		\label{fig:celebinpainting}
 \end{figure}
 
@@ -1085,8 +1085,8 @@ Then $y \in \mathcal{P}(z)$ implies, using~\eqref{eq:gauss}, that $\pi_\theta(y)
                         \includegraphics[width=1.65in]{figs/gd_x_q_099900}
         }
 \end{center}
-\caption{(CIFAR Dataset). 1: \algo\ 2: MH. 3: HMC 4: GD without noiseAfter 100k iterations.}
-	\label{fig:cifar}
+\caption{(CIFAR Dataset). 1: \algo\ 2: MH. 3: HMC 4: GD without noise after 100k iterations.}
+	\label{fig:cifarapp}
 \end{figure}
 
 \medskip
