@@ -244,14 +244,38 @@ and the {M-step} is given by
 
 \textbf{EM algorithms:}
 
+In the case when the computation of the expectation under the posterior distribution is impossible, the Monte Carlo EM (MCEM) has been introduced in~\cite{wei1990monte} where a Monte Carlo (MC) approximation for this expectation is computed. A variant of that algorithm is the Stochastic Approximation of the EM (SAEM) in~\cite{delyon1999} leveraging the power of Robbins-Monro update~\cite{robbins1951stochastic} to ensure pointwise convergence of the vector of estimated parameters using a decreasing stepsize rather than increasing the number of MC samples.
+The MCEM and the SAEM have been successfully applied in mixed effects models~\cite{mcculloch1997maximum,hughes1999mixed,baey2016nonlinear} or to do inference for joint modeling of time to event data coming from clinical trials in~\cite{das2010Inferences}, unsupervised clustering in~\cite{ngChoice2003}, variational inference of graphical models in~\cite{BleiVariational2017} among other applications.
+An incremental variant of the SAEM was proposed in~\cite{kuhn2019properties} showing positive empirical results but its analysis is limited to asymptotic consideration. 
+Two-timescale methods of the SAEM have been proposed in \citep{karimi2020two} to accelerate the convergence.
+Gradient-based methods have been developed and analyzed in~\cite{zhu2017high} but they remain out of the scope of this paper as they tackle the high-dimensionality issue.
+
+
 
 \textbf{Distributed methods:}
+
+\citep{morral2012line}
+\citep{srivastava2019asynchronous}
+
+
+Traditional decentralized optimization methods include well-know algorithms such as ADMM~\citep{boyd2011distributed}, Dual Averaging~\citep{duchi2011dual}, Distributed Subgradient Descent~\citep{nedic2009distributed}. 
+More recent algorithms include Extra~\citep{shi2015extra}, Next~\citep{di2016next}, Prox-PDA~\citep{hong2017prox}, GNSD~\citep{lu2019gnsd}, and Choco-SGD~\citep{koloskova2019decentralized}.  
+While these algorithms are commonly used in applications other than deep learning, recent algorithmic advances in the machine learning community have shown that decentralized optimization can also be useful for training deep models such as neural networks. 
+\citet{lian2017can} demonstrate that a stochastic version of Decentralized Subgradient Descent can outperform parameter server-based algorithms when the communication cost is high. 
+No existing work, to our knowledge, has seriously considered integrating \emph{EM methods} in the setting of decentralized learning.
+One noteworthy work~\citep{morral2012line} proposes a decentralized version of the Online EM~\citep{cappe2009line} and it is proven to satisfy some non-standard convergence.
+
 
 
 \textbf{MCMC and Quantization:}
 
+\citep{chopin2021fast}
+
+\citep{vono2021qlsd}
+
 
 \textbf{Federated Learning methods:}
+
 
 
 \clearpage
@@ -307,12 +331,12 @@ Rather, workers compute local statistics and send them to the central server for
 \caption{FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaemreg}
 \begin{algorithmic}[1]
 %\small
-\STATE \textbf{Input}: \textcolor{red}{TO COMPLETE}
+\STATE \textbf{Input}: number of rounds $R$, initial parameter $\theta_{0}$, number of MC samples $\{M_r\}_{r>0}$.
 \STATE Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.
 \FOR{$r=1$ to $R$}
 \FOR{parallel for device $i \in D^{r}$}
 \STATE Set $\hat{\theta}^{(0,r)}_i = \hat{\theta}^{(r)}$.
-\STATE Draw M samples $z_{i,m}^{(r)}$ under model $\hat{\theta}^{(r)}_i$ \label{line:samplingreg}
+\STATE Draw $M_r$samples $z_{i,m}^{(r)}$ under model $\hat{\theta}^{(r)}_i$ \label{line:samplingreg}
 \STATE Compute the surrogate sufficient statistics $\tilde{S}_{i}^{(r+1)}$ \label{line:computereg}
 \STATE Workers send local statistics $\tilde{S}_{i}^{(k+1)}$ to server.
 \ENDFOR
@@ -328,7 +352,7 @@ where $\tilde{S}^{(r+1)} = (\tilde{S}_i^{(r+1)}, i \in D_r)$  and send global mo
 
 
 
-\subsection{Embedded Engines to comply with Federated settings}
+\subsection{Embedded methods to comply with Federated settings}
 
 \textbf{Line~\ref{line:samplingreg} -- Quantization:} 
 The first step is to quantize the gradient in the Stochastic Langevin Dynamics step used in our sampling scheme Line~\ref{line:samplingreg} of Algorithm~\ref{alg:flsaemreg}.
@@ -390,7 +414,7 @@ We now use those statistics and compress them using Algorithm~\ref{alg:spars} as
 We present our final method in Algorithm~\ref{alg:flsaem2}, that performs SAEM under the federated settings.
 
 \begin{algorithm}[H]
-\caption{Quantized and Compressed FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaem2}
+\caption{\flSAEM: Quantized and Compressed FL-SAEM with Periodic Statistics Averaging} \label{alg:flsaem2}
 \begin{algorithmic}[1]
 \STATE \textbf{Input}: Compression operator $\mathcal C(\cdot)$, number of rounds $R$, initial parameter $\theta_{0}$.
 	\FOR{$r=1$ to $R$}%
@@ -431,6 +455,44 @@ $$
 \clearpage
 \section{Theoretical Analysis}
 
+The following assumptions are required for the analysis.
+
+\begin{assumption}\label{ass:compact}
+The sets $\Zset, \Sset$ are compact. There exist $C_{\Sset}, C_{\Zset}$ such that:
+\beq \textstyle \notag
+\begin{split}
+& C_{\Sset} \eqdef \max_{ s, s' \in \Sset } \| s - s' \| < \infty,\\
+& C_{\Zset} \eqdef \max_{i \in \inter} \int_{\Zset} | S(z,y_i) | \mu( \rmd z ) < \infty.
+\end{split}
+\eeq
+\end{assumption}
+
+\begin{assumption}\label{ass:expected}
+For any $i \in \inter$, $z \in \Zset$, $\theta, \theta' \in {\rm int} (\theta)^2$ (the interior of $\theta$), we have $\big| p( z | y_i; \theta ) - p( z | y_i; \theta' ) \big| \leq  L_p \| \theta - \theta' \|$.
+\end{assumption}
+We also recall that we consider curved exponential family models such that the objective function satisfies:
+\begin{assumption} \label{ass:reg}
+For any $\bm{s} \in \Sset$, the function $\theta \mapsto L(s,\theta) \eqdef \Pen( \theta ) + \psi( \theta) - \pscal{ s}{ \phi ( \theta) }$ admits a unique global minimum $\overline{\theta}(s) \in {\rm int}(\theta)$.
+In addition, $\jacob{\phi}{\theta}{\overline{\theta}(s )}$, the Jacobian of the function $\phi$ at $\theta$, is full rank, $L_p$-Lipschitz and $\overline{\theta}( s )$ is $L_t$-Lipschitz.
+\end{assumption}
+
+
+The Monte Carlo noise of $\tilde{S}_i^{(k+1)}$ at iteration $k$ is defined as:
+\beq\label{eq:mcerror}
+\eta_{i}^{(k)} \eqdef \tilde{S}_{i}^{(k)} -  \overline{s}_i(\vartheta^{(k)})\quad  \textrm{for all} \quad  i \in \inter \quad \textrm{and} \quad  k > 0 
+\eeq
+and is controlled
+\begin{assumption}\label{ass:mcerror}
+For all $k >0$, $i \in \inter$, it holds: 
+$\EE [\| \eta_{i}^{(k)}\|^2 ] < \infty \quad \textrm{and} \quad \EE[\| \EE[\eta_{i}^{(k)}|{\cal F}_k]\|^2] < \infty \eqs.$
+\end{assumption}
+Note that typically, the controls exhibited above are vanishing when the number of MC samples $M_k$ increases~with~$k$.
+
+
+\subsection{Finite-time convergence analysis of the \dSAEM}
+
+
+\subsection{Finite-time convergence analysis of the \flSAEM}
 
 
 \clearpage
