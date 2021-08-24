@@ -47,7 +47,6 @@ mstep.dist<-function(kiter, Uargs, Dargs, opt, structural.model, DYF, phiM, varL
 	dim(phi)
 
 
-
 	stat1.e.0<-apply(phi.e.0[,varList$ind.eta,,drop=FALSE],c(1,2),sum) # sum on columns ind.eta of phi, across 3rd dimension
 	stat2.e.0<-matrix(data=0,nrow=nb.etas,ncol=nb.etas)
 	stat3.e.0<-apply(phi.e.0**2,c(1,2),sum) #  sum on phi**2, across 3rd dimension
