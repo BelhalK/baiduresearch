@@ -8,7 +8,9 @@
 \usepackage[table]{xcolor}
 \usepackage{makecell}
 \usepackage{floatrow}
-\floatsetup[table]{capposition=top}
+ \floatsetup[table]{capposition=bottom}
+\usepackage{color}
+% \floatsetup[table]{capposition=top}
 \newfloatcommand{capbtabbox}{table}[][\FBwidth]
 \usepackage{aaai22}  % DO NOT CHANGE THIS
 \usepackage{times}  % DO NOT CHANGE THIS
@@ -185,72 +187,65 @@
 \maketitle
 
 \begin{abstract}
-Scene Graphs (SG), as a structural abstraction of natural images, contain massive detailed information. 
-Modeling visual reasoning through SG can significantly improve the ability and strengthen the interpretability of reasoning. 
-However, neither can existing models \emph{jointly} exploit objects, relations, and attributes information in SG, nor can they balance the importance of objects and relations. 
-In this paper, we introduce a novel Dual Energy-Flow Enhanced Graph Neural Network (DE-GNN), which learns a comprehensive representation by encoding full-scale scene graphs information from objects, attributes, and relations.
-Specifically, two types of SG structures are employed in the encoder: 
-(i) \textit{Object-significant graphs} which absorb attribute and relation information into nodes' representations. 
-(ii) \textit{Relation-significant graphs} which intensify the model's perception of relation features. 
-In addition, we design an \textit{energy-flow mechanism} to enhance the information transfer from edges and adjacent nodes to the updating nodes. 
-We conduct extensive experiments on public GQA and Visual Genome datasets and achieve new state-of-the art performances highlighting the benefits of our method. 
+% Scene Graphs (SG), as a structural abstraction of natural images, contain massive detailed information. 
+% Modeling visual reasoning through SG can significantly improve the ability and strengthen the interpretability of reasoning. 
+% However, neither can existing models \emph{jointly} exploit objects, relations, and attributes information in SG, nor can they balance the importance of objects and relations. 
+% In this paper, we introduce a novel Dual Energy-Flow Enhanced Graph Neural Network (DE-GNN), which learns a comprehensive representation by encoding full-scale scene graphs information from objects, attributes, and relations.
+% Specifically, two types of SG structures are employed in the encoder: 
+% (i) \textit{Object-significant graphs} which absorb attribute and relation information into nodes' representations. 
+% (ii) \textit{Relation-significant graphs} which intensify the model's perception of relation features. 
+% In addition, we design an \textit{energy-flow mechanism} to enhance the information transfer from edges and adjacent nodes to the updating nodes. 
+% We conduct extensive experiments on public GQA and Visual Genome datasets and achieve new state-of-the-art performances highlighting the benefits of our method. 
+
+Scene graph (SG), as a structural abstraction of natural images, contains massive detailed information. Modeling visual reasoning through scene graph can significantly improve the ability and strengthen the interpretability of reasoning. However, neither does one of these models \emph{jointly} exploit objects, relations and attributes information in scene graph, nor does one of them balance the importance of objects and relations. In this paper, we introduce a novel Dual Energy-Flow Enhanced Graph Neural Net work (DE-GNN), which learns a comprehensive representation by encoding full-scale scene graph information from objects, attributes and relations. Specifically, two types of scene graph structures are employed in the encoder: (i) \textit{Object-significant graph} which embeds attribute and relation information into node representations. (ii) \textit{Relation-significant graph} which intensifies the model perception of relation features. In addition, we design an \textit{energy-flow mechanism} to enhance the information transferred from edges and adjacent nodes to updating nodes.
+We conduct extensive experiments on public GQA and Visual Genome datasets and achieve new state-of-the-art performances highlighting the benefits of our method.
+% We conduct extensive experiments on public GQA and Visual Genome datasets and obtain the state-of-the art performances. For example, we achieve 75.4\% and 72.9\% on Visual Genome dataset (VG-GroundTruth and Motif-VG, respectively) and 71.2\% on GQA dataset .
 % Code is available at this https URL.
 % Evaluated on public GQA and Visual Genome datasets, our method is able to outperform previous state-of-the-art models on these two datasets.
 % \footnote{\href{https://anonymous.4open.science/r/dual_ggnn-for-vqa-CEDC/}{Our code is available at anonymous github}}
 \end{abstract}
 
 \section{Introduction}
-Recent developments in deep learning have accelerated the research progress in Computer Vision (CV) and Natural Language Processing (NLP) areas. 
-Multimodal fusion tasks between image and text have attracted a growing attention, such as image captioning and visual question answering (VQA) tasks. 
-In particular, the task of VQA requires a model to answer a free-form natural language question using visual information from an image. 
-VQA has proven to be a crucial multimodal task with a large scope of applications such as AI assistants, multimodal customer service dialogue and image-based search engine to name a few.
+% Recent developments in deep learning have accelerated the research progress in Computer Vision and Natural Language Processing areas. 
+% Multimodal fusion tasks between image and text have attracted growing attention, such as image captioning and visual question answering (VQA) tasks. 
+% In particular, the task of VQA requires a model to answer a free-form natural language question using visual information from an image. 
+% VQA has proven to be a crucial multimodal task with a large scope of applications such as AI assistants, multimodal customer service dialogue, and image-based search engines to name a few.
 
 \begin{figure}[ht] 
     % \vspace{-0.1in}
     \centering 
-    \includegraphics[scale=0.6]{./pic/intro4.pdf} 
+    \includegraphics[scale=0.6]{./pic/intro5.pdf} 
     % \vspace{-0.1in}
-    \caption{(a) Overview of our DE-GNN model. (b) Two key issues of the traditional SG-based model that we try to address: missing relation (top: missing ``on the") and false attribute selection (bottom: select ``black" instead of ``off")} 
+    \caption{(a) Two key issues of traditional SG-based models that we try to address: \textbf{false attribute selection} (bottom: select attribute ``black" instead of attribute ``off") and \textbf{missing relation} (top: missing ``on the") (b) Overview of our DE-GNN model. $F^N$ and $F^E$ are the node feature map and the relation feature map. $F$ is the full-scale feature map.} 
     \label{scene-graph} 
     \vspace{-0.1in}
 \end{figure}
 
-Scene graph (SG) reasoning is an important branch of VQA tasks, see~\cite{DBLP:journals/corr/abs-2007-01072}. 
-To generate the scene graph, the model extracts objects' names, attributes and relationships from the input images and organize those extracts into a graph representation as illustrated in Fig.~\ref{scene-graph}(a). 
-SG representation modeling displays several virtues over classical techniques leveraging object features extracted from images since in SG (a) the features are presented in plain and free text form~\cite{DBLP:journals/corr/abs-2101-05479}, (b) it makes use of graph structures which have better interpretability~\cite{DBLP:conf/bmvc/ZhangCX19}.
-In this contribution, many researchers propose two reasoning methods on scene graphs: (i) Consider scene graphs as probabilistic graphs and iteratively update nodes' probabilities using soft instructions extracted from questions such as Neural State Machine (NSM)~\cite{DBLP:conf/nips/HudsonM19,DBLP:conf/ijcnn/LeLV020}; (ii) Apply Graph Neural Network (GNN) into scene graphs~\cite{inproceedings,DBLP:conf/iccv/LiGCL19} to learn a joint representation of the nodes and their relations, and then feed the representation into a predictor to generate the answer.
+ Visual Question Answering (VQA) tasks require a model to answer a free-form natural language question using visual information from an image. Scene graph (SG) reasoning is an important instance of VQA tasks~\cite{DBLP:journals/corr/abs-2007-01072}. 
+To generate the scene graph, the model extracts objects' names, attributes, and relationships from the input images and organizes them into a graph representation.
 
-\begin{figure*}[ht] 
-    % \vspace{-0.5in}
-    \centering 
-    \includegraphics[width=1.0\textwidth]{./pic/DE-GNN.pdf} 
-    % \vspace{-0.1in}
-    \caption{Model structure of the proposed Dual Energy-Flow enhanced Graph Neural Networks. EF stands for the energy-flow module. Images are transformed into scene graphs by the scene graph generator. The object-significant form and relation-significant form of the scene graph are injected into the object encoder and the relation encoder. Nodes' representations are generated from the sum of energy-flow modules. The representations are then be fused with question representation to predict an answer.} 
-    \label{fig2} 
-    % \vspace{-0.2in}
-\end{figure*}
+SG representation modeling displays several virtues over classical techniques leveraging object features extracted from images since (a) the features in SG are presented in plain and free text form ~\cite{DBLP:journals/corr/abs-2101-05479}, (b) the graph structures of SG which have better interpretability~\cite{DBLP:conf/bmvc/ZhangCX19}.
+In this contribution, two reasoning methods on scene graphs are proposed. In particular, we: (i) consider scene graphs as probabilistic graphs and iteratively update nodes' probabilities using soft instructions extracted from questions such as Neural State Machine (NSM)~\cite{DBLP:conf/nips/HudsonM19,DBLP:conf/ijcnn/LeLV020}; (ii) apply Graph Neural Network (GNN) into scene graphs~\cite{inproceedings,DBLP:conf/iccv/LiGCL19} to learn a joint representation of the nodes and their relations, and then feed the representation into a predictor to generate the answer. 
 
+Scene graph reasoning frameworks have proven to be useful in VQA tasks, e.g. \cite{johnson2015image,yang2020prior}. However, there still exist imperfections.
 
-Scene graph reasoning frameworks have proven to be useful in VQA tasks, e.g. \cite{johnson2015image,DBLP:journals/corr/abs-2007-01072,yang2020prior}. 
-% However, none of the existing methods fully utilize the scene graph information, including objects, attributes, and relations.
-However, existing methods fail at generating comprehensive representations for objects by using features from their neighbors and their attributes. 
-Generally, information from objects and relations connected to them are reconstructed into object features in GNN-based methods~\cite{xu2019spatial}.
-However, these encoding methods lack information from objects' attributes and objects on the other side of the edges. 
-The NSM methods use attention mechanisms to update answer possibilities of objects, attributes, and relations, but they cannot learn the joint representation of all three types of information. These flaws make models answer wrong on complex reasoning questions. Take the ``why'' question in Fig.~\ref{scene-graph}(b) as an example, false attribute selection occurs because the model can not associate ``off'' with ``dark monitor''.
+First, models answer wrong on complex reasoning questions. Take the ``why'' question in Fig.~\ref{scene-graph}(a) as an example, false attribute selection occurs because the model can not associate ``off'' with ``dark monitor''.
+This is because existing methods fail at generating \emph{jointly} representations for objects by using features from their neighbors and their attributes. 
+Generally, information from objects and relations connected to them are reconstructed into object features in GNN-based methods~\cite{xu2019spatial}. However, these encoding methods lack information from objects' attributes and objects on the other side of the edges. 
+The NSM methods use attention mechanisms to update answer possibilities of objects, attributes, and relations, but they cannot learn the joint representation of all three types of information. 
 
-Additionally, GNN-based models and NSM models are more focused towards object features, and considering relation features as references. This makes models answer wrong on questions requiring relation and object information. Take the ``where'' question in Fig.~\ref{scene-graph}(b) as an example, relation missing occurs because the model can not capture ``on the'' relation information.
+Second, models answer wrong on questions that require information about the diverse relations and objects. For instance, for localisation questions, as in the ``where'' type of questions, in Fig.~\ref{scene-graph}(a), we observe that relation missing occurs because the model can not capture the relation information ``on the''. This is because existing models have strong bias towards node features, considering edge features as references. Generally in these models, nodes refer to objects and edges refer to relations, which lead to the unbalance focus on objects and relations. 
 
-Empirically, we demonstrate that a correct relation representation is crucial to the VQA task and enables to alleviate the bottlenecks of VQA implied by inefficient usages of scene graph information described above.
+% Empirically, we demonstrate that a correct relation representation is crucial to the VQA task and enables to alleviate the bottlenecks of VQA implied by inefficient usages of scene graph information described above.
 
-Therefore, as a fix to current ineffective strategies, we propose the Dual Energy-Flow Enhanced Graph Neural Network (DE-GNN) for VQA, introducing a novel scene graph reasoning model that extracts full-scale feature maps from objects, attributes, and relations information in scene graphs. 
-Concretely, as shown in Fig.~\ref{fig2}, our DE-GNN model contains a scene graph generator, a question encoder, dual graph encoders, and a fusion module. 
-Essentially, the scene graph generator extracts graphs out of images. 
-Besides, to preserve integrated information in the encoding process, we transform scene graphs into a relation-significant modality, in which nodes represent relations and edges represent objects, and an object-significant modality, in which nodes represent objects and edges represent relations. Lastly, after receiving scene graphs in two modalities, dual graph encoders can produce feature maps focusing on both relations and objects.
+Therefore, as a fix to the current ineffective strategies, we propose the Dual Energy-Flow Enhanced Graph Neural Network (DE-GNN) for VQA, introducing a novel scene graph reasoning model that extracts balanced feature maps from objects, attributes, and relations information in scene graphs. 
+Concretely, as shown in Fig.~\ref{scene-graph}(b), our DE-GNN model is composed of a scene graph generator, a question encoder, dual graph encoders, and a fusion module. 
+Essentially, the scene graph generator extracts graphs out of the input images. 
+Besides, to balance the importance of objects and relations, we transform scene graphs into a relation-significant modality, in which nodes represent relations and edges represent objects, and an object-significant modality, in which nodes represent objects and edges represent relations. Lastly, after receiving scene graphs in two modalities, dual graph encoders can produce feature maps focusing on both relations and objects.
 
-Furthermore, to learn a node's joint representation from its attributes, edges, and adjacent nodes, we modify the gated graph neural network (GGNN) structure in our proposed DE-GNN by adding the energy-flow module. 
-It is a bidirectional GRU that guides the internal information flow.
+Furthermore, to learn a node's joint representation from its attributes, edges, and adjacent nodes, we modify the gated graph neural network (GGNN) structure in our proposed DE-GNN by adding the energy-flow module. It is a bidirectional GRU that guides the internal information flow.
 The encoder can capture information from nodes, edges, and adjacent nodes that connect to them. 
-The outputs of the encoder pass through multi-head attention layers using question features extracted from the question encoder, see Fig.~\ref{fig2}. 
+As shown in Fig.~\ref{scene-graph}(b), the output feature map of the encoder pass through multi-head attention layers using question features extracted from the question encoder. 
 Hence, the model can dynamically focus on the critical parts of the questions and use the most similar part of the scene graph as the most adequate answer.
 
 In summary, our main contributions are as follows:%\vspace{-0.05in}
@@ -258,7 +253,7 @@ In summary, our main contributions are as follows:%\vspace{-0.05in}
 \setlength{\itemsep}{5pt}
 \setlength{\parsep}{5pt}
 \setlength{\parskip}{5pt}
-\item We propose a novel DE-GNN model to learn a comprehensive representation of scene graphs by encoding graphs' object-significant modality and relation-significant modality.\vspace{-0.06in}
+\item We propose a novel DE-GNN model to learn a comprehensive and balanced representation of scene graphs by encoding graphs' object-significant modality and relation-significant modality.\vspace{-0.06in}
 
 \item Our energy-flow module is more suitable for processing graphs with meaningful edges and nodes with internal attributes.\vspace{-0.06in}
 
@@ -266,7 +261,17 @@ In summary, our main contributions are as follows:%\vspace{-0.05in}
 % \item We show that our method outperforms other SG-based models in four scene graph datasets, which are generated from the VG dataset by four scene graph generation methods. Extensive experiments demonstrate the effectiveness of DE-GNN.
 \end{itemize}\vspace{-0.06in}
 
-\section{Related Works}
+\begin{figure*}[ht] 
+    % \vspace{-0.5in}
+    \centering 
+    \includegraphics[width=1.0\textwidth]{./pic/DE-GNN.pdf} 
+    % \vspace{-0.1in}
+    \caption{Model structure of the Dual Energy-Flow enhanced Graph Neural Networks. EF stands for the energy-flow module. Images are transformed into scene graphs by the scene graph generator. The object-significant form and relation-significant form of the scene graph are injected into the object encoder and the relation encoder.Nodes' representations are generated from the sum of energy-flow modules. The representations are then fused with question representations to predict answers.} 
+    \label{fig2} 
+    % \vspace{-0.2in}
+\end{figure*}
+
+\section{Related Work}
 \noindent\textbf{Visual Question Answering.}
 Most VQA approaches utilize a sequential model to encode the question and employ CNN-based pretrained models like Mask-RCNN or Faster-RCNN~\cite{DBLP:conf/cvpr/FanZ18,DBLP:conf/cvpr/PatroN18,DBLP:conf/cvpr/NamHK17} to encode the image.
 % Most VQA approaches utilize a question encoder architecture that can learn complex temporal dynamics using a sequence of hidden states. To encode the image, most VQA approaches employ CNN-based pretrained models like Mask-RCNN or Faster-RCNN~\cite{DBLP:conf/cvpr/FanZ18,DBLP:conf/cvpr/PatroN18,DBLP:conf/cvpr/NamHK17}. 
@@ -314,6 +319,7 @@ GAT~\cite{DBLP:conf/iclr/VelickovicCCRLB18} introduces the attention mechanism t
 % However, existing GNN-based models cannot effectively process graphs with node attributes and complicated labels.
 Our DE-GNN model can learn a comprehensive representation using full-scale scene graph information from objects, attributes, and relations to overcome these problems.
 
+
 \section{DE-GNN Methodology}
 
 Beforehand, we define the VQA task. 
@@ -334,18 +340,25 @@ We introduce our dual GGNN encoders in the following subsection.
 We organize scene graphs into object-significant and relation-significant modalities. 
 
 \medskip
-\textbf{Object-Significant Graph.} We define the object-significant modality as $\emph{G}_{obj}$, where every nodes represent objects in the image and every edges represent relations between two objects. Define $\emph{N}$ as the node set and $\emph{E}$ as the edge set. For $n_i, n_j \in \emph{N}$, $e_k \in \emph{E}$, $<n_i$ - $e_k$ - $n_j>$ denotes the relation tuple that represents the relation $e_k$ from object $n_i$ to object $n_j$. Note that relation tuples are not symmetrical: if $<n_i - e_k - n_j>$ is a valid relation tuple,  $<n_j - e_k - n_i>$ may not exist. Also, $n_i$ and $n_j$ may have several relations. 
+\textbf{Object-Significant Graph.} We define the object significant modality as $\emph{G}_{obj}$, where every nodes represent objects in the image and every edges represent relations between two objects. Define $\emph{N}$ as the node set and $\emph{E}$ as the edge set. For $n_i, n_j \in \emph{N}$, $e_k \in \emph{E}$, $<n_i$ - $e_k$ - $n_j>$ denotes the relation tuple that represents the relation $e_k$ from object $n_i$ to object $n_j$. Note that relation tuples are not symmetrical: if $<n_i - e_k - n_j>$ is a valid relation tuple,  $<n_j - e_k - n_i>$ may not exist. Also, $n_i$ and $n_j$ may have several relations. 
 
 \medskip
-\textbf{Relation-Significant Graph.} We define relation-significant modality as $\emph{G}_{rel}$, where every nodes represent relations between objects in the image and every edges represent objects, which is completely opposed to the object-significant modality. For $e_i, e_j \in \emph{E}$, $n_k \in \emph{N}$, $<e_i - n_k - e_j>$ denotes the relation tuple that represents the relations $e_i$ and $e_j$ have a shared object $n_k$. Note that relation tuples are also not symmetrical.
+\textbf{Relation-Significant Graph.} We define relation significant modality as $\emph{G}_{rel}$, where every nodes represent relations between objects in the image and every edges represent objects, which is completely opposed to the object-significant modality. For $e_i, e_j \in \emph{E}$, $n_k \in \emph{N}$, $<e_i - n_k - e_j>$ denotes the relation tuple that represents the relations $e_i$ and $e_j$ have a shared object $n_k$. Note that relation tuples are also not symmetrical.
+
+\begin{figure}[t] 
+    \includegraphics[width=1\textwidth]{./pic/EF2.pdf} 
+    \caption{Overview of the energy-flow module. Color denotes edge types.} 
+    \label{EF} 
+\end{figure}
 
 \medskip
 \textbf{Attribute types.} Define \emph{L} as attribute types (such as material, color, etc). 
 For each node $n_i\in\emph{N}$ that corresponds to an object in the image, we define a set of $\emph{L}+1$ property variables ${\left\{ n_i^j\right\}}_{l=0}^L$, where $n_i^{0}$ represents $n_i$'s name embedding and $n_i^l$ represents the embedding of node $n_i$'s $l^{th}$ attribute (such as wooden, blue, etc).
 
 \subsection{Dual Encoders}
+We use two GGNN models as the encoders for object significant graphs and relation sginificant graphs. The GGNN for object graphs focuses on object features and the GGNN for relation graphs focuses on relation features. The dual encoder combination can balance the importance of relations and objects.
 
-In our DE-GNN model, every input scene graph is transformed into an information tuple ($\emph{N}, \emph{E}, \emph{A}_{in}, \emph{A}_{out}$) where:
+Before encoding, every input scene graph is transformed into an information tuple ($\emph{N}, \emph{E}, \emph{A}_{in}, \emph{A}_{out}$) where:
 \begin{itemize}
     \item \emph{N} is a collection of node embeddings.
     \item \emph{E} is a collection of directed edges that specify valid relation between nodes.
@@ -362,7 +375,7 @@ The incident and output edges are retrieved in the respective adjacency matrices
 
 \medskip
 \subsubsection{Energy-Flow Module}
-To enhance the information transfer from edges and adjacent nodes to the updating nodes, we use the Energy-Flow module (EF).
+To enhance the information transfer from edges and adjacent nodes to the updating nodes, we use the Energy-Flow module (EF) in Fig.~\ref{EF}.
 EF module comes as a replacement of the fully-connected layers from the original GGNN model. 
 % In the energy-flow module, consider, for instance the tuple, $<{n}_i, {e}_k, {n}_j>$ where the edge ${e}_k$'s embedding state $e_k$ and neighbor node ${n}_j$'s hidden state $h_j$ are injected into a bidirectional GRU network as input sequence while the node ${n}_i$'s hidden state $h_i$ is injected as GRU's initial hidden state. 
 Take a tuple $<{n}_i, {e}_k, {n}_j>$ as the processing sample of the energy-flow module. 
@@ -448,41 +461,42 @@ Formally, the output answer reads:
 
 
 
-\section{Numerical Experiments}\label{sec:experiments}
+\section{Experiments}\label{sec:experiments}
 
 \subsection{Datasets}
 
-The \textbf{Visual Genome} dataset contains $108 \, 077$ images with comprehensively annotated objects, attributes, and relations. To enrich the scene graph annotation in Visual Genome, we use a scene graph generation method and motifs~\cite{DBLP:conf/cvpr/ZellersYTC18} to generate a new scene graph dataset called motif-VG. 
+\quad The \textbf{Visual Genome} dataset contains $108 \, 077$ images with comprehensively annotated objects, attributes, and relations. To enrich the scene graph annotation in Visual Genome, we use a scene graph generation method and motifs~\cite{DBLP:conf/cvpr/ZellersYTC18} to generate a new scene graph dataset called motif-VG. 
 Compared with the Visual Genome dataset, motif-VG has the same images and questions-answers tuples, but has scene graph annotations with different qualities and biases. 
 We split both datasets into train, valid, and test sets using a $7:1:2$ ratio. 
 
-\quad The \textbf{GQA} dataset~\cite{DBLP:conf/cvpr/HudsonM19} focuses on real-world reasoning, scene understanding and compositional question answering. It consists of 113k images and 22M questions of assorted types and varying compositionality degrees, measuring performance on an array of reasoning skills such as object and attribute recognition, transitive relation tracking, spatial reasoning, logical inference and comparisons.
+The \textbf{GQA} dataset~\cite{DBLP:conf/cvpr/HudsonM19} focuses on real-world reasoning, scene understanding and compositional question answering. It consists of 113k images and 22M questions of assorted types and varying compositionality degrees, measuring performance on an array of reasoning skills such as object and attribute recognition, transitive relation tracking, spatial reasoning, logical inference and comparisons.
 
 
 
 \subsection{Implementation Details}
 
-We use 50-dimensional GLOVE word embeddings model ~\cite{pennington-etal-2014-glove} to embed words in the scene graph and questions. In order to record the questions' position information, we set up the positional encoding matrix $\textrm{PE}$:
+We use the 50-dimensional GLOVE word embeddings model ~\cite{pennington-etal-2014-glove} to project words and questions embeddings into the scene graph. 
+In order to record the questions' position information, we set up the positional encoding matrix $\textrm{PE}$ as follows:
 \begin{gather}\notag
     \textrm{PE}_{\texttt{pos}=2\emph{i}} = \sin(\texttt{pos}/10000^{2i/d_{\textrm{m}}}) \, ,\\
     \textrm{PE}_{\texttt{pos}=2\emph{i}+1} = \cos(\texttt{pos}/10000^{2i/d_{\textrm{m}}}) \, , \notag
 \end{gather}
 where $\texttt{pos}$ is the position of the word in the question sequence. 
 If $\texttt{pos}$ is odd, the position information is generated by a $\sin$ function, else, it is generated by a $\cos$ function. 
-We also let model dimension equal to $d_{\textrm{m}}=50$.
-After adding position information, the question embeddings are injected into a single-directional GRU network. 
+% We also let model dimension equal to $d_{\textrm{m}}=50$.
+% After adding position information, the question embeddings are injected into a single-directional GRU network. 
 The dimension of the hidden layers of the GRU is 100, and the dropout rate is 0.2.
 
-In our energy-flow enhanced GGNN encoder, the propagator time step is 5, and we use a bidirectional GRU as our energy-flow module. 
-Here, we set the dimension of the single GRU hidden layer to 50. 
+ In our energy-flow enhanced GGNN encoder, the propagator time step is 5, and we use a bidirectional GRU as our energy-flow module. 
+ Here, we set the dimension of the single GRU hidden layer to 50. 
 
-In the fusion module, we apply a multi-head attention layer with 5 heads and no dropout. 
-Regarding the answer predictor, we select the top-2000 answer candidates and use a 2-layer MLP as the output classifier.
+ In the fusion module, we apply a multi-head attention layer with 5 heads and no dropout. Regarding the answer predictor, we select the top-2000 answer candidates and use a 2-layer MLP as the output classifier.
 
 We use Adam~\cite{kingma2014adam} as the optimizer, and Cross Entropy Loss as the loss function during the training of our model. 
-For motif dataset, we set the batch size to 512. For Visual Genome ground truth dataset and GQA dataset, we set the batch size to 16 due to their abundant scene graph annotations.
+% For motif-VG dataset, we set the batch size to 512. For Visual Genome ground truth dataset and GQA dataset, we set the batch size to 16 due to their abundant scene graph annotations.
 
-The learning rate is decaying depending on the epoch number. We initialize the learning rate to be $1e^{-3}$, and when 30\% epochs finish, the learning rate drops to $2e^{-4}$. When 60\% epochs finish, the learning rate drops to $4e^{-5}$ and it becomes $8e^{-6}$ after 80\% epochs finish. We train our model and other baselines on a single V100 GPU.
+% The learning rate is decaying with respect to the epoch number. 
+% We initialize the learning rate to be $1e^{-3}$, and when 30\% epochs finish, the learning rate drops to $2e^{-4}$. When 60\% epochs finish, the learning rate drops to $4e^{-5}$ and it becomes $8e^{-6}$ after 80\% epochs finish. We train our model and other baselines on a single V100 GPU.
 
 % \begin{figure}[h] 
 % \mbox{ \hspace{-0.12in}
@@ -492,7 +506,7 @@ The learning rate is decaying depending on the epoch number. We initialize the l
 %     \caption{The validation accuracy curves for ablation experiments} 
 %     \label{ablation-figure} 
 % \end{figure}
-\begin{table*}[ht] 
+\begin{table*}[ht]
 \centering
     \begin{tabular}{l|lllllllll}
     \hline
@@ -509,7 +523,7 @@ The learning rate is decaying depending on the epoch number. We initialize the l
      SAN~\cite{DBLP:conf/cvpr/YangHGDS16} &- &- &- &- &- &- &- &62.6\\
      FSTT~\cite{inproceedings} &65.5 &45.6 &70.1 &47.8 &68.3 &82.1 &91.5 &65.6\\
      ReGAT~\cite{DBLP:conf/iccv/LiGCL19} &72.1 &\textbf{70.8} &64.4 &\textbf{68.9} &72.7 &65.0 &92.3 &71.2\\
-     DEGNN (ours) &\textbf{75.9} &64.9 &\textbf{73.1} &66.8 &\textbf{82.6} &81.4 &\textbf{98.8} &\textbf{75.4}\\
+     DE-GNN (ours) &\textbf{75.9} &64.9 &\textbf{73.1} &66.8 &\textbf{82.6} &81.4 &\textbf{98.8} &\textbf{75.4}\\
     \hline
      \multicolumn{9}{c}{\bf Motif-VG} \cr\hline
     % \hline
@@ -518,11 +532,11 @@ The learning rate is decaying depending on the epoch number. We initialize the l
      F-GN~\cite{DBLP:conf/bmvc/ZhangCX19} &58.7 &60.8 &60.4 &47.2 &61.8 &84.8 &49.0 &60.0\\
      U-GNN~\cite{DBLP:conf/bmvc/ZhangCX19} &59.4 &58.2 &60.3 &54.3 &66.6 &\textbf{85.3} &48.1 &60.5\\
      ReGATT~\cite{DBLP:conf/iccv/LiGCL19} &75.4 &\textbf{69.2} &57.6 &\textbf{69.9} &69.1 &57.4 &91.8 &69.9\\
-     DEGNN (ours) &\textbf{79.4} &67.6 &\textbf{62.7} &65.3 &\textbf{72.8} &63.0 &\textbf{96.1} &\textbf{72.9}\\
+     DE-GNN (ours) &\textbf{79.4} &67.6 &\textbf{62.7} &65.3 &\textbf{72.8} &63.0 &\textbf{96.1} &\textbf{72.9}\\
     \hline
     \end{tabular}
 \caption{\label{VG-detail}
-Performance on different question types of VG datasets.}
+Performance on different question types of VG dataset.}
 \end{table*}
 
 \begin{table*}[htbp]
@@ -545,7 +559,7 @@ Performance on different question types of VG datasets.}
        + (w/o \emph{attr}) & 71.6\% \\
        + (w/o \emph{rela}) & \textbf{74.5}\% \\
       \hline
-       DEGNN(ours) & \textbf{75.2}\%\\
+       DE-GNN(ours) & \textbf{75.2}\%\\
       \hline
     \end{tabular}
     }{
@@ -568,7 +582,7 @@ Performance on different question types of VG datasets.}
      LXRT &77.76 &44.97 &96.30 &8.31 &60.34\\
      NSM &78.94 &49.25 &96.41 &\textbf{3.71} &63.17\\
      ReGAT &\textbf{83.57} &62.58 &92.70 &9.32 &70.50\\
-     DEGNN(ours) &69.79 &\textbf{72.21} &93.80 &3.78 &\textbf{71.21}\\
+     DE-GNN(ours) &69.79 &\textbf{72.21} &93.80 &3.78 &\textbf{71.21}\\
     \hline
     \hiderowcolors
     \end{tabular}
@@ -584,9 +598,7 @@ In this subsection, we provide the experimental results on various datasets ment
 The different baselines compared in our experiments all use various methods to generate the scene graphs for images. 
 In order to ensure general fairness across the methods, we implement them from scratch, removing their scene graph generation parts to eliminate the interference of different generation methods.
 
-Table~\ref{VG-detail} reports the results on the test sets of the VG ground truth datasets and the motif-VG dataset. Compared to the baseline models, we can observe that our DE-GNN model outperforms the others at $3\%$-$4\%$. 
-
-In addition, we provide detailed results on the VG dataset and motif-VG dataset with different question types. Compared to the other scene graph based VQA models, our model performs well in ``what", ``where", ``who" and ``why" types. Specially, our model has $6\%$ accuracy improvement in "why" type questions, which highly requires VQA models' reasoning ability.
+\subsubsection{Results on VG dataset} Table~\ref{VG-detail} reports the results on the test sets of the VG ground truth datasets and the motif-VG dataset. Compared to the baseline models, we can observe that our DE-GNN model outperforms the others at $\textbf{3\%}$-$\textbf{4\%}$. In addition, we provide detailed results on the VG dataset and motif-VG dataset with different question types. Compared to the other scene graph based VQA models, our model performs well in ``what", ``where", ``who" and ``why" types. Specially, our model has $\textbf{6\%}$ accuracy improvement in ``\textbf{why}" type questions, which highly requires VQA models' ability to jointly exploit objects, relations and attributes. However, our model's comprehensive representations influence the accuracy on simple questions. In ``color'' type, our model achieves 2nd score.
 
 % In addition, the stability of our model is conspicuous. Our model can achieve consistent and stable performance under different scene graph qualities. Our model's performances under four different scene graph datasets only suffer 3\% fluctuation,
 % while FSTT suffers from a 4.7\% fluctuation and Re-GAT suffers from a 26.9\% fluctuation. 
@@ -603,29 +615,16 @@ In addition, we provide detailed results on the VG dataset and motif-VG dataset 
     \hline
     \end{tabular}
 \caption{\label{badcase}
-Error rate analysis on Motif dataset. 
+Error rate analysis on motif-VG dataset. 
 }
 \end{table} 
 
-We report in Table~\ref{GQA} the detailed results on the test sets of the GQA dataset. Compared to the baseline models, our DE-GNN model achieves state-of-the-art accuracy performance. 
+\subsubsection{Results on GQA dataset}We report in Table~\ref{GQA} the detailed results on the test sets of the GQA dataset. Compared to the baseline models, our DE-GNN model achieves state-of-the-art accuracy performance. We also evaluate our model and other baselines across GQA dataset's various metrics, where "Binary" represents binary-answer questions, "Open" represents open domain questions and "Distribution" represents the distance between prediction distribution and standard answer distribution. In open domain questions which are difficult for reasoning, our model outperforms the others at $\textbf{10\%}$. In distribution metric, our model also achieves 2nd score compared to other baselines. However, the comprehensive representation may interfere with DE-GNN's judgment of simple problems such as ``Binary'' questions.
 
-We also evaluate our model and other baselines across GQA dataset's various metrics, where "Binary" represents binary-answer questions, "Open" represents open domain questions and "Distribution" represents the distance between prediction distribution and standard answer distribution. In open domain questions which are difficult for reasoning, our model outperforms the others at $10\%$. In distribution metric, our model also achieves 2nd score compared to other baselines.
+\subsubsection{Error Rate Analysis} To demonstrate that our dual encoders structure can intensify the model's perception of relation features and learn a comprehensive representation from nodes, attributes, and relations information, we make error rate analysis for baselines and DE-GNN on motif-VG.
 
-To demonstrate that our dual encoders structure can intensify the model's perception of relation features and learn a comprehensive representation from nodes, attributes, and relations information, we make badcase analysis for baselines and our model on Motif dataset.
-
-To classify the badcase answer category, we generate three dictionaries to record objects, attributes and relations that appear in scene graphs.
-
-For each answer, we first extract potential relations and match them up with the relation dictionary. Then we split the objects and attributes in the answer and search objects and attributes dictionaries. As for some evasive answers containing both objects and its' attributes, we add them in both object and attribute categories. 
-
-We present Table~\ref{badcase} the results for our badcase analysis. Our DE-GNN model surpasses all baselines in the terms of objects detection. Also, our model reduces nearly half of the wrong answers in FSTT, Re-GAT, and NSM in the attribute aspect. Finally, our model does well in relation retrieval, outperforming GNN based FSTT and Re-GAT.
-% \begin{figure}[H]
-%     % \vspace{-0.75in}
-%     \includegraphics[width=1.0\textwidth]{./pic/badcase3.pdf} 
-%     % \vspace{-0.1in}
-%     \caption{badcase analysis on Motif dataset.} 
-%     \label{badcase} 
-%     % \vspace{-0.2in}
-% \end{figure}
+The badcases are classified into object, relation and attribute. We present Table~\ref{badcase} the results for our error rate analysis. Our DE-GNN model surpasses all baselines in the terms of objects detection and our model does well in relation retrieval, outperforming GNN based FSTT and Re-GAT. This proves our model does alleviate the unbalance focus on objects and relations.
+Also, our model reduces nearly half of the wrong answers in FSTT, Re-GAT in the attribute aspect, which greatly improves the false attribute selection phenomenon.
 
 % The question fusion module, which concatenates the question vector with the reasoning vector before entering into the answer predictor module, is a common module in VQA models, including NSM, FSTT, and our DE-GNN model. This method has been shown to improve the accuracy of VQA models. However, from a cognitive point of view, the question fusion module lacks of interpretability since the question features are included in the reasoning vector of the model. 
 % Also, the addition of the question fusion module may lead the reasoning model to only \emph{guess answers} from questions, which negatively influences the reasoning itself. 
@@ -639,33 +638,36 @@ We present Table~\ref{badcase} the results for our badcase analysis. Our DE-GNN 
     \centering 
     \includegraphics[width=1\textwidth]{./pic/visual_aaai2.pdf} 
     % \vspace{-0.1in}
-    \caption{Examples of generated answers and top attention scores. The left plot and right plot show the visualization of ``what" and ``why" question types. From the left plot, our approach can correctly select answers from objects, relations and attributes. From the right plot, our model can handle comprehensive reasoning questions.} 
+    \caption{Examples of generated answers and top attention scores. \textcolor{red}{Red} means wrong answers and \textcolor{green}{green} means right answers. The left plot and right plot show the visualization of ``what" and ``why" question types. From the left plot (a), our approach can correctly select answers from objects, relations and attributes. From the right plot (b), our model can handle comprehensive reasoning questions.} 
     \label{visual} 
     \vspace{-0.1in}
 \end{figure*}
 
 \begin{figure*}[ht] 
     \centering 
-    \includegraphics[width=0.9\textwidth]{./pic/visual_detail.pdf} 
+    \includegraphics[width=1\textwidth]{./pic/visual_detail.pdf} 
     % \vspace{-0.1in}
-    \caption{Examples of top 5 attention scores of different types of questions.} 
-    \label{visual} 
+    \caption{Examples of top 5 attention scores of candidate answers in different types of questions.} 
+    \label{visualbis} 
 \end{figure*}
 
 
 \subsection{Ablation Study}
-We compare several ablated forms of DE-GNN with our complete one. The accuracy results are reported in Table~\ref{ablation-study}. 
+We compare several ablated forms of DE-GNN with our complete one. 
+The accuracy results for each variant of DE-GNN are reported in Table~\ref{ablation-study}. 
 
 We use the original GGNN network as the \emph{base} model to encode scene graphs.
-The \emph{Obj} model represents the original GGNN network processing \emph{object-significant} graphs. The \emph{Rel} model represents the original GGNN network processing \emph{relation-significant} graphs.
+In Table~\ref{ablation-study}, the \emph{Obj} model represents the original GGNN network processing \emph{object-significant} graphs. The \emph{Rel} model represents the original GGNN network processing \emph{relation-significant} graphs.
 The \emph{Obj-EF} model corresponds to the object encoder part of our DE-GNN model, which contains one energy-flow enhanced GGNN network to encode \emph{object-significant} graphs. 
 The \emph{Rel-EF} model is the other half of our DE-GNN model, which contains one energy-flow enhanced GGNN network to encode \emph{relation-significant} graphs.
 
-First, we validate the effectiveness of applying dual structure to balance the importance of relations and objects by splitting our DE-GNN into an object-single model(\emph{Obj}) and a relation-single model(\emph{Rel}). Table~\ref{ablation-study} shows that both \emph{Obj} model and \emph{Rel} model perform poorly, at about 35.3\%. It also shows that both relations and objects are vital to VQA performance. Lack of any of them leads to severe accuracy recession. Combining the object-single model and the relation-single model leads to an empirical gain of approximately 35\% accuracy upward, which shows that the dual structure is significant in balancing relation and object information. 
+\subsubsection{Effect of dual encoder structure} We first validate the efficacy of applying dual structure to balance the importance of relations and objects by splitting our DE-GNN into an object-single model(\emph{Obj}) and a relation-single model(\emph{Rel}). Table~\ref{ablation-study} shows that both \emph{Obj} model and \emph{Rel} model perform poorly, at about 35.3\%. It also shows that both relations and objects are vital to VQA performance. 
+Absence of any of those modules leads to severe accuracy recession. 
+Combining the object-single model and the relation-single model leads to an empirical gain of approximately 35\% accuracy upward, which shows that the dual structure is significant in balancing relation and object information. 
 
-Then, we validate the effectiveness of applying energy-flow structure to learn a more comprehensive representation for scene graphs than the original GGNN structure, which represents the baseline in Table~\ref{ablation-study}. We compare the \emph{Obj+EF} model and the \emph{Obj} model, which both learn representations from object-significant graphs, and note that after adding the energy-flow structure, there is an accuracy improvement of 3.9\%. We also compare the \emph{Rel+EF} model and the \emph{Rel} model, noting that there is an accuracy improvement of 3.6\%. The \emph{Obj+Rel} model is DE-GNN without energy-flow module. Comparing with DE-GNN, there is a 7.3\% accuracy improvement after adding the energy-flow module. These show that energy-flow structure can successfully improve the representation quality of scene graphs. 
+\subsubsection{Effect of the energy-flow module} We validate the effectiveness of applying energy-flow structure to learn a more comprehensive representation for scene graphs than the original GGNN structure, which represents the baseline in Table~\ref{ablation-study}. We compare the \emph{Obj+EF} model and the \emph{Obj} model, which both learn representations from object-significant graphs, and note that after adding the energy-flow structure, there is an accuracy improvement of 3.9\%. We also compare the \emph{Rel+EF} model and the \emph{Rel} model, noting that there is an accuracy improvement of 3.6\%. The \emph{Obj+Rel} model is DE-GNN without energy-flow module. Comparing with DE-GNN, there is a 7.3\% accuracy improvement after adding the energy-flow module. These show that energy-flow structure can successfully improve the representation quality of scene graphs. 
 
-To demonstrate the impact of the explicit modeling of attributes and relations in our DE-GNN, the \emph{w/o attr} model remove the explicit attribute modeling part from DE-GNN model and the \emph{w/o rela} model remove the explicit relation modeling part. After removing attribute modeling, our model suffers 3.6\% accuracy drop, while the relation modeling has only 0.7\% accuracy influence on our model.
+\subsubsection{Effect of explicit modeling} To demonstrate the impact of the explicit modeling of attributes and relations in our DE-GNN, the \emph{w/o attr} model remove the explicit attribute modeling part from our DE-GNN model and the \emph{w/o rela} model remove the explicit relation modeling part. After removing attribute modeling, our model suffers 3.6\% accuracy drop, while the relation modeling has only 0.7\% accuracy influence on our model.
 
 
 % To better understand how our dual energy-flow enhanced GNN model inferences and answers questions, we further visualize and compare the attention maps learned by the ablated models in the following subsection.
@@ -675,15 +677,21 @@ To better illustrate the effectiveness of the dual encoder structure and the ene
 
 The left blue plot shows the visualization on "what" question type. The examples in three columns are "what" questions aim at node, relation and attribute information. Comparing row 1, row 2 with row 3, \emph{Obj} and \emph{Rel} models have strong attention bias toward objects and relations, while their combination, the \emph{Obj+Rel} model, balances the attention on both sides and captures correct answers. Comparing row3 with row 4, the addition of the energy-flow module increase the attention score of correct answers. 
 
-The right red plot shows the visualization on ``why'' question type. In ``why'' questions, models jointly exploit objects, relations and attributes to generate answers. Using dual encoder structures ans the energy-flow module, our DE-GNN can generate correct answers and achieves \textbf{96.1}\% accuracy on ``why" question type.
+The right red plot shows the visualization on ``why'' type of question. 
+For ``why'' questions, models jointly exploit objects, relations and attributes to generate answers. Using dual encoder structures ans the energy-flow module, our DE-GNN can generate correct answers and achieves \textbf{96.1\%} accuracy on ``why" question type.
+
+Fig.~\ref{visualbis} exhibits the details of top 5 attention scores in different types of questions. Our dual encoder structures and energy-flow module can significantly increase the attention scores of correct answers.
+
 
 \section{Conclusion}
-In this work, we study classical scene graph reasoning methods such as GNN-based models and Neural State Machine for Visual Question Answering tasks. 
-We observe that neither can existing models \emph{jointly} exploit objects, relations, and attributes in SG, nor can they balance the importance of objects and relations.
-To address this problem, we propose the Dual Energy-Flow Enhanced Graph Neural Network (DE-GNN), which encodes each scene graph into feature representations via an object encoder and a relation encoder generating full-scale feature maps using nodes, attributes, and relations information. 
-We demonstrate the effectiveness of our method on the various datasets achieving significant improvement and state-of-the-art performances.
-
-In future work, we will test our DE-GNN model on more VQA datasets, such as VQA-CP2. We hope that our work can further enhance the effect of scene graph for reasoning modeling.
+In this work, 
+% we study classical scene graph reasoning methods such as GNN-based models and Neural State Machine for Visual Question Answering tasks. 
+% We observe that neither can existing models \emph{jointly} exploit objects, relations, and attributes in SG, nor can they balance the importance of objects and relations.
+% To address this problem, 
+we propose the DE-GNN model, which encodes each scene graph into feature representations via an object encoder and a relation encoder generating full-scale feature maps using nodes, attributes, and relations information and demonstrate our model can effectively boost performances on the various datasets. 
+% We demonstrate the effectiveness of our method on the various datasets achieving significant improvement and state-of-the-art results. 
+In future, we will dynamically adjust the model according to difficulty of the question, and improve our model's accuracy on simple questions.
+% We hope that our work can further enhance the effect of scene graph for reasoning modeling.
 
 
 \newpage
