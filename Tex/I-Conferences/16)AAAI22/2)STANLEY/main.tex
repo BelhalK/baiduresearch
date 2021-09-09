@@ -223,7 +223,7 @@ For instance, Convolutional Neural Network (CNN) can be employed to parameterize
 Note that the choice of the EBM backbone is highly related to the type of the input data.
 
 The training procedure of such models consists of finding an energy function that assigns to lower energies to observations than unobserved points.
-This phase can be cast into an optimization task and several ways are possible to achieve it.
+This phase can be cast to an optimization task and several ways are possible to achieve it.
 In this paper, we will focus on training the EBM via Maximum Likelihood Estimation (MLE).
 Alternative procedures include learning EBMs using Noise Contrastive Estimation as in~\citet{gao2020flow}.
 Particularly, while using MLE to fit the EBM on a stream of observed data, the high non-convexity of the loss function leads to a non closed form maximization step. 
@@ -232,29 +232,29 @@ Besides, given the intractability of the normalizing constant of our model, the 
 A popular and efficient way to conduct such approximation is to use Monte Carlo approximation where the samples are obtained via Markov Chain Monte Carlo (MCMC)~\cite{meyn2012markov}.
 The goal of this embedded MCMC procedure while training the Energy-Based model is to synthesize new examples of the input data and use those new \emph{synthetic} observations to approximate quantities of interest.
 
-The sampling phase is thus crucial for both the EBM training speed and its final accuracy in generating new samples.
+The sampling phase is thus crucial for both the EBM training speed and its final accuracy in generating new synthetic samples.
 The computational burden of those MCMC transitions, at each iteration of the EBM training procedure, is alleviated via different techniques in the literature.
 For instance, in~\citet{nijkamp2019learning}, the authors develop a short-run MCMC as a flow-based generator mechanism despite its non convergence property.
 %A large class of solutions aiming at reducing the cost of running MCMC until convergence, which in practice can be unfeasible, is using Contrastive Divergence~\cite{hinton2002training} and persistent Contrastive Divergence~\cite{tieleman2008training}.
 Other principled approach, as in~\citet{hinton2002training}, keeps in memory the final chain state under the previous global model parameter and uses it as the initialization of the current chain.
 The heuristic of such approach is that along the EBM iterations, the conditional distributions, depending on the model parameter, are more and more similar and thus using a good sample from the previous chain is in general a good sample of the current one.
 Though, this method can be limited during the first iterations of the EBM training since when the model parameter changes drastically, the conditional distributions do change too, and samples from two different chains can be quite inconsistent.
-Several extensions varying the way the chain is initialized can be found in~\citet{welling2002new,gao2018learning,du2019implicit}.
+Several extensions modifying the way the chain is initialized can be found in~\citet{welling2002new,gao2018learning,du2019implicit}.
 
 An interesting line of work in the realm of MCMC-based EBM tackles the biases induced by stopping the MCMC runs too early. 
 Indeed, it is known, see~\citet{meyn2012markov}, that before convergence, MCMC samples are biased and thus correcting this bias while keeping a short and less expensive run is an appealing option.
 Several contributions aiming at removing this bias for improved MCMC training include coupling MCMC chains, see~\citet{qiu2019unbiased,jacob2020unbiased} or simply estimating this bias and correct the chain afterwards, see~\citet{du2020improved}.
 
-Here, our work is in line with the context of -- high-dimensional data, -- EBM parameterized by deep neural networks and -- MLE based optimization via MCMC, which make our method particularly attractive to all of the above combined. 
+Here, our work is in line with the context of -- high-dimensional data, -- EBM parameterized by deep neural networks and -- MLE-based optimization via MCMC, which make our method particularly attractive to all of the above combined. 
 We also consider the case of a short-run MCMC for the training of an EBM.
 Rather than focusing on debiasing the chain, we develop a new sampling scheme where the goal is to obtain better samples from the target distribution in fewer MCMC transitions.
 We consider that the shape of the target distribution, which inspires our proposed method, is of utmost importance to obtain such negative samples.
-Our contributions of are summarized~as~follows:
+Our contributions are summarized~as~follows:
 \begin{itemize}
 \item We develop \algo, an Energy-Based model training method that embeds a newly proposed \emph{convergent} and \emph{efficient} MCMC sampling scheme, focusing on curvature informed metrics of the target distribution one wants to sample from.
 \item Based on an anisotropic stepsize, our method, which is an improvement of the Langevin Dynamics, achieves to obtain negative samples from the Energy-Based model data distribution and improves the overall optimization algorithm.
-\item We prove the geometric ergodicity uniformly on any compact set of our MCMC method assuming some regularity conditions on the target distribution and on the backbone of our EBM.
-\item We empirically assess the effectiveness of our method on several image generation tasks, both on synthetic and real datasets including the Oxford Flowers 102 dataset, CIFAR-10 and CelebA. We conclude the work with an Image inpainting experiment on benchmark datasets.
+\item We prove the geometric ergodicity uniformly on any compact set of our MCMC method assuming some regularity conditions on the target distribution and on the backbone model of the EBM.
+\item We empirically assess the effectiveness of our method on several image generation tasks, both on synthetic and real datasets including the Oxford Flowers 102 dataset, CIFAR-10 and CelebA. We conclude the work with an Image inpainting experiment on a benchmark dataset.
 \end{itemize}
 
 Section~\ref{sec:mcmc} introduces important notations and related work.
@@ -286,7 +286,7 @@ This latter requires computing an intractable integral, due to the high nonlinea
 Given the general form defined in~\eqref{eq:ebm}, we have that:
 \beq\notag
 \begin{split}
-\nabla \log p(\theta) & = \int_{x \in \xset} \nabla \log p(x, \theta) q(x) \textrm{d}x \\
+\nabla \log p(\theta) & = \int_{x \in \xset} \nabla_\theta  \log p(x, \theta) q(x) \textrm{d}x \\
 & =   \EE_{q(x)}[\nabla_\theta f_\theta(x)] - \EE_{p(x,\theta)}[\nabla_\theta f_\theta(x)]\eqsp,
 \end{split}
 \eeq
@@ -297,7 +297,7 @@ and a simple Monte Carlo approximation of $\nabla \log p(\theta)$ yields the fol
 where $\{z_m\}_{m=1}^M$ are samples obtained from the EBM $p(x,\theta)$ and $\{x^{q}_i\}_{i=1}^n$ are drawn uniformly from the true data distribution $q(x)$.
 While drawing samples from the data distribution is trivial, the challenge during the EBM training phase is to obtain good samples from the EBM distribution $p(x,\theta)$ for any model parameter $\theta \in \Theta$.
 This task is generally done using MCMC methods.
-State-of-the-art MCMC used in the EBM literature include Langevin Dynamics, see~\citet{grenander1994representations,roberts1996exponential} and Hamiltonian Monte Carlo (HMC), see~\citet{neal2011mcmc}.
+State-of-the-art MCMC used in the EBM literature include Langevin Dynamics, see~\citet{grenander1994representations,robertsmala} and Hamiltonian Monte Carlo (HMC), see~\citet{neal2011mcmc}.
 Those methods are detailed in the sequel and are important concepts used throughout our paper.
 
 \vspace{0.1in}\noindent\textbf{Energy Based Models: }
@@ -346,7 +346,7 @@ We recall the vanilla discretized Langevin diffusion used in the related literat
 \beq\notag
 z_k = z_{k-1} + \frac{\gamma}{2} \nabla \log \pi_\theta(z_k) + \sqrt{\gamma} B_k \eqsp,
 \eeq
-where $\pi_\theta(\cdot)$ is the target distribution, $z_k$ represents the states of the chains at iteration $k$, \ie\ the generated samples in the context of EBM, $k$ is the MCMC iteration index and $B_k$ is the Brownian motion, usually set as a Gaussian noise and which can be written as $B_k \eqdef \epsilon \xi_k$ where $\xi_k$ is a standard Gaussian random variable and $\epsilon$ is a scaling factor for implementation purposes.
+where $\pi_\theta(\cdot):= p(\cdot,\theta)$ is the target potential one needs samples from and defined in \eqref{eq:ebm}, $z_k$ represents the states of the chains at iteration $k$, \ie\ the generated samples in the context of EBM, $k$ is the MCMC iteration index and $B_k$ is the Brownian motion, usually set as a Gaussian noise and which can be written as $B_k \eqdef \epsilon \, \xi_k$ where $\xi_k$ is a standard Gaussian random variable and $\epsilon$ is a scaling factor for implementation purposes.
 This method directs the proposed moves towards areas of high probability of the stationary distribution $\pi_\theta$, for any $\theta \in \Theta$ , using the gradient of $\log \pi_{\theta}$ and has been the object of several studies~\cite{girolami2011riemann,cotter2013mcmc}.
 In high dimensional and highly nonlinear settings, the burden of computing this gradient for a certain number of MCMC transitions leads to a natural focus: the improvement of the behaviour of such sampling scheme by assimilating information about the landscape of the target distribution, also called stationary, while keeping its ease of implementation.
 
@@ -378,7 +378,7 @@ where $\mathsf{B}_k$ denotes the Brownian motion.
 \beq\notag
 \begin{split}
 \nabla \log p(\theta_t) 
- =& \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\\
+ =& \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p(x,\theta)}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\\
  &\hspace{-0.6in}\approx  \frac{1}{n} \sum_{i=1}^{n} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{M} \sum_{m=1}^{M} \nabla_{\theta} f_{\theta_t}\left(z_K^m\right)\eqsp.
 \end{split}
 \eeq
@@ -393,7 +393,7 @@ where $\mathsf{B}_k$ denotes the Brownian motion.
 
 
 
-\textbf{Heuristic behind the efficacy of \algo:}
+\textbf{Intuitions behind the efficacy of \algo:}
 Some past modifications have been proposed in particular to optimize the covariance matrix of the proposal of the general MCMC procedure in order to better stride the support of the target distribution. 
 Langevin Dynamics is one example of those improvements where the proposal is a Gaussian distribution where the mean depends on the gradient of the log target distribution and the covariance depends on some Brownian motion.
 For instance, in~\citet{atchade2006adaptive,marshall2012adaptive}, the authors propose adaptive and geometrically ergodic Langevin chains. 
@@ -401,7 +401,7 @@ Yet, one important characteristic of our EBM problem, is that for each model par
 The techniques in~\citet{atchade2006adaptive,marshall2012adaptive} does not take the whole advantage of changing the proposal using the target distribution. 
 In particular, the covariance matrix of the proposal is given by a stochastic approximation of the empirical covariance matrix. 
 This choice seems completely relevant as soon as the convergence towards the stationary distribution is reached, in other words it would make sense towards the end of the EBM training, as the target distributions from a model parameter to the next one are similar. 
-However, it does not provide a good guess of the variability during the first iterations of the chain since it is still very dependent on the initialization. 
+However, it does not provide a good guess of the variability during the first iterations since it is still very dependent on the initialization. 
 
 Moreover, in ~\citet{girolami2011riemann}, the authors consider the approximation of a constant. Even though this simplification leads to ease of implementation, the curvature metric chosen by the authors need to be inverted, step that can be a computational burden if not intractable. 
 Especially in the case we are considering in our paper, \ie\ ConvNet-based EBM, where the high nonlinearity would lead to intractable expectations.
@@ -443,7 +443,7 @@ For a positive and finite function noted $V: \zset \mapsto \rset$, we define the
 \| \Pi_1 - \Pi_2 \|_V \eqdef \sup \limits_{z \in \zset} \frac{\| \Pi_1(z, \cdot) - \Pi_2(z, \cdot) \|_V }{V(z)} \eqsp.
 \eeq
 
-The definition of this norm allow us to establish a convergence rate for our sampling method by deriving an upper bound of $\| \Pi_\theta^k - \pi_\theta \|_V$ where $k >0$ denotes the number of MCMC transitions.
+The definition of this norm allows us to establish a convergence rate for our sampling method by deriving an upper bound of $\| \Pi_\theta^k - \pi_\theta \|_V$ where $k >0$ denotes the number of MCMC transitions.
 We also recall that $\Pi_\theta$ is the transition kernel defined by Line~\ref{line:langevin} and $\pi_\theta$ is the stationary distribution of our Markov chain at a given EBM model $\theta$.
 This quantity characterizes how close to the target distribution, our chain is getting after a finite time of iterations and will eventually formalize \emph{V-uniform ergodicity} of our method.
 We specify that strictly speaking $\pi_\theta$ is a probability measure, and not a transition kernel. 
@@ -461,11 +461,11 @@ V_\theta(z) \eqdef c_\theta \pi_\theta(z)^{-\beta} \eqsp,
 where $c_\theta$ is a constant, with respect to the chain state $z $, such that for all $z \in \zset$, $V_\theta(z) \geq 1$.
 Note that the V norm depends on the chain state noted $z$ \emph{and} of the global model parameter $\theta$ varying through the optimization procedure.
 Yet, in both main results, the ergodicity and the convergence rate, including the underlying drift condition, are established uniformly on the parameter space $\Theta$.
-We also define the auxiliary functions, independent of the parameter $\theta$:
+We also define the auxiliary functions, independent of the parameter $\theta$ as:
 \beq\label{eq:vfunctions}
 V_1(z)  \eqdef \inf \limits_{\theta \in \Theta} V_\theta(z) \quad \textrm{and} \quad V_2(z)  \eqdef \sup \limits_{\theta \in \Theta} V_\theta(z) \eqsp,
 \eeq
-and assume that
+and assume the following:
 \begin{assumption}\label{ass:V2}
 There exists a constant $a_0 > 0$ such that for all $\theta \in \Theta $ and $z \in \zset$, the function $V_2^{a_0}(z)$, defined in~\eqref{eq:vfunctions}, is integrable against the kernel $\Pi_\theta(z, \cdot)$ and we have
 \beq\notag
@@ -479,6 +479,7 @@ The result consists of showing V-uniform ergodicity of the chain, the irreducibi
 We also prove a drift condition which states that the transition kernels tend to bring back elements into a small set.
 Then, V-uniform ergodicity of the transition kernels $(\Pi_\theta)_{\theta \in \Theta}$ boils down from the latter proven drift condition.
 
+\medskip
 \textbf{Important Note:} The stationary distributions depends on $\theta \in \Theta$ as they vary at each model update during the EBM optimization phase.
 Thus uniformity of convergence of the chain is important in order to characterize the sampling phase \emph{throughout the entire training phase}.
 Particularly at the beginning, the shape of the distributions one needs to sample from vary a lot from a parameter to another.
@@ -501,7 +502,7 @@ Then, it provide a uniform ergodicity result of our sampling method in \algo, vi
 
 Moreover, the independence on the EBM model parameter $\theta$ of $V$ in~\eqref{thm:main2} leads to \emph{uniform} ergodicity as shown in the following Corollary.
 While Theorem~\ref{thm:thm1} is critical for proving the aperiodicity and irreducibility of the chain, we now establish the geometric speed of convergence of the chain.
-We do not only show the importance of the \emph{uniform} ergodicity of the chain, which makes it appealing for the EBM training since the model parameter $\theta$ is often updated, but we also derive a geometrical rate in the following:
+We do not only show the importance of the \emph{uniform} ergodicity of the chain, which makes it appealing for the EBM training since the model parameter $\theta$ is often updated, but we also derive a geometrical rate in the following Corollary:
 \begin{coro}\label{coro:coro1}
 Assume H\ref{ass:bounded}-H\ref{ass:V2}.
 A direct consequence of Theorem~\ref{thm:thm1} is that the family of transition kernels $(\Pi_\theta)_{\theta \in \Theta}$ are uniformly ergodic,\ie\ for any compact $\mathcal{C} \subset \zset$, there exist constants $\rho \in ]0,1[$ and $e >0$ such for any MCMC iteration $k > 0$,we have:
@@ -607,7 +608,7 @@ After verifying the advantage of \algo\ on a Gaussian Mixture Model (GMM) retrie
 For both methods, we use the Frechet Inception Distance (FID), as a reliable performance metrics as detailed in~\citet{heusel2017gans}.
 In the sequel, we tune the learning rates over a fine grid and report the best result for all methods.
 For our method \algo, the threshold parameter $\thresh$, crucial for the implementation of the stepsize~\eqref{eq:step} is tuned over a grid search as well.
-As mentioned in the above, we also define a Brownian motion as $B_k \eqdef \epsilon \xi_k$, and tune the scaling factor $\epsilon$ for better performances.
+As mentioned in the above, we also define a Brownian motion as $B_k \eqdef \epsilon \, \xi_k$, and tune the scaling factor $\epsilon$ for better performances.
 
 \subsection{Toy Example: Gaussian Mixture Model}
 
@@ -641,8 +642,8 @@ The number of hidden neurons varies between $32$ and $64$.
 
 
 \textbf{Results.} 
-We observe Figure~\ref{fig:resultstoy} the outputs of both methods on the toy dataset.
-While both methods achieve a great representation of the truth after a large number of iterations, we notice that \algo\ learns an energy that closely approximates the true density during the first thousands of iterations if the training process.
+We observe Figure~\ref{fig:resultstoy} the outputs using both methods on the toy dataset.
+While they achieve a great representation of the truth after a large number of iterations, we notice that \algo\ learns an energy that closely approximates the true density during the first thousands of iterations if the training process.
 The sharpness of the data generated by \algo\ in the first iterations shows an empirically better ability to sample from the 2D toy dataset.
 
 \subsection{Image Generation}
@@ -656,8 +657,8 @@ The \emph{Oxford Flowers 102} dataset is composed of 102 flower categories.
 
 \medskip
 \textbf{Methods and Settings for the Flowers dataset.}
-Nonconvergent MCMC are also used in this experiments and the number of MCMC transitions is set to $K = 50$.
-Global learning parameters of the gradient update is set to $0.001$ for both methods.
+Nonconvergent MCMC are also used in this experiment and the number of MCMC transitions is set to $K = 50$.
+Global learning parameters of the gradient descent update is set to $0.001$ for both methods.
 We run each method during $T = 100\,000$ iterations and plot the results using the final vector of fitted parameters.
 
 \medskip
@@ -748,8 +749,8 @@ CelebA dataset contains more than 200k RGB color facial image. We use 100k image
 
 \medskip
 \textbf{Methods and Settings.}
-Nonconvergent MCMC are also used in this experiments and the number of MCMC transitions is set to $K = 50$.
-Global learning parameters of the gradient update is set to $0.01$ for all methods.
+Nonconvergent MCMC are also used in this experiment and the number of MCMC transitions is set to $K = 50$.
+Global learning parameters of the gradient descent update is set to $0.01$ for all methods.
 We run each method during $T = 50\,000$ iterations and plot the results using the final vector of fitted parameters.
 
 
@@ -1153,49 +1154,6 @@ Then $y \in \mathcal{P}(z)$ implies, using~\eqref{eq:gauss}, that $\pi_\theta(y)
  Finally $y \in \mathcal{P}(z)$ implies that $y \in \accept(z)$, concluding the proof of Lemma~\ref{lem:cone}.
  
 \end{proof}
-
-
-% \clearpage
-% \section{Additional Numerical Experiments}
-
-% \subsection{More Baselines}
-
-
-% \textbf{Visual Checks:}
-
-
-% \begin{figure}[H]
-% \begin{center}
-%     \mbox{
-%         \includegraphics[width=1.65in]{figs/cifaranila}
-%         \includegraphics[width=1.65in]{figs/mh_x_q_099900}
-%         }\vspace{0.05in}
-%             \mbox{
-%                 \includegraphics[width=1.65in]{figs/hmc_x_q_099900}
-%                         \includegraphics[width=1.65in]{figs/gd_x_q_099900}
-%         }
-% \end{center}
-% \caption{(CIFAR Dataset). 1: \algo\ 2: MH. 3: HMC 4: GD without noise after 100k iterations.}
-% 	\label{fig:cifarapp}
-% \end{figure}
-
-% \medskip
-
-
-% \textbf{FID curves:}
-
-
-% \begin{figure}[H]
-% \begin{center}
-% \mbox{\hspace{-0.2in}
-%         \includegraphics[width=1.9in]{figs/fid_flowersmore.eps} \hspace{-0.2in}
-%         \includegraphics[width=1.9in]{figs/fid_cifarmore.eps}
-        
-% }
-% \end{center}
-% 	\caption{(FID values per method against 100k iterations elapsed). Left: Oxford Flowers dataset. Right: CIFAR-10 dataset.}
-% 	\label{fig:fidallbis}
-% \end{figure}
 
 
 \end{document}

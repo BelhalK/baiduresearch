@@ -1,0 +1,248 @@
+\documentclass[11pt]{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%\PassOptionsToPackage{numbers}{natbib}
+\usepackage[colorlinks,linkcolor=blue,filecolor=blue,citecolor=magenta,urlcolor=blue]{hyperref}
+\usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem,graphicx,subfigure}
+\usepackage{xargs}
+\usepackage{stmaryrd}
+\usepackage{natbib}
+
+% ready for submission
+\usepackage{neurips_2020}
+\input{shortcuts.tex}
+
+\begin{document}
+\title{Sparsified Distributed Adaptive Learning with Error Feedback}
+
+\author{
+Xiaoyun Li \\
+  Cognitive And Computing Lab\\
+  Baidu Research\\
+  Beijing, USA \\
+  \texttt{xiaoyun@baidu.com} 
+   \And
+  Belhal Karimi \\
+  Cognitive And Computing Lab\\
+  Baidu Research\\
+  Beijing, China \\
+  \texttt{v_karimibelhal@baidu.com} 
+   \And
+  Ping Li \\
+  Cognitive And Computing Lab\\
+  Baidu Research\\
+  Beijing, China \\
+  \texttt{liping@baidu.com} \\
+}
+
+\date{\today}
+
+\maketitle
+
+\begin{abstract}
+To be completed...
+\end{abstract}
+
+\section{Method}\label{sec:main}
+
+Most modern machine learning tasks can be casted as a large finite-sum optimization problem written as:
+\begin{equation}\label{eq:opt}
+\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)
+\end{equation}
+where $n$ denotes the number of workers, $f_i$ represents the average loss for worker $i$ and $\theta$ the global model parameter taking value in $\Theta$, a subset of $\mathbb{R}^d$.
+
+
+
+Some related work:
+
+
+\citep{karimireddy2019error} develops variant of signSGD (as a biased compression schemes) for distributed optimization. Contributions are mainly on this error feedback variant.
+In \citep{shi2019convergence}, the authors provide theoretical results on the convergence of sparse Gradient SGD for distributed optimization (we want that for AMS here).
+\citep{stich2018sparsified} develops a variant of distributed SGD with sparse gradients too. Contributions include a memory term used while compressing the gradient (using top k for instance). Speeding up the convergence in $\frac{1}{T^3}$.
+% \url{https://arxiv.org/pdf/1901.09847.pdf}
+% \url{https://pdfs.semanticscholar.org/8728/dee89906022c1d4f5c1de1233c3f65ab92f2.pdf?_ga=2.152244026.2027005181.1606271153-15127215.1603945483}
+% \url{https://proceedings.neurips.cc/paper/2018/file/b440509a0106086a67bc2ea9df0a1dab-Paper.pdf}
+
+Consider standard synchronous distributed optimization setting. AMSGrad is used as the prototype, and the local workers is only in charge of gradient computation.
+
+
+\subsection{TopK AMSGrad with Error Feedback}
+
+
+
+
+The key difference (and interesting part) of our TopK AMSGrad compared with the following arxiv paper ``Quantized Adam''\url{https://arxiv.org/pdf/2004.14180.pdf} is that, in our model only gradients are transmitted. In ``QAdam'', each local worker keeps a local copy of moment estimator $m$ and $v$, and compresses and transmits $m/v$ as a whole. Thus, that method is very much like the sparsified distributed SGD, except that $g$ is changed into $m/v$. In our model, the moment estimates $m$ and $v$ are computed only at the central server, with the compressed gradients instead of the full gradient. This would be the key (and difficulty) in convergence analysis.
+
+
+\begin{algorithm}[H]
+\caption{\algo\ for Distributed Learning} \label{alg:sparsams}
+\begin{algorithmic}[1]
+
+\STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
+\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{0,i}=0$ the error accumulator for each worker; sparsity parameter $k$; $n$ local workers; $m_0=0$, $v_0=0$, $\hat v_0=0$
+
+\FOR{$t=1$ to $T$}
+
+\STATE\textbf{parallel for worker $i \in [n]$ do}:
+\STATE\quad  Receive model parameter $\theta_{t}$ from central server
+\STATE\quad  Compute stochastic gradient $g_{t,i}$ at $\theta_t$
+\STATE\quad  Compute $\tilde g_{t,i}=TopK(g_{t,i}+e_{t,i},k)$ \label{line:topk} 
+\STATE\quad  Update the error $e_{t+1,i}=e_{t,i}+g_{t,i}-\tilde g_{t,i}$
+\STATE\quad  Send $\tilde g_{t,i}$ back to central server
+\STATE \textbf{end parallel}
+
+\STATE \textbf{Central server do:}
+\STATE $\bar g_{t}=\frac{1}{n}\sum_{i=1}^N \tilde g_{t,i}$
+\STATE $m_t=\beta_1 m_{t-1}+(1-\beta_1)\bar g_t$
+\STATE $v_t=\beta_2 v_{t-1}+(1-\beta_2)\bar g_t^2$
+\STATE $\hat v_t=\max(v_t,\hat v_{t-1})$ \label{line:v}
+\STATE Update global model $\theta_t=\theta_{t-1}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
+
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Convergence Analysis}
+
+Several mild assumptions to make: Nonconvex and smooth loss function, unbiased stochastic gradient, bounded variance of the gradient, bounded norm of the gradient, control of the distance between the true gradient and its sparse variant.
+
+Check \citep{chen2020quantized} starting with single machine  and extending to distributed settings (several machines).
+
+
+Under the distributed setting, the goal is to derive an upper bound to the second order moment of the gradient of the objective function at some iteration $T_f \in [1, T]$.
+
+\subsection{Mild Assumptions}
+We begin by making the following assumptions.
+
+\begin{assumption}\label{ass:smooth}(Smoothness)
+For $i \in \inter$, $f_i$ is  L-smooth: $\norm{\nabla f_i (\theta) - \nabla f_i (\vartheta)} \leq L \norm{\theta-\vartheta}$.
+\end{assumption}
+
+\begin{assumption}\label{ass:boundgrad}(Unbiased and Bounded gradient \textbf{per worker})
+For any iteration index $t >0$ and worker index $i \in \inter$, the stochastic gradient is unbiased and bounded from above: $\EE[g_{t,i}] = \nabla f_i(\theta_t)$ and $\norm{g_{t,i}} \leq G_i$.
+\end{assumption}
+
+\begin{assumption}\label{ass:quant}(Bounded variance \textbf{per worker})
+For any iteration index $t >0$ and worker index $i \in \inter$, the variance of the noisy gradient is bounded: $\EE[|g_{t,i} - \nabla f_i(\theta_t)|^2] < \sigma_i^2$.
+\end{assumption}
+
+Denote by $Q(\cdot)$ the quantization operator Line~\ref{line:topk} of Algorithm~\ref{alg:sparsams}, which takes as input a gradient vector and returns a quantized version of it, and note $\tilde{g} \eqdef Q(g)$.
+Assume that
+\begin{assumption}\label{ass:var}(Bounded Quantization)
+For any iteration $t >0$, there exists a constant $q >0$ such that $\norm{g_{t,i} - \tilde{g}_{t,i}} \leq q \norm{g_{t,i}}$, where $g_{t,i}$ is the stochastic gradient computed at iteration $t$ for worker $i$. \textcolor{red}{(high $q$ means large quantization so loss of precision on the true gradient)}
+\end{assumption}
+
+
+Denote for all $\theta \in \Theta$:
+\begin{equation}\label{eq:obj}
+f(\theta) \eqdef  \frac{1}{n} \sum_{i=1}^n f_i(\theta) \, ,
+\end{equation} 
+where $n$ denotes the number of workers.
+
+
+
+\section{Single Machine}
+
+Single machine method
+
+\begin{algorithm}[H]
+\caption{\algo\ : Single machine setting} \label{alg:sparsamssingle}
+\begin{algorithmic}[1]
+
+\STATE \textbf{Input}: parameter $\beta_1$, $\beta_2$, learning rate $\eta_t$. 
+\STATE Initialize: central server parameter $\theta_{0} \in \Theta \subseteq \mathbb R^d$; $e_{0}=0$ the error accumulator; sparsity parameter $k$; $m_0=0$, $v_0=0$, $\hat v_0=0$
+
+\FOR{$t=1$ to $T$}
+\STATE  Compute stochastic gradient $g_{t} = g_{t,i_t}$ at $\theta_t$ for randomly sampled index $i_t$
+\STATE  Compute $\tilde g_{t}=TopK(g_{t}+e_{t},k)$ \label{line:topksingle} 
+\STATE  Update the error $e_{t+1}=e_{t}+g_{t}-\tilde g_{t}$
+\STATE $m_t=\beta_1 m_{t-1}+(1-\beta_1)\tilde g_t$
+\STATE $v_t=\beta_2 v_{t-1}+(1-\beta_2)\tilde g_t^2$
+\STATE $\hat v_t=\max(v_t,\hat v_{t-1})$ \label{line:vsingle}
+\STATE Update global model $\theta_t=\theta_{t-1}-\eta_t\frac{m_t}{\sqrt{\hat v_t+\epsilon}}$
+
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+
+%We first define multiple auxiliary sequences. For the first moment, define
+%
+%\begin{align*}
+%    &\bar m_t=m_t+\mathcal E_t,\\   
+%    &\mathcal E_t=\beta_1\mathcal E_{t-1}+(1-\beta_1)(e_{t+1}-e_t),
+%\end{align*}
+%such that 
+%\begin{align*} 
+%    \bar m_t&=\bar m_t+\mathcal E_t\\
+%    &=\beta_1(m_t+\mathcal E_t)+(1-\beta_1)(\bar g_t+e_{t+1}-e_1)\\
+%    &=\beta_1\bar m_{t-1}+(1-\beta_1)g_t.
+%\end{align*}
+
+
+\textbf{Belhal Try for Single Machine Setting:}
+
+
+Define the auxiliary model
+\begin{align*}
+\theta_{t+1}'&\eqdef \theta_{t+1}- e_{t+1}\\
+&=\theta_t - \eta a_t- e_{t+1}\\
+& =\theta_t - \eta a_t- e_{t} - g_t + \tilde g_t\\ 
+& =\theta_t - \eta a_t- e_{t} - \Delta_t\\
+& =\theta_t' - \eta a_t - \Delta_t
+\end{align*}
+where $a_t \eqdef \frac{m_t}{\sqrt{\hat v_t+\epsilon}}$ and $\Delta_t \eqdef g_t - \tilde g_t$.
+By smoothness assumption we have
+\begin{align*}
+    f(\theta_{t+1}')\leq f(\theta_t')-\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle+\frac{L}{2}\| \theta_{t+1}'-\theta_t'\|^2.
+\end{align*}
+Thus,
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\mathbb E[\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+        & \leq \eta\mathbb E[\langle \nabla f(\theta_t) -  \nabla f(\theta_t') , \eta a_t + \Delta_t \rangle] -\mathbb E[\langle  \nabla f(\theta_t), \eta  a_t + \Delta_t \rangle] +\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]
+\end{align*}
+Using the smoothness assumption A\ref{ass:smooth} we have 
+
+\begin{align*}
+\EE[\langle \nabla f(\theta_t) -  \nabla f(\theta_t') , \eta a_t + \Delta_t \rangle] \leq L \EE[\norm{\theta_t - \theta_t'}] E[\norm{\eta a_t + \Delta_t}]
+\end{align*}
+
+Hence,
+
+\begin{align*}
+    \mathbb E[f(\theta_{t+1}')-f(\theta_t')]&\leq -\mathbb E[\langle \nabla f(\theta_t'), \eta a_t + \Delta_t \rangle]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+        & \leq - \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \mathbb E\|\nabla f(\theta_t)\|^2 + L \EE[\norm{\theta_t - \theta_t'}] E[\norm{\eta a_t + \Delta_t}]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]\\
+                & \leq - \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \mathbb E\|\nabla f(\theta_t)\|^2 + L \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]+\frac{L}{2}\mathbb E[\|\eta a_t + \Delta_t\|^2]
+\end{align*}
+
+Summing from $t = 0$ to $t = \maxiter -1$ and divide it by $\maxiter$ yields:
+
+
+\begin{align*}
+&  \left( \eta\frac{1}{\sqrt{G^2+\epsilon}} + q \right) \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1} \EE[\norm{\nabla f(\theta_t)}^2]  \\
+\leq &\sum_{t=0}^{\maxiter -1}\frac{\EE[f(\theta_t') -f(\theta_{t+1}')]}{\maxiter}  +  \frac{1}{\maxiter}\sum_{t=0}^{\maxiter -1}  \EE[\norm{e_t}\norm{\eta a_t + \Delta_t}]+  \frac{L}{2\maxiter}\sum_{t=0}^{\maxiter -1} \mathbb \EE[\|\eta a_t + \Delta_t\|^2]
+\end{align*} 
+
+
+\newpage
+
+
+
+\section{Conclusion}\label{sec:conclusion}
+
+
+
+\newpage
+\bibliographystyle{plain}
+\bibliography{ref}
+
+\newpage
+\appendix 
+
+\section{Appendix}\label{sec:appendix}
+
+
+%-----------------------------------------------------------------------------
+
+\end{document} 
