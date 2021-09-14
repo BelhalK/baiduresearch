@@ -249,21 +249,22 @@ There occurs a normalization per dimension with respect to the square root of th
 \State{\textbf{Input}: parameter $0< \beta_1, \beta_2 <1$, and learning rate $\alpha_t$, weight decaying parameter $\lambda \in ]0,1[$.}
 \State{Init: $\theta_{0} \in \Theta \subseteq \mathbb R^d $, as the global model and $\hat v_0=v_{0} = \epsilon \mathsf{1} \in \mathbb R^{d}$ and $\bar{\theta}_0 =  \frac{1}{n} \sum_{i=1}^n \theta_0$.}
 \State{\textbf{for $r=0, \ldots, R-1$ do}}
-\State{$\qquad$\textbf{parallel for device $i \in D^{r}$ do}:}
-\State{Set $\theta_{r,i}^{0} = \bar{\theta}_{r-1}$.}
-\State{Set $v^{t}_{r,i} = \hat{v}_{r-1}$.}
-\State{\textbf{for $t=1, \ldots, T$ do}}
-\State{Compute stochastic gradient $g^t_{r,i}$ at $\theta_{r,i}^{0}$.}
-\State{$m^t_{i} = \beta_1 m^{t-1}_{i} + (1 - \beta_1) g^t_{r,i}$ and $m^{t}_{i}=m^{t}_{i} /\left(1-\beta_{1}^{t}\right)$. \label{line:new1}}
-\State{$v^{t}_{r,i} = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) (g^t_{r,i})^2$ and $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{t}\right)$. \label{line:new2}}
-\State{Compute the ratio  $p_{r,i}^t=m^{t}_{i}/(\sqrt{\hat v^{t}_{r}}+\epsilon)$. \label{line:scale}}
-\State{Update local model for each layer $\ell \in \llbracket \tot \rrbracket$: \label{line:layer}}
+\State{$\quad$\textbf{parallel for device $i \in D^{r}$ do}:}
+\State{$\qquad$Set $\theta_{r,i}^{0} = \bar{\theta}_{r-1}$.}
+\State{$\qquad$Set $v^{t}_{r,i} = \hat{v}_{r-1}$.}
+\State{$\qquad$\textbf{for $t=1, \ldots, T$ do}}
+\State{$\qquad\quad$Compute stochastic gradient $g^t_{r,i}$ at $\theta_{r,i}^{0}$.}
+\State{$\qquad\quad$$m^t_{i} = \beta_1 m^{t-1}_{i} + (1 - \beta_1) g^t_{r,i}$ and $m^{t}_{i}=m^{t}_{i} /\left(1-\beta_{1}^{t}\right)$. \label{line:new1}}
+\State{$\qquad\quad$$v^{t}_{r,i} = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) (g^t_{r,i})^2$ and $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{t}\right)$. \label{line:new2}}
+\State{$\qquad\quad$Compute the ratio  $p_{r,i}^t=m^{t}_{i}/(\sqrt{\hat v^{t}_{r}}+\epsilon)$. \label{line:scale}}
+\State{$\qquad\quad$Update local model for each layer $\ell \in \llbracket \tot \rrbracket$: \label{line:layer}}
 $$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1})/ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|\, .$$
+\State{$\qquad$\textbf{end for}}
+\State{$\qquad$Devices send $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $v_{r,i}^T$ to server.}
+\State{$\quad$\textbf{end for}}
+\State{$\quad$Server computes averages of the local models $\bar{\theta}_r = [\bar{\theta}_r^{\ell,T}]_{\ell =1}^{\tot} = [\frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $\hat{v}_{r+1} = \max( \hat{v}_{r},\frac{1}{n} \sum_{i=1}^n v^T_{r,i} )$ and send them back to the devices. \label{line:final}}
 \State{\textbf{end for}}
-\State{Devices send $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $v_{r,i}^T$ to server.}
-\State{\textbf{end for}}
-\State{Server computes averages of the local models $\bar{\theta}_r = [\bar{\theta}_r^{\ell,T}]_{\ell =1}^{\tot} = [\frac{1}{n} \sum_{i=1}^n \theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $\hat{v}_{r+1} = \max( \hat{v}_{r},\frac{1}{n} \sum_{i=1}^n v^T_{r,i} )$ and send them back to the devices. \label{line:final}}
-\State{\textbf{end for}}
+\State{\textbf{Output}: Vector of parameters $\bar{\theta}_R = [\bar{\theta}_R^{\ell,T}]_{\ell =1}^{\tot}$.}
 \end{algorithmic}
 \end{algorithm}
 
@@ -932,7 +933,7 @@ Substitute back into (\ref{eqn1}), and leave other derivations unchanged. Assumi
 
  And if we set the learning rate to be of order $\mathcal{O}(\frac{1}{L \sqrt{\tau}})$ then:
  \begin{align*}
-     \frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \mathcal{O}\left( \sqrt{\frac{M^2 p}{n}} \frac{1}{\sqrt{\tot \tau}} + \frac{\sigma^2 }{\tau n\sqrt{p}}+\frac{(T-1)^2p}{\tau^{3/2}L^3}\right),
+     \frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \mathcal{O}\left( \sqrt{\frac{M^2 p}{n}} \frac{1}{\sqrt{\tot \tau}} + \frac{\sigma^2 }{\tau n\sqrt{p}}+\frac{(T-1)^2p}{\tau^{3/2}L^3}\right) \, .
  \end{align*}
 This concludes the proof.
 
