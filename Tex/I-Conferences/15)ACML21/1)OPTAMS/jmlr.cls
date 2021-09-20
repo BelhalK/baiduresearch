@@ -442,10 +442,16 @@ Keywords:} \ignorespaces}%
   \label{jmlrend}\null
   \global\let\@reprint\@empty
 }
+% \newcommand*{\@titlefoot}{\scriptsize\copyright\space\@jmlryear
+%     \space\@jmlr@authors.\hfill
+%     \@reprint
+% }
+
 \newcommand*{\@titlefoot}{\scriptsize\copyright\space\@jmlryear
-    \space\@jmlr@authors.\hfill
+    \space J.-K. Wang, X. Li, B.Karimi \& P.Li.\hfill
     \@reprint
 }
+
 \let\@reprint\@empty
 \newcommand{\reprint}[1]{%
   \gdef\@reprint{Reprinted with permission for JMLR#1}}
@@ -461,14 +467,14 @@ Keywords:} \ignorespaces}%
           \else
              \if\@jmlrissue\@empty,\fi
           \fi
-       \else
-          :%
+       %\else
+       %   :%
        \fi
     \fi
     \ifx\@jmlrpages\@empty
     \else
        \ifx\@jmlrvolume\@empty\space\fi
-       \@jmlrpages
+       %\@jmlrpages
        \ifx\@jmlryear\@empty\else,\fi
     \fi
     \ifx\@jmlryear\@empty\else\space\@jmlryear\fi
@@ -495,7 +501,8 @@ Keywords:} \ignorespaces}%
   \let\@mkboth\@gobbletwo
   \def\@oddhead{\hfill {\small\scshape \@shorttitle} \hfill}%
   \def\@oddfoot{\hfill \small\rmfamily \thepage \hfill}%
-  \def\@evenhead{\hfill {\small\scshape \@shortauthor} \hfill}%
+%   \def\@evenhead{\hfill {\small\scshape \@shortauthor} \hfill}%
+  \def\@evenhead{\hfill {\small\scshape Wang Li Karimi Li} \hfill}%
   \def\@evenfoot{\hfill \small\rmfamily \thepage \hfill}%
 }%
 \pagestyle{jmlrps}
