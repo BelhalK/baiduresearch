@@ -1,0 +1,107 @@
+\documentclass[11pt]{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%\PassOptionsToPackage{numbers}{natbib}
+\usepackage[colorlinks,linkcolor=blue,filecolor=blue,citecolor=magenta,urlcolor=blue]{hyperref}
+\usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem,graphicx,subfigure}
+\usepackage{xargs}
+\usepackage{stmaryrd}
+\usepackage{natbib}
+
+% ready for submission
+\usepackage{neurips_2020}
+\input{shortcuts.tex}
+\newtheorem{definition}{Definition}
+\newcommand{\algo}{\textsc{eff-EBM}}
+
+\begin{document}
+\title{Memory Efficient EBM Training}
+
+\author{
+  Belhal Karimi \\
+  Cognitive And Computing Lab\\
+  Baidu Research\\
+  Beijing, China \\
+  \texttt{v_karimibelhal@baidu.com} 
+   \And
+  Ping Li \\
+  Cognitive And Computing Lab\\
+  Baidu Research\\
+  Beijing, China \\
+  \texttt{liping@baidu.com} \\
+}
+
+\date{\today}
+
+\maketitle
+
+\begin{abstract}
+To be completed...
+\end{abstract}
+
+\section{Introduction}\label{sec:introduction}
+
+\begin{definition}[Top-$k$]\label{def:topk}
+For $x\in\mathbb R^d$, denote $\mathcal S$ as the size-$k$ set of $i\in[d]$ with largest $k$ magnitude $|x_i|$. The \textbf{Top-$k$} compressor is defined as $\mathcal C(x)_i=x_i$, if $i\in\mathcal S$; $\mathcal C(x)_i=0$ otherwise.
+\end{definition}
+
+\begin{definition}[Block-Sign]\label{def:sign}
+For $x\in\mathbb R^d$, define $M$ blocks indexed by $\mathcal B_i$, $i=1,...,M$, with $d_i\eqdef |\mathcal B_i|$. The \textbf{Block-Sign} compressor is defined as $\mathcal C(x)=[sign(x_{\mathcal B_1})\frac{\|x_{\mathcal B_1}\|_1}{d_1},..., sign(x_{\mathcal B_M}) \frac{\|x_{\mathcal B_M}\|_1}{d_M}]$. 
+\end{definition}
+
+
+\begin{algorithm}[H]
+\caption{\algo\ } \label{alg:anila}
+\begin{algorithmic}[1]
+%\small
+\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$, sequence of global learning rate $\{\eta_t\}_{t >0}$,  sequence of MCMC stepsizes ${\gamma_k}_{k >0}$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$ and observations $\{ x_{i} \}_{i=1}^n$.
+\FOR{$t=1$ to $T$}
+\STATE Draw $M$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential via Langevin diffusion:\label{line:langevin}
+\FOR{$k=1$ to $K$}
+\STATE Use black box compression operators:
+$$
+\tilde{g}_{k-1}^m = \mathcal{C}(\nabla_z f_{\theta_t}(z_{k-1}^m) )
+$$
+\STATE Construct the Markov Chain as follows:
+\beq\label{eq:anila}
+z_{k}^{m} = z_{k-1}^m + \gamma_k/2 \tilde{g}_{k-1}^m+ \sqrt{\gamma_k} \mathsf{B}_k \eqsp,
+\eeq
+where $\mathsf{B}_t$ denotes the Brownian motion (Gaussian noise).
+\ENDFOR
+\STATE Assign $\{ z_{t}^m \}_{m=1}^M \leftarrow \{ z_{K}^m \}_{m=1}^M$.
+\STATE Sample $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
+\STATE Compute the gradient of the empirical log-EBM:
+\beq\notag
+\begin{split}
+\nabla \log p(\theta_t) 
+ = \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\approx  \frac{1}{n} \sum_{i=1}^{n} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)\eqsp.
+\end{split}
+\eeq
+\STATE Update the vector of global parameters of the EBM:\label{line:gradient}
+\beq\notag
+\theta_{t+1} = \theta_{t} + \eta_t \nabla \log p(\theta_t) \eqsp.
+\eeq
+\ENDFOR
+\STATE \textbf{Output:} Vector of fitted parameters $\theta_{T+1}$.
+\end{algorithmic}
+\end{algorithm}
+
+
+
+\section{Conclusion}\label{sec:conclusion}
+
+
+
+\newpage
+\bibliographystyle{plain}
+\bibliography{ref}
+
+\newpage
+\appendix 
+
+\section{Appendix}\label{sec:appendix}
+
+
+%-----------------------------------------------------------------------------
+
+\end{document} 
