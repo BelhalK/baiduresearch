@@ -1,5 +1,4 @@
-# python3 -u train_data_gen.py --th 0.0001 --eps 0.01 --mcmcmethod compressed
-# python3 -u train_data_gen.py --th 0.00015 --eps 0.01 --mcmcmethod compressed
+# /opt/anaconda3/bin/python3 -u train_data_gen.py --th 0.0001 --eps 0.01 --mcmcmethod compressed
 
 import torch as t
 import torchvision.transforms as tr
@@ -12,6 +11,7 @@ from utils import download_flowers_data, plot_ims, plot_diagnostics, plot_single
 import argparse
 from logger import Logger
 import numpy as np
+import compressor as sko
 import pdb
 
 
@@ -127,12 +127,6 @@ s_t_0 = 2 * t.rand_like(q) - 1
 # ## FUNCTIONS FOR SAMPLING ## #
 ################################
 
-# Compression operator
-def compressor(gg, args):
-    compr_gg = gg
-    return compr_gg
-
-
 # sample batch from given array of images
 def sample_image_set(image_set):
     rand_inds = t.randperm(image_set.shape[0])[0:config['batch_size']]
@@ -177,7 +171,17 @@ def sample_s_t(L, init_type, update_s_t_0=True):
             f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
             
             # Compressed gradient
-            comp_f_prime = compressor(f_prime)
+            pdb.set_trace()
+
+            t = 10
+            k = 50
+
+            hashfct = collections.OrderedDict()
+            sign = collections.OrderedDict()
+            
+
+
+            comp_f_prime = f_prime
 
 
             x_s_t.data += - comp_f_prime + eps * t.randn_like(x_s_t)
