@@ -22,6 +22,7 @@ parser.add_argument('--th', '--thresh', default=0.001, type=float,
 parser.add_argument('--eps', '--epsilon', default=0.001, type=float,
                     metavar='EP', help='epsilon')
 parser.add_argument('--mcmcmethod', default='langevin',help='mcmc to use (langevin, compressed)')
+parser.add_argument('--compmethod', default='sign',help='compression to use (sign, topk, full)')
 
 
 args = parser.parse_args()
@@ -176,10 +177,9 @@ def sample_s_t(L, init_type, update_s_t_0=True):
             t = 10
             k = 50
 
-            hashfct = collections.OrderedDict()
-            sign = collections.OrderedDict()
+            hashtable = collections.OrderedDict()
+            signtable = collections.OrderedDict()
             
-
 
             comp_f_prime = f_prime
 
