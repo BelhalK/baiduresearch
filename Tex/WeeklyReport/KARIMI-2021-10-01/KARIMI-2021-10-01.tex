@@ -50,7 +50,7 @@
 
 
 
-\title{Weekly Report KARIMI-2021-09-17}
+\title{Weekly Report KARIMI-2021-10-01}
 
 
 \date{}
@@ -60,63 +60,61 @@
 
 
 
-\section{Spars AMS code for Imagenet}
-Spent most of the past two weeks working on adapting our code to torch.distributed and above all running the code on the asimov cluster.
-Many bugs related to my account and the delay in replies from the IT team led to delays.
-Then beginning this week, a lot of tries to run on 4 nodes failed while talking to the IT team and Weijie at least once per day.
-I don't really know how we will fix this issue that is unrelated to our codebase (I also try a toy script that is supposed to print a message on several nodes).
-I am in contact with Wasim from Sunnyvale now to unblock this issue.
+\section{Spars AMS code for Imagenet: Distributed and Single GPU}
+Datasets: Tiny Imagenet, Imagenet, CIFAR.
 
-\section{Memory Efficient EBM Training}
+Models: CNN, Resnet9, Resnet18, Resnet50.
 
-
-%\begin{definition}[Top-$k$]\label{def:topk}
-%For $x\in\mathbb R^d$, denote $\mathcal S$ as the size-$k$ set of $i\in[d]$ with largest $k$ magnitude $|x_i|$. The \textbf{Top-$k$} compressor is defined as $\mathcal C(x)_i=x_i$, if $i\in\mathcal S$; $\mathcal C(x)_i=0$ otherwise.
-%\end{definition}
+%\section{Memory Efficient EBM Training}
 %
-%\begin{definition}[Block-Sign]\label{def:sign}
-%For $x\in\mathbb R^d$, define $M$ blocks indexed by $\mathcal B_i$, $i=1,...,M$, with $d_i\eqdef |\mathcal B_i|$. The \textbf{Block-Sign} compressor is defined as $\mathcal C(x)=[sign(x_{\mathcal B_1})\frac{\|x_{\mathcal B_1}\|_1}{d_1},..., sign(x_{\mathcal B_M}) \frac{\|x_{\mathcal B_M}\|_1}{d_M}]$. 
-%\end{definition}
-
-The idea here is to reduce the memory cost of the MCMC during EBM training.
-That way, we can increase the number of samples in total used to obtain a more accurate approximation of the gradient.
-
-\begin{algorithm}[H]
-\caption{\algo\ } \label{alg:anila}
-\begin{algorithmic}[1]
-%\small
-\STATE \textbf{Input}: Number of iterations $T$, MCMC transitions $K$ and of samples $M$, global learning rate $\{\eta_t\}_{t >0}$,  MCMC stepsizes ${\gamma_k}_{k >0}$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$ and observations $\{ x_{i} \}_{i=1}^n$.
-\FOR{$t=1$ to $T$}
-\STATE Draw $M$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential via Langevin diffusion:\label{line:langevin}
-\FOR{$k=1$ to $K$}
-\STATE Use black box compression operators to compress the gradient with respect to $z$:
-$$
-\tilde{g}_{k-1}^m = \mathcal{C}(\nabla_z f_{\theta_t}(z_{k-1}^m) )
-$$
-where $\mathcal{C}$ is either Sign, Topk, or maybe a simple count sketch operator (need to see in practice what makes sense).
-\STATE Construct the Markov Chain as follows:
-\beq\label{eq:anila}
-z_{k}^{m} = z_{k-1}^m + \frac{\gamma_k}{2} \tilde{g}_{k-1}^m+ \sqrt{\gamma_k} \mathsf{B}_k \eqsp,
-\eeq
-where $\mathsf{B}_t$ denotes the Brownian motion (Gaussian noise).
-\ENDFOR
-\STATE Assign $\{ z_{t}^m \}_{m=1}^M \leftarrow \{ z_{K}^m \}_{m=1}^M$.
-\STATE Sample $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
-\STATE Compute the gradient of the empirical log-EBM:
-\beq\notag
-\begin{split}
-\nabla \log p(\theta_t) 
- = \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\approx  \frac{1}{n} \sum_{i=1}^{n} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)\eqsp.
-\end{split}
-\eeq
-\STATE Update the vector of global parameters of the EBM:\label{line:gradient}
-\beq\notag
-\theta_{t+1} = \theta_{t} + \eta_t \nabla \log p(\theta_t) \eqsp.
-\eeq
-\ENDFOR
-\STATE \textbf{Output:} Vector of fitted parameters $\theta_{T+1}$.
-\end{algorithmic}
-\end{algorithm}
+%
+%%\begin{definition}[Top-$k$]\label{def:topk}
+%%For $x\in\mathbb R^d$, denote $\mathcal S$ as the size-$k$ set of $i\in[d]$ with largest $k$ magnitude $|x_i|$. The \textbf{Top-$k$} compressor is defined as $\mathcal C(x)_i=x_i$, if $i\in\mathcal S$; $\mathcal C(x)_i=0$ otherwise.
+%%\end{definition}
+%%
+%%\begin{definition}[Block-Sign]\label{def:sign}
+%%For $x\in\mathbb R^d$, define $M$ blocks indexed by $\mathcal B_i$, $i=1,...,M$, with $d_i\eqdef |\mathcal B_i|$. The \textbf{Block-Sign} compressor is defined as $\mathcal C(x)=[sign(x_{\mathcal B_1})\frac{\|x_{\mathcal B_1}\|_1}{d_1},..., sign(x_{\mathcal B_M}) \frac{\|x_{\mathcal B_M}\|_1}{d_M}]$. 
+%%\end{definition}
+%
+%The idea here is to reduce the memory cost of the MCMC during EBM training.
+%That way, we can increase the number of samples in total used to obtain a more accurate approximation of the gradient.
+%
+%\begin{algorithm}[H]
+%\caption{\algo\ } \label{alg:anila}
+%\begin{algorithmic}[1]
+%%\small
+%\STATE \textbf{Input}: Number of iterations $T$, MCMC transitions $K$ and of samples $M$, global learning rate $\{\eta_t\}_{t >0}$,  MCMC stepsizes ${\gamma_k}_{k >0}$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$ and observations $\{ x_{i} \}_{i=1}^n$.
+%\FOR{$t=1$ to $T$}
+%\STATE Draw $M$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential via Langevin diffusion:\label{line:langevin}
+%\FOR{$k=1$ to $K$}
+%\STATE Use black box compression operators to compress the gradient with respect to $z$:
+%$$
+%\tilde{g}_{k-1}^m = \mathcal{C}(\nabla_z f_{\theta_t}(z_{k-1}^m) )
+%$$
+%where $\mathcal{C}$ is either Sign, Topk, or maybe a simple count sketch operator (need to see in practice what makes sense).
+%\STATE Construct the Markov Chain as follows:
+%\beq\label{eq:anila}
+%z_{k}^{m} = z_{k-1}^m + \frac{\gamma_k}{2} \tilde{g}_{k-1}^m+ \sqrt{\gamma_k} \mathsf{B}_k \eqsp,
+%\eeq
+%where $\mathsf{B}_t$ denotes the Brownian motion (Gaussian noise).
+%\ENDFOR
+%\STATE Assign $\{ z_{t}^m \}_{m=1}^M \leftarrow \{ z_{K}^m \}_{m=1}^M$.
+%\STATE Sample $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
+%\STATE Compute the gradient of the empirical log-EBM:
+%\beq\notag
+%\begin{split}
+%\nabla \log p(\theta_t) 
+% = \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\approx  \frac{1}{n} \sum_{i=1}^{n} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)\eqsp.
+%\end{split}
+%\eeq
+%\STATE Update the vector of global parameters of the EBM:\label{line:gradient}
+%\beq\notag
+%\theta_{t+1} = \theta_{t} + \eta_t \nabla \log p(\theta_t) \eqsp.
+%\eeq
+%\ENDFOR
+%\STATE \textbf{Output:} Vector of fitted parameters $\theta_{T+1}$.
+%\end{algorithmic}
+%\end{algorithm}
 
 
 
