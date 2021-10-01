@@ -36,6 +36,9 @@
 \newcommand{\cs}[1]{\texttt{\char`\\#1}}
 \makeatletter
 \let\Ginclude@graphics\@org@Ginclude@graphics 
+
+\renewcommand{\@jmlr@authors}{J.-K. Wang, X. Li, B. Karimi \& P. Li}
+\renewcommand{\@shortauthor}{Wang Li Karimi}
 \makeatother
 
 \jmlrvolume{157}
@@ -58,14 +61,26 @@
  %  \Name{Author Name2} \Email{xyz@sample.com}\\
  %  \addr Address}
 
- % Three or more authors with the same address:
+
  \author{\centering
-   \Name{Jun-Kun Wang, Xiaoyun Li,  Belhal Karimi, Ping Li}   \\
+  \Name{Jun-Kun Wang, Xiaoyun Li,  Belhal Karimi, Ping Li}   \\
   \addr Cognitive Computing Lab\\
 Baidu Research\\
 10900 NE 8th St. Bellevue, WA 98004, USA\\
  \hspace{0.4in}\texttt{\{wangjim123, lixiaoyun996, belhal.karimi, pingli98\}@gmail.com}
 }
+ % Three or more authors with the same address:
+%   \author{\Name{Jun-Kun Wang} \Email{wangjim123@gmail.com}\\
+%   \Name{Xiaoyun Li} \Email{lixiaoyun996@gmail.com}\\
+%   \Name{Belhal Karimi} \Email{belhal.karimi@gmail.com}\\
+%   \Name{Ping Li} \Email{pingli98@gmail.com}\\
+%   \addr Cognitive Computing Lab\\
+%   Baidu Research\\
+%  10900 NE 8th St. Bellevue, WA 98004, USA\\}
+
+
+\editors{Vineeth N Balasubramanian and Ivor Tsang}
+
 
 
 % % Authors with different addresses:
@@ -79,7 +94,7 @@ Baidu Research\\
 \maketitle
 
 \begin{abstract}
-We propose a new variant of AMSGrad \citep{RKK18}, a popular adaptive gradient based optimization algorithm widely used for training deep neural networks. 
+We propose a new variant of AMSGrad \citep{reddi2019convergence}, a popular adaptive gradient based optimization algorithm widely used for training deep neural networks. 
 Our algorithm adds prior knowledge about the sequence of consecutive mini-batch gradients and leverages its underlying structure making the gradients sequentially predictable. 
 By exploiting the predictability process and ideas from optimistic online learning, the proposed algorithm can accelerate the convergence and increase its sample efficiency.
 After establishing a tighter upper bound under some convexity conditions on the regret, we offer a complimentary view of our algorithm which generalizes to the offline and stochastic nonconvex optimization settings. 
@@ -94,14 +109,14 @@ optimization, adaptive, optimistic, online, stochastic
 \section{Introduction}
 
 
-Deep learning models have been successful in several applications, from robotics (e.g., \citep{LFDA17}), computer vision (e.g \citep{Rnet16,goodfellow2014generative}), reinforcement learning (e.g., \citep{Atari13}) and natural language processing (e.g., \citep{GMH13}).
+Deep learning models have been successful in several applications, from robotics (e.g., \citep{levine2016end}), computer vision (e.g \citep{he2016deep,goodfellow2014generative}), reinforcement learning (e.g., \citep{mnih2013playing}) and natural language processing (e.g., \citep{GMH13}).
 With the sheer size of modern datasets and the dimension of neural networks, speeding up training is of utmost importance.
-To do so, several algorithms have been proposed in recent years, such as  AMSGrad \citep{RKK18}, Adam \citep{KB15}, RMSprop \citep{TH12}, AdADELTA \citep{Z12}, and NAdam \citep{D16}.
-All the prevalent algorithms for training deep networks mentioned above combine two ideas: the idea of adaptivity from AdaGrad \citep{DHS11,MS10} and the idea of momentum from Nesterov's Method \citep{N04} or Heavy ball method \citep{P64}.
+To do so, several algorithms have been proposed in recent years, such as  AMSGrad \citep{reddi2019convergence}, Adam \citep{kingma2014adam}, RMSprop \citep{tieleman2012rmsprop}, AdADELTA \citep{zeiler2012adadelta}, and NAdam \citep{dozat2016incorporating}.
+All the prevalent algorithms for training deep networks mentioned above combine two ideas: the idea of adaptivity from AdaGrad \citep{duchi2011adaptive,MS10} and the idea of momentum from Nesterov's Method \citep{nesterov2003introductory} or Heavy ball method \citep{polyak1964some}.
 AdaGrad is an online learning algorithm that works well compared to the standard online gradient descent when the gradient is sparse.
 Its update has a notable feature: it leverages an anisotropic learning rate depending on the magnitude of the gradient for each dimension which helps in exploiting the geometry of the data. 
-On the other hand, Nesterov's Method or Heavy ball Method \citep{P64} is an accelerated optimization algorithm which update not only depends on the current iterate and gradient but also depends on the past gradients (i.e. momentum). 
-State-of-the-art algorithms such as AMSGrad \citep{RKK18} and Adam \citep{KB15} leverage these ideas to accelerate the training of nonconvex objective functions, for instance deep neural networks losses.
+On the other hand, Nesterov's Method or Heavy ball Method \citep{polyak1964some} is an accelerated optimization algorithm which update not only depends on the current iterate and gradient but also depends on the past gradients (i.e. momentum). 
+State-of-the-art algorithms such as AMSGrad \citep{reddi2019convergence} and Adam \citep{kingma2014adam} leverage these ideas to accelerate the training of nonconvex objective functions, for instance deep neural networks losses.
 
 In this paper, we propose an algorithm that goes beyond the hybrid of the adaptivity and momentum approach. 
 Our algorithm is inspired by Optimistic Online learning \citep{CJ12,RS13b,SALS15,ALLW18,mertikopoulos2018optimistic}, which assumes that, in each round of online learning, a \emph{predictable process} of the gradient of the loss function is available. 
@@ -109,10 +124,10 @@ Then, an action is played exploiting these predictors.
 By capitalizing on this (possibly) arbitrary process, algorithms in Optimistic Online learning enjoy smaller regret than the ones without gradient predictions.
 We combine the Optimistic Online learning idea with the adaptivity and the momentum ideas to design a new algorithm --- \textsc{OPT-AMSGrad}. 
 A single work along that direction stands out. 
-\cite{DISZ18} develop Optimistic-Adam leveraging optimistic online mirror descent \citep{RS13b}.
+\cite{daskalakis2017training} develop Optimistic-Adam leveraging optimistic online mirror descent \citep{RS13b}.
 Yet, Optimistic-Adam is specifically designed to optimize two-player games, e.g., GANs \citep{goodfellow2014generative} which is in particular a two-player zero-sum game. 
 There have been some related works in Optimistic Online learning \citep{CJ12,RS13b,SALS15} showing that if both players use an $\textit{Optimistic}$ type of update, then accelerating the convergence to the equilibrium of the game is possible.
-\cite{DISZ18} build on these related works and show that Optimistic-Mirror-Descent can avoid the cycle behavior in a bilinear zero-sum game accelerating the convergence. 
+\cite{daskalakis2017training} build on these related works and show that Optimistic-Mirror-Descent can avoid the cycle behavior in a bilinear zero-sum game accelerating the convergence. 
 In contrast, in this paper, the proposed algorithm is designed to accelerate nonconvex optimization (e.g., empirical risk minimization).
 To the best of our knowledge, this is the first work exploring towards this direction and bridging the unfilled \emph{theoretical} gap at the crossroads of online learning and stochastic optimization.
 The \textbf{contributions} of our paper are as follows:
@@ -128,7 +143,7 @@ We illustrate the benefits of our method on several finite-sum nonconvex optimiz
 The supplementary material of this paper is devoted to the proofs of our theoretical results.
 
 \textbf{Notations:} 
-We follow the notations of adaptive optimization \citep{KB15,RKK18}. 
+We follow the notations of adaptive optimization \citep{kingma2014adam,reddi2019convergence}. 
 For any $u$, $v \in \mathbb R^{d}$,  $u/v$ represents the element-wise division,
 $u^{2}$ the element-wise square, $\sqrt{u}$ the element-wise square-root.
 We denote $g_{1:T}[i]$ as the sum of the $i_{th}$ element of $g_{1},\dots, g_{T} \in \mathbb R^{d}$ and $\| \cdot \|$ as the Euclidean norm.
@@ -145,7 +160,7 @@ $$\mathcal{R}_{T}( w  ):= \sum_{t=1}^T \ell_{t}(w) - \sum_{t=1}^T \ell_{t}(w^*)\
 which is the cumulative loss of the learner minus the cumulative loss of some benchmark $w^{*} \in \Theta$.
 The idea of Optimistic Online learning (e.g., \citep{CJ12,RS13b,SALS15,ALLW18}) is as follows.
 In each round $t$, the learner exploits a guess $m_t(\cdot)$ of the gradient $\nabla \ell_t(\cdot)$ to choose an action $w_t$\footnote{Suppose the learner knows the exact guess $\nabla \ell_t(\cdot)$ before committing its action, then it would exploit the knowledge to determine its action and consequently minimize the regret.}. 
-Consider the Follow-the-Regularized-Leader (FTRL, \citep{H14}) online learning algorithm which update reads
+Consider the Follow-the-Regularized-Leader (FTRL, \citep{hazan2019introduction}) online learning algorithm which update reads
 \begin{equation} \notag
 \textstyle w_t  = \arg \min_{w \in \Theta} \{ \langle w , L_{t-1} \rangle + \frac{1}{\eta} \textsf{R}(w) \} \eqsp,
 \end{equation}
@@ -156,12 +171,11 @@ The update of its optimistic variant, called Optimistic-FTRL and developed in \c
 \end{equation}
 where $\{m_{t}\}_{t>0}$ is a predictable process incorporating (possibly arbitrary) knowledge about the sequence of gradients $\{ g_{t}:=\nabla \ell_t(w_t)\}_{t>0}$.
 Under the assumption that the loss functions are convex, it has been shown in \citet{SALS15} that the regret of Optimistic-FTRL is at most $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t \|_*^2 } )$.
-
-\begin{wrapfigure}[10]{r}{.5\linewidth}\vspace{-0.8cm}
+\begin{wrapfigure}[8]{r}{.5\linewidth}\vspace{-1.4cm}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
-\caption{AMSGrad \citep{RKK18}} \label{alg:amsgrad}
+\caption{AMSGrad \citep{reddi2019convergence}} \label{alg:amsgrad}
 \begin{algorithmic}[1]
 \small
 \STATE \textbf{Required}: parameter $\beta_1$, $\beta_2$, and $\eta_t$. 
@@ -178,7 +192,6 @@ Under the assumption that the loss functions are convex, it has been shown in \c
 \end{algorithm}
 \vspace{-0.1in}
 \end{minipage}\end{wrapfigure}
-
 \textit{Remark:} Note that the usual worst-case bound is preserved even when the predictors $\{m_{t}\}_{t>0}$ do not predict well the gradients. Indeed, if we take the example of Optimistic-FTRL, the bound reads $\sqrt{\sum_{t=1}^T \| g_t - m_t \|_*^2 } \leq 2 \max \limits_{w \in \Theta} \| \nabla \ell_t(w) \| \sqrt{T}$ which is equal to the usual bound up to a factor $2$~\citep{RS13b}, under certain boundedness assumptions on $\Theta$ detailed below.
 Yet, when the predictors $\{m_{t}\}_{t>0}$ are well designed, the resulting regret will be lower. 
 We will have a similar argument when comparing \textsc{OPT-AMSGrad} and AMSGrad regret bounds in Section~\ref{sec:convex}.
@@ -187,14 +200,14 @@ We emphasize, Section~\ref{sec:opt}, the importance of leveraging a good guess $
 
 \textbf{Adaptive optimization methods.}\hspace{0.1cm}
 Adaptive optimization has been popular in various deep learning applications due to their superior empirical performance.
-Adam \citep{KB15}, a popular adaptive algorithm, combines momentum \citep{P64} and anisotropic learning rate of AdaGrad \citep{DHS11}.
+Adam \citep{kingma2014adam}, a popular adaptive algorithm, combines momentum \citep{polyak1964some} and anisotropic learning rate of AdaGrad \citep{duchi2011adaptive}.
 More specifically, the learning rate of AdaGrad at time $T$ for dimension $j$ is proportional to the inverse of $\sqrt{ \Sigma_{t=1}^T g_t[j]^2 }$, where $g_t[j]$ is the $j$-th element of the gradient vector $g_t$ at time $t$.
-This adaptive learning rate helps accelerating the convergence when the gradient vector is sparse \citep{DHS11}, yet, when applying AdaGrad to train deep neural networks, it is observed that the learning rate might decay too fast, see \citet{KB15} for more details.
-Therefore, \cite{KB15} put forward Adam that uses a moving average of the gradients divided by the square root of the second moment of this moving average (element-wise multiplication), for updating the model parameter $w$.
-A variant, called AMSGrad and detailed in Algorithm~\ref{alg:amsgrad}, has been developed in \citet{RKK18} to fix Adam failures.
+This adaptive learning rate helps accelerating the convergence when the gradient vector is sparse \citep{duchi2011adaptive}, yet, when applying AdaGrad to train deep neural networks, it is observed that the learning rate might decay too fast, see \citet{kingma2014adam} for more details.
+Therefore, \cite{kingma2014adam} put forward Adam that uses a moving average of the gradients divided by the square root of the second moment of this moving average (element-wise multiplication), for updating the model parameter $w$.
+A variant, called AMSGrad and detailed in Algorithm~\ref{alg:amsgrad}, has been developed in \citet{reddi2019convergence} to fix Adam failures.
 The difference between Adam and AMSGrad lies in Line~\ref{line:maxop} of Algorithm~\ref{alg:amsgrad}.
-The AMSGrad algorithm \citep{RKK18} applies the $\texttt{max}$ operation on the second moment to guarantee a non-increasing learning rate $\eta_t / \sqrt{\hat{v}}_t $, which helps for the convergence (i.e. average regret $\mathcal{R}_T/T \rightarrow 0$).
-
+The AMSGrad algorithm \citep{reddi2019convergence} applies the $\texttt{max}$ operation on the second moment to guarantee a non-increasing learning rate $\eta_t / \sqrt{\hat{v}}_t $, which helps for the convergence (i.e. average regret $\mathcal{R}_T/T \rightarrow 0$).
+As we mainly focus on the convergence rate of the various methods in this contribution, we would like to highlight that complementary efforts are cal also be made towards improving the generalization abilities of those algorithms, see \citet{zhou2020towards} for instance.
 
 % \vspace{-0.1in}
 \section{\textsc{OPT-AMSGRAD} Algorithm}\label{sec:opt}
@@ -210,6 +223,13 @@ At each iteration, the learner computes a gradient vector $g_{t}:= \nabla \ell_t
 The learner first updates an auxiliary variable $\tilde{w}_{t+1} \in \Theta$ (line 8), then computes the next model parameter $w_{t+1}$ (line 9).
 Observe that the proposed algorithm does not reduce to AMSGrad when $m_{t}=0$, contrary to the optimistic variant of FTRL.
 Furthermore, combining line 8 and line 9 yields the following single step $w_{t+1}= \tilde{w}_{t}  - \eta_t (\theta_t + h_{t+1} )/ \sqrt{\hat{v}}_t $. 
+
+Compared to AMSGrad, the algorithm is characterized by a \emph{two-level} update that interlinks some \emph{auxiliary state} $\tilde{w}_{t}$ and the model parameter state, $w_t$, similarly to the Optimistic-Mirror-Descent algorithm developed in \citet{RS13b}.
+It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}$, which exploits the guess $m_{t+1}$, see Figure \ref{fig:scheme}.
+In the following analysis, we show that this interleaving actually leads to some cancellation in the regret bound.
+Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citet{CJ12}.
+The gradient prediction process plays an important role as discussed in Section~\ref{sec:numerical}.
+The proposed \textsc{OPT-AMSGrad} algorithm inherits three properties: \textsf{(i)} Adaptive learning rate of each dimension as AdaGrad~\citep{duchi2011adaptive} (line 6, line 8 and line 9). \textsf{(ii)} Exponential moving average of the past gradients as Nesterov's Method \citep{nesterov2003introductory} and the Heavy-Ball method~\citep{polyak1964some} (line 5). \textsf{(iii)} Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as in optimistic online learning algorithms~\citep{CJ12,RS13b,SALS15} (line 9).
 
 \hspace{-0.2in}\begin{minipage}{0.5\linewidth}
  \algsetup{indent=1em}
@@ -243,16 +263,6 @@ where $h_{t+1}:= \beta_{1} \theta_{t-1} + (1 - \beta_{1}) m_{t+1}$ with $m_{t+1}
 \end{minipage}
 
 \vspace{0.1in}
-Compared to AMSGrad, the algorithm is characterized by a \emph{two-level} update that interlinks some \emph{auxiliary state} $\tilde{w}_{t}$ and the model parameter state, $w_t$, similarly to the Optimistic-Mirror-Descent algorithm developed in \citet{RS13b}.
-It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}$, which exploits the guess $m_{t+1}$, see Figure \ref{fig:scheme}.
-
-
-
-
-In the following analysis, we show that this interleaving actually leads to some cancellation in the regret bound.
-Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in \citet{CJ12}.
-The gradient prediction process plays an important role as discussed in Section~\ref{sec:numerical}.
-The proposed \textsc{OPT-AMSGrad} algorithm inherits three properties: \textsf{(i)} Adaptive learning rate of each dimension as AdaGrad~\citep{DHS11} (line 6, line 8 and line 9). \textsf{(ii)} Exponential moving average of the past gradients as Nesterov's Method \citep{N04} and the Heavy-Ball method~\citep{P64} (line 5). \textsf{(iii)} Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as in optimistic online learning algorithms~\citep{CJ12,RS13b,SALS15} (line 9).
 The first property helps for acceleration when the gradient has a sparse structure.
 The second one is from the long-established idea of momentum which can also help for acceleration. 
 The last property can lead to an acceleration when the prediction of the next gradient is good as mentioned above when introducing the regret bound for the Optimistic-FTRL algorithm.
@@ -280,7 +290,7 @@ The proofs of the results are deferred to the supplementary material of this pap
 \subsection{Convex Regret Analysis}\label{sec:convex}
 \vspace{-0.05in}
 
-In this subsection only, we assume convexity of $\{\ell_t\}_{t>0}$ and that $\Theta$ has a bounded diameter $D_{\infty}$, which is a standard assumption for adaptive methods \citep{RKK18,KB15} and is necessary in regret analysis.
+In this subsection only, we assume convexity of $\{\ell_t\}_{t>0}$ and that $\Theta$ has a bounded diameter $D_{\infty}$, which is a standard assumption for adaptive methods \citep{reddi2019convergence,kingma2014adam} and is necessary in regret analysis.
 % since if the boundedness assumption is lifted, one might construct a scenario such that the benchmark is $w^* = \infty$ and the learner's regret is infinite. 
 \begin{Theorem} \label{THM:MAINCONVEX}\vspace{0.05in}
 Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
@@ -305,7 +315,7 @@ Suppose $\beta_1=0$ and $\{v_t\}_{t>0}$ is a monotonically increasing sequence, 
 \end{equation}
 where $B_{\psi_1} := B_{\psi_1}(w^*, \tilde{w}_{1})$, $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
 \end{Corollary}
-We can compare the bound of Corollary~\ref{COR:COROLLARY} with that of AMSGrad \citep{RKK18} with $\eta_t = \eta/\sqrt{t}$:
+We can compare the bound of Corollary~\ref{COR:COROLLARY} with that of AMSGrad \citep{reddi2019convergence} with $\eta_t = \eta/\sqrt{t}$:
 \beq\label{eq:boundAMS}
 \mathcal{R}_T \leq \frac{ \eta \sqrt{ 1 + \log T}    }{ \sqrt{1 - \beta_2}  } \sum_{i=1}^d \| g_{1:T}[i]  \|_2 +\frac{\sqrt{T}}{2 \eta} D^2_{\infty} \sum_{i=1}^d \hat{v}_T[i]^2 \eqsp.
 \eeq
@@ -386,7 +396,7 @@ The constants are defined as:
 }
 where $\Delta f = f(\overline{w}_{1}) - f(\overline{w}_{T_{\sf M}+1})$ and $a_m=\displaystyle{\min_{t=1,...,T}}a_t$.
 \end{Theorem}
-Firstly, the bound for our OPT-AMSGrad method matches the complexity bound of $\mathcal{O}( \sqrt{d/T_{\sf M}} + 1/T_{\sf M} )$ of \citep{ghadimi2013stochastic} for SGD considering the dependence of T only, and of \citep{ZTYCG18} for AMSGrad method.
+Firstly, the bound for our OPT-AMSGrad method matches the complexity bound of $\mathcal{O}( \sqrt{d/T_{\sf M}} + 1/T_{\sf M} )$ of \citep{ghadimi2013stochastic} for SGD considering the dependence of T only, and of \citep{zhou2018convergence} for AMSGrad method.
 In order to see the influence of prediction quality, we can show that when $(1-\beta_1)(\beta_2-\beta_1^2-2L(1-\beta_1))-\frac{4L\beta_1^2(1+\beta_1^2)}{1-\gamma}<0$, $\tilde C_1$ and $\tilde C_2$ both decrease as $a_m$ approaches 1, i.e. as the prediction gets more accurate. 
 Therefore, similar to the convex case, our bound also improves with better gradient prediction.
 
@@ -401,10 +411,7 @@ We consider a fully connected feed forward neural network with $L$ layers modele
 \textsf{MLN}( w, \xi) = \sigma\left(w^{(L)} \sigma\left(w^{(L-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right) \eqsp,
 \eeq
 where $w = [w^{(1)}, w^{(2)}, \cdots , w^{(L)}]$ is the vector of parameters, $\xi \in \rset^p$ is the input data and $\sigma$ is the sigmoid activation function. We assume a $p$ dimension input data and a scalar output for simplicity.
-In this setting, the stochastic objective function \eqref{eq:minproblem} reads 
-$$
-f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2\eqsp,
-$$
+In this setting, the stochastic objective function \eqref{eq:minproblem} reads $f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2\eqsp,$
 where $\mathcal{L}(\cdot, y)$ is the loss function (e.g., cross-entropy), $y$ are the true labels and $\lambda >0$ is the regularization parameter.
 We establish that the boundedness assumption H\ref{ASS:BOUNDEDPARAM} is satisfied with model~\eqref{eq:dnnmodel}:
 \begin{Lemma}\label{LEM:DNNH2}
@@ -432,12 +439,7 @@ From Algorithm~\ref{alg:optamsgrad}, and with $\beta_1 = 0$ for the sake of nota
  \end{small}
 where $\hat{\eta} = \max \limits_{t >0} \eta_t$.
 For any dimension $p \in [1,d]$, using assumption H\ref{ass:guessbound}, we note that $\sqrt{\hat{v}_{t,p}} \geq \sqrt{1-\beta_2} g_{t,p}$ and $m_{t+1} \leq  a \norm{g_{t+1}}$.
-Hence:
-\beq\notag
-\begin{split}
-\|w_t - \tilde{w}_{t-1}\|  \leq \hat{\eta} \left( \|\hat{v}_t^{-1/2} g_t\| +  a \|\hat{v}_t^{-1/2} g_{t+1}\| \right) \leq \hat{\eta} \frac{a +1}{\sqrt{1 - \beta_2}}  \eqsp.
-\end{split}
-\eeq
+Hence $\|w_t - \tilde{w}_{t-1}\|  \leq \hat{\eta} \left( \|\hat{v}_t^{-1/2} g_t\| +  a \|\hat{v}_t^{-1/2} g_{t+1}\| \right) \leq \hat{\eta} \frac{a +1}{\sqrt{1 - \beta_2}} $.
 In short there exist a constant $B$ such that $\|w_t - \tilde{w}_{t-1}\| \leq B$.
 
 \textbf{Proof by induction:} As in \citet{defossez2020convergence}, we will prove the containment of the weights by induction.
@@ -473,12 +475,11 @@ Showing that the weights of the previous layers $\ell \in [1, L-1]$ as well as f
 
 
 \textbf{Comparison to nonconvex optimization methods.}\hspace{0.1in}
-\citet{ZRSKK18,CLSH19,WWB18,ZTYCG18,ZS18,LO18} provide some theoretical analysis of Adam-type algorithms when applying them to smooth nonconvex optimization problems. 
-For example, \citet{CLSH19} derive the bound $\min_{t \in [T]} \mathbb{E}[\| \nabla f(w_t) \|^2 ] = \mathcal{O}(\log T / \sqrt{T}) $.
+\citet{reddi2018adaptive,chen2018convergence,ward2019adagrad,zhou2018convergence,zou2018convergence,li2019convergence} provide some theoretical analysis of Adam-type algorithms when applying them to smooth nonconvex optimization problems. 
+For example, \citet{chen2018convergence} derive the bound $\min_{t \in [T]} \mathbb{E}[\| \nabla f(w_t) \|^2 ] = \mathcal{O}(\log T / \sqrt{T}) $.
 Yet, this data independent bound does not show any advantage over standard stochastic gradient descent. 
 Similar concerns appear in other related works.
-
-\begin{wrapfigure}[12]{r}{.5\linewidth}\vspace{-0.9cm}
+\begin{wrapfigure}[12]{r}{.5\linewidth}\vspace{-0.8cm}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
@@ -498,22 +499,22 @@ Similar concerns appear in other related works.
 \end{algorithm}
 \vspace{-0.1in}
 \end{minipage}\end{wrapfigure}
-To get some adaptive data dependent bound written in terms of the gradient norms observed along the trajectory when applying  \textsc{OPT-AMSGrad} to nonconvex optimization, one can follow the approach of \citet{Princeton18} or \citet{CYYZC19}.
+To get some adaptive data dependent bound written in terms of the gradient norms observed along the trajectory when applying  \textsc{OPT-AMSGrad} to nonconvex optimization, one can follow the approach of \citet{agarwal2019efficient} or \citet{chen2018universal}.
 They provide a modular approach to convert algorithms with adaptive data dependent regret bound for convex loss functions (e.g., AdaGrad) to algorithms that can find an approximate stationary point of nonconvex objectives. 
 These variants can outperform the ones instantiated by other Adam-type algorithms when the gradient prediction $m_t$ is close to the true gradient $g_t$.
 
-\noindent \textbf{Comparison to AO-FTRL \citep{MY16}.}\hspace{0.1in}In \citet{MY16}, the authors propose AO-FTRL, which update reads $w_{t+1} = \arg\min_{{w \in \Theta}} ( \sum_{s=1}^t g_s )^{\top}  w + m_{t+1}^\top w + r_{0:t}(w) $, where $r_{0:t}(\cdot)$ is a 1-strongly convex loss function with respect to some norm $\| \cdot\|_{(t)}$ that may be different for different iteration $t$. 
-Data dependent regret bound provided in \citet{MY16} reads $r_{{0:T}}(w^*) + \sum_{t=1}^T \| g_t - m_t \|_{(t)^*}$ for any benchmark $w^{*} \in \Theta$. 
+\noindent \textbf{Comparison to AO-FTRL \citep{mohri2015accelerating}.}\hspace{0.1in}In \citet{mohri2015accelerating}, the authors propose AO-FTRL, which update reads $w_{t+1} = \arg\min_{{w \in \Theta}} ( \sum_{s=1}^t g_s )^{\top}  w + m_{t+1}^\top w + r_{0:t}(w) $, where $r_{0:t}(\cdot)$ is a 1-strongly convex loss function with respect to some norm $\| \cdot\|_{(t)}$ that may be different for different iteration $t$. 
+Data dependent regret bound provided in \citet{mohri2015accelerating} reads $r_{{0:T}}(w^*) + \sum_{t=1}^T \| g_t - m_t \|_{(t)^*}$ for any benchmark $w^{*} \in \Theta$. 
 We remark that if one selects $r_{0:t}(w) := \langle w, \text{diag}\{\hat{v}_t\}^{1/2} w \rangle$  and $\| \cdot \|_{(t)}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$, then the update can be viewed as an optimistic variant of $AdaGrad$. 
-However, no experiments were provided in \citet{MY16} to support those theoretical findings.
+However, no experiments were provided in \citet{mohri2015accelerating} to support those theoretical findings.
 
-\noindent \textbf{Comparison to Optimistic-Adam~\citep{DISZ18}.}This is an optimistic variant of ADAM, namely~Optimistic-Adam. 
+\noindent \textbf{Comparison to Optimistic-Adam~\citep{daskalakis2017training}.}This is an optimistic variant of ADAM, namely~Optimistic-Adam. 
 A slightly modified version is summarized in Algorithm~\ref{OPT-DISZ}. 
 Here, their method Optimistic-Adam$+\hat{v}_t$ corresponds to Optimistic-Adam with the additional max operation $\hat{v}_t = \max ( \hat{v}_{t-1}, v_t)$ to guarantee that the weighted second moment is monotone increasing.
 We want to emphasize that the motivations of our optimistic method are different. 
 Optimistic-Adam is designed to optimize two-player games (e.g., GANs \citep{goodfellow2014generative}), while we focus, as said earlier, on stochastic optimization (e.g., solving empirical risk minimization).
-\citep{DISZ18} focuses on training GANs as a two-player zero-sum game. 
-\citep{DISZ18} is inspired by these works and shows that Optimistic-Mirror-Descent can avoid the cycle behavior in a bilinear zero-sum game thus accelerating convergence. 
+\citep{daskalakis2017training} focuses on training GANs as a two-player zero-sum game. 
+\citep{daskalakis2017training} is inspired by these works and shows that Optimistic-Mirror-Descent can avoid the cycle behavior in a bilinear zero-sum game thus accelerating convergence. 
 
 
 
@@ -528,34 +529,14 @@ Optimistic-Adam is designed to optimize two-player games (e.g., GANs \citep{good
 \subsection{Gradient Prediction Process}
 
 Based on the analysis in the previous section, we understand that the choice of the prediction $m_t$ plays an important role in the convergence of \textsc{Optimistic-AMSGrad}.
-Some classical works in gradient prediction methods include Anderson acceleration~\citep{WN11}, Minimal Polynomial Extrapolation~\citep{CJ76} and Reduced Rank Extrapolation~\citep{E79}.
-These methods aim at finding a fixed point $g^{*}$ and assume that $\{g_t \in \mathbb R^d\}_{t>0} $ has the following linear relation:
-\begin{equation} \label{nox}
-g_t - g^* = A( g_{t-1} - g^* ) + e_t,
-\end{equation}
-where $e_t$ is a second order term satisfying $\| e_t \|_2  = \mathcal{O}( \| g_{t-1} - g^* \|_2^2)$ and $A \in \mathbb R^{d \times d}$ is an unknown matrix, see \citet{SAB16} for details and results.
-For our numerical experiments, we run \textsc{OPT-AMSGrad} using Algorithm~\ref{alg:algex} to construct the sequence $\{m_t\}_{t>0}$ which is based on estimating the limit of a sequence using the last iterates \citep{BZ13}.
-
-
-%\begin{algorithm}
-%\begin{algorithmic}[1] 
-%\small
-%\caption{Regularized Approximated Minimal Polynomial Extrapolation \citep{SAB16} } \label{alg:algex}
-%\STATE \textbf{Input:} sequence $\{ g_s \in \mathbb R^d \}_{s=0}^{s=r-1}$, parameter $\lambda > 0$.
-%\STATE Compute matrix  $U = [ g_1 - g_0, \dots, g_{r} - g_{r-1}] \in \mathbb R^{d \times r}$.
-%\STATE Obtain $z$ by solving $(U^\top U + \lambda I ) z = \mathbf{1}$.
-%\STATE Get $c= z / (z^\top \mathbf{1})$.
-%\STATE \textbf{Output:} $\Sigma_{i=0}^{r-1} c_i g_i$, the approximation of the fixed point $g^*$.
-%\end{algorithmic}
-%\end{algorithm}
-
-\begin{wrapfigure}[8]{r}{.6\linewidth}\vspace{-0.3in}
+Some classical works in gradient prediction methods include Anderson acceleration~\citep{walker2011anderson}, Minimal Polynomial Extrapolation~\citep{cabay1976polynomial} and Reduced Rank Extrapolation~\citep{eddy1979extrapolating}.
+\begin{wrapfigure}[8]{r}{.6\linewidth}\vspace{-0.35in}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
 \begin{algorithmic}[1] 
 \small
-\caption{Regularized Approximated Minimal Polynomial Extrapolation \citep{SAB16} } \label{alg:algex}
+\caption{Regularized Approximated Minimal Polynomial Extrapolation \citep{scieur2020regularized} } \label{alg:algex}
 \STATE \textbf{Input:} sequence $\{ g_s \in \mathbb R^d \}_{s=0}^{s=r-1}$, parameter $\lambda > 0$.
 \STATE Compute matrix  $U = [ g_1 - g_0, \dots, g_{r} - g_{r-1}] \in \mathbb R^{d \times r}$.
 \STATE Obtain $z$ by solving $(U^\top U + \lambda I ) z = \mathbf{1}$.
@@ -564,6 +545,27 @@ For our numerical experiments, we run \textsc{OPT-AMSGrad} using Algorithm~\ref{
 \end{algorithmic}
 \end{algorithm}
 \end{minipage}\end{wrapfigure}
+These methods aim at finding a fixed point $g^{*}$ and assume $\{g_t \in \mathbb R^d\}_{t>0} $ has the following linear relation:
+\begin{equation} \label{nox}
+g_t - g^* = A( g_{t-1} - g^* ) + e_t,
+\end{equation}
+where $e_t$ is a second order term satisfying $\| e_t \|_2  = \mathcal{O}( \| g_{t-1} - g^* \|_2^2)$ and $A \in \mathbb R^{d \times d}$ is an unknown matrix, see \citet{scieur2020regularized} for details and results.
+For our numerical experiments, we run \textsc{OPT-AMSGrad} using Algorithm~\ref{alg:algex} to construct the sequence $\{m_t\}_{t>0}$ which is based on estimating the limit of a sequence using the last iterates \citep{brezinski2013extrapolation}.
+
+
+%\begin{algorithm}
+%\begin{algorithmic}[1] 
+%\small
+%\caption{Regularized Approximated Minimal Polynomial Extrapolation \citep{scieur2020regularized} } \label{alg:algex}
+%\STATE \textbf{Input:} sequence $\{ g_s \in \mathbb R^d \}_{s=0}^{s=r-1}$, parameter $\lambda > 0$.
+%\STATE Compute matrix  $U = [ g_1 - g_0, \dots, g_{r} - g_{r-1}] \in \mathbb R^{d \times r}$.
+%\STATE Obtain $z$ by solving $(U^\top U + \lambda I ) z = \mathbf{1}$.
+%\STATE Get $c= z / (z^\top \mathbf{1})$.
+%\STATE \textbf{Output:} $\Sigma_{i=0}^{r-1} c_i g_i$, the approximation of the fixed point $g^*$.
+%\end{algorithmic}
+%\end{algorithm}
+
+
 
 
 Specifically, at iteration $t$, $m_t$ is obtained by \textsf{(a)} calling Algorithm~\ref{alg:algex} with a sequence of $r$ past gradients, $\{ g_{t-1},g_{t-2}, \dots, g_{t-r} \}$ as input yielding the vector $c = [c_0, \dots, c_{r-1}] $ and \textsf{(b)} setting $m_t:= \Sigma_{i=0}^{r-1} c_i g_{t-r+i}$.
@@ -591,15 +593,7 @@ We denote the algorithm that sets the gradient guess $m_{t+1}= g_t$ as Opt-1, an
 We let $\eta_t=0.1$ and the initial point $w_0=5$.
 The simulation results are on Figure~\ref{simu} (a) and (b). 
 Sub-figure (a) plots update $w_t$ over iteration, where the updates should go towards the optimal point $0$.
-Sub-figure (b) displays a scaled and clipped version of $m_t$, defined as $w_t - w_{t-1/2}$, which can be viewed as $- \eta_t m_{t}$ if the projection (if it exists) is lifted.
-Sub-figure (a) shows that Opt-extra converges faster than the other methods. 
-Furthermore, sub-figure (b) shows that the prediction by the extrapolation method is better than the prediction by simply using the previous gradient. 
-The sub-figure shows that $-m_t$ from both methods points to $0$ for each iteration and the magnitude is larger for the one produced by the extrapolation method after iteration $2$. 
-
-
-
-
-\begin{figure}[H]
+\begin{figure}[ht]
 \begin{center}
     \mbox{%\hspace{-0.2in}
     \subfigure[]{\includegraphics[width=0.25\textwidth]{simulation/fig/fig1_left.eps}}
@@ -613,22 +607,30 @@ The sub-figure shows that $-m_t$ from both methods points to $0$ for each iterat
 the update towards the optimal point. In this scenario, the more negative the better.
      }
      \label{simu}
-\vspace{-0.1in}
 \end{figure}
-
-
-Now let us consider another problem: an online learning problem proposed in \citet{RKK18}
-\footnote{\citep{RKK18} uses this example to show that Adam \citep{KB15} fails to converge.}.
+Sub-figure (b) displays a scaled and clipped version of $m_t$, defined as $w_t - w_{t-1/2}$, which can be viewed as $- \eta_t m_{t}$ if the projection (if it exists) is lifted.
+Sub-figure (a) shows that Opt-extra converges faster than the other methods. 
+Furthermore, sub-figure (b) shows that the prediction by the extrapolation method is better than the prediction by simply using the previous gradient. 
+The sub-figure shows that $-m_t$ from both methods points to $0$ for each iteration and the magnitude is larger for the one produced by the extrapolation method after iteration $2$. 
+Now let us consider another problem: an online learning problem proposed in \citet{reddi2019convergence}
+\footnote{\citep{reddi2019convergence} uses this example to show that Adam \citep{kingma2014adam} fails to converge.}.
 Assume the learner's decision space is $\Theta=[-1,1]$, and the loss function is $\ell_t(w) = 3 w$ if $t \text{ mod } 3 = 1$, and $\ell_t(w) = - w$ otherwise.
 The optimal point to minimize the cumulative loss is $w^*=-1$.
 We let $\eta_t=0.1 / \sqrt{t}$ and the initial point $w_0=1$ for all three methods.
 The parameter $\lambda$ of the extrapolation method is set to $\lambda=10^{-3}>0$. 
+
 %The results are reported Figure~\ref{simu} (c) and (d).
 Sub-figure (c) shows that Opt-extra converges faster than the other methods while Opt-1 is not performing better than GD.
 The reason is that the gradient changes from $-1$ to $3$ at $t \text{ mod } 3 = 1$ and it changes from $3$ to $-1$ at $t \text{ mod } 3 = 2$.
 Consequently, using the current gradient as the guess for the next is empirically not a good choice, since the next gradient is in the opposite direction of the current one.
 Sub-figure (d) shows that $-m_t$, obtained with the extrapolation method, always points to $w^*=-1$, while the one obtained by using the previous negative direction points to the opposite direction in two thirds of rounds. 
 It shows that the extrapolation method is less affected by the gradient oscillation and always makes the prediction in the right direction, which suggests that the method captures the aggregate effect.
+
+
+
+
+
+
 
 
 
@@ -658,8 +660,8 @@ Yet, in some sense, this characteristic, very specific to deep neural networks, 
 
 \textbf{Methods.}
 We consider two baselines. The first one is the original AMSGrad. 
-The hyper-parameters are set to be $\beta_1 = 0.9$ and $\beta_2 = 0.999$, see \citet{RKK18}. 
-The other benchmark method is the Optimistic-Adam$+\hat{v}_t$ \citep{DISZ18}, which is described Algorithm~\ref{OPT-DISZ}. 
+The hyper-parameters are set to be $\beta_1 = 0.9$ and $\beta_2 = 0.999$, see \citet{reddi2019convergence}. 
+The other benchmark method is the Optimistic-Adam$+\hat{v}_t$ \citep{daskalakis2017training}, which is described Algorithm~\ref{OPT-DISZ}. 
 We use cross-entropy loss, a mini-batch size of $128$ and tune the learning rates over a fine grid and report the best result for all methods.
 For \textsc{OPT-AMSGrad}, we use $\beta_1 = 0.9$ and $\beta_2 = 0.999$ and the best step size $\eta$ of AMSGrad for a fair evaluation of the optimistic step. In our implementation, \textsc{OPT-AMSGrad} has an additional parameter $r$ that controls the number of previous gradients used for gradient prediction. 
 We use $r=5$ past gradient for empirical reasons, see Section~\ref{sec:choicer}.
@@ -668,27 +670,27 @@ The algorithms are initialized at the same point and the results are averaged ov
 %\textbf{Datasets.}
 %We compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
 %\textit{CIFAR100}, and \textit{IMDB} datasets. 
-%For \textit{MNIST}, we use two noisy variants called \textit{MNIST-back-rand} and \textit{MNIST-back-image} from \citep{MNIST07} ($n=12\,000$), \textit{CIFAR10} and \textit{CIFAR100} \citep{krizhevsky2009learning} ($n=50\,000$) and \textit{IMDB} \citep{IMDB11} ($n=25\,000$). 
+%For \textit{MNIST}, we use two noisy variants called \textit{MNIST-back-rand} and \textit{MNIST-back-image} from \citep{larochelle2007empirical} ($n=12\,000$), \textit{CIFAR10} and \textit{CIFAR100} \citep{krizhevsky2009learning} ($n=50\,000$) and \textit{IMDB} \citep{IMDB11} ($n=25\,000$). 
 \begin{figure}[t]
 \centering
 \mbox{\hspace{-0.2in}
-\includegraphics[width=2.0in]{simulation/fig2/M_rand_train_loss_no1.eps}\hspace{-0.1in}
-\includegraphics[width=2.0in]{simulation/fig2/M_image_train_loss_no1.eps}\hspace{-0.1in}
-\includegraphics[width=2.0in]{simulation/fig2/cifar_cnn_train_loss_no1.eps}
+\includegraphics[width=1.9in]{simulation/fig2/M_rand_train_loss_no1.eps}\hspace{-0.1in}
+\includegraphics[width=1.9in]{simulation/fig2/M_image_train_loss_no1.eps}\hspace{-0.1in}
+\includegraphics[width=1.9in]{simulation/fig2/cifar_cnn_train_loss_no1.eps}
 }
 
 \mbox{\hspace{-0.2in}
-\includegraphics[width=2.0in]{simulation/fig2/imdb_lstm_train_loss_no1.eps}\hspace{-0.1in}
-\includegraphics[width=2.0in]{simulation/fig2/cifar10_resnet_train_loss.eps}\hspace{-0.1in}
-\includegraphics[width=2.0in]{simulation/fig2/cifar100_resnet_train_loss.eps}
+\includegraphics[width=1.9in]{simulation/fig2/imdb_lstm_train_loss_no1.eps}\hspace{-0.1in}
+\includegraphics[width=1.9in]{simulation/fig2/cifar10_resnet_train_loss.eps}\hspace{-0.1in}
+\includegraphics[width=1.9in]{simulation/fig2/cifar100_resnet_train_loss.eps}
 }
 \caption{Training loss vs. Number of iterations for fully connected NN, CNN, LSTM and ResNet.}
 \label{fig:train_loss}\vspace{-0.05in}
 \end{figure}
 
-\textbf{Datasets.}\hspace{0.1in}Following \cite{RKK18} and \cite{KB15}, we compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
+\textbf{Datasets.}\hspace{0.1in}Following \cite{reddi2019convergence} and \cite{kingma2014adam}, we compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
 \textit{CIFAR100}, and \textit{IMDB} datasets. 
-For \textit{MNIST}, we use two noisy variants namely \textit{MNIST-back-rand} and \textit{MNIST-back-image} from \cite{MNIST07}. 
+For \textit{MNIST}, we use two noisy variants namely \textit{MNIST-back-rand} and \textit{MNIST-back-image} from \cite{larochelle2007empirical}. 
 They both have $12\,000$ training samples and $50\,000$ test samples, where random background is inserted to the original \textit{MNIST} hand-written digit images. 
 For \textit{MNIST-back-rand}, each image is inserted with a random background, which pixel values are generated uniformly from 0 to 255, while \textit{MNIST-back-image} takes random patches from a black and white noisy background.
 The input dimension is $784$ ($28\times 28$) and the number of classes is $10$. 
@@ -697,7 +699,7 @@ The \textit{IMDB} movie review dataset, popular for text classification, is a bi
 
 \textbf{Network architectures.} We adopt a multi-layer fully connected neural network with hidden layers of $200$ connected to another layer with $100$ neurons (using \textrm{ReLU} activations and \textrm{Softmax} output). 
 This network is tested on \textit{MNIST} variants.
-For convolutional networks, we adopt a simple four layer CNN which has 2 convolutional layers following by a fully connected layer. In addition, we also apply residual networks, Resnet-18 and Resnet-50~\citep{Rnet16}, which have achieved state-of-the-art results.
+For convolutional networks, we adopt a simple four layer CNN which has 2 convolutional layers following by a fully connected layer. In addition, we also apply residual networks, Resnet-18 and Resnet-50~\citep{he2016deep}, which have achieved state-of-the-art results.
 For the texture \textit{IMDB} dataset, we consider a Long-Short Term Memory (LSTM) network \citep{gers1999learning}.
 The latter network includes a word embedding layer with $5\,000$ input entries representing most frequent words embedded into a $32$ dimensional space. 
 The output of the embedding layer is passed to $100$ LSTM units then connected to $100$ fully connected \textrm{ReLU} layers. 
@@ -742,7 +744,7 @@ We observe: \textsf{(1)} in the long term, \textsc{OPT-AMSGrad} algorithm may co
 
 
 
-
+\vspace{-0.1in}
 \section{Conclusion}
 
 
@@ -750,13 +752,11 @@ In this paper, we propose \textsc{OPT-AMSGrad}, which combines optimistic online
 Given a well-designed gradient prediction process, we theoretically show that the regret, through the iterations, can be smaller than that of standard AMSGrad.
 We also establish a finite-time convergence bound on the second order moment of the gradient of the objective loss function matching that of state-of-the-art adaptive gradient methods.
 Experiments on benchmark datasets using various deep learning models demonstrate the effectiveness of the proposed algorithm.
-%Experiments on benchmark datasets using various deep learning models demonstrate the effectiveness of the proposed algorithm in accelerating the empirical risk minimization procedure and empirically show better generalization properties of our method \textsc{OPT-AMSGrad}.
 
-%\newpage\clearpage
 
 
 \bibstyle{plain}
-\bibliography{reference}
+\bibliography{ref}
 
 
 \clearpage
@@ -803,7 +803,7 @@ By regret decomposition, we have that
 \end{equation}
 
 Recall the notation $\psi_t(x)$ and the Bregman divergence $B_{\psi_t}(u,v)$ defined Section~\ref{sec:analysis}.
-We exploit a useful inequality (which appears in e.g.,~\citep{T08}).
+We exploit a useful inequality (which appears in e.g.,~\citep{tseng2008accelerated}).
 For any update of the form $\hat{w} = \arg\min_{w \in \Theta} \langle w, \theta \rangle + B_{\psi}(w, v)$, it holds that
 \begin{equation} \label{ii}
 \langle \hat{w} - u, \theta \rangle \leq B_{\psi}( u, v ) - B_{\psi}( u, \hat{w}) - B_{\psi}( \hat{w}, v) \quad \textrm{for any $u \in \Theta$} \eqsp.
@@ -1244,7 +1244,7 @@ where
 \end{split}
 \eeq
 
-\textbf{Simple case as in \citet{ZTYCG18}:} if $\beta_1 = 0$ then $ \tilde{g}_{t} = g_t + m_{t+1}$ and $g_t = \theta_t$. Also using Lemma~\ref{lem:squarev} we have that:
+\textbf{Simple case as in \citet{zhou2018convergence}:} if $\beta_1 = 0$ then $ \tilde{g}_{t} = g_t + m_{t+1}$ and $g_t = \theta_t$. Also using Lemma~\ref{lem:squarev} we have that:
 \beq\notag
 \sum_{t=1}^{T_{\sf M}} \eta_{t}^{2} \EE \left[\left\|\hat{v}_{t}^{-1/2} g_{t}\right\|_{2}^{2}\right] \leq  \frac{\eta^{2} d T_{\sf M}}{(1 - \beta_2)}  \eqsp;
 \eeq
@@ -1428,7 +1428,7 @@ where
 %\end{split}
 %\eeq
 %
-%\textbf{Simple case as in \citep{ZTYCG18}:} if $\beta_1 = 0$ then $ \tilde{g}_{t} = g_t + m_{t+1}$ and $g_t = \theta_t$. Also using Lemma~\ref{lem:squarev} we have that:
+%\textbf{Simple case as in \citep{zhou2018convergence}:} if $\beta_1 = 0$ then $ \tilde{g}_{t} = g_t + m_{t+1}$ and $g_t = \theta_t$. Also using Lemma~\ref{lem:squarev} we have that:
 %\beq\notag
 %\sum_{t=1}^{T_{\sf M}} \eta_{t}^{2} \EE \left[\left\|\hat{v}_{t}^{-1/2} g_{t}\right\|_{2}^{2}\right] \leq  \frac{\eta^{2} d T_{\sf M}}{(1 - \beta_2)}  \eqsp;
 %\eeq
@@ -1544,27 +1544,27 @@ where
 %
 %
 %\textbf{Comparison to nonconvex optimization methods.}\hspace{0.1in}
-%Recently, \citep{ZRSKK18,CLSH19,WWB18,ZTYCG18,ZS18,LO18} provide some theoretical analysis of Adam-type algorithms when applying them to smooth nonconvex optimization problems. 
-%For example, \citep{CLSH19} provide the following bound $\min_{t \in [T]} \mathbb{E}[\| \nabla f(w_t) \|^2 ] = \mathcal{O}(\log T / \sqrt{T}) $.
+%Recently, \citep{reddi2018adaptive,chen2018convergence,ward2019adagrad,zhou2018convergence,zou2018convergence,li2019convergence} provide some theoretical analysis of Adam-type algorithms when applying them to smooth nonconvex optimization problems. 
+%For example, \citep{chen2018convergence} provide the following bound $\min_{t \in [T]} \mathbb{E}[\| \nabla f(w_t) \|^2 ] = \mathcal{O}(\log T / \sqrt{T}) $.
 %Yet, this data independent bound does not show any advantage over standard stochastic gradient descent. 
 %Similar concerns appear in other related works.
-%To get some adaptive data dependent bound written in terms of the gradient norms observed along the trajectory when applying  \textsc{OPT-AMSGrad} to nonconvex optimization, one can follow the approach of \citep{Princeton18} or \citep{CYYZC19}.
+%To get some adaptive data dependent bound written in terms of the gradient norms observed along the trajectory when applying  \textsc{OPT-AMSGrad} to nonconvex optimization, one can follow the approach of \citep{agarwal2019efficient} or \citep{chen2018universal}.
 %They provide a modular approach to convert algorithms with adaptive data dependent regret bound for convex loss functions (e.g., AdaGrad) to algorithms that can find an approximate stationary point of nonconvex objectives. 
 %These variants can outperform the ones instantiated by other Adam-type algorithms when the gradient prediction $m_t$ is close to the true gradient $g_t$.
 %
-%\textbf{Comparison to AO-FTRL \citep{MY16}.}\hspace{0.1in}In \citep{MY16}, the authors propose AO-FTRL, which update reads $w_{t+1} = \arg\min_{{w \in \Theta}} ( \sum_{s=1}^t g_s )^{\top}  w + m_{t+1}^\top w + r_{0:t}(w) $, where $r_{0:t}(\cdot)$ is a 1-strongly convex loss function with respect to some norm $\| \cdot\|_{(t)}$ that may be different for different iteration $t$. 
-%Data dependent regret bound provided in \citep{MY16} reads $r_{{0:T}}(w^*) + \sum_{t=1}^T \| g_t - m_t \|_{(t)^*}$ for any benchmark $w^{*} \in \Theta$. 
+%\textbf{Comparison to AO-FTRL \citep{mohri2015accelerating}.}\hspace{0.1in}In \citep{mohri2015accelerating}, the authors propose AO-FTRL, which update reads $w_{t+1} = \arg\min_{{w \in \Theta}} ( \sum_{s=1}^t g_s )^{\top}  w + m_{t+1}^\top w + r_{0:t}(w) $, where $r_{0:t}(\cdot)$ is a 1-strongly convex loss function with respect to some norm $\| \cdot\|_{(t)}$ that may be different for different iteration $t$. 
+%Data dependent regret bound provided in \citep{mohri2015accelerating} reads $r_{{0:T}}(w^*) + \sum_{t=1}^T \| g_t - m_t \|_{(t)^*}$ for any benchmark $w^{*} \in \Theta$. 
 %We remark that if one selects $r_{0:t}(w) := \langle w, \text{diag}\{\hat{v}_t\}^{1/2} w \rangle$  and $\| \cdot \|_{(t)}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$, then the update might be viewed as an optimistic variant of $AdaGrad$. 
-%However, no experiments were provided in \citep{MY16} to back those findings.
+%However, no experiments were provided in \citep{mohri2015accelerating} to back those findings.
 %
-%\textbf{Comparison to Optimistic-Adam~\citep{DISZ18}.}This is an optimistic variant of ADAM, namely~Optimistic-Adam. 
+%\textbf{Comparison to Optimistic-Adam~\citep{daskalakis2017training}.}This is an optimistic variant of ADAM, namely~Optimistic-Adam. 
 %A slightly modified version is summarized in Algorithm~\ref{OPT-DISZ}. 
 %Here, Optimistic-Adam$+\hat{v}_t$ corresponds to Optimistic-Adam with the additional max operation $\hat{v}_t = \max ( \hat{v}_{t-1}, v_t)$ to guarantee that the weighted second moment is monotone increasing.
 %
 %
 %\begin{algorithm}
 %\begin{algorithmic}[1]
-%\caption{\textsc{Optimistic-Adam~\citep{DISZ18}+$\hat{v}_t$}. \label{OPT-DISZapp}}
+%\caption{\textsc{Optimistic-Adam~\citep{daskalakis2017training}+$\hat{v}_t$}. \label{OPT-DISZapp}}
 %\STATE Required: parameter $\beta_1$, $\beta_2$, and $\eta_t$.
 %\STATE Init: $w_1 \in \Theta$ and $\hat{v}_0 = v_{0} = \epsilon 1 \in \rset^{d}$.
 %\FOR{$t=1$ to $T$}
@@ -1581,8 +1581,8 @@ where
 %
 %We want to emphasize that the motivations of our optimistic algorithm are different. 
 %Optimistic-Adam is designed to optimize two-player games (e.g., GANs \citep{goodfellow2014generative}), while our proposed algorithm \textsc{OPT-AMSGrad} is designed to accelerate optimization (e.g., solving empirical risk minimization).
-%\citep{DISZ18} focuses on training GANs \citep{goodfellow2014generative} as a two-player zero-sum game. 
-%\citep{DISZ18} is inspired by these related works and shows that Optimistic-Mirror-Descent can avoid the cycle behavior in a bilinear zero-sum game thus accelerating convergence. 
+%\citep{daskalakis2017training} focuses on training GANs \citep{goodfellow2014generative} as a two-player zero-sum game. 
+%\citep{daskalakis2017training} is inspired by these related works and shows that Optimistic-Mirror-Descent can avoid the cycle behavior in a bilinear zero-sum game thus accelerating convergence. 
 
 
 
@@ -1629,8 +1629,8 @@ where
 %\end{figure}
 %
 %
-%Now let us consider another problem: an online learning problem proposed in \citep{RKK18}
-%\footnote{\citep{RKK18} uses this example to show that Adam \citep{KB15} fails to converge.}.
+%Now let us consider another problem: an online learning problem proposed in \citep{reddi2019convergence}
+%\footnote{\citep{reddi2019convergence} uses this example to show that Adam \citep{kingma2014adam} fails to converge.}.
 %Assume the learner's decision space is $\Theta=[-1,1]$, and the loss function is $\ell_t(w) = 3 w$ if $t \text{ mod } 3 = 1$, and $\ell_t(w) = - w$ otherwise.
 %The optimal point to minimize the cumulative loss is $w^*=-1$.
 %We let $\eta_t=0.1 / \sqrt{t}$ and the initial point $w_0=1$ for all three methods.
