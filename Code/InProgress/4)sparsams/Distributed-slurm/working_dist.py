@@ -72,6 +72,7 @@ parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
+parser.add_argument('--beta2', default=0.999, type=float, help='betar2 EMA var scale for ADAM')
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
@@ -103,6 +104,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 
+parser.add_argument('--sparsity', type=float, default=0.05, help="gradient sparsity")
 parser.add_argument('--all_reduce', action='store_true', help='Using all_reduce')
 parser.add_argument('--signum', action='store_true', help='Using Signum')
 parser.add_argument('--compress', action='store_true', help='Initiate compression for Signum')
@@ -303,6 +305,8 @@ def main_worker(gpu, ngpus_per_node, args):
     elif args.dataset == "tinyimagenet":
         # model = models.resnet50()
         model = models.resnet18()
+    elif args.dataset == "cifar":
+        model = models.resnet18()
 
     # Prepare Logger file
     if args.dataset == "mnist":
@@ -359,27 +363,16 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    
+    log_writer = None
 
     if args.optimizer == "compams":
-        optimizer = compams.CompAMS(
-            model.parameters(),
-            lr=args.lr,
-            betas=(args.beta1, args.beta2),
-            weight_decay=args.weight_decay,
-            amsgrad=True,
-        )
+        optimizer = compams.CompAMS(model.parameters(), args, log_writer)
     elif args.optimizer == "damsgrad":
-        optimizer = DAMSGrad(
-            model.parameters(),
-            lr=args.lr,
-            betas=(args.beta1, args.beta2),
-            weight_decay=args.weight_decay,
-            amsgrad=True,
-        )
+        optimizer = compams.CompAMS(model.parameters(), args, log_writer)
     elif args.optimizer == "signum":
         print('Log writer')
         # log_writer = tensorboardX.SummaryWriter(args.save_dir) if dist.get_rank() == 0 else None
-        log_writer = None
         optimizer = Signum_SGD.SGD_distribute(model.parameters(), args, log_writer)
     elif args.optimizer == "sgd":
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
@@ -418,7 +411,7 @@ def main_worker(gpu, ngpus_per_node, args):
             train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
         else:
             train_sampler = None
-            
+
         train_loader = torch.utils.data.DataLoader(
             train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
             num_workers=args.workers, pin_memory=True, sampler=train_sampler)
