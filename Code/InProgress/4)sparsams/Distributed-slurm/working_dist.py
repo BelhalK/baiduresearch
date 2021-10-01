@@ -327,7 +327,10 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         pass
     
-    logger = Logger('{}/{}_opt{}_method{}_lr{}_epoch{}.txt'.format(checkpoint_dir, logname, args.optimizer,  args.method, args.lr, args.epochs), title=title)
+    if args.optimizer == "signum":
+        logger = Logger('{}/{}_opt{}_method{}_lr{}_epoch{}.txt'.format(checkpoint_dir, logname, args.optimizer,  args.method, args.lr, args.epochs), title=title)
+    else:
+        logger = Logger('{}/{}_opt{}_method{}_lr{}_epoch{}.txt'.format(checkpoint_dir, logname, args.optimizer,  args.method, args.lr, args.epochs), title=title)
     # logger.set_names(['Learning Rate', 'Loss','Acc. at 1','Acc. at 5', 'Time'])
     logger.set_names(['Learning Rate','Loss','Acc. at 1','Acc. at 5', 'Time'])
 
