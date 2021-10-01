@@ -2,6 +2,7 @@
 # wget -nc http://cs231n.stanford.edu/tiny-imagenet-200.zip
 # unzip tiny-imagenet-200.zip
 # python3 main_tiny_imagenet.py --dataset tinyimagenet --iid --num_channels 1 --model resnet9 --epochs 2 --gpu -1 --method sign --num_users 10 --local_ep 2
+# python3 main_tiny_imagenet.py --dataset cifar --iid --num_channels 3 --model resnet9 --epochs 2 --gpu -1 --method sign --num_users 10 --local_ep 2
 # python3 main_tiny_imagenet.py --dataset tinyimagenet --iid --num_channels 1 --model resnet18 --lr 0.01 --epochs 100 --method sign --num_users 10 --local_ep 2
 
 import matplotlib
