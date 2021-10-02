@@ -11,7 +11,7 @@
 \usepackage{algorithm}
 \usepackage[round]{natbib}
 \usepackage[colorlinks,linkcolor=magenta,filecolor=blue,citecolor=blue,urlcolor=blue]{hyperref}%
-\usepackage[font=footnotesize,labelsep=space,labelfont=bf]{caption}
+%\usepackage[font=footnotesize,labelsep=space,labelfont=bf]{caption}
 \usepackage[top=1in, left=1in, right=1in, bottom=1in]{geometry}
 \usepackage{subfigure}
 \usepackage{amssymb}% http://ctan.org/pkg/amssymb
@@ -153,8 +153,8 @@ This adaptive learning rate helps accelerate the convergence when the gradient v
 Consequently,~\cite{KB15} develops Adam leveraging a moving average of the gradients divided by the square root of the second moment of this moving average (element-wise multiplication).
 %A variant, called AMSGrad described in~\citet{reddi2019convergence} ought to fix Adam failures and is presented in Algorithm~\ref{alg:amsgrad}. The difference between Adam and AMSGrad lies in Line~7.
 A variant, called AMSGrad described in~\citet{reddi2019convergence} ought to fix Adam failures using a max operator.
-An improvement of AMSGrad, using optimistic learning, for nonconvex optimization can be found in \citet{wang2019optimistic}.
-Beyond improving the convergence speed of optimization methods, several studies including \citep{zhou2020towards} also focus on improving their generalization properties.
+An improvement of AMSGrad, using optimistic learning, for nonconvex optimization can be found in~\citet{wang2019optimistic}.
+Beyond improving the convergence speed of optimization methods, several studies including~\citet{zhou2020towards} also focus on improving their generalization properties.
 
 
 
@@ -204,30 +204,7 @@ Recall that our original problem is the following optimization task $\min \limit
 The stacking and nonconvex nature of the loss function imply having recourse to particular optimization methods in order to efficiently train our model.
 Besides, the decentralized clients low-bandwidth constraints are strong motivations for improving existing methods for \eqref{eq:opt}.  
 
-
-Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm which is depicted in Figure~\ref{fig:illustrate} and detailed in Algorithm~\ref{alg:ldams}, which is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
-In particular, while Line~8 and Line~9 corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~\ref{line:new1} and Line~\ref{line:new2} are correct the biases of those estimates, the final local update in Line~11 is novel and corresponds to the specialization per layer of our federated method.
-%Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm detailed in Algorithm~\ref{alg:ldams}, which is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
-%In particular, while Line~8 and Line~10 corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~9 and Line~11 are correct the biases of those estimates, the final local update in Line~13 is novel and corresponds to the specialization per layer of our federated method.
-Note that a scaling factor is applied to the learning rate $\alpha_r$ at each round $r>0$ via the quantity $\phi(\|\theta_{r,i}^{\ell,t-1}\|)$ depending on the dimensionwise and layerwise quantity computed in Line~12.
-This function is user designed and can be, for instance, set to the identity function. 
-In other words, we normalize the gradient in each layer according to the magnitude of the layer's weight.
-The adaptivity of our federated learning method is thus manifold. 
-There occurs a normalization per dimension with respect to the square root of the second moment used in adaptive gradient methods and a layerwise normalization obtained via the final local update (Line~13).
-
-
-\begin{figure}[t]
-\centering
-\mbox{
-        \includegraphics[width=5in]{plot/plot1.pdf}
-}
-	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network and $\phi(x)=x$ as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i} =  [\theta_{r,i}^{\ell}]_{\ell =1}^{\tot}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
-	\label{fig:illustrate}
-\end{figure}
-
-
-
-\begin{algorithm}[H]
+\begin{algorithm}[b!]
 \caption{\algo\ for federated learning} \label{alg:ldams}
 \begin{algorithmic}[1]
 %\small
@@ -243,7 +220,9 @@ There occurs a normalization per dimension with respect to the square root of th
 \State{$\qquad\quad$$v^{t}_{r,i} = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) (g^t_{r,i})^2$ and $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{t}\right)$. \label{line:new2}}
 \State{$\qquad\quad$Compute the ratio  $p_{r,i}^t=m^{t}_{i}/(\sqrt{\hat v^{t}_{r}}+\epsilon)$. \label{line:scale}}
 \State{$\qquad\quad$Update local model for each layer $\ell \in \llbracket \tot \rrbracket$: \label{line:layer}}
-$$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1})/ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|\, .$$
+\begin{equation}\label{eq:upadtelayer}
+    \theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1})/ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|\, .
+\end{equation}
 \State{$\qquad$\textbf{end for}}
 \State{$\qquad$Devices send $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $v_{r,i}^T$ to server.}
 \State{$\quad$\textbf{end for}}
@@ -252,6 +231,32 @@ $$\theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{
 \State{\textbf{Output}: Vector of parameters $\bar{\theta}_R = [\bar{\theta}_R^{\ell,T}]_{\ell =1}^{\tot}$.}
 \end{algorithmic}
 \end{algorithm}
+
+
+Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm which is detailed in Algorithm~\ref{alg:ldams} and  depicted in Figure~\ref{fig:illustrate}. The proposed algorithm is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
+In particular, while Line~8 and Line~9 corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~\ref{line:new1} and Line~\ref{line:new2} are correct the biases of those estimates, the final local update in \eqref{eq:upadtelayer} is novel and corresponds to the specialization per layer of our federated method.
+
+\newpage
+
+Note that a scaling factor is applied to the learning rate $\alpha_r$ at each round $r>0$ via the quantity $\phi(\|\theta_{r,i}^{\ell,t-1}\|)$ depending on the dimensionwise and layerwise quantity computed in Line~12.
+This function is user designed and can be, for instance, set to the identity function. 
+In other words, we normalize the gradient in each layer according to the magnitude of the layer's weight.
+The adaptivity of our federated learning method is thus manifold. 
+There occurs a normalization per dimension with respect to the square root of the second moment used in adaptive gradient methods and a layerwise normalization obtained via the final local update (Line~13).
+
+
+
+\begin{figure}[t]
+\centering
+\mbox{
+        \includegraphics[width=5in]{new_figure/plot1.pdf}
+}
+	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network and $\phi(x)=x$ as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i} =  [\theta_{r,i}^{\ell}]_{\ell =1}^{\tot}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
+	\label{fig:illustrate}
+\end{figure}
+
+
+
 
 
 \vspace{0.2in}
@@ -267,8 +272,7 @@ Our analysis encompasses the consideration of those challenges and leads to a in
 In the sequel, the analysis of our scheme we provide is \emph{global}, in the sense that it does not depend on the initialization of our algorithm, and \emph{finite-time}, meaning that it is true for any arbitrary number of communication rounds, in particular small ones.
 In the particular context of nonconvex stochastic optimization for distributed clients, we assume the following:
 
-\newpage
-
+\vspace{0.1in}
 
 \begin{assumption}\label{ass:smooth}(Smoothness per layer)
 For $i \in \inter$ and $\ell \in \interl$: $\norm{\nabla f_i (\theta^\ell) - \nabla f_i (\vartheta^\ell)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
@@ -324,7 +328,7 @@ We now state our main result regarding the non asymptotic convergence analysis o
 \vspace{0.1in}
 
 \begin{Theorem}\label{th:multiple update}
-Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} with a constant learning rate $\alpha$. Let the number of local epochs be $T \geq 1$ and $\lambda = 0$. Then, for any round $R > 0$, we have:
+Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} with a constant learning rate $\alpha$. Let the number of local epochs be $T \geq 1$ and $\lambda = 0$. Then, for any round $R > 0$, we have
 \beq \label{bound1multiple}
 \begin{split}
 &  \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq    \sqrt{\frac{M^2 p}{n}}  \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha R} +      \frac{\phi_M   \sigma^2}{R n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } \\
@@ -365,7 +369,7 @@ Under the same setting as Theorem~\ref{th:multiple update}, with $\alpha = \math
 %\end{Theorem}
 
 
-\subsection{Comparisons and discussions}
+\subsection{Comparisons}
 
 We dedicate the following paragraph to a discussion on the bound derived above in comparison with known results most relevant to our interest in the literature.
 
@@ -403,7 +407,7 @@ In \eqref{coro:rate}, the last term containing the number of local updates $T$ i
 Treating $p^{1/4}/h=\mathcal O(1)$, the result implies that we can get the same rate of convergence as vanilla AMSGrad, with $R/T\geq \mathcal{O}(R^{1/2}n^{1/4})$ rounds of communication. For Local-AMS, by similar argument we know that, it requires $\mathcal O(R^{3/4}n^{3/4})$ communication rounds. Thus, our result reduces the number of communication rounds needed to reach a $\epsilon$-stationary point compared with~\cite{chen2020toward}, hence improving the communication efficiency.
 
 
-\vspace{0.1in}
+\subsection{Discussions}
 To help understand \algo\, we provide the discussion on our bound in several aspects:
 
 \medskip
@@ -420,7 +424,7 @@ Improvements are proposed through the use of gradient tracking techniques perfor
 
 \medskip
 \textbf{Dependence on the dimension $p$:} The $\sqrt p$ term appearing in our bound is due to the assumption on coordinate-wise bounded variance. One may instead assume a bounded total variance to remove this term. 
-In practice, the dependence on the overall size of the vectors being transmitted back and forth from the central to the devices can be improved in various ways. Indeed, recent efficient techniques aim at reducing the number of bits communicated at each round through sketches or compression techniques, see for instance~\citep{haddadpour2020fedsketch,ivkin2019communication,li2019privacy} to name a few.
+In practice, the dependence on the overall size of the vectors being transmitted back and forth from the central to the devices can be improved in various ways. Indeed, recent efficient techniques aim at reducing the number of bits communicated at each round through sketches or compression techniques, see for instance~\citet{haddadpour2020fedsketch,ivkin2019communication,li2019privacy} to name a few.
 This can be a great addition to \algo, and is naturally compatible, but is not the main focus of our contribution.
 
 
@@ -630,7 +634,6 @@ Under the smoothness assumption H\ref{ass:smooth} and using Lemma~\ref{lemma:ite
 & \geq \frac{1}{2} \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\|^2 - \overline{L} \alpha^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{v_0} \eqsp,
 \end{split}
 \eeq
-
 which concludes the proof.
 \end{proof}
 
@@ -644,38 +647,27 @@ We now develop a proof for the two intermediary lemmas, Lemma~\ref{lemma:iterate
 Then the two quantities, either the gap between the periodically averaged parameter and each local update, i.e., $\| \overline{\theta_r} - \theta_{r,i} \|^2$, and the ratio of the average gradient, more particularly its relation to the gradient of the average global model (i.e., $\left\| \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}} \right\|$ and $ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\| $), are impacted.
 
 \begin{Theorem*}
-Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} with a decreasing learning rate $\alpha$. Let the number of local epochs be $T \geq 1$ and $\lambda = 0$. Then, at iteration $\tau$, we have:
+Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} with a decreasing learning rate $\alpha$. Let the number of local epochs be $T \geq 1$ and $\lambda = 0$. Then, at iteration $\tau$, we have
 \beq \notag
 \begin{split}
 &  \frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq    \sqrt{\frac{M^2 p}{n}}  \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha_r \tau} +      \frac{\phi_M   \sigma^2}{\tau n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } \\
     &   +4\alpha \left[ \frac{\alpha^2 L_\ell}{\sqrt{v_0}} M^2 (T-1)^2 \phi_M^2 (1-\beta_2)p + \frac{M^2}{\sqrt{v_0}}+\phi_M^2\sqrt{M^2+p\sigma^2} + \phi_M \frac{\tot \sigma^2}{\sqrt{n}}\right]   + cst. \\
    \end{split}
 \eeq
-% If one considers a deceasing stepsize as  $\alpha_\tau = \mathcal{O}(\frac{1}{L \sqrt{\tau}})$, then:
-% \begin{align}\notag
-%     \frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \mathcal{O}\left( \sqrt{\frac{M^2 p}{n}} \frac{1}{\sqrt{\tot \tau}} + \frac{\sigma^2 }{\tau n\sqrt{p}}+\frac{(T-1)^2p}{\tau^{3/2}L^3}\right)
-% \end{align}
 \end{Theorem*}
-% \textbf{Discussion on the bound:} Obviously, the last term containing the number of local updates $T$ is small as long as $T\leq \mathcal O(\frac{\tau^{1/2}L^{5/4}}{(np)^{1/4}})$. 
-% Treating $p^{1/4}/L=\mathcal O(1)$ which is usually small, the result implies that we can get the same rate of convergence as the algorithm using one local update, with $\mathcal \mathcal{O}(\tau^{1/2}/n^{1/4})$ rounds of communication. 
-% When the number of workers $n$ increases, then a constraint on the number of local updates $T$ is occurring, meaning that we would need more rounds of communication to achieve the same convergence rate, for a identical $\epsilon-$stationary point.
-% We recall that a $\epsilon-$stationary point is defined by the number of communication rounds $\mathcal{R}$ such that $\frac{1}{\tau}\sum_{t=1}^\mathcal{R}  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \epsilon$.
-
-% We now provide the proof for Theorem~\ref{th:multiple update}.
 
 \begin{proof}
-Using H\ref{ass:smooth}, we have:
+Using H\ref{ass:smooth}, we have
 \begin{align}\notag
 f(\bar{\vartheta}_{r+1}) &  \leq f(\bar{\vartheta}_r) + \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r} + \sum_{\ell =1}^L \frac{L_\ell}{2} \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2\\\notag
 &  \leq f(\bar{\vartheta}_r) + \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j (\bar{\vartheta}^{\ell,j}_{r+1} - \bar{\vartheta}^{\ell,j}_r) + \sum_{\ell =1}^L \frac{L_\ell}{2} \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2  \eqsp.
 \end{align}
-
-Taking expectations on both sides leads to:
+Taking expectations on both sides leads to
 \begin{align}\label{eq:main}
 - \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2] \eqsp.
 \end{align}
 
-Yet, we observe that, using the classical intermediate quantity, used for proving convergence results of adaptive optimization methods, see for instance~\citet{reddi2019convergence}, we have:
+Yet, we observe that, using the classical intermediate quantity, used for proving convergence results of adaptive optimization methods, see for instance~\citet{reddi2019convergence}, we have
 \beq\label{eq:defseq}
 \bar{\vartheta}_r = \bar{\theta}_r +  \frac{\beta_1}{1-\beta_1}(\bar{\theta}_{r} - \bar{\theta}_{r-1}) \eqsp,
 \eeq
@@ -690,22 +682,18 @@ where we have assumed a constant learning rate $\alpha$.
 
 
 We note for all $\theta \in \Theta$, the majorant $G > 0$ such that $\phi(\|\theta \|) \leq G$. 
-Then, following \eqref{eq:main}, we obtain:
+Then, following \eqref{eq:main}, we obtain
 \begin{align}\label{eq:main2}
 - \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2] \eqsp.
 \end{align}
-
 Developing the LHS of \eqref{eq:main2} using \eqref{eq:gap} leads to
 \begin{align} \notag
 \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r} &= \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j (\bar{\vartheta}^{\ell,j}_{r+1} - \bar{\vartheta}^{\ell,j}_r)  \\ \notag
 & =  \frac{\alpha \beta_1}{1-\beta_1}\frac{1}{n}  \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j \left[   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}  \right] \\ \label{eqn1}
 & \underbrace{ -\frac{\alpha}{n} \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j  \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}^{t,l,j}}_{= A_1}   \eqsp.
 \end{align}
-
-
-
 We change all index $r$ to iteration $t$. 
-Suppose $T$ is the number of local iterations. We can write \eqref{eqn1} as
+Suppose $T$ is the number of local iterations. We can write~\eqref{eqn1}~as
 \begin{align}\notag
     A_1=-\alpha_t \langle \nabla f(\bar \vartheta_t),\frac{\bar g_t}{\sqrt{\hat v_t}} \rangle,
 \end{align}
@@ -758,7 +746,7 @@ Yet,
 \neq  \sign( g_{r,i}^{t,l,j}) \right)\Bigg] \\
 &\hspace{2in} \leq  \phi_M \nabla_l f(\theta_{t,i})^j   \mathbb{P}\left[  \sign(  \nabla_l f(\theta_{t,i})^j \neq  \sign( g_{r,i}^{t,l,j}) \right]
 \end{align*}
-Then we have:
+Then we have
 \begin{align}\notag
     \mathbb E[B_2]\leq  \frac{nM^2}{\sqrt{v_0}}+n\phi_M^2\sqrt{M^2+p\sigma^2}-2 \phi_m \sqrt{\frac{1-\beta_2}{M^2 p}} \sum_{i=1}^n \E[\| [\nabla f(\theta_{t,i}) \|^2] + \phi_M \frac{\tot \sigma^2}{\sqrt{n}}
 \end{align}
@@ -795,7 +783,7 @@ where the last line is due to (\ref{eqn:B1}). Therefore, we have obtained
     A_1&\leq -\frac{\phi_m^2(1-\beta_2)}{2}\left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}} \right\|^2+\frac{\alpha_r^2 L_\ell}{\sqrt{v_0}} M^2 (T-1)^2 \phi_m^2\phi_M^2 (1-\beta_2)^2p+\frac{2\alpha^3 L_\ell p\phi_M^2}{ \sqrt{v_0}}\frac{\beta_1^2}{(1-\beta_1)^2} \\
     &\hspace{0.4in}  + 4\alpha_t \left[ \frac{\alpha_t^2 L}{\sqrt{v_0}}  M^2 (T-1)^2 \phi_M^2 (1-\beta_2)p + \frac{M^2}{\sqrt{v_0}}+\phi_M^2\sqrt{M^2+p\sigma^2} + \phi_M \frac{\tot \sigma^2}{\sqrt{n}}\right].
 \end{align*}
-Substitute back into (\ref{eqn1}), and leave other derivations unchanged. Assuming $M\leq 1$, we have the following:
+Substitute back into (\ref{eqn1}), and leave other derivations unchanged. Assuming $M\leq 1$, we have the following
 \begin{align*}
     &\frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \\
     & \lesssim  \sqrt{\frac{M^2 p}{n}} \frac{ f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{\tau+1})]}{\tot \alpha_t \tau}+   \frac{\alpha_t}{n^2}  \sum_{r=1}^\tau  \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \left\|\frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v_t} \|p_{r,i}^{\ell}\|} \right\|^2 \right] +\frac{2\alpha^3 L_\ell p\phi_M^2}{ \sqrt{v_0}}\frac{\beta_1^2}{(1-\beta_1)^2} \nonumber\\
@@ -805,11 +793,11 @@ Substitute back into (\ref{eqn1}), and leave other derivations unchanged. Assumi
     &   +4\alpha_t \left[ \frac{\alpha_t^2 L_\ell}{\sqrt{v_0}}  M^2 (T-1)^2 \phi_M^2 (1-\beta_2)p + \frac{M^2}{\sqrt{v_0}}+\phi_M^2\sqrt{M^2+p\sigma^2} + \phi_M \frac{\tot \sigma^2}{\sqrt{n}}\right]   \nonumber\\
    &  +\frac{\alpha_t \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}} +\overline{L} \alpha_t^2 M^2 \phi_M^2 \frac{(1-\beta_2)p}{Tv_0}  + \frac{ \overline{L}\beta_1^2\tot(1-\beta_2)M^2 \phi^2_M n}{2(1-\beta_1)^2 v_0}  +\frac{2\alpha^3 L_\ell p\phi_M^2}{ \sqrt{v_0}}\frac{\beta_1^2}{(1-\beta_1)^2}.
 \end{align*}
-
  And if we set the learning rate to be of order $\mathcal{O}(\frac{1}{L \sqrt{\tau}})$ then:
  \begin{align*}
      \frac{1}{\tau}\sum_{t=1}^\tau  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \mathcal{O}\left( \sqrt{\frac{M^2 p}{n}} \frac{1}{\sqrt{\tot \tau}} + \frac{\sigma^2 }{\tau n\sqrt{p}}+\frac{(T-1)^2p}{\tau^{3/2}L^3}\right) \, .
  \end{align*}
+ 
 This concludes the proof.
 
 \end{proof}
