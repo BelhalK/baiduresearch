@@ -21,8 +21,11 @@ import torchvision.models as models
 import Imagefolder_train_val
 import sys
 import tensorboardX
+from resnet import *
 
 from logger import Logger, savefig
+from QAdam import QAdam
+
 import pdb
 
 import Signum_SGD
@@ -39,7 +42,7 @@ parser.add_argument('data', metavar='DIR', help='path to dataset')
 # data can be ~/data/ILSVRC/Data/CLS-LOC or ./data/tiny-imagenet-200/
 
 parser.add_argument("--optimizer",type=str,default="signum",help="optimizer to use (sgd, damsgrad)",
-    choices=["compams", "damsgrad", "signum", "sgd"])   
+    choices=["compams", "qadam", "signum", "sgd"])   
 
 parser.add_argument("--dataset",type=str,default="mnist",help="dataset to use",
     choices=["mnist", "imagenet", "tinyimagenet", "cifar"])   
@@ -304,9 +307,10 @@ def main_worker(gpu, ngpus_per_node, args):
         model = models.resnet50()
     elif args.dataset == "tinyimagenet":
         # model = models.resnet50()
-        model = models.resnet18()
+        model = ResNet18()
     elif args.dataset == "cifar":
-        model = models.resnet18()
+        # model = models.resnet18()
+        model = ResNet18()
 
     # Prepare Logger file
     if args.dataset == "mnist":
@@ -321,7 +325,7 @@ def main_worker(gpu, ngpus_per_node, args):
     dataset = args.dataset
     title = '{}-{}'.format(dataset, logname)
     
-    checkpoint_dir = 'checkpoints/checkpoints_{}'.format(dataset)
+    checkpoint_dir = 'checkpoints/new/checkpoints_{}'.format(dataset)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
     else:
@@ -371,8 +375,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if args.optimizer == "compams":
         optimizer = compams.CompAMS(model.parameters(), args, log_writer)
-    elif args.optimizer == "damsgrad":
-        optimizer = compams.CompAMS(model.parameters(), args, log_writer)
+    elif args.optimizer == "qadam":
+        optimizer = QAdam(model.parameters(), args, log_writer)
     elif args.optimizer == "signum":
         print('Log writer')
         # log_writer = tensorboardX.SummaryWriter(args.save_dir) if dist.get_rank() == 0 else None
@@ -427,8 +431,18 @@ def main_worker(gpu, ngpus_per_node, args):
             batch_size=args.batch_size, shuffle=False,
             num_workers=args.workers, pin_memory=True)
     elif args.dataset == "cifar":
-        trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        train_dataset = datasets.CIFAR10('./data', train=True, download=True,transform=trans_cifar)
+        # trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
+
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
+
+        train_dataset = datasets.CIFAR10('./data', train=True, download=True,transform=transform_train)
         if args.distributed:
             train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
         else:
@@ -436,9 +450,8 @@ def main_worker(gpu, ngpus_per_node, args):
         train_loader = torch.utils.data.DataLoader(
             train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
             num_workers=args.workers, pin_memory=True, sampler=train_sampler)
-
         val_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10('./data', train=False, transform=trans_cifar),
+            datasets.CIFAR10('./data', train=False, transform=transform_test),
             batch_size=args.batch_size, shuffle=False,
             num_workers=args.workers, pin_memory=True)
             
