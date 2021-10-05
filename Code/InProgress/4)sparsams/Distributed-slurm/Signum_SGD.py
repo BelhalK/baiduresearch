@@ -126,7 +126,7 @@ class SGD_distribute(Optimizer):
 
             dev_grads_buckets = _take_tensors(all_grads, self.bucket_size)
             for dev_grads in dev_grads_buckets:
-                d_p_new = _flatten_dense_tensors(dev_grads)
+                d_p_new = _flatten_dense_tensors(dev_grads).to(p.device)
 
                 if self.all_reduce:
                     dist.all_reduce(d_p_new) #self.all_gpu, group = 0
