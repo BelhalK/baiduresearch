@@ -5,7 +5,7 @@ from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors, \
     _take_tensors
 import time
 import os
-from .sparsification_dist import sign_grad
+from .sparsification_dist import sign_grad, compute_topk
 import collections
 import sys
 from .compressor import *
@@ -25,13 +25,14 @@ class ForkedPdb(pdb.Pdb):
         finally:
             sys.stdin = _stdin
 
-class QAdam(Optimizer):
+class FedLAMB(Optimizer):
 
     def __init__(self, params, args, log_writer, **kwargs):
 
         lr = args.lr
         momentum = args.momentum
         weight_decay = args.weight_decay
+        lambda0 = args.lambda0
         betas=(0.9, 0.999)
         eps=1e-8
         amsgrad=True
@@ -58,10 +59,10 @@ class QAdam(Optimizer):
         #                 weight_decay=weight_decay)
 
         defaults = dict(
-            lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, momentum=momentum, amsgrad=amsgrad
+            lr=lr, betas=betas, eps=eps, weight_decay=weight_decay,lambda0=lambda0, momentum=momentum, amsgrad=amsgrad
         )
         
-        super(QAdam, self).__init__(params, defaults)
+        super(FedLAMB, self).__init__(params, defaults)
 
         self.MB = 1024 * 1024
         self.bucket_size = 100 * self.MB
@@ -109,10 +110,10 @@ class QAdam(Optimizer):
             print('all_inter_node_group', self.inter_node_list)
 
     def __setstate__(self, state):
-        super(QAdam, self).__setstate__(state)
+        super(FedLAMB, self).__setstate__(state)
 
 
-    def step(self, closure=None):
+    def step(self, epoch, closure=None):
 
         args = self.args
 
@@ -125,10 +126,13 @@ class QAdam(Optimizer):
             momentum = group['momentum']
 
             all_grads = []
-            i=0
+            #LARC saving
+            self.layer_adaptive_lr = []
+            layer_index = 0
+            laryer_saving = [1,2,3,23,49,87] #conv1.weight(no bias), bn1.weight, layer1.1.conv1.weight, layer2.1.conv1.weight, layer3.1.conv1.weight, layer4.1.conv1.weight
+            ###
             for p in group['params']:
-                i +=1
-                # print(i)
+                layer_index += 1
 
                 # ForkedPdb().set_trace()
                 state = self.state[p]
@@ -136,134 +140,6 @@ class QAdam(Optimizer):
                 
                 # State initialization
                 if len(state) == 0:
-                    state["step"] = 0
-                    # Exponential moving average of gradient values
-                    state["exp_avg"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
-                    )
-                    # Exponential moving average of squared gradient values
-                    state["exp_avg_sq"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
-                    )
-                    # The true adaptive learning rate used for update, value should be changed outside of the optimizer
-                    state["adp_u"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
-                    )
-                    state["local_error"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format)
-                
-                
-                exp_avg, exp_avg_sq, local_error = state["exp_avg"], state["exp_avg_sq"], state["local_error"]
-                    
-                beta1, beta2 = group["betas"]
-
-                state["step"] += 1
-                bias_correction1 = 1 - beta1 ** state["step"]
-                bias_correction2 = 1 - beta2 ** state["step"]
-
-                if p.grad is None:
-                    continue
-                
-                exp_avg.to(p.device).mul_(beta1).add_(p.grad.data.to(p.device), alpha=1 - beta1)
-                exp_avg_sq.to(p.device).mul_(beta2).addcmul_(p.grad.data.to(p.device), p.grad.data.to(p.device), value=1 - beta2)
-                
-                sqv = exp_avg_sq.sqrt().add_(group['eps'])
-                
-                d_p = p.grad.data
-                if self.compression_buffer==False:
-                    if weight_decay != 0:
-                        d_p.add_(weight_decay, p.data)
-                if momentum != 0:
-                    # signum
-                    param_state = self.state[p]
-                    if 'momentum_buffer' not in param_state:
-                        buf = param_state['momentum_buffer'] = torch.zeros_like(p.data)
-                    else:
-                        buf = param_state['momentum_buffer']
-
-                    buf.mul_(momentum).add_((1 - momentum),d_p)
-                    d_p.copy_(buf)
-
-                all_grads.append(d_p)
-
-                # dev_grads_buckets = _take_tensors(all_grads, self.bucket_size)
-                
-                # len(all_grads) = 62
-                # all_grads[0].shape = torch.Size([64, 3, 7, 7])
-                
-                # len(dev_grads) = 62
-                # dev_grads[0].shape = torch.Size([64, 3, 7, 7])
-
-                # shape of dev_grads_buckets = ?
-                
-                # for dev_grads in dev_grads_buckets:
-                
-
-
-                # d_p_new = _flatten_dense_tensors(d_p)
-                d_p_new = d_p
-                
-
-                # if self.all_reduce:
-                #     dist.all_reduce(d_p_new) #self.all_gpu, group = 0
-                #     if self.signum:
-                #         d_p_new = torch.sign(d_p_new)
-                # elif self.signum:
-                #     if self.nodes > 1:
-                #         if self.compression_buffer:
-                #             d_p_new, tensor_size = self.compressor.compress(d_p_new)
-                #         else:
-                #             # d_p_new = torch.sign(d_p_new)                            
-                #             if args.method == 'QAdam':
-                #                 rate = exp_avg/sqv
-                #                 rate_comp = sign_grad(rate + local_error).float()
-                #                 local_error.to(p.device).add_(rate.to(p.device)-rate_comp.to(p.device))
-                #                 d_p_new = rate_comp.to(p.device)
-                            
-                #         if self.local_rank == 0:
-                #             if dist.get_rank() == 0:
-                #                 d_p_new_list = []
-                #                 for index, inter_node_group in enumerate(self.inter_node_group_list):
-                #                     d_p_temp = d_p_new.clone()
-                #                     dist.broadcast(d_p_temp.to(p.device), self.inter_node_list[index + 1], group = inter_node_group)
-                #                     d_p_new_list.append(d_p_temp)
-                #             else:
-                #                 dist.broadcast(d_p_new, dist.get_rank(), group = self.inter_node_group_list[self.nodes_rank - 1])                                
-                #                 dist.barrier(group = self.all_inter_node_group)
-
-                #             if dist.get_rank() == 0:
-                #                 if self.compression_buffer:
-                #                     d_p_new_list.append(d_p_new) #count itself
-                #                     d_p_new = self.compressor.majority_vote(d_p_new_list)
-                #                 else:
-                #                     for d_p_temp in d_p_new_list:
-                #                         d_p_new.add_(d_p_temp)
-                #                     d_p_new = d_p_new / self.nodes
-                #                 dist.barrier(group = self.all_inter_node_group)
-                #             dist.broadcast(d_p_new, 0, group = self.all_inter_node_group)
-
-                #         if self.compression_buffer:
-                #             d_p_new = self.compressor.uncompress(d_p_new, tensor_size)
-                # else:
-                #     print('You can not run without signum or all_reduce')
-
-                #unflatten
-                # dev_grads_new = _unflatten_dense_tensors(d_p_new,d_p)
-                for grad, reduced in zip(d_p, d_p_new):
-                    grad.copy_(reduced)
-                    # print(grad.shape)
-            
-                #LARC saving
-                self.layer_adaptive_lr = []
-                layer_index = 0
-                laryer_saving = [1,2,3,23,49,87] #conv1.weight(no bias), bn1.weight, layer1.1.conv1.weight, layer2.1.conv1.weight, layer3.1.conv1.weight, layer4.1.conv1.weight
-                ###
-                for p in group['params']:
-                state = self.state[p]
-                # ForkedPdb().set_trace()
-                
-                # State initialization
-                if len(state) == 1:
                     state["step"] = 0
                     # Exponential moving average of gradient values
                     state["exp_avg"] = torch.zeros_like(
@@ -292,57 +168,68 @@ class QAdam(Optimizer):
                 bias_correction1 = 1 - beta1 ** state["step"]
                 bias_correction2 = 1 - beta2 ** state["step"]
 
-                layer_index += 1
-                ##
+                if p.grad is None:
+                    continue
+
+                d_p = p.grad.data
+                if self.compression_buffer==False:
+                    if weight_decay != 0:
+                        d_p.add_(weight_decay, p.data)
+                if momentum != 0:
+                    # signum
+                    param_state = self.state[p]
+                    if 'momentum_buffer' not in param_state:
+                        buf = param_state['momentum_buffer'] = torch.zeros_like(p.data)
+                    else:
+                        buf = param_state['momentum_buffer']
+
+                    buf.mul_(momentum).add_((1 - momentum),d_p)
+                    d_p.copy_(buf)
+
+                all_grads.append(d_p)
+                d_p_new = d_p
+
+                for grad, reduced in zip(d_p, d_p_new):
+                    grad.copy_(reduced)
+                    # print(grad.shape)
+
+                
                 '''
-                LARC
-                This part of code was originally forked from (https://github.com/NVIDIA/apex/blob/master/apex/parallel/LARC.py)
+                LAMB
                 ''' 
-                if args.larc_enable:
+                # Decay the first and second moment running average coefficient
+                exp_avg.to(p.device).mul_(beta1).add_(p.grad.data.to(p.device), alpha=1 - beta1)
+                exp_avg_sq.to(p.device).mul_(beta2).addcmul_(p.grad.data.to(p.device), p.grad.data.to(p.device), value=1 - beta2)
+                torch.max(max_exp_avg_sq, exp_avg_sq, out=max_exp_avg_sq)
+                if epoch==0:
+                    sqv = exp_avg_sq.sqrt().add_(group['eps'])
+                else:                            
+                    sqv = max_exp_avg_sq.sqrt().add_(group['eps'])
+                if args.lamb_enable:
                     trust_coefficient = args.larc_trust_coefficient
                     clip = args.larc_clip
+                    lambda0 = args.lambda0
                     eps = args.larc_eps
                     param_norm = torch.norm(p.data)
                     grad_norm = torch.norm(p.grad.data)
                     if param_norm != 0 and grad_norm != 0:
                         # calculate adaptive lr + weight decay
-                        adaptive_lr = trust_coefficient * (param_norm) / (grad_norm + param_norm * weight_decay + eps)
-
-                        #add adaptive lr saving
-                        if layer_index in laryer_saving:
-                            self.layer_adaptive_lr.append(adaptive_lr)
-
-                        # clip learning rate for LARC
-                        if clip:
-                            # calculation of adaptive_lr so that when multiplied by lr it equals `min(adaptive_lr, lr)`
-                            adaptive_lr = min(adaptive_lr/group['lr'], 1)
-
-                        else:
-                            adaptive_lr = adaptive_lr/group['lr']
-
-                        p.grad.data *= adaptive_lr
-                ###
-
-
-                # if self.compression_buffer: #This part of code is temporary
-                #     if weight_decay != 0:
-                #         p.grad.data.add_(weight_decay, p.data)
-                # p.data.add_(-group['lr'], p.grad.data)
-
-                # Decay the first and second moment running average coefficient
-
-                step_size = group["lr"]              
-
-                p.data.add_(-group['lr'], p.grad.data)
-                # p.data.add_(grad.to(p.device), value=-step_size)
+                        r= exp_avg/sqv
+                        scale=torch.norm(p)/torch.norm(r.to(p.device)+lambda0*p)
+                        step_size = group["lr"]
+                        p.data.addcmul_(scale.to(p.device), r.to(p.device)+lambda0*p, value=-step_size)
+                else:
+                    step_size = group["lr"]              
+                    p.data.addcdiv_(exp_avg.to(p.device), sqv.to(p.device), value=-step_size)
                 
                 # p.data.add_(-group['lr'], p.grad.data)
                 # else:
                 #     denom = np.maximum(torch.sqrt(state["adp_u"]),0.001)
                 #     step_size = group["lr"] / bias_correction1
                 #     p.addcdiv_(exp_avg.to(p.device), denom, value=-step_size)
-
+        
         return loss
+        # return loss, self.get_m(), self.get_v()
 
     def get_v(self):
         

@@ -6,6 +6,7 @@ from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors, \
     _take_tensors
 import time
 import os
+from .compressor import *
 #Signum with majority vote
 
 
@@ -44,9 +45,8 @@ class SGD_distribute(Optimizer):
         self.bucket_size = 100 * self.MB
 
         if self.compression_buffer:
-            import compressor
 
-            self.compressor = compressor.compressor(using_cuda = True, local_rank = local_rank)
+            self.compressor = compressor(using_cuda = True, local_rank = local_rank)
             self.local_rank = local_rank
             self.global_rank = dist.get_rank()
             self.local_dst_in_global = self.global_rank - self.local_rank
@@ -73,7 +73,7 @@ class SGD_distribute(Optimizer):
             self.inter_node_list = self.inter_node_group
             self.inter_node_group_list = []
             for index in range(len(self.inter_node_list)):
-                if index is not 0:
+                if index != 0:
                     temp = dist.new_group([self.inter_node_list[0],self.inter_node_list[index]])
                     self.inter_node_group_list.append(temp)
             self.all_gpu = dist.new_group()
@@ -90,7 +90,7 @@ class SGD_distribute(Optimizer):
         super(SGD_distribute, self).__setstate__(state)
 
 
-    def step(self, closure=None):
+    def step(self, epoch, closure=None):
 
         args = self.args
 
@@ -124,45 +124,45 @@ class SGD_distribute(Optimizer):
                     d_p.copy_(buf)
                 all_grads.append(d_p.to(p.device))
 
-            dev_grads_buckets = _take_tensors(all_grads, self.bucket_size).to(p.device)
+            dev_grads_buckets = _take_tensors(all_grads, self.bucket_size)
             for dev_grads in dev_grads_buckets:
-                d_p_new = _flatten_dense_tensors(dev_grads).to(p.device)
+                d_p_new = _flatten_dense_tensors(dev_grads)
 
                 if self.all_reduce:
                     dist.all_reduce(d_p_new) #self.all_gpu, group = 0
                     if self.signum:
                         d_p_new = torch.sign(d_p_new).to(p.device)
-                elif self.signum:
-                    if self.nodes > 1:
-                        if self.compression_buffer:
-                            d_p_new, tensor_size = self.compressor.compress(d_p_new)
-                        else:
-                            d_p_new = torch.sign(d_p_new).to(p.device)
+                # elif self.signum:
+                #     if self.nodes > 1:
+                #         if self.compression_buffer:
+                #             d_p_new, tensor_size = self.compressor.compress(d_p_new)
+                #         else:
+                #             d_p_new = torch.sign(d_p_new).to(p.device)
 
-                        if self.local_rank == 0:
-                            if dist.get_rank() == 0:
-                                d_p_new_list = []
-                                for index, inter_node_group in enumerate(self.inter_node_group_list):
-                                    d_p_temp = d_p_new.clone()
-                                    dist.broadcast(d_p_temp, self.inter_node_list[index + 1], group = inter_node_group)
-                                    d_p_new_list.append(d_p_temp)
-                            else:
-                                dist.broadcast(d_p_new, dist.get_rank(), group = self.inter_node_group_list[self.nodes_rank - 1])                                
-                                dist.barrier(group = self.all_inter_node_group)
+                #         if self.local_rank == 0:
+                #             if dist.get_rank() == 0:
+                #                 d_p_new_list = []
+                #                 for index, inter_node_group in enumerate(self.inter_node_group_list):
+                #                     d_p_temp = d_p_new.clone()
+                #                     dist.broadcast(d_p_temp, self.inter_node_list[index + 1], group = inter_node_group)
+                #                     d_p_new_list.append(d_p_temp)
+                #             else:
+                #                 dist.broadcast(d_p_new, dist.get_rank(), group = self.inter_node_group_list[self.nodes_rank - 1])                                
+                #                 dist.barrier(group = self.all_inter_node_group)
 
-                            if dist.get_rank() == 0:
-                                if self.compression_buffer:
-                                    d_p_new_list.append(d_p_new) #count itself
-                                    d_p_new = self.compressor.majority_vote(d_p_new_list)
-                                else:
-                                    for d_p_temp in d_p_new_list:
-                                        d_p_new.add_(d_p_temp)
-                                    d_p_new = d_p_new / self.nodes
-                                dist.barrier(group = self.all_inter_node_group)
-                            dist.broadcast(d_p_new, 0, group = self.all_inter_node_group)
+                #             if dist.get_rank() == 0:
+                #                 if self.compression_buffer:
+                #                     d_p_new_list.append(d_p_new) #count itself
+                #                     d_p_new = self.compressor.majority_vote(d_p_new_list)
+                #                 else:
+                #                     for d_p_temp in d_p_new_list:
+                #                         d_p_new.add_(d_p_temp)
+                #                     d_p_new = d_p_new / self.nodes
+                #                 dist.barrier(group = self.all_inter_node_group)
+                #             dist.broadcast(d_p_new, 0, group = self.all_inter_node_group)
 
-                        if self.compression_buffer:
-                            d_p_new = self.compressor.uncompress(d_p_new, tensor_size)
+                #         if self.compression_buffer:
+                #             d_p_new = self.compressor.uncompress(d_p_new, tensor_size)
                 else:
                     print('You can not run without signum or all_reduce')
 
@@ -205,9 +205,6 @@ class SGD_distribute(Optimizer):
                             adaptive_lr = adaptive_lr/group['lr']
 
                         p.grad.data *= adaptive_lr
-                ###
-                if args.lamb_enable:
-                    trust_coefficient = args.larc_trust_coefficient
                     
                 if self.compression_buffer: #This part of code is temporary
                     if weight_decay != 0:

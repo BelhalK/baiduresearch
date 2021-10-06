@@ -23,9 +23,11 @@ import sys
 import tensorboardX
 from resnet import *
 from logger import Logger, savefig
+from termcolor import colored
 
-from opt.QAdam import QAdam
-from opt.compams import CompAMS
+# from opt.QAdam import QAdam
+# from opt.compams import CompAMS
+from opt.fedlamb import FedLAMB
 from opt.Signum_SGD import SGD_distribute
 
 model_names = sorted(name for name in models.__dict__
@@ -110,6 +112,7 @@ parser.add_argument('--save-dir', type=str, default="./saving/", help='Directory
 #LARC setting
 parser.add_argument('--larc_enable', action='store_true', help='Enable the LARC')
 parser.add_argument('--lamb_enable', action='store_true', help='Enable the LAMB')
+parser.add_argument('--lambda0', type=float, default=0.01, help="scaling factor in LAMB")
 parser.add_argument("--larc_trust_coefficient", default=0.02, type=float)
 parser.add_argument("--larc_eps", default=1e-8, type=float)
 parser.add_argument('--larc_clip', action='store_true', help='Enable the elip for LARC')
@@ -249,16 +252,17 @@ def main():
             ip = socket.gethostbyname(socket.gethostname())
             port = find_free_port()
             args.dist_url = "tcp://{}:{}".format(ip, port)
-            with open(hostfile, "w") as f:
-                f.write(args.dist_url)
+            # with open(hostfile, "w") as f:
+            #     f.write(args.dist_url)
         else:
             import os
             import time
             while not os.path.exists(hostfile):
                 time.sleep(1)
-            with open(hostfile, "r") as f:
-                args.dist_url = f.read()
-        print("dist-url:{} at PROCID {} / {}".format(args.dist_url, args.rank, args.world_size))
+        #     with open(hostfile, "r") as f:
+        #         args.dist_url = f.read()
+        # print("dist-url:{} at PROCID {} / {}".format(args.dist_url, args.rank, args.world_size))
+    
     # if args.dist_url == "env://" and args.world_size == -1:
     #     args.world_size = int(os.environ["WORLD_SIZE"])
 
@@ -266,14 +270,9 @@ def main():
 
     ngpus_per_node = torch.cuda.device_count()
     if args.multiprocessing_distributed:
-        # Since we have ngpus_per_node processes per node, the total world_size
-        # needs to be adjusted accordingly
         args.world_size = ngpus_per_node * args.world_size
-        # Use torch.multiprocessing.spawn to launch distributed processes: the
-        # main_worker process function
         mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
     else:
-        # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
 
 
@@ -293,6 +292,8 @@ def main_worker(gpu, ngpus_per_node, args):
             args.rank = args.rank * ngpus_per_node + gpu
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
+    
+    
     # create model
     if args.dataset == "mnist":
         model = Net()
@@ -315,19 +316,7 @@ def main_worker(gpu, ngpus_per_node, args):
     elif args.dataset == "cifar":
         logname = "resnet18"
     
-    dataset = args.dataset
-    title = '{}-{}'.format(dataset, logname)
-    
-    checkpoint_dir = 'checkpoints/checkpoints_{}'.format(dataset)
-    if not os.path.exists(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
-    else:
-        pass
-    
-    logger = Logger('{}/{}_opt{}_workers{}_lr{}_epoch{}.txt'.format(checkpoint_dir, logname, args.optimizer, args.workers, args.lr, args.epochs), title=title)
-    # logger.set_names(['Learning Rate', 'Loss','Acc. at 1','Acc. at 5', 'Time'])
-    logger.set_names(['Learning Rate','Loss','Acc. at 1','Acc. at 5', 'Time'])
-
+    print(colored("Create model {} for {} dataset".format(logname, args.dataset), 'green'))
 
     if args.distributed:
         if args.gpu is not None:
@@ -349,22 +338,44 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             model = torch.nn.DataParallel(model).cuda()
 
+    print(colored("Create Loss function", 'green'))
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
     
     log_writer = None
-
+    print(colored("Init {} optimizer".format(args.optimizer), 'green'))
     if args.optimizer == "fedlamb":
-        optimizer = CompAMS(model.parameters(), args, log_writer)
-    elif args.optimizer == "qadam":
-        optimizer = QAdam(model.parameters(), args, log_writer)
-    elif args.optimizer == "signum":
-        print('Log writer')
+        args.lamb_enable = True
+        optimizer = FedLAMB(model.parameters(), args, log_writer)
+    elif args.optimizer == "fedams":
+        args.lamb_enable = False
+        optimizer = FedLAMB(model.parameters(), args, log_writer)
+    elif args.optimizer == "fedlars":
+        args.larc_enable = True
         optimizer = SGD_distribute(model.parameters(), args, log_writer)
     elif args.optimizer == "fedsgd":
-        optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+        args.larc_enable = False
+        optimizer = SGD_distribute(model.parameters(), args, log_writer)
+
+    print(colored("Create Logger file"), 'green')
+    #logger file
+    dataset = args.dataset
+    title = '{}-{}'.format(dataset, logname)
+    checkpoint_dir = 'checkpoints/checkpoints_{}'.format(dataset)
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+    else:
+        pass
+    
+    if args.optimizer in ["fedlamb", "fedlars"]:
+        larc = True
+    else:
+        larc = False
+
+    logger = Logger('{}/{}_opt{}_LAMB{}_lambda{}_workers{}_lr{}_epoch{}.txt'.format(checkpoint_dir, logname, args.optimizer, larc, args.lambda0, args.workers, args.lr, args.epochs), title=title)
+    # logger.set_names(['Learning Rate', 'Loss','Acc. at 1','Acc. at 5', 'Time'])
+    logger.set_names(['Learning Rate','Loss','Acc. at 1','Acc. at 5', 'Time'])
+
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -385,6 +396,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     cudnn.benchmark = True
 
+    print(colored("Init {} dataset".format(args.dataset), 'green'))
     # Data loading code
     if args.dataset == "mnist":
         train_dataset = datasets.MNIST(
@@ -452,6 +464,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     start_time_cust = time.time()
 
+    print(colored("Enter Training loop", 'green'))
+
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -505,7 +519,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
+        optimizer.step(epoch)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
