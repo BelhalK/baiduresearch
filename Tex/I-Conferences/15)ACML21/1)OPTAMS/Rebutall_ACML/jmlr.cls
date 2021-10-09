@@ -461,14 +461,14 @@ Keywords:} \ignorespaces}%
           \else
              \if\@jmlrissue\@empty,\fi
           \fi
-       %\else
-       %   :%
+       \else
+          :%
        \fi
     \fi
     \ifx\@jmlrpages\@empty
     \else
        \ifx\@jmlrvolume\@empty\space\fi
-       %\@jmlrpages
+       \@jmlrpages
        \ifx\@jmlryear\@empty\else,\fi
     \fi
     \ifx\@jmlryear\@empty\else\space\@jmlryear\fi
@@ -1154,7 +1154,3 @@ Keywords:} \ignorespaces}%
 \endinput
 %%
 %% End of file `jmlr.cls'.
-
-
-
-

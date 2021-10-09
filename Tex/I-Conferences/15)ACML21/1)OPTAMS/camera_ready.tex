@@ -51,10 +51,10 @@
 
  % Use \Name{Author Name} to specify the name.
  % If the surname contains spaces, enclose the surname
- % in braces, e.g. \Name{John {Smith Jones}} similarly
+ % in braces, i.e., e.g., \Name{John {Smith Jones}} similarly
  % if the name has a "von" part, e.g \Name{Jane {de Winter}}.
  % If the first letter in the forenames is a diacritic
- % enclose the diacritic in braces, e.g. \Name{{\'E}louise Smith}
+ % enclose the diacritic in braces, i.e., e.g., \Name{{\'E}louise Smith}
 
  % Two authors with the same address
  % \author{\Name{Author Name1} \Email{abc@sample.com}\and
@@ -109,14 +109,15 @@ optimization, adaptive, optimistic, online, stochastic
 \section{Introduction}
 
 
-Deep learning models have been successful in several applications, from robotics~\citep{levine2016end}, computer vision~\citep{he2016deep,goodfellow2014generative}, reinforcement learning~\citep{mnih2013playing}, natural language processing~\citep{GMH13}, etc. 
+Deep learning models have been successful in several applications, including robotics~\citep{levine2016end}, computer vision~\citep{he2016deep,goodfellow2014generative}, reinforcement learning~\citep{mnih2013playing}, natural language processing~\citep{GMH13}, etc. 
 With the sheer size of modern datasets and the dimension of neural networks, speeding up training is of utmost importance.
-To do so, several algorithms have been proposed in recent years, such as  AMSGrad~\citep{reddi2019convergence}, Adam~\citep{kingma2014adam}, RMSprop~\citep{tieleman2012rmsprop}, AdADELTA~\citep{zeiler2012adadelta}, and NAdam~\citep{dozat2016incorporating}.
+To do so, several algorithms have been proposed in recent years, such as  AMSGrad~\citep{reddi2019convergence}, Adam~\citep{kingma2014adam}, RMSprop~\citep{tieleman2012rmsprop}, AdADELTA~\citep{zeiler2012adadelta}.
 All the prevalent algorithms for training deep networks mentioned above combine two ideas: the idea of adaptivity from AdaGrad~\citep{duchi2011adaptive} and the idea of momentum from Nesterov's Method~\citep{nesterov2003introductory} or Heavy ball method~\citep{polyak1964some}.
+Their decentralized and federated variants have also proven their efficacy, see e.g.,~\citet{chen2020toward,chen2021convergent,karimi2021fed}. 
 AdaGrad is an online learning algorithm that works well compared to the standard online gradient descent when the gradient is sparse.
 Its update has a notable feature: it leverages an anisotropic learning rate depending on the magnitude of the gradient for each dimension which helps in exploiting the geometry of the data. 
-On the other hand, Nesterov's Method or Heavy ball Method is an accelerated optimization algorithm which updates not only depends on the current iterate and gradient but also depends on the past gradients (i.e., momentum). 
-State-of-the-art algorithms such as AMSGrad~\citep{reddi2019convergence} and Adam~\citep{kingma2014adam} leverage these ideas to accelerate the training of nonconvex objective functions, for instance deep neural networks losses.
+On the other hand, Nesterov's Method or Heavy ball Method is an accelerated optimization algorithm whose updates not only depend on the current iterate and gradient but also on the past gradients (i.e., momentum). 
+Popular algorithms such as AMSGrad~\citep{reddi2019convergence} and Adam~\citep{kingma2014adam} leverage these ideas to accelerate the training of nonconvex objective functions, for instance deep neural~networks~losses.
 
 In this paper, we propose an algorithm that goes beyond the hybrid of the adaptivity and momentum approach. 
 Our algorithm is inspired by Optimistic Online learning~\citep{CJ12,RS13b,SALS15,mertikopoulos2018optimistic}, which assumes that, in each round of online learning, a \emph{predictable process} of the gradient of the loss function is available. 
@@ -154,7 +155,6 @@ We denote $g_{1:T}[i]$ as the sum of the $i_{th}$ element of $g_{1},\dots, g_{T}
 \section{Preliminaries}\label{sec:prelim}
 \vspace{-0.05in}
 
-%We begin by providing some background on both online learning and adaptive methods.
 \textbf{Optimistic Online learning.}\hspace{0.1cm}
 The standard setup of \emph{Online learning} is that, in each round $t$, an online learner selects an action $w_{t} \in \Theta \subseteq \mathbb R^{d}$, observes $\ell_{t}(\cdot)$ and suffers the associated loss $\ell_{t}(w_t)$ after the action is committed.
 The goal is to minimize the regret, 
@@ -167,20 +167,17 @@ Consider the Follow-the-Regularized-Leader (FTRL~\citep{hazan2019introduction}) 
 \textstyle w_t  = \arg \min_{w \in \Theta} \{ \langle w , L_{t-1} \rangle + \frac{1}{\eta} \textsf{R}(w) \} \eqsp,
 \end{equation}
 where $\eta$ is a parameter, $\textsf{R}(\cdot)$ is a $1$-strongly convex function with respect to a given norm on the constraint set $\Theta$, and $L_{t-1}:= \sum_{s=1}^{t-1} g_s$ is the cumulative sum of gradient vectors of the loss functions up to round $t-1$. It has been shown that FTRL has regret at most $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t \|_*^2})$.
-The update of its optimistic variant, called Optimistic-FTRL and developed in~\citet{SALS15} reads
+The optimistic variant, namely Optimistic-FTRL and developed in~\citet{SALS15} reads
 \begin{equation} \label{optFTRL}
 \textstyle w_t  = \arg \min_{w \in \Theta} \{ \langle w , L_{t-1} + m_t \rangle + \frac{1}{\eta} \textsf{R}(w) \}\eqsp,
 \end{equation}
-where $\{m_{t}\}_{t>0}$ is a predictable process incorporating (possibly arbitrary) knowledge about the sequence of gradients $\{ g_{t}:=\nabla \ell_t(w_t)\}_{t>0}$.
-Under the assumption that the loss functions are convex, it has been shown in~\citet{SALS15} that the regret of Optimistic-FTRL is at most $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t \|_*^2 } )$.
+where $\{m_{t}\}_{t>0}$ is a predictable process incorporating (arbitrary) knowledge about the sequence of gradients $\{ g_{t}:=\nabla \ell_t(w_t)\}_{t>0}$.
+Under the convexity assumption, it has been shown in~\citet{SALS15} that the regret of Optimistic-FTRL is at most $\mathcal{O}(\sqrt{\sum_{t=1}^T \| g_t - m_t \|_*^2 } )$.
 
 
 \textit{Remark:} Note that the usual worst-case bound is preserved even when the predictors $\{m_{t}\}_{t>0}$ do not predict well the gradients. Indeed, if we take the example of Optimistic-FTRL, the bound reads $\sqrt{\sum_{t=1}^T \| g_t - m_t \|_*^2 } \leq 2 \max \limits_{w \in \Theta} \| \nabla \ell_t(w) \| \sqrt{T}$ which is equal to the usual bound up to a factor $2$~\citep{RS13b}, under certain boundedness assumptions on $\Theta$ detailed below.
 Yet, when the predictors $\{m_{t}\}_{t>0}$ are well designed, the resulting regret will be lower. 
 We have a similar argument when comparing \textsc{OPT-AMSGrad} and AMSGrad regret bounds in Section~\ref{sec:convex}.
-
-
-
 We emphasize, Section~\ref{sec:opt}, the importance of leveraging a good guess $m_t$ for updating $w_t$ in order to get a fast convergence rate (or equivalently, small regret) and introduce in Section~\ref{sec:numerical} a simple predictable process $\{m_{t}\}_{t>0}$ leading to empirical acceleration on various applications.
 
 
@@ -190,7 +187,7 @@ Adaptive optimization has been popular in various deep learning applications due
 Adam~\citep{kingma2014adam}, a popular adaptive algorithm, combines momentum~\citep{polyak1964some} and anisotropic learning rate of AdaGrad~\citep{duchi2011adaptive}.
 Specifically, the learning rate of AdaGrad at time $T$ for dimension $j$ is proportional to the inverse of $\sqrt{ \Sigma_{t=1}^T g_t[j]^2 }$, where $g_t[j]$ is the $j$-th element of the gradient vector 
 
-\begin{wrapfigure}[11]{r}{.5\linewidth}\vspace{-0.1in}
+\begin{wrapfigure}[10]{r}{.5\linewidth}\vspace{-0.15in}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
@@ -217,7 +214,7 @@ Therefore,~\cite{kingma2014adam} put forward Adam that uses a moving average of 
 A variant, called AMSGrad and detailed in Algorithm~\ref{alg:amsgrad}, has been developed in~\citet{reddi2019convergence} to fix Adam failures.
 The difference between Adam and AMSGrad lies in Line~\ref{line:maxop} of Algorithm~\ref{alg:amsgrad}.
 The AMSGrad algorithm~\citep{reddi2019convergence} applies the $\texttt{max}$ operation on the second moment to guarantee a non-increasing learning rate $\eta_t / \sqrt{\hat{v}}_t $, which helps for the convergence (i.e., average regret $\mathcal{R}_T/T \rightarrow 0$).
-As we mainly focus on the convergence rate of the various methods in this contribution, we would like to highlight that complementary efforts are cal also be made towards improving the generalization abilities of those algorithms, see~\citet{zhou2020towards} for instance.
+As we mainly focus on the convergence rate of our method, we would like to highlight that complementary efforts can also be made towards improving the generalization abilities of those algorithms, see~\citet{zhou2020towards} for instance.
 
 
 
@@ -227,7 +224,7 @@ As we mainly focus on the convergence rate of the various methods in this contri
 
 
 
-\begin{wrapfigure}[22]{r}{.5\linewidth}\vspace{-0.3in}
+\begin{wrapfigure}[21]{r}{.5\linewidth}\vspace{-0.4in}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
@@ -252,12 +249,15 @@ where $h_{t+1}:= \beta_{1} \theta_{t-1} + (1 - \beta_{1}) m_{t+1}$ with $m_{t+1}
 %\begin{minipage}{0.5\linewidth}
 \begin{figure}[H]
 % \captionsetup{justification=centering}
-    \vspace{-0.1in}
-    \includegraphics[width=2.8in]{plots/plot.pdf}
-        \vspace{-0.1in}
+    \vspace{-0.35in}
+    
+    \hspace{-0.2in}
+    \includegraphics[width=3.3in]{plots/plot.pdf}
+        \vspace{-0.45in}
     \caption{\textsc{OPT-AMSGrad} underlying structure.}
      \label{fig:scheme}
-\end{figure}
+\end{figure}  
+\vspace{-0.1in}
 \end{minipage}
 \end{wrapfigure}
 We formulate in this section the proposed optimistic acceleration of AMSGrad, namely \textsc{OPT-AMSGrad}, detailed in Algorithm~\ref{alg:optamsgrad}.  
@@ -272,10 +272,9 @@ It leverages the auxiliary variable (hidden model) to update and commit $w_{t+1}
 In the following analysis, we show that this interleaving actually leads to some cancellation in the regret bound.
 Such two-levels method where the guess $m_t$ is equal to the last known gradient $g_{t-1}$ has been exhibited recently in~\citet{CJ12}.
 The gradient prediction process plays an important role as discussed in Section~\ref{sec:numerical}.
-The proposed \textsc{OPT-AMSGrad} algorithm inherits three properties: \textsf{(i)} Adaptive learning rate of each dimension as AdaGrad~\citep{duchi2011adaptive} (line 6, line 8 and line 9). \textsf{(ii)} Exponential moving average of the past gradients as Nesterov's Method~\citep{nesterov2003introductory} and the Heavy-Ball method~\citep{polyak1964some} (line 5). \textsf{(iii)} Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as in optimistic online learning algorithms~\citep{CJ12,RS13b,SALS15} (line 9).
+The proposed \textsc{OPT-AMSGrad}  inherits three properties: \textsf{(i)} Adaptive learning rate of each dimension as AdaGrad~\citep{duchi2011adaptive} (lines 6-8-9). \textsf{(ii)} Exponential moving average of the past gradients as Nesterov's Method~\citep{nesterov2003introductory} and the Heavy-Ball~\citep{polyak1964some} (line 5). \textsf{(iii)} Optimistic update that exploits \emph{prior knowledge} of the next gradient vector as in optimistic online learning algorithms~\citep{CJ12,RS13b,SALS15} (line 9).
 
 
-\vspace{0.1in}
 The first property helps for acceleration when the gradient has a sparse structure.
 The second one is from the long-established idea of momentum which can also help for acceleration. 
 The last property can lead to an acceleration when the prediction of the next gradient is good as mentioned above when introducing the regret bound for the Optimistic-FTRL algorithm.
@@ -296,14 +295,13 @@ where we abuse the notation $\psi_t$ to represent the PSD matrix $H_t^{1/2}:=\te
 Note that $\psi_t(\cdot)$ is 1-strongly convex with respect to the norm $\| \cdot \|_{\psi_t}$, \ie $\psi_t(\cdot)$ satisfies $\psi_t(u) \geq \psi_t(v) + \langle \psi_t(v), u - v \rangle + \frac{1}{2} \| u - v\|^2_{\psi_t}$ for any point $(u,v) \in \Theta^2$.
 A consequence of 1-strong convexity of $\psi_t(\cdot)$ is that $B_{\psi_t}(u,v) \geq \frac{1}{2} \| u - v \|^2_{\psi_t}$, where the Bregman divergence $B_{\psi_t}(u,v)$ is defined as $B_{\psi_t}(u,v) := \psi_t(u) - \psi_t(v) - \langle \psi_t(v), u - v \rangle$ with $\psi_t(\cdot)$ as the distance generating function.
 We also define the corresponding dual norm $\| \cdot \|_{\psi_t^*}:= \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{-1/2} \cdot \rangle }$.
-The proofs of the results are deferred to the supplementary material of this paper.
 
 
 \vspace{-0.05in}
 \subsection{Convex Regret Analysis}\label{sec:convex}
 \vspace{-0.05in}
 
-In this subsection only, we assume convexity of $\{\ell_t\}_{t>0}$ and that $\Theta$ has a bounded diameter $D_{\infty}$, which is a standard assumption for adaptive methods~\citep{reddi2019convergence,kingma2014adam} and is necessary in regret analysis.
+In this subsection only, we assume convexity of $\{\ell_t\}_{t>0}$ and that $\Theta$ has a bounded diameter $D_{\infty}$, which is a standard assumption for adaptive methods~\citep{kingma2014adam,reddi2019convergence}.
 % since if the boundedness assumption is lifted, one might construct a scenario such that the benchmark is $w^* = \infty$ and the learner's regret is infinite. 
 \begin{Theorem} \label{THM:MAINCONVEX}\vspace{0.05in}
 Suppose the learner incurs a sequence of convex loss functions $\{ \ell_{t}(\cdot) \}$.
@@ -317,18 +315,18 @@ Then,  \textsc{OPT-AMSGrad} (Algorithm~\ref{alg:optamsgrad}) has regret
 where $ \tilde{m}_{t+1}  = \beta_1 \theta_{t-1} +(1-\beta_1) m_{t+1}$, $g_{t}:= \nabla \ell_{t}(w_t)$, $\eta_{{\min}} := \min_{{t}} \eta_{t}$ and $D_{\infty}^2$ is the diameter of the bounded set $\Theta$.
 The result holds for any benchmark $w^{*} \in \Theta$ and any step size sequence $\{ \eta_t \}_{t>0}$.
 \end{Theorem}
-\vspace{0.05in}
+%\vspace{0.05in}
 \begin{Corollary}\label{COR:COROLLARY}
 Suppose $\beta_1=0$ and $\{v_t\}_{t>0}$ is a monotonically increasing sequence, then we obtain the following regret bound for any $w^{*} \in \Theta$ and sequence of stepsizes $\{ \eta_t = \eta/\sqrt{t}\}_{t>0}$: 
-\begin{equation}\notag
-\begin{split}
+\begin{align}\notag
 \mathcal{R}_T \leq  \frac{ B_{\psi_1}}{\eta_1}
 + \frac{\eta \sqrt{1 + \log T}}{\sqrt{1 - \beta_2}} \sum_{i=1}^d \| (g-m)_{1:T}[i] \|_2  +\frac{D_{\infty}^2}{\eta_{\min}} \sum_{i=1}^d \left[ (1-\beta_2) \sum_{s=1}^{T} \beta_2^{T-s} g^2_s[i] \right]^{1/2} \eqsp,
-\end{split}
-\end{equation}
+\end{align}
 where $B_{\psi_1} := B_{\psi_1}(w^*, \tilde{w}_{1})$, $g_{t}:= \nabla \ell_{t}(w_t)$ and $\eta_{{\min}} := \min_{{t}} \eta_{t}$.
 \end{Corollary}
-We can compare the bound of Corollary~\ref{COR:COROLLARY} with that of AMSGrad~\citep{reddi2019convergence} with $\eta_t = \eta/\sqrt{t}$:
+
+
+We can compare the bound of Corollary~\ref{COR:COROLLARY} with that of AMSGrad with $\eta_t = \eta/\sqrt{t}$:
 \beq\label{eq:boundAMS}
 \mathcal{R}_T \leq \frac{ \eta \sqrt{ 1 + \log T}    }{ \sqrt{1 - \beta_2}  } \sum_{i=1}^d \| g_{1:T}[i]  \|_2 +\frac{\sqrt{T}}{2 \eta} D^2_{\infty} \sum_{i=1}^d \hat{v}_T[i]^2 \eqsp.
 \eeq
@@ -336,7 +334,6 @@ For convex regret minimization, Corollary~\ref{COR:COROLLARY} yields a regret of
 We notice from the second term in Corollary~\ref{COR:COROLLARY} compared to the first term in \eqref{eq:boundAMS} that better predictors lead to lower regret.
 The construction of the predictions $\{m_t\}_{t>0}$ is thus of utmost importance for achieving optimal acceleration and can be learned through the iterations~\citep{RS13b}.
 In Section~\ref{sec:numerical}, we derive a basic, yet effective, gradient prediction algorithm, see Algorithm~\ref{alg:algex}, embedded in \textsc{OPT-AMSGrad}.
-
 While the idea of optimism is commonly used in convex/online regret optimization, the main purpose of our contribution is to derive a novel method for stochastic nonconvex optimization tasks, where large finite set of observations is available before training. The sequel deals with this case via nonconvex convergence analysis and common stochastic optimization numerical experiments.
 
 \vspace{-0.05in}
@@ -364,15 +361,13 @@ For any $t >0$, the estimated parameter $w_t$ stays within a $\ell_{\infty}-$bal
 The function $f$ is $L$-smooth (has $L$-Lipschitz gradients) w.r.t. the parameter w.
 There exists some constant $L > 0$ such that for $(w, \vartheta) \in \Theta^2$, $f(w) - f(\vartheta) - \nabla f(\vartheta)^\top(w - \vartheta) \leq \frac{L}{2} \norm{w - \vartheta}^2\eqsp.$
 \end{assumption}
-We assume that the optimistic guess $m_t$ at iteration $t$ and the true gradient $g_t$ are correlated:
+We assume that the optimistic guess $m_t$ at iteration $t$ and the true gradient $g_t$ are correlated and make a classical assumption in nonconvex optimization on the magnitude of the gradient:
 \begin{assumption}\label{ass:guessbound}
 For any $t >0$, $0 < \pscal{m_t}{ g_t} = a_t \|g_t\|^2$ with some $0<a_t\leq 1$, and $\| m_t \|\leq \| g_t \|$, where $\pscal{}{}$ denotes the inner product.
 % and $\Vert m_t\Vert\leq \Vert g_t\Vert$, where $\pscal{}{}$ denotes the inner product.
 \end{assumption}
 %H\ref{ass:guessbound} assumes that the predicted gradient is in general reasonable, in the sense that $m_t$ has acute angle with $g_t$ and bounded norm, as the shadowed area in Figure \ref{fig:assumption}. 
 %H\ref{ass:guessbound} assumes that the predicted gradient is in general reasonable, in the sense that $m_t$ has acute angle with $g_t$ and bounded norm.
-
-We make a classical assumption in nonconvex optimization on the magnitude of the gradient:
 \begin{assumption}\label{ass:bounded}
 There exist a constant $\major >0$ such that for any $w$ and $\xi$, it holds that $\norm{\nabla f(w, \xi)} < \major$.
 \end{assumption}
@@ -391,7 +386,7 @@ The first one ensures bounded norms of quantities of interests (resulting from t
 \begin{Lemma}\label{LEM:BOUND}\vspace{0.05in}
 Assume H\ref{ass:bounded}, then the quantities defined in Algorithm~\ref{alg:optamsgrad} satisfy for any $w \in \Theta$ and $t>0$, $ \|\nabla f(w_t)\| < \major ,~~~\|\theta_t \| < \major$ and $\|\hat{v}_t\| < \major^2$.
 \end{Lemma}
-We now formulate the main result of our paper yielding a finite-time upper bound of the suboptimality condition defined as $\EE\left[\|\nabla f(w_T)\|^2\right]$ (set as the convergence criterion of interest, see~\citet{ghadimi2013stochastic}):
+We now formulate the main result of our paper yielding a finite-time upper bound of the suboptimality condition defined as $\EE\left[\|\nabla f(w_T)\|^2\right]$, see~\citet{ghadimi2013stochastic}:
 \begin{Theorem}\label{THM:BOUNDOPT}\vspace{0.05in}
 Assume H\ref{ASS:BOUNDEDPARAM}-H\ref{ass:bounded}, $\beta_1 < \beta_2 \in [0,1)$ and a sequence of decreasing stepsizes $\{\eta_t\}_{t>0}$, then the following result holds:
 \beq\notag
@@ -409,8 +404,8 @@ The constants are defined as:
 }
 where $\Delta f = f(\overline{w}_{1}) - f(\overline{w}_{T_{\sf M}+1})$ and $a_m=\displaystyle{\min_{t=1,...,T}}a_t$.
 \end{Theorem}
-Firstly, the bound for our OPT-AMSGrad method matches the complexity bound of $\mathcal{O}( \sqrt{d/T_{\sf M}} + 1/T_{\sf M} )$ of~\citep{ghadimi2013stochastic} for SGD considering the dependence of T only, and of~\citep{zhou2018convergence} for AMSGrad method.
-In order to see the influence of prediction quality, we can show that when $(1-\beta_1)(\beta_2-\beta_1^2-2L(1-\beta_1))-\frac{4L\beta_1^2(1+\beta_1^2)}{1-\gamma}<0$, $\tilde C_1$ and $\tilde C_2$ both decrease as $a_m$ approaches 1, i.e., as the prediction gets more accurate. 
+Firstly, the bound for our OPT-AMSGrad method matches the complexity bound of $\mathcal{O}( \sqrt{d/T_{\sf M}} + 1/T_{\sf M} )$ of~\citet{ghadimi2013stochastic} for SGD considering the dependence of T only, and of~\citet{zhou2018convergence} for AMSGrad method.
+In order to see the influence of prediction quality, we can show that when $(1-\beta_1)(\beta_2-\beta_1^2-2L(1-\beta_1))-\frac{4L\beta_1^2(1+\beta_1^2)}{1-\gamma}<0$, $\tilde C_1$ and $\tilde C_2$ both decrease as $a_m$ approaches~1, i.e., as the prediction gets more accurate. 
 Therefore, similar to the convex case, our bound also improves with better gradient prediction.
 
 \vspace{-0.05in}
@@ -424,7 +419,7 @@ We consider a fully connected feed forward neural network with $L$ layers modele
 \textsf{MLN}( w, \xi) = \sigma\left(w^{(L)} \sigma\left(w^{(L-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right) \eqsp,
 \eeq
 where $w = [w^{(1)}, w^{(2)}, \cdots , w^{(L)}]$ is the vector of parameters, $\xi \in \rset^p$ is the input data and $\sigma$ is the sigmoid activation function. We assume a $p$ dimension input data and a scalar output for simplicity.
-In this setting, the stochastic objective function \eqref{eq:minproblem} reads $f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2\eqsp,$
+In this setting, the stochastic objective \eqref{eq:minproblem} reads $f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2\eqsp,$
 where $\mathcal{L}(\cdot, y)$ is the loss function (e.g., cross-entropy), $y$ are the true labels and $\lambda >0$ is the regularization parameter.
 We establish that the boundedness assumption H\ref{ASS:BOUNDEDPARAM} is satisfied with model~\eqref{eq:dnnmodel}:
 \begin{Lemma}\label{LEM:DNNH2}
@@ -455,7 +450,8 @@ For any dimension $p \in [1,d]$, using assumption H\ref{ass:guessbound}, we note
 Hence $\|w_t - \tilde{w}_{t-1}\|  \leq \hat{\eta} \left( \|\hat{v}_t^{-1/2} g_t\| +  a \|\hat{v}_t^{-1/2} g_{t+1}\| \right) \leq \hat{\eta} \frac{a +1}{\sqrt{1 - \beta_2}} $.
 In short there exist a constant $B$ such that $\|w_t - \tilde{w}_{t-1}\| \leq B$.
 
-\textbf{Proof by induction:} As in~\citet{defossez2020convergence}, we will prove the containment of the weights by induction.
+\vspace{0.1in}
+\noindent\textbf{Proof by induction:} As in~\citet{defossez2020convergence}, we will prove the containment of the weights by induction.
 Suppose an iteration index $T$ and a coordinate $i$ of the last layer $L$ such that $w^{(L)}_{T, i} \geq \frac{T}{4\lambda} + B$.
 Using \eqref{eq:boundderivativeloss}, we have $
 \nabla_i f(w^{(L)}_t, \xi) \geq - \frac{T}{4} + \lambda \frac{T}{\lambda4} \geq 0 $,
@@ -492,7 +488,22 @@ Showing that the weights of the previous layers $\ell \in [1, L-1]$ as well as f
 For example,~\citet{chen2018convergence} derive the bound $\min_{t \in [T]} \mathbb{E}[\| \nabla f(w_t) \|^2 ] = \mathcal{O}(\log T / \sqrt{T}) $.
 Yet, this data independent bound does not show any advantage over standard stochastic gradient descent. 
 Similar concerns appear in other related works.
-\begin{wrapfigure}[12]{r}{.5\linewidth}\vspace{-0.8cm}
+
+To get some adaptive data dependent bound written in terms of the gradient norms observed along the trajectory when applying  \textsc{OPT-AMSGrad} to nonconvex optimization, one can follow the approach of~\citet{agarwal2019efficient} or~\citet{chen2019universal}.
+They provide a modular approach to convert algorithms with adaptive data dependent regret bound for convex loss functions (e.g., AdaGrad) to algorithms that can find an approximate stationary point of nonconvex objectives. 
+These variants can outperform the ones instantiated by other Adam-type algorithms when the gradient prediction $m_t$ is close to the true gradient $g_t$.
+
+\vspace{0.1in}
+\noindent \textbf{Comparison to AO-FTRL~\citep{mohri2015accelerating}.}\hspace{0.1in}In~\citet{mohri2015accelerating}, the authors propose AO-FTRL, which update reads $w_{t+1} = \arg\min_{{w \in \Theta}} ( \sum_{s=1}^t g_s )^{\top}  w + m_{t+1}^\top w + r_{0:t}(w) $, where $r_{0:t}(\cdot)$ is a 1-strongly convex loss function with respect to some norm $\| \cdot\|_{(t)}$ that may be different for different iteration $t$. 
+Data dependent regret bound provided in~\citet{mohri2015accelerating} reads $r_{{0:T}}(w^*) + \sum_{t=1}^T \| g_t - m_t \|_{(t)^*}$ for any benchmark $w^{*} \in \Theta$. 
+We remark that if one selects $r_{0:t}(w) := \langle w, \text{diag}\{\hat{v}_t\}^{1/2} w \rangle$  and $\| \cdot \|_{(t)}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$, then the update can be viewed as an optimistic variant of AdaGrad. 
+However, no experiments were provided in~\citet{mohri2015accelerating} to support those theoretical findings.
+
+
+\vspace{0.1in}
+\noindent \textbf{Comparison to Optimistic-Adam~\citep{daskalakis2018training}.}\ This is an optimistic variant of ADAM,
+\begin{wrapfigure}[12]{r}{.5\linewidth}
+\vspace{-0.3in}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
@@ -512,26 +523,13 @@ Similar concerns appear in other related works.
 \end{algorithm}
 \vspace{-0.1in}
 \end{minipage}\end{wrapfigure}
-To get some adaptive data dependent bound written in terms of the gradient norms observed along the trajectory when applying  \textsc{OPT-AMSGrad} to nonconvex optimization, one can follow the approach of~\citet{agarwal2019efficient} or~\citet{chen2019universal}.
-They provide a modular approach to convert algorithms with adaptive data dependent regret bound for convex loss functions (e.g., AdaGrad) to algorithms that can find an approximate stationary point of nonconvex objectives. 
-These variants can outperform the ones instantiated by other Adam-type algorithms when the gradient prediction $m_t$ is close to the true gradient $g_t$.
-
-\noindent \textbf{Comparison to AO-FTRL~\citep{mohri2015accelerating}.}\hspace{0.1in}In~\citet{mohri2015accelerating}, the authors propose AO-FTRL, which update reads $w_{t+1} = \arg\min_{{w \in \Theta}} ( \sum_{s=1}^t g_s )^{\top}  w + m_{t+1}^\top w + r_{0:t}(w) $, where $r_{0:t}(\cdot)$ is a 1-strongly convex loss function with respect to some norm $\| \cdot\|_{(t)}$ that may be different for different iteration $t$. 
-Data dependent regret bound provided in~\citet{mohri2015accelerating} reads $r_{{0:T}}(w^*) + \sum_{t=1}^T \| g_t - m_t \|_{(t)^*}$ for any benchmark $w^{*} \in \Theta$. 
-We remark that if one selects $r_{0:t}(w) := \langle w, \text{diag}\{\hat{v}_t\}^{1/2} w \rangle$  and $\| \cdot \|_{(t)}:=  \sqrt{ \langle \cdot, \text{diag}\{\hat{v}_t\}^{1/2} \cdot \rangle }$, then the update can be viewed as an optimistic variant of $AdaGrad$. 
-However, no experiments were provided in~\citet{mohri2015accelerating} to support those theoretical findings.
-
-\noindent \textbf{Comparison to Optimistic-Adam~\citep{daskalakis2018training}.}This is an optimistic variant of ADAM, namely~Optimistic-Adam. 
-A slightly modified version is summarized in Algorithm~\ref{OPT-DISZ}. 
-Here, their method Optimistic-Adam$+\hat{v}_t$ corresponds to Optimistic-Adam with the additional max operation $\hat{v}_t = \max ( \hat{v}_{t-1}, v_t)$ to guarantee that the weighted second moment is monotone increasing.
+ namely~Optimistic-Adam. A slightly modified version is summarized in Algorithm~\ref{OPT-DISZ}. Here, their method Optimistic-Adam$+\hat{v}_t$ corresponds to Optimistic-Adam with the additional max operation $\hat{v}_t = \max ( \hat{v}_{t-1}, v_t)$ to guarantee that the weighted second moment is monotone increasing.
 We want to emphasize that the motivations of our optimistic method are different. 
 Optimistic-Adam is designed to optimize two-player games (e.g., GANs~\citep{goodfellow2014generative}), while we focus, as said earlier, on stochastic optimization (e.g., solving empirical risk minimization).
-\citep{daskalakis2018training} focuses on training GANs as a two-player zero-sum game. 
-\citep{daskalakis2018training} is inspired by these works and shows that Optimistic-Mirror-Descent can avoid the cycle behavior in a bilinear zero-sum game thus accelerating convergence. 
+\citet{daskalakis2018training} focuses on training GANs as a two-player zero-sum game, and their work is inspired by these works and shows that Optimistic-Mirror-Descent can avoid the cycle behavior in a bilinear zero-sum game thus accelerating convergence. 
 
 
-
-\vspace{-0.05in}
+\vspace{-0.1in}
 \section{Numerical Experiments}\label{sec:numerical}
 \vspace{-0.05in}
 
@@ -541,10 +539,17 @@ Optimistic-Adam is designed to optimize two-player games (e.g., GANs~\citep{good
 
 \subsection{Gradient Prediction Process}
 
-Based on the analysis in the previous section, we understand that the choice of the prediction $m_t$ plays an important role in the convergence of \textsc{Optimistic-AMSGrad}.
-Some classical works in gradient prediction methods include Anderson acceleration~\citep{walker2011anderson} or Minimal Polynomial Extrapolation~\citep{cabay1976polynomial}.
-% and Reduced Rank Extrapolation~\citep{eddy1979extrapolating}.
-\begin{wrapfigure}[8]{r}{.6\linewidth}\vspace{-0.35in}
+Based on the analysis in the previous section, we understand that the choice of the prediction $m_t$ plays an important role in the convergence of \textsc{OPT-AMSGrad}.
+Some classical works in gradient prediction methods include Anderson acceleration~\citep{walker2011anderson} or Minimal Polynomial Extrapolation~\citep{cabay1976polynomial}. These methods aim at finding a fixed point $g^{*}$ and assume that $\{g_t \in \mathbb R^d\}_{t>0} $ has the following linear relation:
+
+\vspace{-0.15in}
+\begin{equation} \label{nox}
+g_t - g^* = A( g_{t-1} - g^* ) + e_t,
+\end{equation}
+where $e_t$ is a second order term satisfying $\| e_t \|_2  = \mathcal{O}( \| g_{t-1} - g^* \|_2^2)$ and $A \in \mathbb R^{d \times d}$ is an unknown matrix, see~\citet{scieur2020regularized} for details and results.
+
+
+\begin{wrapfigure}[9]{r}{.54\linewidth}\vspace{-0.3in}
 \begin{minipage}{\linewidth}
  \algsetup{indent=1em}
 \begin{algorithm}[H]
@@ -555,48 +560,28 @@ Some classical works in gradient prediction methods include Anderson acceleratio
 \STATE Compute matrix  $U = [ g_1 - g_0, \dots, g_{r} - g_{r-1}] \in \mathbb R^{d \times r}$.
 \STATE Obtain $z$ by solving $(U^\top U + \lambda I ) z = \mathbf{1}$.
 \STATE Get $c= z / (z^\top \mathbf{1})$.
-\STATE \textbf{Output:} $\Sigma_{i=0}^{r-1} c_i g_i$, the approximation of the fixed point $g^*$.
+\STATE \textbf{Output:} $\Sigma_{i=0}^{r-1} c_i g_i$, approximation of fixed point $g^*$.
 \end{algorithmic}
 \end{algorithm}
 \end{minipage}\end{wrapfigure}
-These methods aim at finding a fixed point $g^{*}$ and assume $\{g_t \in \mathbb R^d\}_{t>0} $ has the following linear relation:
-\begin{equation} \label{nox}
-g_t - g^* = A( g_{t-1} - g^* ) + e_t,
-\end{equation}
-where $e_t$ is a second order term satisfying $\| e_t \|_2  = \mathcal{O}( \| g_{t-1} - g^* \|_2^2)$ and $A \in \mathbb R^{d \times d}$ is an unknown matrix, see~\citet{scieur2020regularized} for details and results.
-For our numerical experiments, we run \textsc{OPT-AMSGrad} using Algorithm~\ref{alg:algex} to construct the sequence $\{m_t\}_{t>0}$ which is based on estimating the limit of a sequence using the last iterates~\citep{brezinski2013extrapolation}.
-
-
-%\begin{algorithm}
-%\begin{algorithmic}[1] 
-%\small
-%\caption{Regularized Approximated Minimal Polynomial Extrapolation~\citep{scieur2020regularized} } \label{alg:algex}
-%\STATE \textbf{Input:} sequence $\{ g_s \in \mathbb R^d \}_{s=0}^{s=r-1}$, parameter $\lambda > 0$.
-%\STATE Compute matrix  $U = [ g_1 - g_0, \dots, g_{r} - g_{r-1}] \in \mathbb R^{d \times r}$.
-%\STATE Obtain $z$ by solving $(U^\top U + \lambda I ) z = \mathbf{1}$.
-%\STATE Get $c= z / (z^\top \mathbf{1})$.
-%\STATE \textbf{Output:} $\Sigma_{i=0}^{r-1} c_i g_i$, the approximation of the fixed point $g^*$.
-%\end{algorithmic}
-%\end{algorithm}
-
-
-
-
-Specifically, at iteration $t$, $m_t$ is obtained by \textsf{(a)} calling Algorithm~\ref{alg:algex} with a sequence of $r$ past gradients, $\{ g_{t-1},g_{t-2}, \dots, g_{t-r} \}$ as input yielding the vector $c = [c_0, \dots, c_{r-1}] $ and \textsf{(b)} setting $m_t:= \Sigma_{i=0}^{r-1} c_i g_{t-r+i}$.
+For our numerical experiments, we run \textsc{OPT-AMSGrad} using Algorithm~\ref{alg:algex} to construct the sequence $\{m_t\}_{t>0}$ which is based on estimating the limit of a sequence using the last iterates~\citep{brezinski2013extrapolation}. Specifically, at iteration $t$, $m_t$ is obtained by \textsf{(a)} calling Algorithm~\ref{alg:algex} with a sequence of $r$ past gradients, $\{ g_{t-1},g_{t-2}, \dots, g_{t-r} \}$ as input yielding the vector $c = [c_0, \dots, c_{r-1}] $ and \textsf{(b)} setting $m_t:= \Sigma_{i=0}^{r-1} c_i g_{t-r+i}$.
 To understand why the output from the extrapolation method may be a reasonable estimation, assume that the update converges to a stationary point (i.e., $g^*:=\nabla f(w^*) = 0$ for the underlying function $f$). Then, we rewrite (\ref{nox}) as $g_t = A g_{t-1}  + \mathcal{O}( \| g_{t-1} \|_2^2 ) u_{t-1}$, for some unit vector $u_{t-1}$.
 This equation suggests that the next gradient vector $g_{t}$ is a linear transform of $g_{{t-1}}$ plus an error vector that may not be in the span of $A$.
 If the algorithm converges to a stationary point, the magnitude of the error will converge to zero. 
 We note that prior known gradient prediction methods are mainly designed for convex functions.
-Algorithm~\ref{alg:algex} is employed in our following numerical applications given its empirical success in Deep Learning, see~\cite{Scieur18}, nevertheless, any gradient prediction method can be embedded in our \textsc{OPT-AMSGrad} framework.
-The search for the optimal prediction process in order to accelerate even more \textsc{OPT-AMSGrad} is an interesting research direction, which is left as future work.
+Algorithm~\ref{alg:algex} is employed in our following numerical applications given its empirical success in Deep Learning, see~\cite{Scieur18}.
+Nevertheless, any gradient prediction method can be embedded in our \textsc{OPT-AMSGrad} framework.
+The search for the optimal prediction process in order to accelerate even more \textsc{OPT-AMSGrad} would be an interesting future research direction.
 
-\textbf{Computational cost:}
- This extrapolation step consists in: \textsf{(a)} Constructing the linear system $(U^\top U)$ which cost can be optimized to $\mathcal{O}(d)$, since the matrix $U$ only changes one column at a time. \textsf{(b)} Solving the linear system which cost is $\mathcal{O}(r^3)$, and is negligible for a small $r$ used in practice.\textsf{ (c)} Outputting a weighted average of previous gradients which cost is $\mathcal{O}(r \times d)$ yielding a computational overhead of $\mathcal O\left((r+1)d+r^3\right)$.
+\vspace{0.07in}
+\noindent\textbf{Computational cost:}
+ This extrapolation step consists in: \textsf{(a)} Constructing the linear system $(U^\top U)$ whose cost can be optimized to $\mathcal{O}(d)$, since the matrix $U$ only changes one column at a time.\\ \textsf{(b)} Solving the linear system which cost is $\mathcal{O}(r^3)$, and is negligible for a small $r$ used in practice.\\ \textsf{ (c)} Outputting a weighted average of previous gradients which cost is $\mathcal{O}(r \times d)$ yielding a computational overhead of $\mathcal O\left((r+1)d+r^3\right)$.
 Yet, steps \textsf{(a)} and \textsf{(c)} can be parallelized in practice.
 
 
 
-\textbf{Two illustrative examples.}\hspace{0.1in} 
+\vspace{0.07in}
+\noindent\textbf{Two illustrative examples.}\hspace{0.1in} 
 We provide two toy examples to demonstrate how our method \textsc{OPT-AMSGrad} works with the chosen extrapolation method. 
 Consider minimizing a quadratic function $H(w) := \frac{b}{2} w^2 $ with vanilla gradient descent method $w_{t+1} = w_t - \eta_t \nabla H(w_t)$. 
 The gradient $g_{t}:= \nabla H(w_{t})$ can be recursively expressed as  $g_{t+1} = b w_{t+1} = b ( w_t  - \eta_t g_t ) = g_t - b \eta_t g_t  $.
@@ -608,14 +593,16 @@ We let $\eta_t=0.1$ and the initial point $w_0=5$.
 The simulation results are on Figure~\ref{simu} (a) and (b). 
 Sub-figure (a) plots update $w_t$ over iteration, where the updates should go towards the optimal point $0$.
 \begin{figure}[ht]
+
+\vspace{-0.1in}
 \begin{center}
-    \mbox{%\hspace{-0.2in}
-    \subfigure[]{\includegraphics[width=0.25\textwidth]{simulation/fig/fig1_left.eps}}
-    \subfigure[]{\includegraphics[width=0.25\textwidth]{simulation/fig/fig1_right.eps}}
-    \subfigure[]{\includegraphics[width=0.25\textwidth]{simulation/fig/fig2_left.eps}}
-    \subfigure[]{\includegraphics[width=0.25\textwidth]{simulation/fig/fig2_right.eps}}
+    \mbox{\hspace{-0.2in}
+    \subfigure[]{\includegraphics[width=0.27\textwidth]{simulation/fig/fig1_left.eps}}\hspace{-0.1in}
+    \subfigure[]{\includegraphics[width=0.27\textwidth]{simulation/fig/fig1_right.eps}}\hspace{-0.1in}
+    \subfigure[]{\includegraphics[width=0.27\textwidth]{simulation/fig/fig2_left.eps}}\hspace{-0.1in}
+    \subfigure[]{\includegraphics[width=0.27\textwidth]{simulation/fig/fig2_right.eps}}
     }
-\end{center}\vspace{-0.2in}
+\end{center}\vspace{-0.25in}
      \caption{\small (a): The iterate $w_t$; the closer to the optimal point $0$ the better. (b): A scaled and clipped version of $m_t$: $w_t - w_{t-1/2}$, which measures how the prediction of $m_t$ drives the update towards the optimal point. In this scenario, the more negative the better.
      (c): Distance to the optimal point $-1$. The smaller the better. (d): A scaled and clipped version of $m_t$: $w_t - w_{t-1/2}$, which measures how the prediction of $m_t$ drives
 the update towards the optimal point.
@@ -626,40 +613,37 @@ Sub-figure (b) displays a scaled and clipped version of $m_t$, defined as $w_t -
 Sub-figure (a) shows that Opt-extra converges faster than the other methods. 
 Furthermore, sub-figure (b) shows that the prediction by the extrapolation method is better than the prediction by simply using the previous gradient. 
 The sub-figure shows that $-m_t$ from both methods points to $0$ for each iteration and the magnitude is larger for the one produced by the extrapolation method after iteration $2$. 
-Now let us consider another problem: an online learning problem proposed in~\citet{reddi2019convergence}
-\footnote{\citep{reddi2019convergence} uses this example to show that Adam~\citep{kingma2014adam} fails to converge.}.
+Now let us consider another problem: an online learning problem proposed in~\citet{reddi2019convergence}, who used  this example to show that Adam~\citep{kingma2014adam} fails to converge.
 Assume the learner's decision space is $\Theta=[-1,1]$, and the loss function is $\ell_t(w) = 3 w$ if $t \text{ mod } 3 = 1$, and $\ell_t(w) = - w$ otherwise.
 The optimal point to minimize the cumulative loss is $w^*=-1$.
 We let $\eta_t=0.1 / \sqrt{t}$ and the initial point $w_0=1$ for all three methods.
 The parameter $\lambda$ of the extrapolation method is set to $\lambda=10^{-3}>0$. 
 
-Sub-figure (c) shows that Opt-extra converges faster than the other methods while Opt-1 is not performing better than GD.
+Sub-figure (c) shows that Opt-extra converges faster than  other methods while Opt-1 is not  better than GD.
 The reason is that the gradient changes from $-1$ to $3$ at $t \text{ mod } 3 = 1$ and it changes from $3$ to $-1$ at $t \text{ mod } 3 = 2$.
 Consequently, using the current gradient as the guess for the next is empirically not a good choice, since the next gradient is in the opposite direction of the current one.
-Sub-figure (d) shows that $-m_t$, obtained with the extrapolation method, always points to $w^*=-1$, while the one obtained by using the previous negative direction points to the opposite direction in two thirds of rounds. 
-It shows that the extrapolation method is less affected by the gradient oscillation and always makes the prediction in the right direction, which suggests that the method captures the aggregate effect.
+Sub-figure (d) shows that $-m_t$, obtained by extrapolation, always points to $w^*=-1$, while the~one obtained by using the previous negative direction points to the opposite direction~in~two~thirds~of rounds.  The extrapolation method is less affected by the gradient oscillation~and always makes the prediction in the right direction, which suggests that the method captures the aggregate~effect.
 
 
-
+%\vspace{-0.1in}
 \subsection{Choice of parameter $r$}\label{sec:choicer}
+%\vspace{-0.05in}
 
+As the number of past gradients $r$ is important in gradient prediction (Algorithm \ref{alg:algex}), we compare  the performance for different $r\in\{3,5,10\}$ on two datasets (which will be described shortly). 
 
-
-\begin{wrapfigure}{r}{3in}\vspace{-0.4in}
+\begin{wrapfigure}{r}{3.2in}\vspace{-0.25in}
 \begin{center}
-\mbox{
-\includegraphics[width=1.5in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_r3510_2.eps}\hspace{-0.1in}
-\includegraphics[width=1.5in]{new_figure/cifar10_train_loss_r3510.eps}
+\mbox{\hspace{-0.05in}
+\includegraphics[width=1.7in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_r3510_2.eps}\hspace{-0.12in}
+\includegraphics[width=1.7in]{new_figure/cifar10_train_loss_r3510.eps}
 }
-\end{center}\vspace{-0.20in}
-\caption{Training loss w.r.t. $r$.}\label{fig:compare}\vspace{-0.1in}
+\end{center}\vspace{-0.25in}
+\caption{Training loss w.r.t. $r$.}\label{fig:compare}\vspace{-0.15in}
 \end{wrapfigure}
-
-Since the number of past gradients $r$ is important in gradient prediction (Algorithm \ref{alg:algex}), we compare Figure~\ref{fig:compare} the performance under different values $r=3,5,10$ on two datasets. 
-From the results we see that, taking into consideration both quality of gradient prediction and computational cost, $r=5$ is a good choice for most applications. 
+From the results in Figure~\ref{fig:compare} we see that, taking into consideration both quality of gradient prediction and computational cost, $r=5$ is a good choice for most applications. 
 We remark that, empirically, the performance comparison among $r=3,5,10$ is not absolutely consistent (i.e., more means better) in all cases. We suspect one possible reason is that for deep neural networks, the diversity of computed gradients through the iterations, due to the highly nonconvex loss, makes them inefficient for sequentially building the predictable process $\{m_t\}_{t>0}$. 
-Thus, sometimes, the recent gradient vectors (e.g. $r\leq 5$) can be more informative. 
-Yet, in some sense, this characteristic, very specific to deep neural networks, is itself a fundamental problem of gradient prediction methods. 
+Thus, sometimes, the recent gradient vectors (e.g., $r\leq 5$) can be more informative. 
+Yet, in some sense, this characteristic, specific to deep neural networks, is itself a fundamental problem of gradient prediction methods. 
 
 
 \subsection{Classification Experiments}
@@ -674,38 +658,19 @@ For \textsc{OPT-AMSGrad}, we use $\beta_1 = 0.9$ and $\beta_2 = 0.999$ and the b
 We use $r=5$ past gradient for empirical reasons, see Section~\ref{sec:choicer}.
 The algorithms are initialized at the same point and the results are averaged over 5 repetitions.
 
-%\textbf{Datasets.}
-%We compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
-%\textit{CIFAR100}, and \textit{IMDB} datasets. 
-%For \textit{MNIST}, we use two noisy variants called \textit{MNIST-back-rand} and \textit{MNIST-back-image} from~\citep{larochelle2007empirical} ($n=12\,000$), \textit{CIFAR10} and \textit{CIFAR100}~\citep{krizhevsky2009learning} ($n=50\,000$) and \textit{IMDB}~\citep{IMDB11} ($n=25\,000$). 
-\begin{figure}[t]
-\centering
-\mbox{\hspace{-0.2in}
-\includegraphics[width=1.9in]{simulation/fig2/M_rand_train_loss_no1.eps}\hspace{-0.1in}
-\includegraphics[width=1.9in]{simulation/fig2/M_image_train_loss_no1.eps}\hspace{-0.1in}
-\includegraphics[width=1.9in]{simulation/fig2/cifar_cnn_train_loss_no1.eps}
-}
-
-\mbox{\hspace{-0.2in}
-\includegraphics[width=1.9in]{simulation/fig2/imdb_lstm_train_loss_no1.eps}\hspace{-0.1in}
-\includegraphics[width=1.9in]{simulation/fig2/cifar10_resnet_train_loss.eps}\hspace{-0.1in}
-\includegraphics[width=1.9in]{simulation/fig2/cifar100_resnet_train_loss.eps}
-}\vspace{-0.1in}
-\caption{Training loss vs. Number of iterations for fully connected NN, CNN, LSTM and ResNet.}
-\label{fig:train_loss}\vspace{-0.05in}
-\end{figure}
-
-\textbf{Datasets.}\hspace{0.1in}Following~\cite{reddi2019convergence} and~\cite{kingma2014adam}, we compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
+\vspace{0.08in}
+\noindent\textbf{Datasets.}\hspace{0.1in}Following~\cite{reddi2019convergence} and~\cite{kingma2014adam}, we compare different algorithms on \textit{MNIST}, \textit{CIFAR10},
 \textit{CIFAR100}, and \textit{IMDB} datasets. 
 % For \textit{MNIST}, we use two noisy variants namely \textit{MNIST-back-rand} and \textit{MNIST-back-image} from~\cite{larochelle2007empirical}. 
-For \textit{MNIST}, we use two noisy variants namely \textit{MNIST-back-rand} and \textit{MNIST-back-image}. 
+For \textit{MNIST}, we use two noisy variants namely \textit{MNIST-back-rand} and \textit{MNIST-back-image}~\citep{Proc:Larochelle_ICML07, Proc:ABC_UAI10,arXiv:Li_2018several}. 
 They both have $12\,000$ training samples and $50\,000$ test samples, where random background is inserted to the original \textit{MNIST} hand-written digit images. 
 For \textit{MNIST-back-rand}, each image is inserted with a random background, which pixel values are generated uniformly from 0 to 255, while \textit{MNIST-back-image} takes random patches from a black and white noisy background.
 The input dimension is $784$ ($28\times 28$) and the number of classes is $10$. 
 \textit{CIFAR10} and \textit{CIFAR100} are popular computer-vision datasets of $50\,000$ training images and $10\,000$ test images, of size $32\times 32$. 
 The \textit{IMDB} movie review dataset, popular for text classification, is a binary dataset with $25\,000$ training and testing samples. 
 
-\textbf{Network architectures.} We adopt a multi-layer fully connected neural network with hidden layers of $200$ connected to another layer with $100$ neurons (using \textrm{ReLU} activations and \textrm{Softmax} output). 
+\vspace{0.08in}
+\noindent\textbf{Network architectures.} We adopt a multi-layer fully connected neural network with hidden layers of $200$ connected to another layer with $100$ neurons (using \textrm{ReLU} activations and \textrm{Softmax} output). 
 This network is tested on \textit{MNIST} variants.
 For convolutional networks, we adopt a simple four layer CNN which has 2 convolutional layers following by a fully connected layer. In addition, we also apply residual networks, Resnet-18 and Resnet-50~\citep{he2016deep}, which have achieved state-of-the-art results.
 For the texture \textit{IMDB} dataset, we consider a Long-Short Term Memory (LSTM) network~\citep{gers1999learning}.
@@ -716,53 +681,81 @@ The output of the embedding layer is equal to $100$ LSTM units connected to $100
 
 
 
-\textbf{Results.} 
+\begin{figure}[h]
+\centering
+\mbox{%\hspace{-0.2in}
+\includegraphics[width=1.95in]{simulation/fig2/M_rand_train_loss_no1.eps}%\hspace{-0.1in}
+\includegraphics[width=1.95in]{simulation/fig2/M_image_train_loss_no1.eps}%\hspace{-0.1in}
+\includegraphics[width=1.95in]{simulation/fig2/cifar_cnn_train_loss_no1.eps}
+}
+
+\vspace{-0.02in}
+
+\mbox{%\hspace{-0.2in}
+\includegraphics[width=1.95in]{simulation/fig2/imdb_lstm_train_loss_no1.eps}%\hspace{-0.1in}
+\includegraphics[width=1.95in]{simulation/fig2/cifar10_resnet_train_loss.eps}%\hspace{-0.1in}
+\includegraphics[width=1.95in]{simulation/fig2/cifar100_resnet_train_loss.eps}
+}\vspace{-0.16in}
+\caption{Training loss vs. Number of iterations for fully connected NN, CNN, LSTM and ResNet.}
+\label{fig:train_loss}\vspace{-0.2in}
+\end{figure}
+
+
+\noindent\textbf{Results.} 
 Firstly, in order to illustrate the acceleration effect of \textsc{OPT-AMSGrad} during the first epochs, we provide the training loss against number of iterations in Figure~\ref{fig:train_loss}. 
 We clearly observe that on all datasets, the proposed \textsc{OPT-AMSGrad} converges faster than the other competing methods since fewer iterations are required to achieve the same precision, validating one of the main edges of \textsc{OPT-AMSGrad}.
 We are also curious about the long-term performance and generalization of the proposed method in test phase.
 In Figure~\ref{fig:testandtrain}, we plot the results when the model is trained until the test accuracy stabilizes. 
-We observe: \textsf{(1)} in the long term, \textsc{OPT-AMSGrad} algorithm may converge to a better point with smaller loss value, and \textsf{(2)} in these applications, our proposed \textsc{OPT-AMSGrad} also outperforms the competing methods in terms of test accuracy. 
+We observe: \textsf{(a)} in the long term, \textsc{OPT-AMSGrad} algorithm may converge to a better point with smaller loss value, and \textsf{(b)} in these applications, our proposed \textsc{OPT-AMSGrad} also outperforms the competing methods in terms of test accuracy. 
 \begin{figure}[t]
-\centering
-\mbox{\hspace{-0.2in}
-\includegraphics[width=1.5in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_disz_2.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/new_mnist_img_figure/mnist_img_train_acc_disz_2.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/mnist_img_test_loss_disz.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/mnist_img_test_acc_disz.eps}
+%\centering
+
+
+\mbox{%\hspace{-0.1in}
+\includegraphics[width=1.6in]{new_figure/new_mnist_img_figure/mnist_img_train_loss_disz_2.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/new_mnist_img_figure/mnist_img_train_acc_disz_2.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/mnist_img_test_loss_disz.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/mnist_img_test_acc_disz.eps}
 }
 
-\mbox{\hspace{-0.2in}
-\includegraphics[width=1.5in]{new_figure/cifar10_train_loss_disz.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/cifar10_train_acc_disz.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/cifar10_test_loss_disz.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/cifar10_test_acc_disz.eps}
+
+\mbox{%\hspace{-0.1in}
+\includegraphics[width=1.6in]{new_figure/cifar10_train_loss_disz.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/cifar10_train_acc_disz.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/cifar10_test_loss_disz.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/cifar10_test_acc_disz.eps}
 }
 
-\mbox{\hspace{-0.2in}
-\includegraphics[width=1.5in]{new_figure/cifar100_train_loss_disz.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/cifar100_train_acc_disz.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/cifar100_test_loss_disz.eps}\hspace{-0.12in}
-\includegraphics[width=1.5in]{new_figure/cifar100_test_acc_disz.eps}
+\mbox{%\hspace{-0.1in}
+\includegraphics[width=1.6in]{new_figure/cifar100_train_loss_disz.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/cifar100_train_acc_disz.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/cifar100_test_loss_disz.eps}\hspace{-0.12in}
+\includegraphics[width=1.6in]{new_figure/cifar100_test_acc_disz.eps}
 }
-\vspace{-0.05in}
-\caption{\textit{MNIST-back-image} + CNN, \textit{CIFAR10} + Res-18 and \textit{CIFAR100} + Res-50 . We compare three methods in terms of training (cross-entropy) and testing loss and accuracy.} \label{fig:testandtrain}\vspace{-0.15in}
+
+
+\vspace{-0.15in}
+\caption{\textit{MNIST-back-image} + CNN, \textit{CIFAR10} + Res-18 and \textit{CIFAR100} + Res-50 . We compare three methods in terms of training (cross-entropy) and testing loss and accuracy.} \label{fig:testandtrain}\vspace{-0.2in}
 \end{figure}
 
 
 
-\vspace{-0.1in}
+\vspace{-0.05in}
 \section{Conclusion}
+%\vspace{-0.05in}
 
-
-In this paper, we propose \textsc{OPT-AMSGrad}, which combines optimistic online learning and AMSGrad to improve sample efficiency and accelerate the training process, in particular for fitting deep neural networks on a finite batch of observations. 
+We propose \textsc{OPT-AMSGrad}, which combines optimistic online learning and AMSGrad to improve sample efficiency and accelerate the training process, in particular for fitting deep neural networks on a finite batch of observations. 
 Given a well-designed gradient prediction process, we theoretically show that the regret, through the iterations, can be smaller than that of standard AMSGrad.
 We also establish a finite-time convergence bound on the second order moment of the gradient of the objective loss function matching that of state-of-the-art adaptive gradient methods.
-Experiments on benchmark datasets using various deep learning models demonstrate the effectiveness of the proposed algorithm.
+Numerical experiments  using various deep learning models demonstrate the effectiveness of \textsc{OPT-AMSGrad}.
 
 
+\vspace{-0.1in}
 
+{\small
 \bibstyle{plain}
 \bibliography{reference}
+}
 
 
 \clearpage
@@ -773,7 +766,7 @@ Experiments on benchmark datasets using various deep learning models demonstrate
 \appendix
 
   
-{\Large\bfseries Supplementary Material: An Optimistic Acceleration of AMSGrad for Nonconvex Optimization \par}
+\noindent{\Large\bfseries Supplementary Material: An Optimistic Acceleration of AMSGrad for Nonconvex Optimization \par}
 
 
 \section{Proof of Theorem~\ref{THM:MAINCONVEX}}\label{app:thmmainconvex}
@@ -978,7 +971,8 @@ Then,
 \begin{split}
 \eta_{t}^{2} \EE \left[\left\|\hat{v}_{t}^{-1/2} \theta_{t}\right\|_{2}^{2}\right] &\leq \frac{\eta_{t}^{2} (1- \beta_1)^2}{1 - \beta_2}  \mathbb{E}\left[\sum_{i=1}^{d} \frac{( \sum_{r=1}^t \beta_1^{t-r} g_{r,p})^{2}}{ \sum_{r=1}^t \beta_2^{t-r} g^2_{r,p}}\right] \\
 & \overset{(a)}{\leq}\frac{\eta_{t}^{2} (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[\sum_{i=1}^{d} \frac{ \sum_{r=1}^t \beta_1^{t-r} g_{r,p}^{2}}{ \sum_{r=1}^t \beta_2^{t-r} g^2_{r,p}}\right]\\
-& \leq \frac{\eta_{t}^{2} (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[\sum_{i=1}^{d}\sum_{r=1}^t \gamma^{t-r}\right]  = \frac{\eta_{t}^{2} d (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[\sum_{r=1}^t  \gamma^{t-r}\right] \eqsp,
+& \leq \frac{\eta_{t}^{2} (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[\sum_{i=1}^{d}\sum_{r=1}^t \gamma^{t-r}\right]\\  
+&= \frac{\eta_{t}^{2} d (1- \beta_1)}{1 - \beta_2}  \mathbb{E}\left[\sum_{r=1}^t  \gamma^{t-r}\right] \eqsp,
 \end{split}
 \eeq
 where $(a)$ is due to $ \sum_{r=1}^t \beta_1^{t-r} \leq \frac{1}{1 - \beta_1}$.
@@ -1207,8 +1201,8 @@ We note that by definition of $\hat{v}_t$, and a constant learning rate $\eta_t$
 Using Lemma~\ref{lem:squarev} we have
 \beq\notag
 \begin{split}
-& \sum_{t=1}^{T_{\sf M}} \EE \left[  \|\tilde{w}_{t-1} - w_t\|^2  \right]\\ 
-& \leq (1 + \beta_1^2) \frac{\eta^{2} d T_{\sf M} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} + (1 - \beta_1)^2 \sum_{t=1}^{T_{\sf M}} \EE [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|] \eqsp.
+& \sum_{t=1}^{T_{\sf M}} \EE \left[  \|\tilde{w}_{t-1} - w_t\|^2  \right]
+ \leq (1 + \beta_1^2) \frac{\eta^{2} d T_{\sf M} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} + (1 - \beta_1)^2 \sum_{t=1}^{T_{\sf M}} \EE [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|] \eqsp.
 \end{split}
 \eeq
 
@@ -1268,283 +1262,6 @@ where
 \end{split}
 \eeq
 \end{proof}
-
-%\begin{proof}
-%Using H\ref{ass:smooth} and the iterate $\overline{w}_t$ we have:
-%\beq\label{eq:smoothness}
-%\begin{split}
-%f(\overline{w}_{t+1})  \leq & f(\overline{w}_t) + \nabla f(\overline{w}_t)^\top (\overline{w}_{t+1} - \overline{w}_t) + \frac{L}{2} \|\overline{w}_{t+1} - \overline{w}_t\|^2\\
-% \leq &f(\overline{w}_t) + \underbrace{ \nabla f(w_t)^\top (\overline{w}_{t+1} - \overline{w}_t)}_{A} \\
-%&+ \underbrace{  \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t)}_{B} + \frac{L}{2} \|\overline{w}_{t+1} - \overline{w}_t\| \eqsp.
-%\end{split}
-%\eeq
-%
-%\textbf{Term A}.
-%Using Lemma~\ref{lem:momentum}, we have that:
-%\beq \notag
-%\begin{split}
-%\nabla f(w_t)^\top (\overline{w}_{t+1} - \overline{w}_t) & \leq \nabla f(w_t)^\top \left[\frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1} \left[ \eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2}\right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \right]\\
-%& \leq  \frac{\beta_1}{1 - \beta_1}  \| \nabla f(w_t)\| \|\eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2} \| \|\tilde{\theta}_{t-1}\| - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \eqsp,
-%\end{split}
-%\eeq
-%where the inequality is due to trivial inequality for positive diagonal matrix.
-%Using Lemma~\ref{LEM:BOUND} and assumption H\ref{ass:guessbound} we obtain:
-%\beq\label{eq:termA1}
-%\begin{split}
-%\nabla f(w_t)^\top (\overline{w}_{t+1} - \overline{w}_t)  \leq  \frac{\beta_1 (1+\beta_1)}{1 - \beta_1} \major^2 [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\| - \|\eta_{t} \hat{v}_{t}^{-1/2} \|] - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t  \eqsp,
-%\end{split}
-%\eeq
-%where we have used the fact that $\eta_{t} \hat{v}_{t}^{-1/2} $ is a diagonal matrix such that $\eta_{t-1} \hat{v}_{t-1}^{-1/2} \succcurlyeq \eta_{t} \hat{v}_{t}^{-1/2}\succcurlyeq 0$ (decreasing stepsize and $\max$ operator).
-%Also note that:
-%\beq\label{eq:termA2}
-%\begin{split}
-% - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t  &=  - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t   -  \nabla f(w_t)^\top\left[ \eta_{t} \hat{v}_{t}^{-1/2} -\eta_{t} \hat{v}_{t}^{-1/2} \right] \bar{g}_t  \\ 
-%&   - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\beta_1 g_{t-1} + m_{t+1})\\
-% & \leq  - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t +(1-a\beta_1)\major^2    [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\| - \|\eta_{t} \hat{v}_{t}^{-1/2} \| ] \\
-% &  - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} (\beta_1 g_{t-1} + m_{t+1}) \eqsp,
-%\end{split}
-%\eeq
-%where we have used Lemma~\ref{LEM:BOUND} on $\|g_t\|$ and where that $\tilde{g}_t = \bar{g}_t  + \beta_1 g_{t-1} + m_{t+1} = g_t - \beta_1 m_t + \beta_1 g_{t-1} + m_{t+1} $.
-%Plugging \eqref{eq:termA2} into \eqref{eq:termA1} yields:
-%\beq\label{eq:termA}
-%\begin{split}
-%&\nabla f(w_t)^\top (\overline{w}_{t+1} - \overline{w}_t)\\
-%&  \leq   - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t + \frac{1}{1 - \beta_1} (a\beta_1^2 -2 a \beta_1 + \beta 1)\major^2 [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\| - \|\eta_{t} \hat{v}_{t}^{-1/2} \|] \\
-%&  - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} (\beta_1 g_{t-1} + m_{t+1}) \eqsp .
-%\end{split}
-%\eeq
-%
-%\textbf{Term B}.
-%By Cauchy-Schwarz (CS) inequality we have:
-%\beq\label{eq:termB1}
-% \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq  \| \nabla f(\overline{w}_t) -  \nabla f(w_t)\|  \|\overline{w}_{t+1} - \overline{w}_t\| \eqsp.
-% \eeq
-% Using smoothness assumption H\ref{ass:smooth}:
-%\beq\label{eq:termB2}
-% \begin{split}
-%  \| \nabla f(\overline{w}_t) -  \nabla f(w_t)\| & \leq L \| \overline{w}_t - w_t\|\\
-%  & \leq L \frac{\beta_1}{1 - \beta_1} \|w_t - \tilde{w}_{t-1}\| \eqsp.
-% \end{split}
-% \eeq
-%By Lemma~\ref{lem:momentum} we also have:
-% \beq
-% \begin{split}
-%\overline{w}_{t+1} - \overline{w}_t & = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1} \left[ \eta_{t-1} \hat{v}_{t-1}^{-1/2} - \eta_{t} \hat{v}_{t}^{-1/2}\right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \\
-%& = \frac{\beta_1}{1 - \beta_1} \tilde{\theta}_{t-1}\eta_{t-1} \hat{v}_{t-1}^{-1/2} \left[ I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1} \right] - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \\
-%& = \frac{\beta_1}{1 - \beta_1} \left[ I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1} \right] (\tilde{w}_{t-1} - w_t) - \eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t \eqsp,
-% \end{split}
-% \eeq
-% where the last equality is due to $ \tilde{\theta}_{t-1}\eta_{t-1} \hat{v}_{t-1}^{-1/2} = \tilde{w}_{t-1} - w_t$ by construction of $\tilde{\theta}_t$.
-% Taking the norms on both sides, observing $\| I - (\eta_{t} \hat{v}_{t}^{-1/2}) (\eta_{t-1} \hat{v}_{t-1}^{-1/2})^{-1}\| \leq 1$ due to the decreasing stepsize and the construction of $\hat{v}_t$ and using CS inequality yield:
-%\beq\label{eq:termB3}
-% \begin{split}
-%\|\overline{w}_{t+1} - \overline{w}_t\| & \leq \frac{\beta_1}{1 - \beta_1} \|\tilde{w}_{t-1} - w_t\| + \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\| \eqsp.
-% \end{split}
-% \eeq 
-% We recall Young's inequality with a constant $\delta \in (0,1)$ as follows:
-%$$
-%\pscal{X}{Y} \leq \frac{1}{\delta} \|X\|^2 + \delta \|Y\|^2 \eqsp.
-%$$
-%
-% Plugging \eqref{eq:termB2} and \eqref{eq:termB3} into \eqref{eq:termB1} returns:
-% \beq \notag
-% \begin{split}
-% \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq & L \frac{\beta_1}{1 - \beta_1} \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|  \|w_t - \tilde{w}_{t-1}\|\\
-% & +  L\left(\frac{\beta_1}{1 - \beta_1} \right)^2 \|\tilde{w}_{t-1} - w_t\|^2 \eqsp.
-%  \end{split}
-% \eeq
-% 
-%Applying Young's inequality with $\delta \to \frac{\beta_1}{1 - \beta_1}$ on the product $ \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|  \|w_t - \tilde{w}_{t-1}\|$ yields:
-% \beq\label{eq:termB}
-% \left( \nabla f(\overline{w}_t) -  \nabla f(w_t)\right)^\top (\overline{w}_{t+1} - \overline{w}_t) \leq  L \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 +  2L\left(\frac{\beta_1}{1 - \beta_1} \right)^2 \|\tilde{w}_{t-1} - w_t\|^2\eqsp.
-% \eeq
-% 
-% The last term $ \frac{L}{2} \|\overline{w}_{t+1} - \overline{w}_t\|$ can be upper bounded using \eqref{eq:termB3}:
-%\beq\label{eq:term3} 
-%\begin{split}
-% \frac{L}{2} \|\overline{w}_{t+1} - \overline{w}_t\|^2 & \leq  \frac{L}{2} \left[ \frac{\beta_1}{1 - \beta_1} \|\tilde{w}_{t-1} - w_t\| + \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|\right]\\
-% &  \leq L \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 + 2L  \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \|\tilde{w}_{t-1} - w_t\|^2  \eqsp.
-%\end{split}
-%\eeq
-%
-%
-%Plugging \eqref{eq:termA}, \eqref{eq:termB} and \eqref{eq:term3} into \eqref{eq:smoothness} and taking the expectations on both sides give:
-%\beq \notag
-%\begin{split}
-%& \EE\left[f(\overline{w}_{t+1})  +   \frac{1}{1 - \beta_1}\tilde{\major}^2  \|\eta_{t} \hat{v}_{t}^{-1/2} \|  - \left( f(\overline{w}_{t}) + \frac{1}{1 - \beta_1}\tilde{\major}^2 \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\| \right)        \right] \\
-%& \leq \EE \left[ - \nabla f(w_t)^\top\eta_{t-1} \hat{v}_{t-1}^{-1/2} \bar{g}_t  - \nabla f(w_t)^\top\eta_{t} \hat{v}_{t}^{-1/2} ( \beta_1 g_{t-1} +m_{t+1})   \right]\\
-%& + \EE \left[ 2L \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 + 4L  \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \|\tilde{w}_{t-1} - w_t\|^2  \right] \eqsp,
-%\end{split}
-%\eeq
-%where $ \tilde{\major}^2 = (a\beta_1^2 -2 a \beta_1 + \beta_1)\major^2$.
-%Note that the expectation of $ \tilde{g}_t $ conditioned on the filtration $\mathcal{F}_{t}$ reads as follows
-%\beq\label{eq:expectationtildegrad}
-%\begin{split}
-%\EE\left[    \nabla f(w_t)^\top \bar{g}_t  \right]  = \EE\left[  \nabla  f(w_t)^\top (g_t  - \beta_1 m_{t})  \right] = (1-a\beta_1) \| \nabla f(w_t) \|^2 \eqsp.
-%\end{split}
-%\eeq
-%Summing from $t=1$ to $t=T$ leads to 
-%\beq\label{eq:bound1}
-%\begin{split}
-%& \frac{1}{\major} \sum_{t=1}^{T_{\sf M}} \left( (1 - a\beta_1)   \eta_{t-1} + (\beta_1 + a)   \eta_{t} \right) \|\nabla f(w_t)\|^2 \leq\\
-%&  \EE\left[  f(\overline{w}_{1}) + \frac{1}{1 - \beta_1}\tilde{\major}^2 \|\eta_{0} \hat{v}_{0}^{-1/2}\|    - \left(f(\overline{w}_{T_{\sf M}+1})  +   \frac{1}{1 - \beta_1}\tilde{\major}^2  \|\eta_{T_{\sf M}} \hat{v}_{T_{\sf M}}^{-1/2} \| \right)      \right]\\
-%& +2L  \sum_{t=1}^{T_{\sf M}}  \EE \left[  \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 \right] + 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \sum_{t=1}^{T_{\sf M}}  \EE \left[  \|\tilde{w}_{t-1} - w_t\|^2  \right]\\
-%& \leq  \EE\left[  \Delta f  + \frac{1}{1 - \beta_1}\tilde{\major}^2 \|\eta_{0} \hat{v}_{0}^{-1/2}\|    \right] +2L  \sum_{t=1}^{T_{\sf M}}  \EE \left[  \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 \right] \\
-%& + 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \sum_{t=1}^{T_{\sf M}}  \EE \left[  \|\tilde{w}_{t-1} - w_t\|^2  \right]\eqsp,
-%\end{split}
-%\eeq
-%where we denote $ \Delta f := f(\overline{w}_{1}) - f(\overline{w}_{T_{\sf M}+1})$.
-%We note that by definition of $\hat{v}_t$, and a constant learning rate $\eta_t$, we have
-%\beq \notag
-%\begin{split}
-%\|\tilde{w}_{t-1} - w_t\|^2 & =\|\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + h_{t})\|^2 \\
-%& =\|\eta_{t-1} \hat{v}_{t-1}^{-1/2} (\theta_{t-1} + \beta_{1} \theta_{t-2} + (1-\beta_{1}) m_{t})\|^2\\
-%& \leq \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}\theta_{t-1}\|^2 + \|\eta_{t-2} \hat{v}_{t-2}^{-1/2} \beta_{1} \theta_{t-2}\|^2 + (1-\beta_{1})^2 \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|^2 \eqsp.
-%\end{split}
-%\eeq
-%Using Lemma~\ref{lem:squarev} we have
-%\beq\notag
-%\begin{split}
-%& \sum_{t=1}^{T_{\sf M}} \EE \left[  \|\tilde{w}_{t-1} - w_t\|^2  \right]\\ 
-%& \leq (1 + \beta_1^2) \frac{\eta^{2} d T_{\sf M} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} + (1 - \beta_1)^2 \sum_{t=1}^{T_{\sf M}} \EE [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|] \eqsp.
-%\end{split}
-%\eeq
-%And thus, setting the learning rate to a constant value $\eta$ and injecting in \eqref{eq:bound1} yields:
-%\beq\notag
-%\begin{split}
-%&\EE[\|\nabla f(w_T)\|^2] = \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}  \sum_{t=1}^{T_{\sf M}} \eta_{t} \|\nabla f(w_t)\|^2 \\
-%& \leq \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}   \EE\left[  \Delta f  + \frac{1}{1 - \beta_1}\tilde{\major}^2 \|\eta_{0} \hat{v}_{0}^{-1/2}\|    \right]\\
-%& +  \frac{ 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \major}{(1 - a\beta_1) + (\beta_1 + a)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}  (1 + \beta_1^2) \frac{\eta^{2} d T_{\sf M} (1- \beta_1)}{(1 - \beta_2)(1-\gamma)}\\
-%& + \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j} (1 - \beta_1)^2 \sum_{t=1}^{T_{\sf M}} \EE [ \|\eta_{t-1} \hat{v}_{t-1}^{-1/2}m_{t}\|]\\
-%& +  \frac{2L\major}{(1 - a\beta_1) + (\beta_1 + a)}  \frac{ 1 }{\sum_{j=1}^{T_{\sf M}} \eta_j}   \sum_{t=1}^{T_{\sf M}}  \EE [  \|\eta_{t} \hat{v}_{t}^{-1/2} \tilde{g}_t\|^2 ]  \eqsp,
-%\end{split}
-%\eeq
-%where $T$ is a random termination number distributed according \eqref{eq:random}.
-%Setting the stepsize to $\eta = \frac{1}{\sqrt{d T_{\sf M}}}$ yields :
-%\beq\notag
-%\begin{split}
-%\EE[\|\nabla f(w_T)\|^2] \leq C_1 \sqrt{\frac{d}{T_{\sf M}}} + C_2 \frac{1}{T_{\sf M}} + D_1 \frac{\eta}{T_{\sf M}} \sum_{t=1}^{T_{\sf M}} \EE [ \| \hat{v}_{t-1}^{-1/2}m_{t}\|] + D_2 \frac{\eta}{T_{\sf M}} \sum_{t=1}^{T_{\sf M}} \EE [ \| \hat{v}_{t-1}^{-1/2} \tilde{g}_{t}\|]  \eqsp,
-%\end{split}
-%\eeq
-%where
-%\beq\notag
-%\begin{split}
-%&C_1 = \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)}  \Delta f + \frac{ 4L \left(\frac{\beta_1}{1 - \beta_1}\right)^2 \major}{(1 - a\beta_1) + (\beta_1 + a)} \frac{(1 + \beta_1^2) (1- \beta_1)}{(1 - \beta_2)(1-\gamma)} \eqsp ,\\
-%&C_2 =\frac{\major}{(1 - \beta_1) \left((1 - a\beta_1) + (\beta_1 + a)\right)} \tilde{\major}^2   \EE[ \| \hat{v}_{0}^{-1/2}  \| ] \eqsp.
-%\end{split}
-%\eeq
-%
-%\textbf{Simple case as in~\citep{zhou2018convergence}:} if $\beta_1 = 0$ then $ \tilde{g}_{t} = g_t + m_{t+1}$ and $g_t = \theta_t$. Also using Lemma~\ref{lem:squarev} we have that:
-%\beq\notag
-%\sum_{t=1}^{T_{\sf M}} \eta_{t}^{2} \EE \left[\left\|\hat{v}_{t}^{-1/2} g_{t}\right\|_{2}^{2}\right] \leq  \frac{\eta^{2} d T_{\sf M}}{(1 - \beta_2)}  \eqsp;
-%\eeq
-%which leads to the final bound:
-%\beq\notag
-%\begin{split}
-%\EE[\|\nabla f(w_T)\|^2]  \leq \tilde{C}_1 \sqrt{\frac{d}{T_{\sf M}}} + \tilde{C}_2 \frac{1}{T_{\sf M}}\eqsp,
-%\end{split}
-%\eeq
-%where
-%\beq \notag
-%\begin{split}
-%&\tilde{C}_1 = C_1 +  \frac{\major}{(1 - a\beta_1) + (\beta_1 + a)} \left[ \frac{a(1 - \beta_1)^2}{1-\beta_2} + 2L \frac{1}{1-\beta_2}  \right] \eqsp, \\
-%&\tilde{C}_2 = C_2 =\frac{\major}{(1 - \beta_1) \left((1 - a\beta_1) + (\beta_1 + a)\right)} \tilde{\major}^2   \EE[ \|\hat{v}_{0}^{-1/2} \|]\eqsp.
-%\end{split}
-%\eeq
-%\end{proof}
-
-
-
-\vspace{0.2in}
-
-%\section{Proof of Lemma~\ref{LEM:DNNH2} (Boundedness of the iterates H\ref{ASS:BOUNDEDPARAM})}\label{app:lemdnnh2}
-%
-%
-%\begin{Lemma*}
-%Given the multilayer model \eqref{eq:dnnmodel}, assume the boundedness of the input data and of the loss function, \ie for any $\xi \in \rset^p$ and $y \in \rset$ there is a constant $T >0$ such that:
-%\beq\label{eq:mildassumptions}
-%\|\xi\| \leq 1 \quad \textrm{a.s.} \quad \textrm{and} |\mathcal{L}'(\cdot, y)| \leq T \eqsp,
-%\eeq
-%where $\mathcal{L}'(\cdot, y)$ denotes its derivative \wrt the parameter. Then for each layer $\ell \in [1,L]$, there exist a constant $A_{(\ell)}$ such that:
-%$$
-%\|w^{(\ell)}\| \leq A_{(\ell)} \eqsp.
-%$$
-%\end{Lemma*}
-%\begin{proof}
-%For any index $\ell \in [1, L]$ we denote the output of layer $\ell$ by 
-%$$
-%h^{(\ell)}(w,\xi)= \sigma\left(w^{(\ell)} \sigma\left(w^{(\ell-1)} \ldots \sigma\left(w^{(1)} \xi \right)\right)\right) \eqsp.
-%$$
-%Given the sigmoid assumption we have $\|h^{(\ell)}(w,\xi)\| \leq 1$ for any $\ell \in [1,L]$ and any $(w, \xi) \in \rset^d \times \rset^p$.
-%We also recall that $\mathcal{L}(\cdot, y)$ is the loss function, which can be Huber loss or cross entropy.
-%Observe that at the last layer $L$:
-%\beq\label{eq:boundderivativeloss}
-%\begin{split}
-%\|\nabla_{w^{(L)}\|  \mathcal{L}(\textsf{MLN}( w, \xi), y)} & =  \|\mathcal{L}'(\textsf{MLN}( w, \xi), y)\nabla_{w^{(L)}}\textsf{MLN}( w, \xi)\|\\
-%&  = \|\mathcal{L}'(\textsf{MLN}( w, \xi), y)\sigma'(w^{(L)} h^{(L-1)}(w,\xi))h^{(L-1)}(w,\xi)\|\\
-%& \leq \frac{T}{4} \eqsp,
-%\end{split}
-%\eeq
-%where the last equality is due to mild assumptions \eqref{eq:mildassumptions} and to the fact that the norm of the derivative of the sigmoid function is upperbounded by $1/4$.
-%
-%From Algorithm~\ref{alg:optamsgrad}, and with $\beta_1 = 0$ for the sake of notation, we have for iteration index $t >0$:
-%\beq \notag
-%\begin{split}
-%\|w_t - \tilde{w}_{t-1}\|  = \|-\eta_t \hat{v}_t^{-1/2} (\theta_t + h_{t+1})\|  & = \|\eta_t \hat{v}_t^{-1/2} (g_t + m_{t+1})\|  \\
-%& \leq \hat{\eta} \|\hat{v}_t^{-1/2} g_t\| + \hat{\eta} a \|\hat{v}_t^{-1/2} g_{t+1}\| \eqsp,
-%\end{split}
-%\eeq
-%where $\hat{\eta} = \max \limits_{t >0} \eta_t$.
-%For any dimension $p \in [1,d]$, using assumption H\ref{ass:guessbound}, we note that 
-%$$\sqrt{\hat{v}_{t,p}} \geq \sqrt{1-\beta_2} g_{t,p} \quad \textrm{and} \quad m_{t+1} \leq  a \norm{g_{t+1}} \eqsp.$$
-%Thus:
-%\beq\notag
-%\begin{split}
-%\|w_t - \tilde{w}_{t-1}\|  \leq \hat{\eta} \left( \|\hat{v}_t^{-1/2} g_t\| +  a \|\hat{v}_t^{-1/2} g_{t+1}\| \right) \leq \hat{\eta} \frac{a +1}{\sqrt{1 - \beta_2}}  \eqsp.
-%\end{split}
-%\eeq
-%In short there exist a constant $B$ such that $\|w_t - \tilde{w}_{t-1}\| \leq B$.
-%
-%\textbf{Proof by induction:} As in~\citep{defossez2020convergence}, we will prove the containment of the weights by induction.
-%Suppose an iteration index $T$ and a coordinate $i$ of the last layer $L$ such that $w^{(L)}_{T, i} \geq \frac{T}{4\lambda} + B$.
-%Using \eqref{eq:boundderivativeloss}, we have
-%$$
-%\nabla_i f(w^{(L)}_t, \xi) \geq - \frac{T}{4} + \lambda \frac{T}{\lambda4} \geq 0 \eqsp,
-%$$
-%where $f(w, \xi) = \mathcal{L}(\textsf{MLN}( w, \xi), y) +\frac{\lambda}{2}\norm{w}^2$ and is the loss of our MLN.
-%This last equation yields $\theta^{(L)}_{T,i} \geq 0$ (given the algorithm and $\beta_1 = 0$) and using the fact that $\|w_t - \tilde{w}_{t-1}\| \leq B$ we have
-%\beq\label{eq:decrease}
-%0 \leq w^{(L)}_{T-1,i} - B \leq w^{(L)}_{T,i} \leq w^{(L)}_{T-1,i} \eqsp,
-%\eeq
-%which means that $| w^{(L)}_{T,i}| \leq w^{(L)}_{T-1,i}$.
-%So if the first assumption of that induction reasoning holds, \ie $w^{(L)}_{T-1, i} \geq \frac{T}{4\lambda} + B$, then the next iterates $w^{(L)}_{T, i}$ decreases, see \eqref{eq:decrease} and go below $\frac{T}{4\lambda} + B$. This yields that for any iteration index $t >0$ we have 
-%$$
-%w^{(L)}_{T, i} \leq \frac{T}{4\lambda} + 2B \eqsp,
-%$$
-%since $B$ is the biggest jump an iterate can do since $\|w_t - \tilde{w}_{t-1}\| \leq B$.
-%Likewise we can end up showing that 
-%$$
-%|w^{(L)}_{T, i}| \leq \frac{T}{4\lambda} + 2B \eqsp,
-%$$
-%meaning that the weights of the last layer at any iteration is bounded in some matrix norm.
-%
-%Now that we have shown this boundedness property for the last layer $L$, we will do the same for the previous layers and conclude the verification of assumption H\ref{ASS:BOUNDEDPARAM} by induction.
-%
-%For any layer $\ell \in [1, L-1]$, we have:
-%\beq\label{eq:gradientatell}
-%\nabla_{w^{(\ell)}}  \mathcal{L}(\textsf{MLN}( w, \xi), y)  =  \mathcal{L}'(\textsf{MLN}( w, \xi), y) \left(\prod_{j=1}^{\ell+1} \sigma'\left(w^{(j)} h^{(j-1)}(w,\xi) \right) \right) h^{(\ell-1)}(w,\xi)  \eqsp.
-%\eeq
-%This last quantity is bounded as long as we can prove that for any layer $\ell$ the weights $w^{(\ell)}$ are bounded in some matrix norm as $\|w^{(\ell)}\|_{F} \leq F_\ell$ with the Frobenius norm.
-%Suppose we have shown $\norm{w^{(r)}}_{F} \leq F_r$ for any layer $r > \ell$. 
-%Then having this gradient \eqref{eq:gradientatell} bounded we can use the same lines of proof for the last layer $L$ and show that the norm of the weights at the selected layer $\ell$ satisfy
-%$$
-%\|w^{(\ell)}\| \leq \frac{T \prod_{t > \ell} F_t}{4^{L-\ell+1}} + 2B\eqsp.
-%$$
-%Showing that the weights of the previous layers $\ell \in [1, L-1]$ as well as for the last layer $L$ of our fully connected feed forward neural network are bounded at each iteration, leads by induction, to the boundedness (at each iteration) assumption we want to check, thus proving Lemma~\ref{LEM:DNNH2}.
-%\end{proof}
-
-
-\vspace{0.2in}
 
 
 \end{document} 
