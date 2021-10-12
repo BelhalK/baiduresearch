@@ -135,7 +135,7 @@ Our contributions are as follows:
 \item We develop  \algo, a novel optimization algorithm for federated learning, following a principled layerwise adaptation strategy to accelerate training of deep neural networks. Our method is provably and empirically communication-efficient for compositional structural models.
 \item We provide a rigorous theoretical understanding of the non asymptotic convergence rate of \algo. 
 Based on the recent progress on nonconvex stochastic optimization, we derive for a any number of rounds performed by our method, a characterization of the rate at which the classical suboptimality condition, i.e., the second order moment of the gradient of the objective function, decreases. Our bound  in $\mathcal{O}\left(\sqrt{\frac{ p}{ n}} \frac{1}{\sqrt{\tot R} } \right)$, where $\tot$ is the total number of layers and $p$ denotes the dimension, matches the state of the art methods in federated learning reaching a sublinear convergence in the total number of rounds.
-\item We demonstrate the advantages of our method to reach similar, or better, test accuracy than baseline methods with less number of communication rounds, on several benchmarks supervised learning methods on both homogeneous and heterogeneous settings.
+\item We demonstrate the advantages of our method to reach similar, or better, test accuracy than baseline methods with less number of communication rounds, on several benchmarks supervised learning methods on both homogeneous and heterogeneous settings, various benchmark datasets such as CIFAR-10 and Tiny-Imagenet and models including Convolutional Neural Networks and ResNet-18.
 \end{itemize}
 
 \vspace{0.1in}
@@ -212,9 +212,9 @@ Then, with the growing need of training far more complex models, e.g., deep neur
 
 Recall that our original problem is the following optimization task $\min \limits_{\theta \in \Theta} \frac{1}{n} \sum_{i=1}^n f_i(\theta)$ where $f_i(\theta)$ is the loss function associated to the client $i \in \inter$ and is parameterized, in our paper, by a deep neural network.
 The stacking and nonconvex nature of the loss function imply having recourse to particular optimization methods in order to efficiently train our model.
-Besides, the decentralized clients low-bandwidth constraints are strong motivations for improving existing methods for \eqref{eq:opt}.  
+Besides, the decentralized clients low-bandwidth constraints are strong motivations for improving existing methods for~\eqref{eq:opt}.  
 
-\begin{algorithm}[H]
+\begin{algorithm}[t]
 \caption{\algo\ for Federated Learning} \label{alg:ldams}
 \begin{algorithmic}[1]
 %\small
@@ -230,9 +230,14 @@ Besides, the decentralized clients low-bandwidth constraints are strong motivati
 \STATE $v^{t}_{r,i} = \beta_2 v^{t}_{r-1,i} + (1 - \beta_2) (g^t_{r,i})^2$ and $v^{t}_{r,i}=v^{t}_{r,i} /\left(1-\beta_{2}^{t}\right)$. \label{line:new2}
 \STATE Compute the ratio  $p_{r,i}^t=m^{t}_{i}/(\sqrt{\hat v^{t}_{r}}+\epsilon)$. \label{line:scale}
 \STATE Update local model for each layer $\ell \in \llbracket \tot \rrbracket$: \label{line:layer}
+% \begin{equation}\label{eq:upadtelayer}
+%     \theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1})/ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|\, .
+% \end{equation}
+{\small
 \begin{equation}\label{eq:upadtelayer}
-    \theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)(p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1})/ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}\|\, .
+    \theta_{r,i}^{\ell,t}=\theta_{r,i}^{\ell,t-1}-\alpha_{r} \phi(\|\theta_{r,i}^{\ell,t-1}\|)\frac{p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}}{ \|p_{r,i}^{\ell,t}+\lambda \theta_{r,i}^{\ell,t-1}}\|\, .
 \end{equation}
+}
 \ENDFOR
 \STATE Devices send $\theta_{r,i}^{T} = [\theta_{r,i}^{\ell,T}]_{\ell =1}^{\tot}$ and $v_{r,i}^T$ to server.
 \ENDFOR
@@ -244,9 +249,8 @@ Besides, the decentralized clients low-bandwidth constraints are strong motivati
 
 
 Based on the periodic averaging and local AMSGrad algorithms, presented prior, we propose a layerwise and dimensionwise local AMS algorithm which is detailed in Algorithm~\ref{alg:ldams} and  depicted in Figure~\ref{fig:illustrate}. The proposed algorithm is a natural adaptation of the vanilla AMSGrad method, for \emph{multilayer} neural networks under the \emph{federated} setting.
-In particular, while Line~8 and Line~9 corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~\ref{line:new1} and Line~\ref{line:new2} are correct the biases of those estimates, the final local update in \eqref{eq:upadtelayer} is novel and corresponds to the specialization per layer of our federated method.
+In particular, while Line~8 and Line~9 corresponds to the standard approximation of the first and second moments, via the smooth updates allowed by the tuning parameters $\beta_1$ and $\beta_2$ respectively and that both Line~\ref{line:new1} and Line~\ref{line:new2} are correct the biases of those estimates, the final local update in~\eqref{eq:upadtelayer} is novel and corresponds to the specialization per layer of our federated method.
 
-\newpage
 
 Note that a scaling factor is applied to the learning rate $\alpha_r$ at each round $r>0$ via the quantity $\phi(\|\theta_{r,i}^{\ell,t-1}\|)$ depending on the dimensionwise and layerwise quantity computed in Line~12.
 This function is user designed and can be, for instance, set to the identity function. 
@@ -256,15 +260,17 @@ There occurs a normalization per dimension with respect to the square root of th
 
 
 
+
 \begin{figure}[t]
 \centering
 \mbox{
-        \includegraphics[width=0.5\textwidth]{new_figure/plot1.pdf}
+        \includegraphics[width=0.4\textwidth]{new_figure/plot1.pdf}
 }
-	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network and $\phi(x)=x$ as an example. The depth of each network layer represents the norm of its weights. For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. At the end of each round $r$, local worker $i$ sends $\theta_{r,i} =  [\theta_{r,i}^{\ell}]_{\ell =1}^{\tot}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
+	\caption{Illustration of Fed-LAMB (Algorithm~\ref{alg:ldams}), with a three-layer network and $\phi(x)=x$ as an example. %	The depth of each network layer represents the norm of its weights. 
+		For device $i$ and each local iteration in round $r$, the adaptive ratio of $j$-th layer $p_{r,i}^j$ is normalized according to $\Vert \theta_{r,i}^j\Vert$, and then used for updating the local model. 
+	At the end of each round $r$, local worker $i$ sends $\theta_{r,i} =  [\theta_{r,i}^{\ell}]_{\ell =1}^{\tot}$ and $v_{r,i}$ to the central server, which transmits back aggregated $\theta$ and $\hat v$ to local devices to complete a round of training.}
 	\label{fig:illustrate}
 \end{figure}
-
 
 
 
@@ -287,7 +293,7 @@ In the particular context of nonconvex stochastic optimization for distributed c
 \begin{assumption}\label{ass:smooth}(Smoothness per layer)
 For $i \in \inter$ and $\ell \in \interl$: $\norm{\nabla f_i (\theta^\ell) - \nabla f_i (\vartheta^\ell)} \leq L_\ell \norm{\theta^\ell-\vartheta^\ell}$.
 \end{assumption}
-We add some classical assumption in the unbiased stochastic optimization realm, on the gradient of the objective function:
+We add some classical assumption on the gradient of the objective function:
 \begin{assumption}\label{ass:boundgrad}(Unbiased and Bounded gradient)
 The stochastic gradient is unbiased for any iteration $r>0$: $\EE[g_r] = \nabla f(\theta_r)$ and is bounded from above, i.e., $\norm{g_t} \leq M$.
 \end{assumption}
@@ -297,11 +303,8 @@ The variance of the stochastic gradient is bounded for any iteration $r>0$ and a
 \end{assumption}
 
 \begin{assumption}\label{ass:phi}(Bounded Scale)
-For any value $a \in \rset^*_+$, there exists strictly positive constants such that $\phi_m \leq  \phi(a) \leq \phi_M$.
+For any $a \in \rset^*_+$, there exists strictly positive constants such that $\phi_m \leq  \phi(a) \leq \phi_M$.
 \end{assumption}
-
-
-\vspace{0.1in}
 
 
 
@@ -322,7 +325,7 @@ The gap is provably bounded by some quantities of interest such as the total dim
 Then, the following Lemma allows us to convert the suboptimality condition $\left\| \frac{\overline{\nabla}f(\theta_r)}{\sqrt{ v_r^t}} \right\|$ to the desired one which is $\left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}} \right\|$.
 Note that the end goal is to characterize how fast the gradient of the averaged/global parameter $\overline{\theta_r}$ goes to zero, and not the averaged gradient.
 
-\vspace{0.1in}
+
 
 \begin{Lemma}\label{lemma:ratio}
 Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams}. Then for $r > 0$:
@@ -335,26 +338,31 @@ where $M$ is defined in H\ref{ass:boundgrad}, $p = \sum_{\ell = 1}^\tot p_\ell$ 
 
 We now state our main result regarding the non asymptotic convergence analysis of our Algorithm~\ref{alg:ldams} for multiple local updates and true for any communication rounds number $R$.
 
-\vspace{0.1in}
+
 
 \begin{Theorem}\label{th:multiple update}
 Assume \textbf{H\ref{ass:smooth}-H\ref{ass:phi}}. Consider $\{\overline{\theta_r}\}_{r>0}$, the sequence of parameters obtained running Algorithm~\ref{alg:ldams} with a constant learning rate $\alpha$. Let the number of local epochs be $T \geq 1$ and $\lambda = 0$. Then, for any round $R > 0$, we have
+{\small
 \beq \label{bound1multiple}
 \begin{split}
 &  \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq    \sqrt{\frac{M^2 p}{n}}  \frac{ \EE[f(\bar{\theta}_1)]  - \min \limits_{\theta \in \Theta} f(\theta)}{\tot \alpha R}\\
-    & +      \frac{\phi_M   \sigma^2}{R n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } +4\alpha \left[\phi_M \frac{\tot \sigma^2}{\sqrt{n}}\right] \\
-    &   +4\alpha \left[ \frac{\alpha^2 L_\ell}{\sqrt{v_0}} M^2 (T-1)^2 \phi_M^2 (1-\beta_2)p + \frac{M^2}{\sqrt{v_0}}+\phi_M^2\sqrt{M^2+p\sigma^2} \right]   + cst. \\
+  &   +4\alpha \left[ \frac{\alpha^2 L_\ell}{\sqrt{v_0}} M^2 (T-1)^2 \phi_M^2 (1-\beta_2)p +\phi_M^2\sqrt{M^2+p\sigma^2} \right]  \\
+    & +4\alpha \frac{M^2}{\sqrt{v_0}} +      \frac{\phi_M   \sigma^2}{R n} \sqrt{\frac{1 - \beta_2}{M^2 p}  } +4\alpha \left[\phi_M \frac{\tot \sigma^2}{\sqrt{n}}\right]   + cst. 
    \end{split}
 \eeq
+}
 
 \end{Theorem}
 
 By choosing a suitable learning rate, we have the following simplified result.
 \begin{Corollary}\label{coro:main}
 Under the same setting as Theorem~\ref{th:multiple update}, with $\alpha = \mathcal{O}(\frac{1}{ \sqrt{\tot R}})$, it holds that
+{\small
 \begin{align} \label{coro:rate}
-    \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \mathcal{O}\left( \sqrt{\frac{ p}{n}} \frac{1}{\sqrt{\tot R}} + \frac{\sigma^2 }{R n\sqrt{p}}+\frac{(T-1)^2p}{\tot^3 R^{3/2}}\right).
+&    \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right]\\
+& \leq \mathcal{O}\left( \sqrt{\frac{ p}{n}} \frac{1}{\sqrt{\tot R}} + \frac{\sigma^2 }{R n\sqrt{p}}+\frac{(T-1)^2p}{\tot^3 R^{3/2}}\right).\notag
 \end{align}
+}
 \end{Corollary}
 
 %We recall that a $\epsilon-$stationary point is defined by the number of communication rounds $R$ such that $\frac{1}{R}\sum_{t=1}^\mathcal{R}  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_t})}{\hat v_t^{1/4}}   \right \|^2 \right] \leq \epsilon$.
@@ -390,7 +398,7 @@ We first start our discussion with the comparison of convergence rate of \algo\ 
 The convergence rates of \algo and LAMB differ in two ways: 
 (i) First, note that the characterization, on the suboptimality, or convergence criterion, is given at the averaged parameters noted $\overline{\theta_r}$ due to our distributed settings. 
 It is thus natural to consider the evolution of our objective function, precisely its gradient, evaluated at some global model values --as opposed to the outcome of a single step drift in the central server paradigm. 
-Besides, for ease of interpretation, the LHS of \eqref{bound1multiple} is summed over all rounds instead of a fictive random termination point. A simple calculation would lead to such characterization, found in several nonconvex stochastic optimization paper such as~\cite{ghadimi2013stochastic}.
+Besides, for ease of interpretation, the LHS of~\eqref{bound1multiple} is summed over all rounds instead of a fictive random termination point. A simple calculation would lead to such characterization, found in several nonconvex stochastic optimization paper such as~\cite{ghadimi2013stochastic}.
 (ii)  Assuming that the convergence criterion in both Theorems is of similar order (which happens for a large enough number of rounds), convergence rate of \algo\ displays a similar $\mathcal{O}(1/R)$ behaviour for the initialization term, meaning that, despite the distributed (federated) settings, our dimensionwise and layerwise method benefits from the double adaptivity phenomenon explained above and exhibited in the LAMB method of~\citep{you2019large}, performed under a central server setting.
 
 
@@ -414,7 +422,7 @@ where $\epsilon$ corresponds to their initialization of the vector $\hat v_0$ an
 The first two terms of their results and ours, standard in convergence analysis, displays a dependence of the convergence rate on the initialization and the bounded variance assumption of the stochastic gradient, see H\ref{ass:var}. In general, when the number of rounds $R$ is sufficiently large, both rates are dominated by $\mathcal O(\frac{\sqrt p}{\sqrt{n R}})$, matching the convergence rate of AMSGrad (e.g.~\cite{Arxiv:Zhou_18}).
 The acceleration of our layerwise scheme is exhibited in the $\mathcal O(1/(n R))$ term and the dependence on the number of layers $\mathcal O(1/(h^3 R^{3/2}))$ term. Note that the boundedness assumption is done on each dimension in H\ref{ass:var} and leads to a manifestation of the term $\sqrt{p}$ in both rates. This can be handled for simplicity and clarity of the results when H\ref{ass:var} is assumed globally.
 
-In \eqref{coro:rate}, the last term containing the number of local updates $T$ is small as long as $T\leq \mathcal O(\frac{R^{1/2}h^{5/4}}{(np)^{1/4}})$. 
+In~\eqref{coro:rate}, the last term containing the number of local updates $T$ is small as long as $T\leq \mathcal O(\frac{R^{1/2}h^{5/4}}{(np)^{1/4}})$. 
 Treating $p^{1/4}/h=\mathcal O(1)$, the result implies that we can get the same rate of convergence as vanilla AMSGrad, with $R/T\geq \mathcal{O}(R^{1/2}n^{1/4})$ rounds of communication. For Local-AMS, by similar argument we know that, it requires $\mathcal O(R^{3/4}n^{3/4})$ communication rounds. Thus, our result reduces the number of communication rounds needed to reach a $\epsilon$-stationary point compared with~\cite{chen2020toward}, hence improving the communication efficiency.
 
 
@@ -427,7 +435,7 @@ Yet, contrary to SCAFFOLD, our method only sends bits once per communication rou
 Novelty in our bound occurs considering the sublinear dependence on the number of layer $\tot$ and the dependence on the total number of dimension of our problem $p$. For the latter, the dependency can be simplified with stronger assumption on the control of the variance of the stochastic gradient. For the former, 
 
 \medskip
-\textbf{Homogeneous and Heterogeneous Data:} A common assumption regarding the stochastic gradient, and its variance, considers an upper-bound of the global variance, in the sense that it applies to both the aggregated objective function \eqref{eq:opt} and each of its local component. 
+\textbf{Homogeneous and Heterogeneous Data:} A common assumption regarding the stochastic gradient, and its variance, considers an upper-bound of the global variance, in the sense that it applies to both the aggregated objective function~\eqref{eq:opt} and each of its local component. 
 An alternative theoretical approach is to set apart a local variance for each local loss, and global variance for their sum, see~\citet{chen2020toward} for instance.
 Heterogeneity is of utmost importance in FL since client may store radically different data points in local devices.
 Existing methods can lead to poor convergence as detailed in~\citet{li2019federated,liang2019variance}. 
@@ -541,15 +549,19 @@ We again observe in Figure~\ref{fig:noniid} that Fed-LAMB improves the performan
 
 \subsection{Comparison under non-iid settings and larger models}
 
-We then present Figure~\ref{fig:noniidresnet18}, the test accuracies on the CIFAR and Tiny ImageNet~\citep{le2015tiny} dataset using a ResNet-18 architecture. 
+We then present Figure~\ref{fig:noniidresnet18}, the test accuracies on the CIFAR and Tiny-ImageNet~\citep{le2015tiny} dataset using a ResNet-18 architecture. 
 
+Here we adopt a a similar ResNet backbone model as above, now using 18 layers on Tiny-ImageNet which is a subset of ImageNet \citep{deng2009imagenet} and contains 200 classes, where each image is downsized to 64x64 pixels.
+
+Figure~\ref{fig:noniidresnet18} displays how our layerwise and dimensionwise method behaves a) in the first epochs and b) at convergence best accuracy. We report the test accuracy for each baseline using 50 clients and one local epoch. We notice that while FedSGD is as fast as \algo on CIFAR10 using ResNet-18, our method leads to a better overall test accuracy ($92.43\%$ for \algo versus $90.76\%$ for FedSGD).
+On Tiny-Imagenet, \algo shows great both non-asymptotic and asymptotic properties reaching an accuracy of $76.00\%$ after 100 communication rounds.
 
 
 \begin{figure}[t!]
     \begin{center}
         \mbox{
-        \includegraphics[width=0.25\textwidth]{new_figure/mnist_testerror_mlp_ep1_client50_iid0.pdf}
-        \includegraphics[width=0.25\textwidth]{new_figure/mnist_testerror_mlp_ep5_client50_iid0.pdf}
+        \includegraphics[width=0.25\textwidth]{new_figure/cifar_testerror_resnet18_ep1_client2_iid0.eps}
+        \includegraphics[width=0.25\textwidth]{new_figure/tinyimagenet_testerror_resnet18_ep1_client2_iid0.eps}
         }
             \end{center}
 	\caption{\textbf{non-i.i.d. setting.}. Test accuracy on CIFAR10+Resnet18 and TinyImagenet+Resnet18, with non-iid data distribution.
@@ -739,12 +751,12 @@ where we have assumed a constant learning rate $\alpha$.
 
 
 We note for all $\theta \in \Theta$, the majorant $G > 0$ such that $\phi(\|\theta \|) \leq G$. 
-Then, following \eqref{eq:main}, we obtain:
+Then, following~\eqref{eq:main}, we obtain:
 \begin{align}\label{eq:main2}
 - \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2] \eqsp.
 \end{align}
 
-Developing the LHS of \eqref{eq:main2} using \eqref{eq:gap} leads to
+Developing the LHS of~\eqref{eq:main2} using~\eqref{eq:gap} leads to
 
 \begin{align}\label{eq:inner}
 \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r} &= \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j (\bar{\vartheta}^{\ell,j}_{r+1} - \bar{\vartheta}^{\ell,j}_r) \\
@@ -755,7 +767,7 @@ Developing the LHS of \eqref{eq:main2} using \eqref{eq:gap} leads to
 
 
 We change all index $r$ to iteration $t$. 
-Suppose $T$ is the number of local iterations. We can write \eqref{eqn1} as
+Suppose $T$ is the number of local iterations. We can write~\eqref{eqn1} as
 \begin{align}\notag
     A_1=-\alpha_t \langle \nabla f(\bar \vartheta_t),\frac{\bar g_t}{\sqrt{\hat v_t}} \rangle,
 \end{align}
@@ -816,7 +828,7 @@ Then we have:
 \begin{align}\notag
     \mathbb E[B_2]\leq  \frac{nM^2}{\sqrt{v_0}}+n\phi_M^2\sqrt{M^2+p\sigma^2}-2 \phi_m \sqrt{\frac{1-\beta_2}{M^2 p}} \sum_{i=1}^n \E[\| [\nabla f(\theta_{t,i}) \|^2] + \phi_M \frac{\tot \sigma^2}{\sqrt{n}}
 \end{align}
-Thus, \eqref{eq:inter} becomes:
+Thus,~\eqref{eq:inter} becomes:
 \begin{align}\notag
     \frac{2}{n}\sum_{i=1}^n\Vert \frac{\nabla f_i(\bar\theta_t)-\bar g_{t,i}}{\hat v_t^{1/4}} \Vert^2 \leq 4 \left[ \frac{\alpha_t^2 Ll}{\sqrt{v_0}} \alpha_r^2 M^2 (T-1)^2 \phi_M^2 (1-\beta_2)p + \frac{M^2}{\sqrt{v_0}}+\phi_M^2\sqrt{M^2+p\sigma^2} + \phi_M \frac{\tot \sigma^2}{\sqrt{n}}\right]
 \end{align}
@@ -909,12 +921,12 @@ This concludes the proof.
 %
 %
 %We note for all $\theta \in \Theta$, the majorant $G > 0$ such that $\phi(\|\theta \|) \leq G$. 
-%Then, following \eqref{eq:main}, we obtain:
+%Then, following~\eqref{eq:main}, we obtain:
 %\begin{align}\label{eq:main2}
 %- \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}_{r+1} - \bar{\vartheta}_r \|^2] \eqsp.
 %\end{align}
 %
-%Developing the LHS of \eqref{eq:main2} using \eqref{eq:gap} leads to
+%Developing the LHS of~\eqref{eq:main2} using~\eqref{eq:gap} leads to
 %
 %\begin{align}\label{eq:inner}
 %\pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r} &= \sum_{\ell=1}^\tot \sum_{j=1}^{p_\ell} \nabla_{\ell} f(\bar{\vartheta}_r)^j (\bar{\vartheta}^{\ell,j}_{r+1} - \bar{\vartheta}^{\ell,j}_r) \\
@@ -958,7 +970,7 @@ This concludes the proof.
 %\end{align}
 %
 %\textbf{ Term $A_r^2$:}
-%According to definition \eqref{eq:defseq}, for each layer $\ell \in \llbracket \tot \rrbracket$, we have, using the Cauchy-Schwartz inequality, that:
+%According to definition~\eqref{eq:defseq}, for each layer $\ell \in \llbracket \tot \rrbracket$, we have, using the Cauchy-Schwartz inequality, that:
 %\begin{align}\notag
 %  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2 & = \left\| \frac{\alpha \beta_1}{1-\beta_1} \frac{1}{n}  \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1} + \frac{\alpha}{n} \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}\right \|^2 \\\notag
 %&  \leq 2\frac{\alpha^2}{n^2} \left\| \frac{ \beta_1}{1-\beta_1}   \sum_{i = 1}^n  \left( \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} - \frac{\phi(\|\theta_{r-1,i}^{\ell}\|)}{\sqrt{v^{t}_{r-1}} \|p_{r-1,i}^{\ell}\|} \right) m^{t}_{r-1}\right\|^2 + \frac{\alpha^2}{n^2} \left\| \sum_{i = 1}^n \frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} g_{r,i}\right\|^2
@@ -987,7 +999,7 @@ This concludes the proof.
 %\end{align}
 %where, in the telescopic sum, we have used the initial value $v_0$ of the non decreasing sequence $\{v^t_r\}_{r >0}$ by construction (max operator).
 % 
-%Combining \eqref{eq:first} into \eqref{eq:maina2} and summing over the total number of rounds $R$ yields
+%Combining~\eqref{eq:first} into~\eqref{eq:maina2} and summing over the total number of rounds $R$ yields
 %\begin{align}\label{eq:finala2}
 %\begin{split}
 %\sum_{r=1}^R A_r^2 \eqdef \sum_{r=1}^R \EE[  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2] & \leq \frac{ \beta_1^2}{(1-\beta_1)^2} \frac{\tot(1-\beta_2)}{ p}  M^2 \phi^2_M \frac{n p}{v_0} \\
@@ -1003,7 +1015,7 @@ This concludes the proof.
 %\sum_{r=1}^R A_r^3 \leq  \frac{\alpha \beta_1}{1-\beta_1}  \sqrt{(1-\beta_2)p} \frac{\tot M^2}{\sqrt{v_0}}\eqsp.
 %\eeq
 %
-%Plugging \eqref{eq:finala1} into \eqref{eq:main2} combined with \eqref{eq:finala2} and \eqref{eq:finala3} injected into the original smoothness definition \eqref{eq:main} summed over the total number of rounds:
+%Plugging~\eqref{eq:finala1} into~\eqref{eq:main2} combined with~\eqref{eq:finala2} and~\eqref{eq:finala3} injected into the original smoothness definition~\eqref{eq:main} summed over the total number of rounds:
 %\begin{align}\notag
 %- \sum_{r=1}^R \EE[  \pscal{\nabla f(\bar{\vartheta}_r)}{\bar{\vartheta}_{r+1} - \bar{\vartheta}_r}]  \leq  \sum_{r=1}^R \EE[ f(\bar{\vartheta}_r) - f(\bar{\vartheta}_{r+1})] + \sum_{r=1}^R \sum_{\ell =1}^L \frac{L_\ell}{2} \EE[  \| \bar{\vartheta}^\ell_{r+1} - \bar{\vartheta}^\ell_r \|^2]
 %\end{align}
@@ -1051,7 +1063,7 @@ This concludes the proof.
 %\end{split} \label{eqn:transform}
 %\eeq
 %which is due to Lemma~\ref{lemma:ratio}.
-%Plugging the above inequality into \eqref{eq:final2} and dividing both sides by $R$ yields:
+%Plugging the above inequality into~\eqref{eq:final2} and dividing both sides by $R$ yields:
 %\beq\notag
 %\begin{split}
 %   \frac{1}{R}\sum_{r=1}^R  \EE\left[ \left\| \frac{\nabla f(\overline{\theta_r})}{\sqrt{ v_r^t}}   \right \|^2 \right] & \leq  \sqrt{\frac{M^2 p}{n}} \frac{ f(\bar{\vartheta}_1)  - \EE[ f(\bar{\vartheta}_{R+1})]}{\tot \alpha R}+   \frac{\alpha}{n^2}  \sum_{r=1}^R  \sum_{i = 1}^n  \sigma_i^2 \EE\left[ \left\|\frac{\phi(\|\theta_{r,i}^{\ell}\|)}{\sqrt{v^{t}_{r}} \|p_{r,i}^{\ell}\|} \right\|^2 \right]\\
