@@ -1154,7 +1154,3 @@ Keywords:} \ignorespaces}%
 \endinput
 %%
 %% End of file `jmlr.cls'.
-
-
-
-
