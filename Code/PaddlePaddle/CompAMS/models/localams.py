@@ -6,8 +6,8 @@ Created on Tue Aug 25 19:23:00 2020
 """
 
 import math
-import torch
-from torch.optim import Optimizer
+import paddle
+from paddle.optimizer import Optimizer
 import numpy as np
 import pdb
 import collections
@@ -62,7 +62,7 @@ class LocalAMSGrad(Optimizer):
         for group in self.param_groups:
             group.setdefault("amsgrad", False)
 
-    @torch.no_grad()
+    @paddle.no_grad()
     def step(self, gg, closure=None):
         """Performs a single optimization step.
         Arguments:
@@ -71,7 +71,7 @@ class LocalAMSGrad(Optimizer):
         """
         loss = None
         if closure is not None:
-            with torch.enable_grad():
+            with paddle.enable_grad():
                 loss = closure()
 
         for group in self.param_groups:
@@ -95,19 +95,19 @@ class LocalAMSGrad(Optimizer):
                 if len(state) == 0:
                     state["step"] = 0
                     # Exponential moving average of gradient values
-                    state["exp_avg"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
+                    state["exp_avg"] = paddle.zeros_like(
+                        p, memory_format=paddle.preserve_format
                     )
                     # Exponential moving average of squared gradient values
-                    state["exp_avg_sq"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
+                    state["exp_avg_sq"] = paddle.zeros_like(
+                        p, memory_format=paddle.preserve_format
                     )
-                    state["max_exp_avg_sq"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
+                    state["max_exp_avg_sq"] = paddle.zeros_like(
+                        p, memory_format=paddle.preserve_format
                     )
                     # The true adaptive learning rate used for update, value should be changed outside of the optimizer
-                    state["adp_u"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
+                    state["adp_u"] = paddle.zeros_like(
+                        p, memory_format=paddle.preserve_format
                     )
 
                 exp_avg, exp_avg_sq, max_exp_avg_sq = state["exp_avg"], state["exp_avg_sq"], state["max_exp_avg_sq"]
@@ -126,7 +126,7 @@ class LocalAMSGrad(Optimizer):
                 exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
                 
                 if amsgrad:
-                    max_exp_avg_sq = torch.max(max_exp_avg_sq, exp_avg_sq)
+                    max_exp_avg_sq = paddle.max(max_exp_avg_sq, exp_avg_sq)
                     
                 if amsgrad:
                     # Maintains the maximum of all 2nd moment running avg. till now
@@ -137,7 +137,7 @@ class LocalAMSGrad(Optimizer):
                     step_size = group["lr"]              
                     p.addcdiv_(exp_avg, sqv, value=-step_size)
                 else:
-                    denom = np.maximum(torch.sqrt(state["adp_u"]),0.001)
+                    denom = np.maximum(paddle.sqrt(state["adp_u"]),0.001)
                     step_size = group["lr"] / bias_correction1
                     p.addcdiv_(exp_avg, denom, value=-step_size)
 

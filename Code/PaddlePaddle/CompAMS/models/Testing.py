@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import torch
-from torch import nn
-import torch.nn.functional as F
+import paddle
 from torch.utils.data import DataLoader
 
 
@@ -18,7 +16,7 @@ def test_fct(net_g, datatest, args):
             data, target = data.cuda(), target.cuda()
         log_probs = net_g(data)
         # sum up batch loss
-        test_loss += F.cross_entropy(log_probs, target, reduction='sum').item()
+        test_loss += paddle.nn.functional.cross_entropy(log_probs, target, reduction='sum').item()
         # get the index of the max log-probability
         y_pred = log_probs.data.max(1, keepdim=True)[1]
         correct += y_pred.eq(target.data.view_as(y_pred)).long().cpu().sum()

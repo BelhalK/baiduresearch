@@ -6,8 +6,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
-from torchvision import datasets, transforms
-import torch
+
+import paddle
+import paddle.vision.transforms as transforms
+from paddle.vision.datasets import MNIST, Cifar10
 import collections
 
 from utils.sampling import mnist_iid, mnist_noniid, cifar_iid, cifar_noniid
@@ -21,14 +23,9 @@ from models.Testing import test_fct
 import utils.sparsification as sparse
 
 from logger import Logger, savefig
-import pdb 
 import time
 
 import models.sketch_operations as sko
-from tensorflow.python.keras.datasets import imdb
-from tensorflow.python.keras.preprocessing import sequence
-from torch.utils.data import DataLoader, TensorDataset
-from torch import Tensor
 
 # import sys
 # sys.setrecursionlimit(100000)
@@ -65,23 +62,12 @@ if __name__ == '__main__':
 #        transform_test = transforms.Compose([
 #            transforms.ToTensor(),
 #            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
-        dataset_train = datasets.CIFAR10('./data/cifar', train=True, download=True, transform=trans_cifar)
-        dataset_test = datasets.CIFAR10('./data/cifar', train=False, download=True, transform=trans_cifar)
+        dataset_train = Cifar10(mode='train', transform=trans_cifar)
+        dataset_test = Cifar10(mode='test', transform=trans_cifar)
         if args.customarg==1:
             dict_users = cifar_iid(dataset_train, args.num_users)
         else:
             dict_users = cifar_noniid(dataset_train, args.num_users)
-    elif args.dataset == 'imdb':
-        args.num_classes = 2
-        top_words=1000
-        max_review_len=400
-        embedding_length=32
-        num_cells=32
-        (X_train,label_train),(X_test,label_test) = imdb.load_data(num_words=top_words)
-        X_train=sequence.pad_sequences(X_train,maxlen=max_review_len,padding='post')
-        X_test=sequence.pad_sequences(X_test,maxlen=max_review_len,padding='post')
-        dataset_train = TensorDataset(Tensor(X_train), Tensor(label_train).type(torch.LongTensor))
-        dataset_test = TensorDataset(Tensor(X_test), Tensor(label_test).type(torch.LongTensor))
     else:
         exit('Error: unrecognized dataset')
     img_size = dataset_train[0][0].shape

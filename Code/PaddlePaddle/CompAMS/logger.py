@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import os
 import sys
 import numpy as np
-import os
 print(os.getcwd())
 
 __all__ = ['Logger', 'LoggerMonitor', 'savefig']

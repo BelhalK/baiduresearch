@@ -7,7 +7,7 @@ Created on Thu Jul  9  2020
 import math
 import numpy as np
 import copy
-import torch
+import paddle
 import pdb
 
 def generate_sketch(x,t,k,hashes,signs):    # suppose x is a numpy vector, e.g. reshaped local model
@@ -55,7 +55,7 @@ def HEAVYMIX(S, frac_topk, d,hashes,signs,round2,true_vec):
         V=[signs[j,i]*S[j,hashes[j,i]] for j in range(t)]
         S_unsketch[i] = np.median(V)
 
-    topkIndices = torch.sort(torch.from_numpy(S_unsketch)**2)[1][-topk:,]
+    topkIndices = paddle.sort(paddle.from_numpy(S_unsketch)**2)[1][-topk:,]
     
     if round2:
         x_tilde[topkIndices]=true_vec[topkIndices]
@@ -75,7 +75,7 @@ def HEAVYMIX(S, frac_topk, d,hashes,signs,round2,true_vec):
 #        V=[signs[j,i]*S[j,hashes[j,i]] for j in range(t)]
 #        S_unsketch[i] = np.median(V)
 #
-#    topkIndices = torch.sort(torch.from_numpy(S_unsketch)**2)[1][-topk:,]
+#    topkIndices = paddle.sort(paddle.from_numpy(S_unsketch)**2)[1][-topk:,]
 #    x_tilde[topkIndices] = S_unsketch[topkIndices]
 #    
 #    return x_tilde

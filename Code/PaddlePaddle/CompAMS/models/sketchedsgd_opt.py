@@ -1,22 +1,18 @@
 import numpy as np
-import torch
+import paddle
 from .csvec2 import CSVec
-from torch.cuda._utils import _get_device_index
-from torch.nn.parallel.scatter_gather import scatter_kwargs, scatter, gather
-from torch.nn.parallel.replicate import replicate
-from torch.nn.parallel.parallel_apply import parallel_apply
-import torch.nn as nn
+import paddle.nn as nn
 import random
 
 import pdb
 
 def topk(vec, k):
     """ Return the largest k elements (by magnitude) of vec"""
-    ret = torch.zeros_like(vec)
+    ret = paddle.zeros_like(vec)
 
-    # on a gpu, sorting is faster than pytorch's topk method
-    topkIndices = torch.sort(vec**2)[1][-k:]
-    #_, topkIndices = torch.topk(vec**2, k)
+    # on a gpu, sorting is faster than pypaddle's topk method
+    topkIndices = paddle.sort(vec**2)[1][-k:]
+    #_, topkIndices = paddle.topk(vec**2, k)
 
     ret[topkIndices] = vec[topkIndices]
     return ret
@@ -27,13 +23,13 @@ def printMemoryUsage():
     totalBytes = 0
     for obj in gc.get_objects():
         try:
-            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+            if paddle.is_tensor(obj) or (hasattr(obj, 'data') and paddle.is_tensor(obj.data)):
                 print(type(obj), obj.size())
-                if isinstance(obj, torch.cuda.ByteTensor):
+                if isinstance(obj, paddle.cuda.ByteTensor):
                     dsize = 1
-                elif isinstance(obj, torch.cuda.FloatTensor) or isinstance(obj, torch.cuda.IntTensor):
+                elif isinstance(obj, paddle.cuda.FloatTensor) or isinstance(obj, paddle.cuda.IntTensor):
                     dsize = 4
-                elif isinstance(obj, torch.cuda.DoubleTensor) or isinstance(obj, torch.cuda.LongTensor):
+                elif isinstance(obj, paddle.cuda.DoubleTensor) or isinstance(obj, paddle.cuda.LongTensor):
                     dsize = 8
                 totalBytes += np.product(obj.size()) * dsize
                 if obj.size()[0] > 90000000:
@@ -45,7 +41,7 @@ def printMemoryUsage():
     print("Total Size: {} MB".format(totalBytes / 1024 / 1024))
 
 
-class SketchedSGD(torch.optim.Optimizer):
+class SketchedSGD(paddle.optim.Optimizer):
     """SketchedSGD optimizer
     This is a thin wrapper over optim.SGD. Most of the work to do
     sketching is in SketchedSum. SketchedSum handles the learning rate,
@@ -80,7 +76,7 @@ class SketchedSGD(torch.optim.Optimizer):
         for group in opt.param_groups:
             for p in group["params"]:
                 params.append(p)
-        self.basicOpt = torch.optim.SGD(params, lr=1)
+        self.basicOpt = paddle.optim.SGD(params, lr=1)
         self.k = k
         self.doAccumulateError = accumulateError
         self.p1 = p1
@@ -124,7 +120,7 @@ class SketchedModel:
 
         # override bias terms with whatever sketchBiases is
         for m in model.modules():
-            if isinstance(m, torch.nn.Linear):
+            if isinstance(m, paddle.nn.Linear):
                 if m.bias is not None:
                     m.bias.do_sketching = sketchBiases
 
@@ -164,7 +160,7 @@ class SketchedSum:
                  doTrueTopk=False, doLocalTopk=False, doRandomK=False):
         """SketchedSum constructor
         Args:
-            opt: an instance of torch.optim.SGD whose momentum and weight
+            opt: an instance of paddle.optim.SGD whose momentum and weight
                  decay we want to emulate
             c: number of columns in the sketch
             r: numbers of rows in the sketch
@@ -212,25 +208,25 @@ class SketchedSum:
                 if p.requires_grad:
                     size = np.prod(p.data.shape)
 
-                    sketchMask.append(torch.ones(size))
+                    sketchMask.append(paddle.ones(size))
                     # if p.do_sketching:
-                    #     sketchMask.append(torch.ones(size))
+                    #     sketchMask.append(paddle.ones(size))
                     # else:
-                    #     sketchMask.append(torch.zeros(size))
+                    #     sketchMask.append(paddle.zeros(size))
                     D += size
         self.D = D
         # a mask indicating which gradient elements we should sketch
         # and which we should send without compression (e.g. bias terms,
         # maybe early layers, etc.)
-        self.sketchMask = torch.cat(sketchMask).byte().to(self.device)
+        self.sketchMask = paddle.cat(sketchMask).byte().to(self.device)
 
         print("D: {}".format(D))
         print("sketchMask.sum(): {}".format(self.sketchMask.sum()))
 
 
-        self.us = [torch.zeros(D, device=self.device)
+        self.us = [paddle.zeros(D, device=self.device)
                    for _ in range(numWorkers)]
-        self.vs = [torch.zeros(D, device=self.device)
+        self.vs = [paddle.zeros(D, device=self.device)
                    for _ in range(numWorkers)]
 
         # don't need sketches for true/local/random topk
@@ -248,7 +244,7 @@ class SketchedSum:
 
     def _getGradShapes(self):
         """Return the shapes and sizes of the weight matrices"""
-        with torch.no_grad():
+        with paddle.no_grad():
             gradShapes = []
             gradSizes = []
             for group in self.opt.param_groups:
@@ -264,24 +260,24 @@ class SketchedSum:
     def _getGradVec(self):
         """Return the gradient flattened to a vector"""
         gradVec = []
-        with torch.no_grad():
+        with paddle.no_grad():
             # flatten
             for group in self.opt.param_groups:
                 for p in group["params"]:
                     if p.grad is None:
-                        gradVec.append(torch.zeros_like(p.data.view(-1)))
+                        gradVec.append(paddle.zeros_like(p.data.view(-1)))
                     else:
                         gradVec.append(p.grad.data.view(-1).float())
 
             # concat into a single vector
-            gradVec = torch.cat(gradVec)
+            gradVec = paddle.cat(gradVec)
 
         return gradVec
 
     def _getLRVec(self):
         """Return a vector of each gradient element's learning rate
         If all parameters have the same learning rate, this just
-        returns torch.ones(D) * learning_rate. In this case, this
+        returns paddle.ones(D) * learning_rate. In this case, this
         function is memory-optimized by returning just a single
         number.
         """
@@ -293,11 +289,11 @@ class SketchedSum:
             lr = group["lr"]
             for p in group["params"]:
                 if p.grad is None:
-                    lrVec.append(torch.zeros_like(p.data.view(-1)))
+                    lrVec.append(paddle.zeros_like(p.data.view(-1)))
                 else:
                     grad = p.grad.data.view(-1)
-                    lrVec.append(torch.ones_like(grad) * lr)
-        return torch.cat(lrVec)
+                    lrVec.append(paddle.ones_like(grad) * lr)
+        return paddle.cat(lrVec)
 
     def _getParamVec(self):
         """Returns the current model weights as a vector"""
@@ -305,7 +301,7 @@ class SketchedSum:
         for group in self.opt.param_groups:
             for p in group["params"]:
                 d.append(p.data.view(-1).float())
-        return torch.cat(d).to(self.device)
+        return paddle.cat(d).to(self.device)
 
     def _setGradVec(self, vec):
         """Set the gradient to vec"""
@@ -368,8 +364,8 @@ class SketchedSum:
 
         # [MOMENTUM_TYPE] this is the way Karimireddy+2019 ("error feedback
         # fixed signSGD...") combine error feedback with the LR.
-        # In pytorch, on the other hand, torch.nn.SGD multiples v,
-        # not g by the LR. To use the pytorch method, uncomment these
+        # In pypaddle, on the other hand, paddle.nn.SGD multiples v,
+        # not g by the LR. To use the pypaddle method, uncomment these
         # two lines and see the other MOMENTUM_TYPE comment.
         #lrVec = self._getLRVec()
         #gradVec *= lrVec
@@ -382,9 +378,9 @@ class SketchedSum:
 
     # the helper functions below deal only with the compressed coordinates
     def _aggAndZeroTrueTopk(self):
-        weightUpdate = torch.zeros_like(self.vs[0])
+        weightUpdate = paddle.zeros_like(self.vs[0])
         vs = [v[self.sketchMask] for v in self.vs]
-        w = topk(torch.sum(torch.stack(vs), dim=0), k=self.opt.k)
+        w = topk(paddle.sum(paddle.stack(vs), dim=0), k=self.opt.k)
         weightUpdate[self.sketchMask] = w
         for u, v in zip(self.us, self.vs):
             # zeroing u won't do anything if accumulateError is False
@@ -393,7 +389,7 @@ class SketchedSum:
         return weightUpdate
 
     def _aggAndZeroLocalTopk(self):
-        weightUpdate = torch.zeros_like(self.vs[0])
+        weightUpdate = paddle.zeros_like(self.vs[0])
         if self.opt.p2 is None or self.opt.p2 == 0:
             for u, v in zip(self.us, self.vs):
                 ltk = topk(v, k=self.opt.k)
@@ -422,15 +418,15 @@ class SketchedSum:
             # do a second round of communication to get true
             # values of the top k*p2 coords among those that were
             # sent from any worker
-            hhs = torch.sum(torch.stack(localTopks), dim=0)
+            hhs = paddle.sum(paddle.stack(localTopks), dim=0)
             del localTopks
             hhs = topk(hhs, self.opt.p2*self.opt.k).nonzero()
             #for workerId in range(self.numWorkers):
             #    print("WORKER {} LTK: ".format(workerId), localTopks[workerId])
-            w = torch.sum(torch.stack([v[self.sketchMask][hhs]
+            w = paddle.sum(paddle.stack([v[self.sketchMask][hhs]
                                        for v in self.vs]), dim=0)
             # roundabout way to do weightUpdate[sketchMask][hhs] = w
-            sent = torch.zeros_like(weightUpdate[self.sketchMask])
+            sent = paddle.zeros_like(weightUpdate[self.sketchMask])
             sent[hhs] = w
             weightUpdate[self.sketchMask] = sent
             # and then zero out all weightUpdate.nonzero(),
@@ -452,7 +448,7 @@ class SketchedSum:
         numCoords = self.opt.k + (~self.sketchMask).nonzero().numel()
 
         # choose a random set of numCoords coordinates and send those
-        # unfortunately, sampling without replacement (using torch,
+        # unfortunately, sampling without replacement (using paddle,
         # np, or python's built-in random) takes several seconds for
         # typical inputs. So instead, sample slightly more than k coords,
         # and then choose the unique ones. How many is "slightly" more?
@@ -463,28 +459,28 @@ class SketchedSum:
         # Note: we won't get exactly numCoords unique draws, but it's
         # pretty close, and we're already fudging it with the
         # non-compressed coords (see below)
-        # Note2: we should do torch.unique here, but we have to
-        # do torch.unique below anyway, so no point doing it twice
+        # Note2: we should do paddle.unique here, but we have to
+        # do paddle.unique below anyway, so no point doing it twice
         nSamples = np.log(1-numCoords/self.D) / np.log((self.D-1)/self.D)
         nSamples = int(nSamples)
-        randomCoords = torch.randint(int(self.D),
+        randomCoords = paddle.randint(int(self.D),
                                      size=(nSamples,),
                                      device=self.device)
 
         # ideally, we would've sampled from self.sketchMask.nonzero(). But
         # sampling without replacement from an arbitrary
         # subset of ~90M gradient coordinates takes a loong time
-        # (~5 seconds in torch or numpy)
+        # (~5 seconds in paddle or numpy)
         # so instead, we sampled from [0..D-1], and now we just force that
         # all non-compressed coordinates are included
         uncompressedCoords = (~self.sketchMask).nonzero().view(-1)
-        toSend = torch.cat((randomCoords, uncompressedCoords))
+        toSend = paddle.cat((randomCoords, uncompressedCoords))
         # we might have sampled an uncompressed coord, so take unique elems
         # this is fast as long as it's on the GPU (~150x faster than CPU)
-        toSend = torch.unique(toSend)
+        toSend = paddle.unique(toSend)
 
-        w = torch.sum(torch.stack([v[toSend] for v in self.vs]), dim=0)
-        weightUpdate = torch.zeros_like(self.vs[0])
+        w = paddle.sum(paddle.stack([v[toSend] for v in self.vs]), dim=0)
+        weightUpdate = paddle.zeros_like(self.vs[0])
         weightUpdate[toSend] = w
         for u, v in zip(self.us, self.vs):
             # toSend \in (0, D), so this is a reasonable indexing
@@ -558,7 +554,7 @@ class SketchedSum:
             del vs
             w = topk(candidateTopk, k=self.opt.k)
             del candidateTopk
-            weightUpdate = torch.zeros_like(self.vs[0])
+            weightUpdate = paddle.zeros_like(self.vs[0])
             weightUpdate[self.sketchMask] = w
         else:
             # if p2 == 0, then there's no second round of
@@ -566,7 +562,7 @@ class SketchedSum:
             # that we got from the sketch
             assert(self.opt.p2 == 0)
             w = np.sum(self.workerSketches).unSketch(k=self.opt.k)
-            weightUpdate = torch.zeros_like(self.vs[0])
+            weightUpdate = paddle.zeros_like(self.vs[0])
             weightUpdate[self.sketchMask] = w
 
         # zero out the coords of u, v that are being updated
@@ -577,7 +573,7 @@ class SketchedSum:
         if False:
             # just for debugging
             trueWeightUpdate = topk(sum(self.vs), k=self.opt.k)
-            overlap = torch.sum((weightUpdate != 0) * (trueWeightUpdate != 0)).item()
+            overlap = paddle.sum((weightUpdate != 0) * (trueWeightUpdate != 0)).item()
             print("OVERLAP:", overlap, "out of ", self.opt.k)
             print("(nonzero WU):", weightUpdate.nonzero().size())
 
@@ -601,7 +597,7 @@ class SketchedSum:
         # Note: this is a no-op if doRandomK=True, since we dealt
         # with the uncompressed coords already in self._aggAndZeroRandomK()
         vs = [v[~self.sketchMask] for v in self.vs]
-        weightUpdate[~self.sketchMask] = torch.sum(torch.stack(vs), dim=0)
+        weightUpdate[~self.sketchMask] = paddle.sum(paddle.stack(vs), dim=0)
         for v in self.vs:
             # only zero out v, not u -- we don't want to stop momentum
             # for coords that are being updated every iteration
@@ -633,7 +629,7 @@ class SketchedSum:
         initialGradVec = self._getGradVec()
 
         # give backwardWorker a clean slate to backprop into
-        self._setGradVec(torch.zeros_like(initialGradVec))
+        self._setGradVec(paddle.zeros_like(initialGradVec))
 
         # backprop on each worker, updating self.us and self.vs
         for workerId in range(self.numWorkers):
@@ -651,7 +647,7 @@ class SketchedSum:
             # add back the initial gradient vector
             weightUpdate.add_(initialGradVec)
 
-            # [MOMENTUM_TYPE] This is how torch.optim.SGD does momentum
+            # [MOMENTUM_TYPE] This is how paddle.optim.SGD does momentum
             # (different from Karimireddy+2019).
             # To use Karimireddy+2019's method instead, swap commented
             # lines below and see other MOMENTUM_TYPE comment
@@ -669,7 +665,7 @@ class SketchedSum:
 
     def item(self):
         """Return the value of the loss"""
-        with torch.no_grad():
+        with paddle.no_grad():
             return self.loss.sum().item()
 
     def __div__(self, factor):

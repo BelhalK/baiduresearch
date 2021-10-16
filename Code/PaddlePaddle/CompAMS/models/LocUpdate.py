@@ -2,13 +2,11 @@
 import warnings
 warnings.simplefilter("ignore", UserWarning)
 
-import torch
-from torch import nn, autograd
-from torch.utils.data import DataLoader, Dataset
+import paddle
+from paddle.io import DataLoader, Dataset
 import numpy as np
 import random
 from sklearn import metrics
-from torch.autograd import Variable
 from .localams2 import LocalAMSGrad
 import collections
 #from .localsgd import LocalSGD
@@ -110,7 +108,7 @@ class LocalUpdateAMS(object):
         gg=collections.OrderedDict()
         i=0
         for p in net.parameters():
-            gg[i]=torch.zeros_like(p)
+            gg[i]=paddle.zeros_like(p)
             i+=1
             
         for batch_idx, (images, labels) in enumerate(self.ldr_train):
