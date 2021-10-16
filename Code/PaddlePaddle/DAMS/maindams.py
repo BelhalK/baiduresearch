@@ -1,42 +1,20 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-#
-
-"""
-Gossip SGD
-
-Distributed data parallel training of a ResNet-50 on ImageNet using either
-- Stochastic Gradient Push
-- AllReduce SGD (aka Parallel Stochastic Gradient Descent)
-- Distributed Parallel Stochastic Gradient Descent
-
-Derived from https://github.com/pytorch/examples/blob/master/imagenet/main.py
-"""
-
 import argparse
 import copy
 import os
 import socket
 import time
 
-import torch
-import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.multiprocessing as mp
-import torch.nn as nn
-import torch.optim
-import torch.utils.data
 import torch.utils.data.distributed
-import torchvision.datasets as datasets
-import torchvision.models as models
+
+import paddle.vision.datasets as datasets
+import paddle.vision.models as models
 import torchvision.transforms as transforms
 
 from torchvision.models.resnet import Bottleneck
-from torch.nn.parameter import Parameter
 
+import paddle
 
 from experiment_utils import make_logger
 from experiment_utils import Meter
@@ -285,16 +263,14 @@ def main():
     log.info(socket.gethostname())
 
     # seed for reproducibility
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = True
+    paddle.manual_seed(args.seed)
 
     # init model, loss, and optimizer
     model = init_model()
     
     # moved the definition of optimizer before the model wapper so that we can input it into the wapper
     if args.optimizer == "sgd":
-        optimizer = torch.optim.SGD(
+        optimizer = paddle.optimizer.SGD(
             model.parameters(),
             lr=args.lr,
             momentum=args.momentum,
@@ -333,8 +309,8 @@ def main():
             use_streams=not args.no_cuda_streams,
         )
 
-    core_criterion = nn.KLDivLoss(reduction="batchmean").cuda()
-    log_softmax = nn.LogSoftmax(dim=1)
+    core_criterion = paddle.nn.KLDivLoss(reduction="batchmean").cuda()
+    log_softmax = paddle.nn.LogSoftmax(dim=1)
 
     def criterion(input, kl_target):
         assert kl_target.dtype != torch.int64
@@ -400,8 +376,7 @@ def main():
         else:
             log.info("=> no checkpoint found at '{}'".format(cmanager.checkpoint_fpath))
 
-    # enable low-level optimization of compute graph using cuDNN library?
-    cudnn.benchmark = True
+
 
     # meters used to compute timing stats
     batch_meter = Meter(state["batch_meter"])
@@ -763,11 +738,11 @@ def make_dataloader(args, train=True):
         )
 
         # sampler produces indices used to assign each agent data samples
-        train_sampler = torch.utils.data.distributed.DistributedSampler(
+        train_sampler = paddle.io.DistributedSampler(
             dataset=train_dataset, num_replicas=args.world_size, rank=args.rank
         )
 
-        train_loader = torch.utils.data.DataLoader(
+        train_loader = paddle.io.DataLoader(
             train_dataset,
             batch_size=args.batch_size,
             shuffle=(train_sampler is None),
@@ -781,7 +756,7 @@ def make_dataloader(args, train=True):
     else:
         log.debug("fpaths val {}".format(val_dir))
 
-        val_loader = torch.utils.data.DataLoader(
+        val_loader = paddle.io.DataLoader(
             datasets.ImageFolder(
                 val_dir,
                 transforms.Compose(
@@ -930,7 +905,7 @@ def init_model():
     for m in model.modules():
         if isinstance(m, Bottleneck):
             num_features = m.bn3.num_features
-            m.bn3.weight = Parameter(torch.zeros(num_features))
+            m.bn3.weight = paddle.nn.ParameterList(paddle.zeros(num_features))
     model.fc.weight.data.normal_(0, 0.01)
     model.cuda()
     return model
