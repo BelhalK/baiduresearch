@@ -1,6 +1,7 @@
-# /opt/anaconda3/bin/python3 -u train_data_gen.py --th 0.0001 --eps 0.01 --mcmcmethod compressed
+# python train_data_gen_flowers.py --th 0.0001 --eps 0.01 --mcmcmethod langevin
+# python train_data_gen_flowers.py --th 0.0001 --eps 0.01 --mcmcmethod compressed
 
-import torch as t
+import torch
 import torchvision.transforms as tr
 import torchvision.datasets as datasets
 import json
@@ -12,6 +13,8 @@ import argparse
 from logger import Logger
 import numpy as np
 import compressor as sko
+from customAdam import Adam
+import collections
 import pdb
 
 
@@ -22,7 +25,6 @@ parser.add_argument('--th', '--thresh', default=0.001, type=float,
 parser.add_argument('--eps', '--epsilon', default=0.001, type=float,
                     metavar='EP', help='epsilon')
 parser.add_argument('--mcmcmethod', default='langevin',help='mcmc to use (langevin, compressed)')
-parser.add_argument('--compmethod', default='sign',help='compression to use (sign, topk, full)')
 
 
 args = parser.parse_args()
@@ -81,13 +83,13 @@ def save_code():
             file_out.write(line)
     for file in ['train_data.py', 'nets.py', 'utils.py', CONFIG_FILE]:
         save_file(file)
-save_code()
+# save_code()
 
 # set seed for cpu and CUDA, get device
-t.manual_seed(config['seed'])
-if t.cuda.is_available():
-    t.cuda.manual_seed_all(config['seed'])
-device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+torch.manual_seed(config['seed'])
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(config['seed'])
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 ########################
@@ -99,7 +101,8 @@ print('Setting up network and optimizer...')
 net_bank = {'vanilla': VanillaNet, 'nonlocal': NonlocalNet}
 f = net_bank[config['net_type']](n_c=config['im_ch']).to(device)
 # set up optimizer
-optim_bank = {'adam': t.optim.Adam, 'sgd': t.optim.SGD}
+# optim_bank = {'adam': torch.optim.Adam, 'sgd': torch.optim.SGD}
+optim_bank = {'adam': Adam, 'sgd': torch.optim.SGD}
 if config['optimizer_type'] == 'sgd' and config['epsilon'] > 0:
     # scale learning rate according to langevin noise for invariant tuning
     config['lr_init'] *= (config['epsilon'] ** 2) / 2
@@ -110,18 +113,17 @@ print('Processing data...')
 # make tensor of training data
 if config['data'] == 'flowers':
     download_flowers_data()
+
 data = {'cifar10': lambda path, func: datasets.CIFAR10(root=path, transform=func, download=True),
         'mnist': lambda path, func: datasets.MNIST(root=path, transform=func, download=True),
         'flowers': lambda path, func: datasets.ImageFolder(root=path, transform=func)}
 transform = tr.Compose([tr.Resize(config['im_sz']),
                         tr.CenterCrop(config['im_sz']),
                         tr.ToTensor(),
-                        tr.Normalize(tuple(0.5*t.ones(config['im_ch'])), tuple(0.5*t.ones(config['im_ch'])))])
-q = t.stack([x[0] for x in data[config['data']]('./data/' + config['data'], transform)]).to(device)
+                        tr.Normalize(tuple(0.5*torch.ones(config['im_ch'])), tuple(0.5*torch.ones(config['im_ch'])))])
+q = torch.stack([x[0] for x in data[config['data']]('./data/' + config['data'], transform)]).to(device)
 
-# initialize persistent images from noise (one persistent image for each data image)
-# s_t_0 is used when init_type == 'persistent' in sample_s_t()
-s_t_0 = 2 * t.rand_like(q) - 1
+s_t_0 = 2 * torch.rand_like(q) - 1
 
 
 ################################
@@ -130,27 +132,26 @@ s_t_0 = 2 * t.rand_like(q) - 1
 
 # sample batch from given array of images
 def sample_image_set(image_set):
-    rand_inds = t.randperm(image_set.shape[0])[0:config['batch_size']]
+    rand_inds = torch.randperm(image_set.shape[0])[0:config['batch_size']]
     return image_set[rand_inds], rand_inds
 
-# sample positive images from dataset distribution q (add noise to ensure min sd is at least langevin noise sd)
+# sample positive images from dataset distribution
 def sample_q():
     x_q = sample_image_set(q)[0]
-    return x_q + config['data_epsilon'] * t.randn_like(x_q)
+    return x_q + config['data_epsilon'] * torch.randn_like(x_q)
 
-# initialize and update images with langevin dynamics to obtain samples from finite-step MCMC distribution s_t
+# initialize and update images with langevin dynamics
 def sample_s_t(L, init_type, update_s_t_0=True):
-    # get initial mcmc states for langevin updates ("persistent", "data", "uniform", or "gaussian")
     def sample_s_t_0():
         if init_type == 'persistent':
             return sample_image_set(s_t_0)
         elif init_type == 'data':
             return sample_q(), None
         elif init_type == 'uniform':
-            noise_image = 2 * t.rand([config['batch_size'], config['im_ch'], config['im_sz'], config['im_sz']]) - 1
+            noise_image = 2 * torch.rand([config['batch_size'], config['im_ch'], config['im_sz'], config['im_sz']]) - 1
             return noise_image.to(device), None
         elif init_type == 'gaussian':
-            noise_image = t.randn([config['batch_size'], config['im_ch'], config['im_sz'], config['im_sz']])
+            noise_image = torch.randn([config['batch_size'], config['im_ch'], config['im_sz'], config['im_sz']])
             return noise_image.to(device), None
         else:
             raise RuntimeError('Invalid method for "init_type" (use "persistent", "data", "uniform", or "gaussian")')
@@ -159,32 +160,53 @@ def sample_s_t(L, init_type, update_s_t_0=True):
     x_s_t_0, s_t_0_inds = sample_s_t_0()
 
     # iterative langevin updates of MCMC samples
-    x_s_t = t.autograd.Variable(x_s_t_0.clone(), requires_grad=True)
-    r_s_t = t.zeros(1).to(device)  # variable r_s_t (Section 3.2) to record average gradient magnitude
+    x_s_t = torch.autograd.Variable(x_s_t_0.clone(), requires_grad=True)
+    r_s_t = torch.zeros(1).to(device)
     for ell in range(L):
         if mcmcmethod == "langevin":
             # regular langevin update constant LR
-            f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
-            x_s_t.data += - f_prime + eps * t.randn_like(x_s_t)
+            f_prime = torch.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
+            x_s_t.data += - f_prime + eps * torch.randn_like(x_s_t)
             r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
+        
         elif mcmcmethod == "compressed":
             # Gradient computation
-            f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
+            f_prime = torch.autograd.grad(f(x_s_t).sum(), [x_s_t])[0] 
             
-            # Compressed gradient
+            ### Compressed gradient
+            new_f_prime = f_prime.view(f_prime.shape[0], -1)
+            norm = torch.max(torch.abs(new_f_prime), dim=1, keepdim=True)[0]
+            normalized_new_f_prime = new_f_prime / norm
+
+            n_bit = 6
+            sp = 2**n_bit
+            scaled_vec = torch.abs(normalized_new_f_prime) * sp
+            code_dtype = torch.int32
+            lll = torch.clamp(scaled_vec, 0, sp-1).type(code_dtype)
+
+            random = True
+            if random:
+                probabilities = scaled_vec - lll.type(torch.float32)
+                rrr = torch.rand(lll.size())
+                rrr = rrr.cuda()
+                lll[:] += (probabilities > rrr).type(code_dtype)
+
+            signs = torch.sign(new_f_prime) > 0
             pdb.set_trace()
-
-            t = 10
-            k = 50
-
-            hashtable = collections.OrderedDict()
-            signtable = collections.OrderedDict()
+            compvec = [norm, signs.view(new_f_prime.shape), lll.view(new_f_prime.shape)]
             
+            # compvec = sko.compress(f_prime)
 
-            comp_f_prime = f_prime
+            ### Sketched gradient
+            # t = 10
+            # k = 50
+            
+            # hashtable = collections.OrderedDict()
+            # signtable = collections.OrderedDict()
 
+            # compvec = sko.generate_sketch(f_prime,t,k,hashtable,signtable)
 
-            x_s_t.data += - comp_f_prime + eps * t.randn_like(x_s_t)
+            x_s_t.data += - comp_f_prime + eps * torch.randn_like(x_s_t)
             r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
 
 
@@ -195,22 +217,22 @@ def sample_s_t(L, init_type, update_s_t_0=True):
     return x_s_t.detach(), r_s_t.squeeze() / L
 
 
+
 #######################
 # ## TRAINING LOOP ## #
 #######################
 
-# containers for diagnostic records (see Section 3)
-d_s_t_record = t.zeros(config['num_train_iters']).to(device)  # energy difference between positive and negative samples
-r_s_t_record = t.zeros(config['num_train_iters']).to(device)  # average image gradient magnitude along Langevin path
+d_s_t_record = torch.zeros(config['num_train_iters']).to(device)  # energy difference between positive and negative samples
+r_s_t_record = torch.zeros(config['num_train_iters']).to(device)  # average image gradient magnitude along Langevin path
 
 print('Training has started.')
 for i in range(config['num_train_iters']):
+    print(i)
     # obtain positive and negative samples
     x_q = sample_q()
     x_s_t, r_s_t = sample_s_t(L=config['num_shortrun_steps'], init_type=config['shortrun_init'])
-
-    # pdb.set_trace()
-    # calculate ML computational loss d_s_t (Section 3) for data and shortrun samples
+    
+    # calculate loss
     d_s_t = f(x_q).mean() - f(x_s_t).mean()
     if config['epsilon'] > 0:
         # scale loss with the langevin implementation
@@ -233,10 +255,10 @@ for i in range(config['num_train_iters']):
         print('{:>6d}   d_s_t={:>14.9f}   r_s_t={:>14.9f}'.format(i+1, d_s_t.detach().data, r_s_t))
         logger.append([i+1, d_s_t.detach().data, r_s_t])
         
-        # visualize synthesized images (on a grid)
+        # visualize synthesized images on a grid
         # plot_ims(EXP_DIR + 'shortrun/' + 'x_s_t_{:>06d}.png'.format(i+1), x_s_t)
         
-        # visualize synthesized images and positive samples(separate files)
+        # visualize synthesized images and positive samples
         for index in range(len(x_s_t)):
             plot_single_ims(EXP_DIR + 'shortrun/' + '{:>06d}_x_s_t_0_{:>06d}.png'.format(i+1, index), x_s_t[index])
             plot_single_ims(EXP_DIR + 'shortrun/' + '{:>06d}_x_q_{:>06d}.png'.format(i+1, index), x_q[index])
@@ -244,7 +266,7 @@ for i in range(config['num_train_iters']):
         if config['shortrun_init'] == 'persistent':
             plot_ims(EXP_DIR + 'shortrun/' + 'x_s_t_0_{:>06d}.png'.format(i+1), s_t_0[0:config['batch_size']])
         # save network weights
-        t.save(f.state_dict(), EXP_DIR + 'checkpoints/' + 'net_{:>06d}.pth'.format(i+1))
+        torch.save(f.state_dict(), EXP_DIR + 'checkpoints/' + 'net_{:>06d}.pth'.format(i+1))
         # plot diagnostics for energy difference d_s_t and gradient magnitude r_t
         if (i + 1) > 1:
             plot_diagnostics(i, d_s_t_record, r_s_t_record, EXP_DIR + 'plots/')
