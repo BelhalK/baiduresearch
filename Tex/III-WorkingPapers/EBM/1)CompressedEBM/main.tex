@@ -3,9 +3,10 @@
 % if you need to pass options to natbib, use, e.g.:
 %\PassOptionsToPackage{numbers}{natbib}
 \usepackage[colorlinks,linkcolor=blue,filecolor=blue,citecolor=magenta,urlcolor=blue]{hyperref}
-\usepackage{bm,amsmath,amsthm,amssymb,multicol,algorithmic,algorithm,enumitem,graphicx,subfigure}
+\usepackage{bm,amsmath,amsthm,amssymb,multicol,enumitem,graphicx,subfigure}
 \usepackage{xargs}
 \usepackage{stmaryrd}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 \usepackage{natbib}
 
 % ready for submission
@@ -13,6 +14,15 @@
 \input{shortcuts.tex}
 \newtheorem{definition}{Definition}
 \newcommand{\algo}{\textsc{eff-EBM}}
+
+
+%%% Coloring the comment as blue
+\newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{blue}{#1}}
+\SetCommentSty{mycommfont}
+
+\SetKwInput{KwInput}{Input}                % Set the Input
+\SetKwInput{KwOutput}{Output}   
+
 
 \begin{document}
 \title{Memory Efficient EBM Training}
@@ -50,43 +60,102 @@ For $x\in\mathbb R^d$, define $M$ blocks indexed by $\mathcal B_i$, $i=1,...,M$,
 \end{definition}
 
 
+%\begin{algorithm}[H]
+%\caption{\algo\ } \label{alg:anila}
+%\begin{algorithmic}[1]
+%%\small
+%\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$, sequence of global learning rate $\{\eta_t\}_{t >0}$,  sequence of MCMC stepsizes ${\gamma_k}_{k >0}$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$ and observations $\{ x_{i} \}_{i=1}^n$.
+%\FOR{$t=1$ to $T$}
+%\STATE Draw $M$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential via Langevin diffusion:\label{line:langevin}
+%\FOR{$k=1$ to $K$}
+%\STATE Use black box compression operators:
+%$$
+%\tilde{g}_{k-1}^m = \mathcal{C}(\nabla_z f_{\theta_t}(z_{k-1}^m) )
+%$$
+%\STATE Construct the Markov Chain as follows:
+%\beq\label{eq:anila}
+%z_{k}^{m} = z_{k-1}^m + \gamma_k/2 \tilde{g}_{k-1}^m+ \sqrt{\gamma_k} \mathsf{B}_k \eqsp,
+%\eeq
+%where $\mathsf{B}_t$ denotes the Brownian motion (Gaussian noise).
+%\ENDFOR
+%\STATE Assign $\{ z_{t}^m \}_{m=1}^M \leftarrow \{ z_{K}^m \}_{m=1}^M$.
+%\STATE Sample $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
+%\STATE Compute the gradient of the empirical log-EBM:
+%\beq\notag
+%\begin{split}
+%\nabla \log p(\theta_t) 
+% = \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\approx  \frac{1}{n} \sum_{i=1}^{n} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)\eqsp.
+%\end{split}
+%\eeq
+%\STATE Update the vector of global parameters of the EBM:\label{line:gradient}
+%\beq\notag
+%\theta_{t+1} = \theta_{t} + \eta_t \nabla \log p(\theta_t) \eqsp.
+%\eeq
+%\ENDFOR
+%\STATE \textbf{Output:} Vector of fitted parameters $\theta_{T+1}$.
+%\end{algorithmic}
+%\end{algorithm}
+
+
+\section{Distributed and Private EBM Training}
+
 \begin{algorithm}[H]
-\caption{\algo\ } \label{alg:anila}
-\begin{algorithmic}[1]
-%\small
-\STATE \textbf{Input}: Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$, sequence of global learning rate $\{\eta_t\}_{t >0}$,  sequence of MCMC stepsizes ${\gamma_k}_{k >0}$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$ and observations $\{ x_{i} \}_{i=1}^n$.
-\FOR{$t=1$ to $T$}
-\STATE Draw $M$ samples $\{ z_{t}^m \}_{m=1}^M$ from the objective potential via Langevin diffusion:\label{line:langevin}
-\FOR{$k=1$ to $K$}
-\STATE Use black box compression operators:
-$$
-\tilde{g}_{k-1}^m = \mathcal{C}(\nabla_z f_{\theta_t}(z_{k-1}^m) )
-$$
-\STATE Construct the Markov Chain as follows:
-\beq\label{eq:anila}
-z_{k}^{m} = z_{k-1}^m + \gamma_k/2 \tilde{g}_{k-1}^m+ \sqrt{\gamma_k} \mathsf{B}_k \eqsp,
-\eeq
-where $\mathsf{B}_t$ denotes the Brownian motion (Gaussian noise).
-\ENDFOR
-\STATE Assign $\{ z_{t}^m \}_{m=1}^M \leftarrow \{ z_{K}^m \}_{m=1}^M$.
-\STATE Sample $m$ positive observations $\{ x_{i} \}_{i=1}^m$ from the empirical data distribution.
-\STATE Compute the gradient of the empirical log-EBM:
-\beq\notag
-\begin{split}
-\nabla \log p(\theta_t) 
- = \mathbb{E}_{p_{\text {data }}}\left[\nabla_{\theta} f_{\theta_t}(x)\right]-\mathbb{E}_{p_{\theta}}\left[\nabla_{\theta_t} f_{\theta}(z_t)\right]\approx  \frac{1}{n} \sum_{i=1}^{n} \nabla_{\theta} f_{\theta_t}\left(x_{i}\right)-\frac{1}{m} \sum_{i=1}^{m} \nabla_{\theta} f_{\theta_t}\left(z_t^m\right)\eqsp.
-\end{split}
-\eeq
-\STATE Update the vector of global parameters of the EBM:\label{line:gradient}
-\beq\notag
-\theta_{t+1} = \theta_{t} + \eta_t \nabla \log p(\theta_t) \eqsp.
-\eeq
-\ENDFOR
-\STATE \textbf{Output:} Vector of fitted parameters $\theta_{T+1}$.
-\end{algorithmic}
+\DontPrintSemicolon
+  
+  \KwInput{Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$, sequence of global learning rate $\{\eta_t\}_{t >0}$,  sequence of MCMC stepsizes ${\gamma_k}_{k >0}$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$. Set of selected devices $\mathcal{D}^t$ at iteration $k$.}
+  \KwOutput{Vector of fitted parameters $\theta_{T+1}$.}
+  \KwData{ $\{ x^p_{i} \}_{i=1}^{n_p}$, $n_p$ number of observations on device $p$. $n = \sum_{p=1}^P n_p$ total number of observations.}
+\hrulefill
+
+\For{$t=1$ to $T$}
+{	
+	\tcc{Happening on distributed devices}
+	
+	\For{For device $p \in \mathcal{D}^t$} 
+	{
+		{Draw $M$ negative samples $\{ z_{K}^{p,m} \}_{m=1}^M$} \tcp*{local langevin diffusion}
+			\For{$k=1$ to $K$}
+			{
+			\beq\notag
+			z_{k}^{p,m} = z_{k-1}^{p,m} + \gamma_k/2\nabla_z f_{\theta_t}( z_{k-1}^{p,m})  ^{p,m}+ \sqrt{\gamma_k} \mathsf{B}_k^p \eqsp,
+			\eeq
+			where $\mathsf{B}_k^p$ denotes the Brownian motion (Gaussian noise).
+			}
+		{Assign $\{ z_{t}^{p,m} \}_{m=1}^M \leftarrow \{ z_{K}^{p,m} \}_{m=1}^M$.}
+		
+		{Sample $M$ positive observations $\{ x^p_{i} \}_{i=1}^M$ from the empirical data distribution.}
+		
+		{Compute the gradient of the empirical log-EBM} \tcp*{local - and + gradients}
+		{
+		$$\delta^p = \frac{1}{M} \sum_{i=1}^{M} \nabla_{\theta} f_{\theta_t}\left(x^p_{i}\right)- \frac{1}{M} 	\sum_{m=1}^{M} \nabla_{\theta} f_{\theta_t}\left(z_K^{p,m}\right)$$
+		}
+		{Use black box compression operators}
+		{
+		$$\Delta^p = \mathcal{C}(\delta^p )$$
+		}
+		{Devices broadcast $\Delta^p$ to Server} 
+	}
+	
+	  \tcc{Happening on the central server}
+	  
+	{Aggregation of devices gradients}
+	{
+	\beq\notag
+	\begin{split}
+	\nabla \log p(\theta_t) 
+	\approx  \frac{1}{|\mathcal{D}^t|} \sum_{p=1}^{|\mathcal{D}^t|} \Delta^p\eqsp.
+	\end{split}
+	\eeq
+	}
+	{Update the vector of global parameters of the EBM:}
+	{
+	\beq\notag
+	\theta_{t+1} = \theta_{t} + \eta_t \nabla \log p(\theta_t) \eqsp.
+	\eeq
+	}
+}
+\caption{Example code}
 \end{algorithm}
-
-
 
 \section{Conclusion}\label{sec:conclusion}
 
