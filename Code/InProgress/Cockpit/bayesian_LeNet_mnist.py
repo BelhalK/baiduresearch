@@ -60,21 +60,34 @@ classifier = BayesianCNN().to(device)
 optimizer = optim.Adam(classifier.parameters(), lr=0.001)
 criterion = torch.nn.CrossEntropyLoss()
 
-cockpit = Cockpit(model.parameters(), quantities=config("full"))
+cockpit = Cockpit(classifier.parameters(), quantities=config("full"))
 plotter = CockpitPlotter()
 
 iteration = 0
-for epoch in range(100):
+for epoch in range(5):
+    print("epoch nb: ",epoch)
     for i, (datapoints, labels) in enumerate(train_loader):
-        print(i)
         optimizer.zero_grad()
         loss = classifier.sample_elbo(inputs=datapoints.to(device),
                            labels=labels.to(device),
                            criterion=criterion,
                            sample_nbr=3,
                            complexity_cost_weight=1/50000)
+        
+        with cockpit(
+            i,
+            info={
+            "batch_size": 64,
+            "individual_losses": loss,
+            "loss": loss,
+            "optimizer": optimizer,
+            },
+        ):
+            loss.backward(
+                create_graph=cockpit.create_graph(i),
+            )
         #print(loss)
-        loss.backward()
+        # loss.backward()
         optimizer.step()
         
         iteration += 1
@@ -90,3 +103,6 @@ for epoch in range(100):
                     total += labels.size(0)
                     correct += (predicted == labels.to(device)).sum().item()
             print('Iteration: {} | Accuracy of the network on the 10000 test images: {} %'.format(str(iteration) ,str(100 * correct / total)))
+
+cockpit.write(get_logpath())
+plotter.plot(cockpit,savedir="./save",show_plot=False,save_plot=True)

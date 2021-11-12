@@ -46,3 +46,4 @@ cockpit.write(get_logpath())
 plotter.plot(get_logpath())
 
 
+plotter.plot(cockpit,savedir="./save",show_plot=False,save_plot=True)
