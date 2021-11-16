@@ -57,7 +57,8 @@ class BayesianCNN(nn.Module):
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 classifier = BayesianCNN().to(device)
-optimizer = optim.Adam(classifier.parameters(), lr=0.001)
+model = extend(classifier)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = torch.nn.CrossEntropyLoss()
 
 cockpit = Cockpit(classifier.parameters(), quantities=config("full"))
@@ -67,6 +68,7 @@ iteration = 0
 for epoch in range(5):
     print("epoch nb: ",epoch)
     for i, (datapoints, labels) in enumerate(train_loader):
+        print(i)
         optimizer.zero_grad()
         loss = classifier.sample_elbo(inputs=datapoints.to(device),
                            labels=labels.to(device),
@@ -75,7 +77,7 @@ for epoch in range(5):
                            complexity_cost_weight=1/50000)
         
         with cockpit(
-            i,
+            epoch,
             info={
             "batch_size": 64,
             "individual_losses": loss,
@@ -84,7 +86,7 @@ for epoch in range(5):
             },
         ):
             loss.backward(
-                create_graph=cockpit.create_graph(i),
+                create_graph=cockpit.create_graph(epoch),
             )
         #print(loss)
         # loss.backward()
@@ -104,5 +106,5 @@ for epoch in range(5):
                     correct += (predicted == labels.to(device)).sum().item()
             print('Iteration: {} | Accuracy of the network on the 10000 test images: {} %'.format(str(iteration) ,str(100 * correct / total)))
 
-cockpit.write(get_logpath())
-plotter.plot(cockpit,savedir="./save",show_plot=False,save_plot=True)
+# cockpit.write(get_logpath())
+# plotter.plot(cockpit,savedir="Cockpit-DL/save",show_plot=False,save_plot=True)

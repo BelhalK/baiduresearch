@@ -26,7 +26,7 @@ def fmnist_data(batch_size=64, shuffle=True):
     torch.manual_seed(0)
 
     fmnist_dataset = torchvision.datasets.FashionMNIST(
-        root=os.path.join(EXAMPLESDIR, "data"),
+        root=os.path.join(EXAMPLESDIR, "Cockpit-DL/data"),
         train=True,
         transform=torchvision.transforms.Compose(
             [
@@ -69,7 +69,7 @@ def get_logpath(suffix=""):
     Returns:
         str: Path to the logfile (output of Cockpit).
     """
-    save_dir = os.path.join(EXAMPLESDIR, "logfiles")
+    save_dir = os.path.join(EXAMPLESDIR, "Cockpit-DL/logfiles")
     os.makedirs(save_dir, exist_ok=True)
     log_path = os.path.join(save_dir, f"cockpit_output{suffix}")
     return log_path
