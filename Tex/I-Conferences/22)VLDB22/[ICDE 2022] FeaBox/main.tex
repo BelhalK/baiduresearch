@@ -134,11 +134,47 @@ In this section, we present a brief introduction of CTR prediction models and th
 
 \subsection{CTR Prediction Models}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.35\textwidth]{figs/ctr}
+\caption{An example for the CTR prediction network architecture.}
+\label{fig:ctr}
+\end{figure}
+
 \subsection{Distributed GPU Parameter Server}
 
 \section{FeatureBox Overview}
+In this section, we present the overview of FeatureBox. Our goal is to enable the training framework support pipelining processing with mini-batches so that we can eliminate the excessive intermediate result I/O in conventional stage-after-stage methods.
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.33\textwidth]{figs/pipeline}
+\caption{FeatureBox pipeline.}\label{fig:pipeline}
+\end{figure}
 
+Figure~\ref{fig:pipeline} depicts the detailed workflow of the FeatureBox pipeline. The workflow has two major lines: extract features from views and reading basic features. 
+A view is a collection of raw data logs from one source, e.g., ???. CTR prediction models collect features from multiple sources to obtain the best performance. The views are read from the network file system HDFS. We need to clean the views by removing null values and corrupted rows???. After that, the views are joined with particular keys such as user id, ads id, etc. We extract features from the joined views to obtain the features from views. These features are further merged with the basic features. We provide a detailed illustration for these operations as follows:
+
+\textbf{Read views and basic features.} 
+The views and basic features are streamed from the distributed file system. The features are organized in a column-wise manner so that we only need to read the required features. 
+
+\textbf{Clean views.} 
+Views contain null values and semi-structured data, e.g., JSON. In the stage of view cleaning, we fill the null values and extract required field from the semi-structured data. After the cleaning, all columns have non-empty and simple type (integer, float, and string) fields. Note that the views we have now contain all the logged instances. For an application, it may not need to include all instances, e.g., an application only targets on young people. A custom filter can be applied here to filter out unrelated instances of the current application.
+
+\textbf{Join views.} 
+Now the data from each view are in a structured format. We have one structured table for each view. Those data from different views are concatenated by joining their keys, e.g., user id, ad id, etc. The join step combines multiple views into a single structured table.
+
+\textbf{Extract features}. 
+ 
+
+\textbf{Merge features}. 
+The feature table from views are further merged with the basic features read from HDFS. The merging is also realized by a join on the instance id, where the instance id is a unique id generated when an instance is logged. 
+
+\section{Heterogeneous Feature Extraction}
+
+\section{GPU Memory Management}
+
+\section{Experimental Evaluation}
 
 \section{Related Work}
 
