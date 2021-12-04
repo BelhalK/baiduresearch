@@ -77,76 +77,43 @@ My work this week has mainly been towards
 We included the Adaptive Federated Optimization of \citep{reddi2020adaptive} to our several experiments.
 Done for single GPU and currently implementing the new baseline in the distributed settings.
 
-\section{ICLR22 Rebuttal (Lowest score questions)}
+
+
+\begin{figure}[H]
+\vspace{-0.15in}
+    \begin{center}
+        \mbox{
+\includegraphics[width=0.4\textwidth]{new_fmnist_mnist_fig/cifar_testerror_resnet18_ep1_client2_iid0_reddi.pdf}
+        \hspace{-0.1in}\includegraphics[width=0.4\textwidth]{new_fmnist_mnist_fig/tinyimagenet_testerror_resnet18_ep1_client2_iid0_reddi.pdf}\hspace{-0.1in}
+        % \includegraphics[width=0.4\textwidth]{new_figure/tinyimagenet_testerror_resnet18_ep1_client2_iid0.eps}
+        }
+    \end{center}
+    \vspace{-0.2in}
+	\caption{\textbf{non-i.i.d. data setting.} Test accuracy on CIFAR-10 + ResNet-18 and TinyImagenet + ResNet-18 with 50 clients.
+	}
+	\label{fig:noniidresnet18}\vspace{-0.1in}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Test Accuracy on ResNet-18 Network.}\label{tab:acc}
+	\resizebox{0.9\columnwidth}{!}{%
+\begin{tabular}{lllll}
+\toprule[1pt]
+ & Fed-SGD      & Fed-AMS    & Adp-Fed     & \textbf{\algo\ }       \\ \hline
+CIFAR-10 & 90.75 $\pm$ 0.48  & 90.93 $\pm$ 0.22 & 91.57 $\pm$ 0.38  & 92.44 $\pm$ 0.53 \\
+% TinyImageNet & 79.64 $\pm$ 0.21  & 75.94 $\pm$ 0.83  & 93.50 $\pm$ 0.26 \\
+TinyImageNet & 67.58 $\pm$ 0.21  & 64.86 $\pm$ 0.83 & 74.17 $\pm$ 0.43  & 76.00 $\pm$ 0.26 \\
+\toprule[1pt]
+\end{tabular}
+}\vspace{-0.2in}
+\end{table}
+
+
+
+\section{AISTATS and ALT Rebuttal}
 Please refer to the Overleaf projects for the rebuttal
 
-\section{Distributed and Private EBM}
-The distributed aspect of the algorithm is not an issue, either practically (since in practice we actually always train EBM on several GPUs).
-Yet, the compressed component introduces some issues.
-
-\textbf{Practical:} In practice, the compression obviously implies that natural images are no longer visually appealling. Hence for the training part it does not matter since we only use those negative samples to compute a gradient but for the testing phase, the evaluation of FID of Inception scores is falsified.
-
-\textbf{Theoretical:} In theory, we must assume ergodicity of the MCMC used in Algorithm~\ref{algebm}. An issue that is not easy to deal with is that with Jianwen we concluded that using CD-1 (Contrastive divergence with only one iteration, i.e. $K=1$ in Algorithm~\ref{algebm}) is the most interesting. Yet, assuming ergodicity and mixing of the chain with CD-1 is a bit farfetched.
-So either I do assume it, or I don't have recourse to CD-1.
-
-\begin{algorithm}[H]
-\label{algebm}
-\DontPrintSemicolon
-  
-  \KwInput{Total number of iterations $T$, number of MCMC transitions $K$ and of samples $M$, sequence of global learning rate $\{\eta_t\}_{t >0}$,  sequence of MCMC stepsizes ${\gamma_k}_{k >0}$, initial value $\theta_0$, MCMC initialization $\{ z_{0}^m \}_{m=1}^M$. Set of selected devices $\mathcal{D}^t$.}
-  \KwOutput{Vector of fitted parameters $\theta_{T+1}$.}
-  \KwData{ $\{ x^p_{i} \}_{i=1}^{n_p}$, $n_p$ number of observations on device $p$. $n = \sum_{p=1}^P n_p$ total.}
-\hrulefill
-
-\For{$t=1$ to $T$}
-{	
-	\tcc{Happening on distributed devices}
-	
-	\For{For device $p \in \mathcal{D}^t$} 
-	{
-		{Draw $M$ negative samples $\{ z_{K}^{p,m} \}_{m=1}^M$} \tcp*{local langevin diffusion}
-			\For{$k=1$ to $K$}
-			{
-			\beq\notag
-			z_{k}^{p,m} = z_{k-1}^{p,m} + \gamma_k/2\nabla_z f_{\theta_t}( z_{k-1}^{p,m})  ^{p,m}+ \sqrt{\gamma_k} \mathsf{B}_k^p \eqsp,
-			\eeq
-			where $\mathsf{B}_k^p$ denotes the Brownian motion (Gaussian noise).
-			}
-		{Assign $\{ z_{t}^{p,m} \}_{m=1}^M \leftarrow \{ z_{K}^{p,m} \}_{m=1}^M$.}
-		
-		{Sample $M$ positive observations $\{ x^p_{i} \}_{i=1}^M$ from the empirical data distribution.}
-		
-		{Compute the gradient of the empirical log-EBM} \tcp*{local - and + gradients}
-		{
-		$$\delta^p = \frac{1}{M} \sum_{i=1}^{M} \nabla_{\theta} f_{\theta_t}\left(x^p_{i}\right)- \frac{1}{M} 	\sum_{m=1}^{M} \nabla_{\theta} f_{\theta_t}\left(z_K^{p,m}\right)$$
-		}
-		{Use black box compression operators}
-		{
-		$$\Delta^p = \mathcal{C}(\delta^p )$$
-		}
-		{Devices broadcast $\Delta^p$ to Server} 
-	}
-	
-	  \tcc{Happening on the central server}
-	  
-	{Aggregation of devices gradients: $\nabla \log p(\theta_t) \approx  \frac{1}{|\mathcal{D}^t|} \sum_{p=1}^{|\mathcal{D}^t|} \Delta^p\eqsp.$}
-%	{
-%	\beq\notag
-%	\begin{split}
-%	\nabla \log p(\theta_t) \approx  \frac{1}{|\mathcal{D}^t|} \sum_{p=1}^{|\mathcal{D}^t|} \Delta^p\eqsp.
-%	\end{split}
-%	\eeq
-%	}
-
-	{Update the vector of global parameters of the EBM: $\theta_{t+1} = \theta_{t} + \eta_t \nabla \log p(\theta_t)$}
-%	{
-%	\beq\notag
-%	\theta_{t+1} = \theta_{t} + \eta_t \nabla \log p(\theta_t) \eqsp.
-%	\eeq
-%	}
-}
-\caption{Distributed and private EBM}
-\end{algorithm}
 
 
 
