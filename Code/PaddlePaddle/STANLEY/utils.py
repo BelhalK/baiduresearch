@@ -1,12 +1,12 @@
-# download Oxford Flowers 102, plotting functions, and toy dataset
+#   Copyright (c) 2021 Belhal Karimi, Baidu Research CCL. All Rights Reserve.
 
-import torch as t
-import torchvision as tv
+import paddle
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+from utils.visual import save_image
 
 ##########################
 # ## DOWNLOAD FLOWERS ## #
@@ -46,9 +46,9 @@ def download_flowers_data():
 ##################
 
 # visualize negative samples synthesized from energy
-def plot_ims(p, x): tv.utils.save_image(t.clamp(x, -1., 1.), p, normalize=True, nrow=int(x.shape[0] ** 0.5))
+def plot_ims(p, x): save_image(paddle.clip(x, -1, 1), p, normalize=True, nrow=int(x.shape[0] ** 0.5))
 
-def plot_single_ims(p, x): tv.utils.save_image(t.clamp(x, -1., 1.), p, normalize=True, nrow=1)
+def plot_single_ims(p, x): save_image(paddle.clip(x, -1, 1), p, normalize=True, nrow=1)
 
 
 # plot diagnostics for learning
@@ -79,9 +79,9 @@ def plot_diagnostics(batch, en_diffs, grad_mags, exp_dir, fontsize=10):
         t_gap = t_end - t_init
         max_lag = min(max_lag, t_gap - 1)
         # rescale energy diffs to unit mean square but leave uncentered
-        en_rescale = en_diffs[t_init:t_end] / t.sqrt(t.sum(en_diffs[t_init:t_end] * en_diffs[t_init:t_end])/(t_gap-1))
+        en_rescale = en_diffs[t_init:t_end] / paddle.sqrt(paddle.sum(en_diffs[t_init:t_end] * en_diffs[t_init:t_end])/(t_gap-1))
         # normalize gradient magnitudes
-        grad_rescale = (grad_mags[t_init:t_end]-t.mean(grad_mags[t_init:t_end]))/t.std(grad_mags[t_init:t_end])
+        grad_rescale = (grad_mags[t_init:t_end]-paddle.mean(grad_mags[t_init:t_end]))/paddle.std(grad_mags[t_init:t_end])
         # cross-correlation and auto-correlations
         cross_corr = np.correlate(en_rescale.cpu().numpy(), grad_rescale.cpu().numpy(), 'full') / (t_gap - 1)
         en_acorr = np.correlate(en_rescale.cpu().numpy(), en_rescale.cpu().numpy(), 'full') / (t_gap - 1)
@@ -206,12 +206,12 @@ class ToyDataset:
         # density of learned EBM
         if f is not None:
             num_plots += 1
-            xy_plot_torch = t.Tensor(self.xy_plot).view(-1, 1, 1, 1).to(next(f.parameters()).device)
+            xy_plot_torch = paddle.Tensor(self.xy_plot).view(-1, 1, 1, 1).to(next(f.parameters()).device)
             # y values for learned energy landscape of descriptor network
             z_learned_energy = np.zeros([self.viz_res, self.viz_res])
             for i in range(len(self.xy_plot)):
-                y_vals = float(self.xy_plot[i]) * t.ones_like(xy_plot_torch)
-                vals = t.cat((xy_plot_torch, y_vals), 1)
+                y_vals = float(self.xy_plot[i]) * paddle.ones_like(xy_plot_torch)
+                vals = paddle.concat((xy_plot_torch, y_vals), 1)
                 z_learned_energy[i] = f(vals).data.cpu().numpy()
             # rescale y values to correspond to the groundtruth temperature
             if epsilon > 0:

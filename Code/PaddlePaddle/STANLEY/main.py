@@ -1,18 +1,14 @@
-# python3 -u train_data_gen.py --th 0.0001 --eps 0.01 --mcmcmethod anilangevin
-# python3 -u train_data_gen.py --th 0.00015 --eps 0.01 --mcmcmethod anilangevin
+#   Copyright (c) 2021 Belhal Karimi, Baidu Research CCL. All Rights Reserve.
 
-import torch as t
-import torchvision.transforms as tr
-import torchvision.datasets as datasets
+import paddle
+import torch
 import json
 import os
 from nets import VanillaNet, NonlocalNet
 from utils import download_flowers_data, plot_ims, plot_diagnostics, plot_single_ims
-
 import argparse
 from logger import Logger
 import numpy as np
-import pdb
 
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
@@ -29,7 +25,6 @@ args = parser.parse_args()
 
 # json file with experiment config
 CONFIG_FILE = './config_locker/flowers_nonconvergent.json' #flowers data
-# CONFIG_FILE = './config_locker/mnist_convergent.json' #mnist data
 
 
 #######################
@@ -83,10 +78,9 @@ def save_code():
 save_code()
 
 # set seed for cpu and CUDA, get device
-t.manual_seed(config['seed'])
-if t.cuda.is_available():
-    t.cuda.manual_seed_all(config['seed'])
-device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(config['seed'])
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 ########################
@@ -98,7 +92,7 @@ print('Setting up network and optimizer...')
 net_bank = {'vanilla': VanillaNet, 'nonlocal': NonlocalNet}
 f = net_bank[config['net_type']](n_c=config['im_ch']).to(device)
 # set up optimizer
-optim_bank = {'adam': t.optim.Adam, 'sgd': t.optim.SGD}
+optim_bank = {'adam': paddle.optimizer.Adam, 'sgd': paddle.optimizer.SGD}
 if config['optimizer_type'] == 'sgd' and config['epsilon'] > 0:
     # scale learning rate according to langevin noise for invariant tuning
     config['lr_init'] *= (config['epsilon'] ** 2) / 2
@@ -109,18 +103,18 @@ print('Processing data...')
 # make tensor of training data
 if config['data'] == 'flowers':
     download_flowers_data()
-data = {'cifar10': lambda path, func: datasets.CIFAR10(root=path, transform=func, download=True),
-        'mnist': lambda path, func: datasets.MNIST(root=path, transform=func, download=True),
-        'flowers': lambda path, func: datasets.ImageFolder(root=path, transform=func)}
-transform = tr.Compose([tr.Resize(config['im_sz']),
-                        tr.CenterCrop(config['im_sz']),
-                        tr.ToTensor(),
-                        tr.Normalize(tuple(0.5*t.ones(config['im_ch'])), tuple(0.5*t.ones(config['im_ch'])))])
-q = t.stack([x[0] for x in data[config['data']]('./data/' + config['data'], transform)]).to(device)
+data = {'cifar10': lambda path, func: paddle.vision.datasets.Cifar10(root=path, transform=func, download=True),
+        'mnist': lambda path, func: paddle.vision.datasets.MNIST(root=path, transform=func, download=True),
+        'flowers': lambda path, func: paddle.vision.datasets.ImageFolder(root=path, transform=func)}
+transform = paddle.vision.transforms.Compose([paddle.vision.transforms.Resize(config['im_sz']),
+                        paddle.vision.transforms.CenterCrop(config['im_sz']),
+                        paddle.vision.transforms.ToTensor(),
+                        paddle.vision.transforms.Normalize(tuple(0.5*t.ones(config['im_ch'])), tuple(0.5*t.ones(config['im_ch'])))])
+q = np.stack([x[0] for x in data[config['data']]('./data/' + config['data'], transform)]).to(device)
 
 # initialize persistent images from noise (one persistent image for each data image)
 # s_t_0 is used when init_type == 'persistent' in sample_s_t()
-s_t_0 = 2 * t.rand_like(q) - 1
+s_t_0 = 2 * paddle.rand(q) - 1
 
 
 ################################
@@ -129,13 +123,13 @@ s_t_0 = 2 * t.rand_like(q) - 1
 
 # sample batch from given array of images
 def sample_image_set(image_set):
-    rand_inds = t.randperm(image_set.shape[0])[0:config['batch_size']]
+    rand_inds = paddle.randperm(image_set.shape[0])[0:config['batch_size']]
     return image_set[rand_inds], rand_inds
 
-# sample positive images from dataset distribution q (add noise to ensure min sd is at least langevin noise sd)
+# sample positive images from dataset distribution q 
 def sample_q():
     x_q = sample_image_set(q)[0]
-    return x_q + config['data_epsilon'] * t.randn_like(x_q)
+    return x_q + config['data_epsilon'] * paddle.rand(x_q)
 
 # initialize and update images with langevin dynamics to obtain samples from finite-step MCMC distribution s_t
 def sample_s_t(L, init_type, update_s_t_0=True):
@@ -146,10 +140,10 @@ def sample_s_t(L, init_type, update_s_t_0=True):
         elif init_type == 'data':
             return sample_q(), None
         elif init_type == 'uniform':
-            noise_image = 2 * t.rand([config['batch_size'], config['im_ch'], config['im_sz'], config['im_sz']]) - 1
+            noise_image = 2 * paddle.rand([config['batch_size'], config['im_ch'], config['im_sz'], config['im_sz']]) - 1
             return noise_image.to(device), None
         elif init_type == 'gaussian':
-            noise_image = t.randn([config['batch_size'], config['im_ch'], config['im_sz'], config['im_sz']])
+            noise_image = paddle.rand([config['batch_size'], config['im_ch'], config['im_sz'], config['im_sz']])
             return noise_image.to(device), None
         else:
             raise RuntimeError('Invalid method for "init_type" (use "persistent", "data", "uniform", or "gaussian")')
@@ -158,28 +152,28 @@ def sample_s_t(L, init_type, update_s_t_0=True):
     x_s_t_0, s_t_0_inds = sample_s_t_0()
 
     # iterative langevin updates of MCMC samples
-    x_s_t = t.autograd.Variable(x_s_t_0.clone(), requires_grad=True)
-    r_s_t = t.zeros(1).to(device)  # variable r_s_t (Section 3.2) to record average gradient magnitude
+    x_s_t = paddle.static.Variable(x_s_t_0.clone(), requires_grad=True)
+    r_s_t = paddle.zeros(1).to(device)  
     for ell in range(L):
         if mcmcmethod == "langevin":
             # regular langevin update constant LR
-            f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
-            x_s_t.data += - f_prime + eps * t.randn_like(x_s_t)
+            f_prime = paddle.grad(f(x_s_t).sum(), [x_s_t])[0]
+            x_s_t.data += - f_prime + eps * paddle.rand(x_s_t)
             r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
         elif mcmcmethod == "anilangevin":
             # Langevin with Anisotropic stepsize and noise covariance
-            f_prime = t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0]
-            normofgrad = t.norm(t.autograd.grad(f(x_s_t).sum(), [x_s_t])[0], dim=1)
+            f_prime = paddle.grad(f(x_s_t).sum(), [x_s_t])[0]
+            normofgrad = paddle.norm(paddle.grad(f(x_s_t).sum(), [x_s_t])[0], dim=1)
 
             th = anith #threshold value
-            thtensor = t.Tensor(np.repeat(th, normofgrad.numel())).reshape(normofgrad.shape) #threshold Tensor
+            thtensor = paddle.Tensor(np.repeat(th, normofgrad.numel())).reshape(normofgrad.shape) #threshold Tensor
             stepsize = thtensor.to(device)/t.max(thtensor.to(device), normofgrad)
 
             # pdb.set_trace()
             stepsize = stepsize.repeat(3,1,1,1).reshape(f_prime.shape)
             
-            x_s_t.data += -f_prime + t.mul(stepsize.to(device), eps*t.randn_like(x_s_t))
-            # x_s_t.data += - t.mul(stepsize.to(device), f_prime) + t.mul(stepsize.to(device), t.randn_like(x_s_t))
+            x_s_t.data += -f_prime + paddle.multiply(stepsize.to(device), eps*paddle.rand(x_s_t))
+            # x_s_t.data += - paddle.multiply(stepsize.to(device), f_prime) + paddle.multiply(stepsize.to(device), paddle.rand(x_s_t))
             r_s_t += f_prime.view(f_prime.shape[0], -1).norm(dim=1).mean()
 
        
@@ -195,9 +189,9 @@ def sample_s_t(L, init_type, update_s_t_0=True):
 # ## TRAINING LOOP ## #
 #######################
 
-# containers for diagnostic records (see Section 3)
-d_s_t_record = t.zeros(config['num_train_iters']).to(device)  # energy difference between positive and negative samples
-r_s_t_record = t.zeros(config['num_train_iters']).to(device)  # average image gradient magnitude along Langevin path
+# containers for diagnostic records
+d_s_t_record = paddle.zeros(config['num_train_iters']).to(device)  # energy difference between positive and negative samples
+r_s_t_record = paddle.zeros(config['num_train_iters']).to(device)  # average image gradient magnitude along Langevin path
 
 print('Training has started.')
 for i in range(config['num_train_iters']):
@@ -240,7 +234,7 @@ for i in range(config['num_train_iters']):
         if config['shortrun_init'] == 'persistent':
             plot_ims(EXP_DIR + 'shortrun/' + 'x_s_t_0_{:>06d}.png'.format(i+1), s_t_0[0:config['batch_size']])
         # save network weights
-        t.save(f.state_dict(), EXP_DIR + 'checkpoints/' + 'net_{:>06d}.pth'.format(i+1))
+        paddle.save(f.state_dict(), EXP_DIR + 'checkpoints/' + 'net_{:>06d}.pth'.format(i+1))
         # plot diagnostics for energy difference d_s_t and gradient magnitude r_t
         if (i + 1) > 1:
             plot_diagnostics(i, d_s_t_record, r_s_t_record, EXP_DIR + 'plots/')
