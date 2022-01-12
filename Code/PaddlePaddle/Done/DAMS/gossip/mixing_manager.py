@@ -13,7 +13,7 @@ Mixing Manager Class
 """
 
 
-import torch
+import paddle
 
 
 class MixingManager(object):
@@ -45,7 +45,7 @@ class UniformMixing(MixingManager):
         mixing_weights = {}
         out_peers, _ = self.graph_manager.get_peers()
 
-        w = torch.tensor([1. / (len(out_peers) + 1.)], device=self.device)
+        w = paddle.Tensor([1. / (len(out_peers) + 1.)], device=self.device)
         mixing_weights['lo'] = w.clone()
         w_op = w if not residual_adjusted else w / mixing_weights['lo']
         mixing_weights['uniform'] = w_op.clone()

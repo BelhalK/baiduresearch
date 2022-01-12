@@ -26,6 +26,9 @@ from torch.nn.parallel.replicate import replicate
 from torch.nn.parallel.scatter_gather import scatter_kwargs, gather
 from torch.nn.parallel.parallel_apply import parallel_apply
 
+from paddle.distributed import fleet
+
+
 from .gossiper import PushSum, PushPull
 from .graph_manager import NPeerDynamicDirectedExponentialGraph as NPDDEGraph
 from .mixing_manager import UniformMixing

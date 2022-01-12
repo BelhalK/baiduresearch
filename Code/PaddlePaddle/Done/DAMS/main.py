@@ -4,17 +4,18 @@ import os
 import socket
 import time
 
-import torch.distributed as dist
-import torch.multiprocessing as mp
-import torch.utils.data.distributed
+import paddle
+
+from paddle.distributed import init_parallel_env, barrier
+from paddle.distributed import fleet
+import multiprocessing as mp
 
 import paddle.vision.datasets as datasets
 import paddle.vision.models as models
-import torchvision.transforms as transforms
+import paddle.vision.transforms as transforms
+from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
 
-from torchvision.models.resnet import Bottleneck
 
-import paddle
 
 from experiment_utils import make_logger
 from experiment_utils import Meter
@@ -871,18 +872,14 @@ def parse_args():
     # initialize torch distributed backend
     os.environ["MASTER_ADDR"] = args.master_addr
     os.environ["MASTER_PORT"] = args.master_port
-    dist.init_process_group(
+    init_parallel_env(
         backend=args.backend, world_size=args.world_size, rank=args.rank
     )
 
     args.graph, args.mixing = None, None
     graph_class = GRAPH_TOPOLOGIES[args.graph_type]
     if graph_class:
-        # dist.barrier is done here to ensure the NCCL communicator is created
-        # here. This prevents an error which may be caused if the NCCL
-        # communicator is created at a time gap of more than 5 minutes in
-        # different processes
-        dist.barrier()
+        barrier()
         args.graph = graph_class(
             args.rank, args.world_size, peers_per_itr=args.ppi_schedule[0]
         )
@@ -903,7 +900,7 @@ def init_model():
     """
     model = models.resnet50()
     for m in model.modules():
-        if isinstance(m, Bottleneck):
+        if isinstance(m, BottleneckBlock):
             num_features = m.bn3.num_features
             m.bn3.weight = paddle.nn.ParameterList(paddle.zeros(num_features))
     model.fc.weight.data.normal_(0, 0.01)

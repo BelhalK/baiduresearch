@@ -12,12 +12,14 @@ Gossipers
               and recv from multiple peers at each ieration)
 """
 
-import torch
+import paddle
 import torch.distributed as dist
+from paddle.distributed import fleet
 
 from .graph_manager import GraphManager
 from .mixing_manager import MixingManager
 from .mixing_manager import UniformMixing
+
 
 
 class dist_backend:
@@ -49,15 +51,16 @@ class Gossiper(object):
             # for now p2p communication only supported withed tcp and mpi
             assert dist._backend != dist_backend.GLOO
             assert dist._backend != dist_backend.NCCL
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
+            hcg = fleet.get_hybrid_communicate_group()
+            rank = hcg.get_rank()
+            world_size = hcg.get_model_parallel_world_size()
 
         # graph topology properties
         self.rank = rank
         self.world_size = world_size
         assert isinstance(graph, GraphManager)
         self._graph_manager = graph
-        self.peers_per_itr_device = torch.tensor(
+        self.peers_per_itr_device = paddle.Tensor(
             [self._graph_manager.peers_per_itr], device=device,
             dtype=msg.dtype)
         self.passive = self._graph_manager.is_passive()
@@ -77,11 +80,11 @@ class Gossiper(object):
         self.device = device if device is not None else msg.device
         self.out_msg_buffer = []
         self.in_msg_buffer = msg.clone().detach_().to(self.device)
-        self._ps_weight = torch.ones(1).detach_().to(self.device).type(
+        self._ps_weight = paddle.ones(1).detach_().to(self.device).type(
             msg.dtype)
         # not using regular comms ==> need to communicate ps-weight
         if not self.regular:
-            self.in_msg_buffer = torch.cat([self.in_msg_buffer,
+            self.in_msg_buffer = paddle.concat([self.in_msg_buffer,
                                             self.ps_weight])
         if self.device.type == 'cpu':
             try:
@@ -129,7 +132,7 @@ class Gossiper(object):
 
         # check whether or not we need to communicate ps_weight
         if not self.regular:
-            out_msg = torch.cat([out_msg, self.ps_weight.type(out_msg.dtype)])
+            out_msg = paddle.concat([out_msg, self.ps_weight.type(out_msg.dtype)])
 
         # first return 'loopback msg to self'
         if not residual:
@@ -166,7 +169,7 @@ class Gossiper(object):
             if residual:
                 return msg, self.ps_weight * self.peers_per_itr_device
             else:
-                return msg, torch.ones(1, device=self.device).type(msg.dtype)
+                return msg, paddle.ones(1, device=self.device).type(msg.dtype)
 
     def mix(self):
         """ Single gossip step """
