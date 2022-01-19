@@ -5,7 +5,6 @@ import shutil
 import time
 import warnings
 import sys
-
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -19,21 +18,19 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 import Imagefolder_train_val
-import sys
-import tensorboardX
+
+
 from resnet import *
 from logger import Logger, savefig
 from termcolor import colored
 
-# from opt.QAdam import QAdam
-# from opt.compams import CompAMS
 from opt.fedlamb import FedLAMB
 from opt.Signum_SGD import SGD_distribute
+
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
-
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 
@@ -41,7 +38,7 @@ parser.add_argument('data', metavar='DIR', help='path to dataset')
 # data can be ~/data/ILSVRC/Data/CLS-LOC or ~/data/tiny-imagenet-200/
 
 parser.add_argument("--optimizer",type=str,default="signum",help="optimizer to use (sgd, damsgrad)",
-    choices=["fedlamb", "fedams", "fedsgd", "fedlars"])   
+    choices=["fedlamb", "fedams", "fedsgd", "fedlars", "reddi"])   
 parser.add_argument("--dataset",type=str,default="mnist",help="dataset to use",
     choices=["mnist", "imagenet", "tinyimagenet", "cifar"])   
 parser.add_argument('--test_evaluate', action='store_true', help='Initiate test evaluation')
@@ -300,8 +297,9 @@ def main_worker(gpu, ngpus_per_node, args):
     elif args.dataset == "imagenet":
         model = models.resnet50()
     elif args.dataset == "tinyimagenet":
+        model = models.resnet18()
         # model = models.resnet50()
-        model = ResNet18()
+        # model = ResNet18()
     elif args.dataset == "cifar":
         # model = models.resnet18()
         model = ResNet18()
@@ -355,6 +353,8 @@ def main_worker(gpu, ngpus_per_node, args):
         optimizer = SGD_distribute(model.parameters(), args, log_writer)
     elif args.optimizer == "fedsgd":
         args.larc_enable = False
+        optimizer = SGD_distribute(model.parameters(), args, log_writer)
+    elif args.optimizer == "reddi":
         optimizer = SGD_distribute(model.parameters(), args, log_writer)
 
     print(colored("Create Logger file"), 'green')

@@ -66,16 +66,12 @@ class FedLAMB(Optimizer):
 
         self.MB = 1024 * 1024
         self.bucket_size = 100 * self.MB
-
-
         self.compressor = compressor(using_cuda = True, local_rank = local_rank)
         self.local_rank = local_rank
         self.global_rank = dist.get_rank()
         self.local_dst_in_global = self.global_rank - self.local_rank
-
         self.inter_node_group = []
         self.nodes = dist.get_world_size() // gpus_per_machine
-
         self.intra_node_group_list = []
 
         for index in range(self.nodes):
