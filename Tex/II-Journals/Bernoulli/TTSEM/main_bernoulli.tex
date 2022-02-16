@@ -218,10 +218,10 @@ For each method, we define a random index noted $i_k \in \inter$ and drawn at it
   \end{algorithmic}
 \end{protocol}
 
-Note that the proposed \FISAEM\ update, Line~\ref{line:fisaem} in Table~\ref{alg:prox}, draws {two} {independent} and {uniform} indices $(i_k, j_k) \in \inter$. 
+Note that the proposed \FISAEM\ (Fast Incremental SAEM) update, Line~\ref{line:fisaem} in Table~\ref{alg:prox}, draws {two} {independent} and {uniform} indices $(i_k, j_k) \in \inter$. 
 Thus, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$ in addition to $\tau_i^k$ which was defined w.r.t. $i_k$.
 We recall that $\tilde{S}_{i_k}^{(k)} \eqdef  \frac{1}{M_k} \sum_{m=1}^{M_k} S(z_{i_k,m}^{(k)}, y_{i_k})$ where $z_{i_k,m}^{(k)}$ are samples drawn from $ p(z_{i_k}|y_{i_k};\param^{(k)})$.
-The stepsize in~\eqref{eq:sestep} is set to $\rho_{k+1} = 1$ for the \ISAEM\ method initializing with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \rho$ is  constant for the \SAEMVR\ and \FISAEM. 
+The stepsize in~\eqref{eq:sestep} is set to $\rho_{k+1} = 1$ for the \ISAEM\ (Incremental SAEM) method initializing with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \rho$ is  constant for the \SAEMVR\ (Variance Reduced SAEM) and \FISAEM. 
 Note that we initialize with $\overline{\StocEstep}^{(0)} = \tilde{S}^{(0)}$ for the \FISAEM\ which can be seen as a slightly modified version of SAGA inspired by~\citet{reddi2016fast}.
 For \SAEMVR\, we set an epoch size of $m$ and we define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in.
 Then, our general class of methods, see Algorithm~\ref{alg:ttsem}, leverages both levels~\eqref{eq:rmstep} and~\eqref{eq:sestep} in order to output a vector of fitted parameters $\hat{\param}^{({ K}_{ f })}$ where ${ K}_{ f }$ is the total number of iterations.
@@ -342,7 +342,6 @@ Let $\{\gamma_{k} = 1/(k^a \alpha c_1 \overline{L})\}_{k>0}$, where $a \in (0,1)
 \end{theoremcoloured} 
 Observe that, in Theorem~\ref{thm:isaem}, the convergence bound is composed of an initialization term $V( \hs{0} ) - V( \hs{{ K}_{ f }} )$ and suffers from the Monte Carlo noise introduced by the posterior sampling step, see the second term on the RHS of the inequality. 
 We observe, in the next section, that when variance reduction is applied ($\rho_k < 1$), a second phase of convergence manifests.
-
 We now deal with the analysis of Algorithm~\ref{alg:ttsem} when variance reduction is applied \ie\ $\rho <1$.
 Let $K$ be an independent discrete r.v.~drawn from $\{1,\dots,{ K}_{ f }\}$ with distribution  $\{ \gamma_{k+1}/ { P}_{ m}\}_{k=0}^{{ K}_{ f } - 1 }$, then, for any ${ K}_{ f } >0 $, the convergence criterion used in our study reads
 \beq\notag
@@ -461,14 +460,13 @@ For any $k \geq 0$ and consider the \ISAEM\ update in~\eqref{eq:isaem}, it holds
 \end{split}
 \eeq}
 \end{lemmacoloured}
-
 \begin{proof}
 Applying the \ISAEM\ update yields:
 \beq\notag
 \begin{split}
  \EE[ \|  \stt^{(k+1)} - \hs{k} \|^2 ]  =&  \EE[ \| \stt^{(k)} - \hs{k}  -\frac{1}{n}(\tilde{S}^{(\tau_i^k)}_{i_k} - \tilde{S}^{(k)}_{i_k}  )  \|^2 ]\\
- \leq  & 4 \EE[\|\frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}\|^2] + 4 \EE[\|   \overline{\bss}^{(k)} - \hs{k} \|^2] \\
- &+  \frac{2}{n^2} \EE[ \| \os_{i_k}^{(k)} - \os_{i_k}^{(t_{i_k}^k)} \|^2] + 2\frac{c_{\eta}}{M_k} \eqsp.
+ \leq  & 4 \EE[\|\frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}\|^2 + 4 \|   \overline{\bss}^{(k)} - \hs{k} \|^2
+ +  \frac{2}{n^2}  \| \os_{i_k}^{(k)} - \os_{i_k}^{(t_{i_k}^k)} \|^2] + 2\frac{c_{\eta}}{M_k} \eqsp.
 \end{split}
 \eeq
 The last expectation can be further bounded by
@@ -660,7 +658,7 @@ We begin with the statement and proofs of two required Lemmas.
 First, an equivalent update of Line~\eqref{eq:fisaem} is given below for the purpose of the proof.
 
 \begin{lemmacoloured} \label{lem:drift_fisaem}
- At iteration $k+1$,the drift term of update~\eqref{eq:fisaem}, with $\rho_{k+1} = \rho$, is equivalent to the following :
+ At iteration $k+1$, the drift term of update~\eqref{eq:fisaem}, with $\rho_{k+1} = \rho$, is equivalent to:
 \beq\notag
 \begin{split}
  \hs{k} -  \stt^{(k+1)}= & \rho (\hs{k} - \overline{\bss}^{(k)})  + \rho \eta_{i_k}^{(k+1)}+ \rho [(\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}) - \EE[\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}] ] \\
@@ -673,13 +671,12 @@ where we recall that $\eta_{i_k}^{(k+1)}$, defined in~\eqref{eq:mcerror}, which 
 Using the \FISAEM\ update $ \stt^{(k+1)} = (1 - \rho)\stt^{(k)} + \rho \StocEstep^{(k+1)}$ where $\StocEstep^{(k+1)} = \overline{\StocEstep}^{(k)} + ( \tilde{S}_{i_k}^{(k)}  - \tilde{S}_{i_k}^{(t_{i_k}^k)} )$ leads to the following decomposition:
 \beq\notag
 \begin{split}
- \stt^{(k+1)} - \hs{k}  = & \rho (\overline{\bss}^{(k)}-\hs{k}) + \rho \eta_{i_k}^{(k+1)} - \rho [(\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}) \\
- &- \EE[\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}] ]  + (1-\rho)\left(\stt^{(k)} - \hs{k}\right) \eqsp,
+ \stt^{(k+1)} - \hs{k}  = \rho (\overline{\bss}^{(k)}-\hs{k}) + \rho \eta_{i_k}^{(k+1)} - \rho [(\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}) - \EE[\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}] ]  + (1-\rho)\left(\stt^{(k)} - \hs{k}\right) \eqsp,
 \end{split}
 \eeq
 where we observe that $\EE[\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}] =\overline{\bss}^{(k)} -   \overline{\StocEstep}^{(k)} $ and which concludes the proof.
 
-{Important Note:} Note that $\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}$ is not equal to $\eta_{i_k}^{(k+1)}$, defined in~\eqref{eq:mcerror}, which is the gap between the MC approximation and the expected statistics. Indeed $\tilde{S}_{i_k}^{(t_{i_k}^k)}$ is not computed under the same model as $\overline{\bss}_{i_k}^{(k)}$.
+\textit{Important Note:} Note that $\overline{\bss}_{i_k}^{(k)} - \tilde{S}_{i_k}^{(t_{i_k}^k)}$ is not equal to $\eta_{i_k}^{(k+1)}$, defined in~\eqref{eq:mcerror}, which is the gap between the MC approximation and the expected statistics. Indeed $\tilde{S}_{i_k}^{(t_{i_k}^k)}$ is not computed under the same model as $\overline{\bss}_{i_k}^{(k)}$.
 \end{proof}
 Then, we derive an identity for the quantity $\EE[ \| \hs{k} - \stt^{(k+1)}   \|^2 ]$:
 \begin{lemmacoloured}\label{lem:aux1}
@@ -848,20 +845,15 @@ It can be shown that the regularized { M-step} evaluates to
 \eeq
 where we have defined for all $m \in [M]$ and $j \in \{1, 2, 3\}$ , $ {s}_m^{(j)}  = n^{-1} \sum\nolimits_{i=1}^n s_{i,m}^{(j)}$.
 
-\vspace{0.85in}
-
 \noindent \textbf{Synthetic data experiment:}
 In the following experiments on synthetic data, we generate $50$ synthetic datasets of size $n = 10^5$ from a GMM model with $M=2$ components of means $\mu_1 = - \mu_2 = 0.5$.
 \begin{figure}[t]
 \begin{center}
 \includegraphics[width=4in]{fig2/figgmm.eps}
 \end{center}
-
-
 \caption{Precision $|\mu^{(k)} - \mu^*|^2$ for our methods (\FISAEM\ in green,\SAEMVR\ in black and \ISAEM\ in red) versus deterministic baselines (EM in dashed blue line, iEM in solid blue line) or stochastic baseline (SAEM in solid red line) against epochs elapsed. Our two variance reduced methods, \ie \FISAEM\ and \SAEMVR\ are reaching the highest accuracy.}
 \label{fig:gmm_tts}%\vspace{0.3in}
 \end{figure}
-
 We run the EM method until convergence (to double precision) to obtain the ML estimate $\mu^\star$ averaged on $50$ datasets. 
 We compare the EM, iEM (incremental EM), SAEM, \ISAEM, \SAEMVR\ and \FISAEM\ methods in terms of their precision measured by $| \mu - \mu^\star |^2$. 
 We set the stepsize of the {SA-step} for all method as $\gamma_k = 1/k^{\alpha}$ with $\alpha = 0.5$, and the stepsize $\rho_k$ for the \SAEMVR\ and the \FISAEM\ to a constant stepsize equal to $1/n^{2/3}$. 
@@ -973,26 +965,19 @@ We apply model~\eqref{eq:deformablemodel} and Algorithm~\ref{alg:ttsem} to the U
 The main challenge with this dataset stems from the geometric dispersion within each class of digit as shown Figure~\ref{fig:variancedigit} for digit $5$.
 Hence, we ought to use our deformable template model~\eqref{eq:deformablemodel} in order to account for both sources of variability, \ie the intrinsic template of each class of digit and the small and local deformations in each observed image.
 
-\vspace{0.2in}
+% \vspace{0.2in}
 \begin{figure}[H]
 \includegraphics[width=\textwidth]{fig/variancedigit.png}
 \caption{Training set of the USPS database (20 images for digit $5$). The variability within a class in the dataset we consider for this experiment is exhibited here. We can observe that all the images present particular features both in terms of sharpness and shape.}
 \label{fig:variancedigit}
-\end{figure}
-
-
+\end{figure}\vspace{-0.1in}
 
 Figure~\ref{fig:results} shows the resulting synthetic images for digit $5$ through several epochs, for the batch method, the online SAEM, the incremental SAEM and the various two-timescale methods.
-
-
-
 \begin{figure}[t]
 \includegraphics[width=\textwidth]{fig/deformable3}
 \caption{(USPS Digits) Estimation of the template. From top to bottom: batch, online, \ISAEM,\ \SAEMVR\ and \FISAEM\ through 7 epochs. Batch method templates are replicated in-between epochs for a fair comparison with incremental variants. }
 \label{fig:results}
 \end{figure}
-
-
 For all methods, the initialization of the template~\eqref{eq:template} is the mean of the gray level images.
 In our experiments, we have chosen Gaussian kernels for both, $\mathbf{K}_{\mathbf{p}}$ and $\mathbf{K}_{\mathbf{g}}$, defined on $\rset^2$ and centered on the landmark points$\{p_k\}_{k=1}^{k_p}$ and $\{g_k\}_{k=1}^{k_g}$ with standard respective standard deviations of $0.12$ and $0.3$. 
 We set $k_p = 15$  and  $k_g = 6$ equidistributed landmarks points on the grid for the training procedure. 
@@ -1025,8 +1010,7 @@ Let $ z_i=(T_i^{\textrm{lag}}, ka_i, V_i, k_i)$ be the vector of individual PK p
 The final model reads:
 \begin{equation} \label{eq:pkmodel}
 \begin{split}
-& y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij} \quad  \textrm{where} \\
- & f(t_{ij},z_i) = \frac{D\,ka_i}{V(ka_i - k_i)}(\exponential^{-ka_i\,(t_{ij} - T_i^{\textrm{lag}})}-\exponential^{-k_i\,(t_{ij} - T_i^{\textrm{lag}})})\eqs,
+ y_{ij} = f(t_{ij},z_i)+ \varepsilon_{ij} \quad  \textrm{where} \quad f(t_{ij},z_i) = \frac{D\,ka_i}{V(ka_i - k_i)}(\exponential^{-ka_i\,(t_{ij} - T_i^{\textrm{lag}})}-\exponential^{-k_i\,(t_{ij} - T_i^{\textrm{lag}})})\eqs,
 \end{split}
 \end{equation}
 where $y_{ij}$ is the $j$-th concentration measurement of the drug of dosage $D$ injected at time $t_{ij}$ for patient $i$.
