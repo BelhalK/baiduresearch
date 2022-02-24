@@ -1,17 +1,10 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This is the template for submission to MICRO 2021
-% The cls file is modified from 'sig-alternate.cls'
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[sigconf]{acmart}
 
-\documentclass[conference]{IEEEtran}
-
+\usepackage{multirow}
 
 \usepackage{algorithm}
 %\usepackage{algorithm2e} %NOT USE IN IEEE Trans
 \usepackage{algorithmic}
-\usepackage{amsfonts}
-\usepackage{amsmath}
-\usepackage{amssymb}
 %\usepackage{amsthm}
 \usepackage{array}
 \usepackage{booktabs}
@@ -30,7 +23,7 @@
 \usepackage{url}
 \usepackage{balance}
 % Always include hyperref last
-\usepackage[bookmarks=true,breaklinks=true,colorlinks,linkcolor=black,citecolor=blue,urlcolor=black]{hyperref}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -39,49 +32,51 @@
 \usepackage{xcolor}
 
 
-\begin{document}
 
 %%%%%%%%%%%---SETME-----%%%%%%%%%%%%%
-\title{FeatureBox: Feature Engineering on GPUs\\ for Massive-Scale Ads Systems} 
+\title[FeatureBox: Feature Engineering on GPUs for Massive-Scale Ads Systems]{FeatureBox: Feature Engineering on GPUs\\ for Massive-Scale Ads Systems} 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\author{\IEEEauthorblockN{Weijie Zhao$^1$, Xuewu Jiao$^2$, Xinsheng Luo$^2$, Jingxue Li$^2$, Belhal Karimi$^1$, Ping Li$^1$}
-\IEEEauthorblockA{%Baidu Inc.\\
-$^1$Cognitive Computing Lab, Baidu Research \\
+\author{Weijie Zhao$^1$, Xuewu Jiao$^2$, Xinsheng Luo$^2$, Jingxue Li$^2$, Belhal Karimi$^1$, Ping Li$^1$}
+\affiliation{$^1$Cognitive Computing Lab, Baidu Research \\
 $^2$Baidu Search Ads (Phoenix Nest), Baidu Inc.\\
 10900 NE 8th St. Bellevue, Washington 98004, USA \\
 No. 10 Xibeiwang East Road, Beijing 10193, China\\
 \{weijiezhao, jiaoxuewu, luoxinsheng, lijingxue01, belhalkarimi, liping11\}@baidu.com}
-}
+\email{}
+\copyrightyear{2022}
+\acmYear{2022}
+\acmConference[KDD '22] {Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}{August 14--18}{Washington, DC}
+\acmBooktitle{Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD '22), August 14--18, Washington, DC}
 
-\maketitle
+
  
+\begin{document}
 
 %%%%%% -- PAPER CONTENT STARTS-- %%%%%%%%
 
 \begin{abstract}
-Deep learning has been widely deployed for online ads systems to predict Click-Through Rate (CTR). Machine learning researchers and practitioners frequently retrain CTR models to test their new extracted features. However, the CTR model training often relies on a large number of raw input data logs. Hence, the feature extraction can take a significant proportion of the training time for an industrial-level CTR model. In this paper, we propose FeatureBox, a novel end-to-end training framework that pipelines the feature extraction and the training on GPU servers to save the intermediate I/O of the feature extraction. We rewrite computation-intensive feature extraction operators as GPU operators and leave the memory-intensive operator on CPUs. We introduce a layer-wise operator scheduling algorithm to schedule these heterogeneous operators. We present a light-weight GPU memory management algorithm that supports dynamic GPU memory allocation with minimal overhead. We experimentally evaluate FeatureBox and compare it with the previous in-production feature extraction framework on two real-world ads applications. The results confirm the effectiveness of our proposed methods.
+Deep learning has been widely deployed for online ads systems to predict Click-Through Rate (CTR). Machine learning researchers and practitioners frequently retrain CTR models to test their new extracted features. However, the CTR model training often relies on a large number of raw input data logs. Hence, the feature extraction can take a significant proportion of the training time for an industrial-level CTR model. 
+
+In this paper, we propose FeatureBox, a novel end-to-end training framework that pipelines the feature extraction and the training on GPU servers to save the intermediate I/O of the feature extraction. We rewrite computation-intensive feature extraction operators as GPU operators and leave the memory-intensive operator on CPUs. We introduce a layer-wise operator scheduling algorithm to schedule these heterogeneous operators. We present a light-weight GPU memory management algorithm that supports dynamic GPU memory allocation with minimal overhead. We experimentally evaluate FeatureBox and compare it with the previous in-production feature extraction framework on two real-world ads applications. The results confirm the effectiveness of our proposed method.\\
 \end{abstract}
 
-\vspace{0.05in}
-
-\begin{IEEEkeywords}
-CTR Prediction; GPU; Large-Scale Machine Learning Framework
-\end{IEEEkeywords}
-
+\keywords{CTR prediction, large-scale machine learning, feature extraction.}
+%\vspace{0.05in}
+\maketitle
 
 
 \section{Introduction}\label{sec:intro}
 
-Deep learning has been widely employed in many real-world applications, e.g., computer vision~\cite{Proc:GAN_NIPS14,Proc:Resnet_CVPR16,CV_review18}, data mining~\cite{nguyen2019machine}, and recommendation systems~\cite{Proc:Covington_2016,Article:Wei_2017,cheng2016wide,zhang2019deep}.  In recent years, sponsored online advertising also adopts deep learning techniques to predict the Click-Through Rate (CTR) and improve recommender systems. Unlike common machine learning applications, the accuracy of the CTR prediction is critical to the revenue. 
-In the context of a multi-billion-dollar online ads industry, even a $0.1\%$ accuracy increase will result in a noticeable revenue gain. 
+Deep learning has been widely employed in many real-world applications, e.g., computer vision~\cite{Proc:GAN_NIPS14,Proc:Resnet_CVPR16,CV_review18,DBLP:conf/iclr/DosovitskiyB0WZ21}, data mining~\cite{nguyen2019machine,DBLP:conf/kdd/KangCQ020,DBLP:conf/icde/LiLYWLWLZ21,DBLP:conf/kdd/MerhejBMR21,DBLP:conf/kdd/ZerveasJPBE21}, and recommendation systems~\cite{Proc:Covington_2016,Article:Wei_2017,cheng2016wide,zhang2019deep,DBLP:conf/kdd/MaNLD20}.  In recent years, sponsored online advertising also adopts deep learning techniques to predict the Click-Through Rate (CTR)~\cite{DBLP:conf/sigir/LiuXGTZHL20,DBLP:conf/acl/QiWWH20,DBLP:conf/cikm/ZhuLLLHCZ20,DBLP:conf/cikm/ShengZZDDLYLZDZ21,DBLP:conf/sigir/ZhaoLZQHZL21,DBLP:conf/wsdm/ZhangQCLLZMC21}. Unlike common machine learning applications, the accuracy of the CTR prediction is critical to the revenue. 
+In the context of a many-billion-dollar online ads industry, even a $0.1\%$ accuracy increase will result in a noticeable revenue gain. 
 We identify two major paths to improve the model accuracy. The first area is to propose different and enhanced model architectures. Every improvement in this direction is considered a fundamental milestone in the deep learning community---and does not happen often in the CTR prediction industry.
 The other (more practical) is feature engineering, i.e. to propose and extract new features from the raw training data. The benefit of feature engineering is usually neglected in common deep learning applications because of the general belief that deep neural networks inherently extract the features through their hidden layers. However, recall that CTR prediction applications are accuracy-critical, hence, the gain from an improved feature engineering strategy remains attractive for in-production CTR prediction models. 
-Therefore, in order to achieve a better prediction performance, CTR deep learning models in real-world ads applications tend to utilize larger models and more features extracted from the raw data logs. 
+Therefore, in order to achieve a better prediction performance, CTR deep learning models in real-world ads applications tend to utilize larger models and more features extracted from raw data logs. 
 
 Testing on the historical and online data is the rule-of-the-thumb way to determine whether a new feature is beneficial. Every new feature with positive accuracy improvement (e.g. $0.1\%$) is included into the CTR model. Machine learning researchers and practitioners keep this feature engineering trial-and-error on top of the current in-production CTR model. As a result, the in-production CTR model becomes larger and larger with more and more features. To support the trial-and-error research for new features, it requires us to efficiently train massive-scale models with massive-scale raw training data in a timely manner. Previous studies~\cite{Proc:Zhao_MLSys20} propose hierarchical GPU parameter server that trains the out-of-memory model with GPU servers to accelerate the training with GPUs and SSDs. With a small number of GPU servers, e.g., 4, can obtain the same training efficiency as a CPU-only cluster with hundreds of nodes. The training framework focuses on the training stage and assumes the training data are well-prepared---the training data are accessed from a distributed file system.
 
-However, preparing the training data is not trivial for industrial level CTR prediction models---with $\sim$$10^{11}$ features. The feature extraction from raw data logs can take a significant proportion of the training time. In addition to the frequent retraining for new feature engineering trials, online ads systems have to digest a colossal amount of newly incoming data to keep the model up-to-date with the optimal performance. For the rapid training demands, optimizing the feature extraction stage becomes one of the most desirable goals of online ads systems.
+However, preparing the training data is not trivial for industrial level CTR prediction models---with $\sim$ $10^{11}$ features. The feature extraction from raw data logs can take a significant proportion of the training time. In addition to the frequent retraining for new feature engineering trials, online ads systems have to digest a colossal amount of newly incoming data to keep the model up-to-date with the optimal performance. For the rapid training demands, optimizing the feature extraction stage becomes one of the most desirable goals of online ads systems.
 This latter point is the scope of our contribution.
 
 %the cost of feature extraction is usually neglected in the deep learning community: researchers and practitioners assumes that the training data are cleaned and stored in the disk/memory without further changes. However, online ads systems have to digest newly incoming data to keep the model up-to-date periodically (e.g., daily). 
@@ -92,14 +87,14 @@ This latter point is the scope of our contribution.
 \begin{figure}[htbp]
 %\hspace*{-.6cm}
 \includegraphics[width=.5\textwidth]{figs/feabox.pdf}
-\vspace{-0.15in}
+%\vspace{-0.15in}
 
-\caption{A visual illustration for the original feature extraction and training workflow (upper); and our proposed FeatureBox (lower).}\label{fig:feabox}\vspace{-0.05in}
+\caption{A visual illustration for the original feature extraction and training workflow (upper); and our proposed FeatureBox (lower).}\label{fig:feabox}%\vspace{-0.05in}
 \end{figure}
 
 \textbf{Training workflow.} 
 The upper part of Figure~\ref{fig:feabox} depicts a visual illustration of the feature extraction. Due to the large amount of raw data, the original feature extraction task is constructed as MapReduce~\cite{dean2008mapreduce} jobs that compute feature combinations, extract keywords with language models, etc. 
-Those MapReduce jobs frequently read and write intermediate files with the distributed file system (i.e., HDFS). The intermediate I/O can be as large as 200 TB. Once the features are extracted, we also need to materialize them to the $\sim$$15$ TB extracted features to the HDFS so that the following distributed training framework can read them from the distributed file system. 
+Those MapReduce jobs frequently read and write intermediate files with the distributed file system (i.e., HDFS~\cite{borthakur2008hdfs}). The intermediate I/O can be as large as 200 TB. Once the features are extracted, we also need to materialize them to the $\sim$$15$ TB extracted features to the HDFS so that the following distributed training framework can read them from the distributed file system. 
 This training workflow incurs rapid communication with HDFS that generates heavy I/O overhead. 
 
 One straightforward question can be raised: \textit{Can we perform the feature extraction within GPU servers to eliminate the communication overhead?} 
@@ -111,10 +106,9 @@ Note that the number of GPU nodes is much fewer compared with the CPU-only clust
 \begin{enumerate}
 \item {\it Network I/O bandwidth}. The network I/O bandwidth of GPU servers is by orders of magnitude smaller than the bandwidth of CPU clusters because we have fewer nodes---the total number of network adapters is lower. We materialize frequently-used features as basic features so that we can reuse them without extra I/O and computations. In addition, we use column-store that reads only the required columns in the logs to reduce I/O.
 \item {\it Computing Resources}. With a smaller number of nodes, the CPU computing capability on GPU servers is also orders of magnitudes less powerful than the CPU cluster. We have to move the CPU computations to GPU operations to bridge the computing power gap.
-\item {\it Memory Usage}. The feature extraction process contains many memory-intensive operations, such as dictionary table lookup, sort, reduce, etc. It is desired to have an efficient memory management system to perform these memory-intensive operations on GPU servers with limited memory.
+\item {\it Memory Usage}. The feature extraction process contains many memory-intensive operations, such as dictionary table lookup, sort, reduce, etc. It is desired to have an efficient memory management system to efficiently perform dynamic memory allocations on GPU servers with limited memory.
 \end{enumerate}
 
-\newpage
 
 %\textbf{Contributions:} 
 We summarize our \textbf{contributions} as follows:
@@ -132,20 +126,20 @@ In this section, we present a brief introduction of CTR prediction models and th
 About a decade ago, CTR prediction strategies with large-scale logistic regression model on carefully engineered features are proposed in~\cite{edelman2007internet,graepel2010web}. With the rapid development of deep learning, deep neural networks (DNN) attract a lot of attention in the CTR research community: The DNN model, with wide embedding layers, obtains significant improvements over classical models. The model takes a sparse high-dimensional vector as input and converts those sparse features into dense vectors through sequential embedding layers. The output dense vector is considered a low-dimensional representation of the input and is then fed into the following layers in order to compute the CTR. Most proposed CTR models share the same embedding layer architecture and only focus on the following neural network layers, see for e.g., Deep Crossing~\cite{shan2016deep}, Product-based Neural Network (PNN)~\cite{qu2016product}, Wide\&Deep Learning~\cite{cheng2016wide}, YouTube Recommendation CTR model~\cite{covington2016deep}, DeepFM~\cite{guo2017deepfm}, xDeepFM~\cite{lian2018xdeepfm} and Deep Interest Network (DIN)~\cite{zhou2018deep}. They introduce special neural layers for specific applications that capture latent feature interactions. 
 
 \begin{figure}[htbp]
-\vspace{-0.1in}
+%\vspace{-0.1in}
 
 \centering
 \includegraphics[width=.35\textwidth]{figs/ctr2}
-\vspace{-0.1in}
+%\vspace{-0.1in}
 
 \caption{An example for the CTR prediction network architecture.}
-\label{fig:ctr}\vspace{-0.05in}
+\label{fig:ctr}%\vspace{-0.05in}
 \end{figure}
 
-We summarize those architectures in Figure~\ref{fig:ctr}. The input features are fed to the neural network as a sparse high-dimensional vector. The dimension of the vector can be as large as $\sim$$10^{11}$. The input features for CTR models are usually from various resources with categorical values, e.g., query words, ad keywords, and user portrait. The categorical values are commonly represented as a one-hot or multi-hot encoding. Therefore, with categorical values with many sources, the number of dimensions is high ($\sim$$10^{11}$) for industry CTR prediction models. Note that feature compression or hashing strategies that reduce the number of dimensions are not applicable to the CTR prediction model because those solutions inevitably trade off the prediction accuracy for better computational time~\cite{deng2021deeplight}---recall that even a small accuracy loss leads to a noticeable online advertising revenue decrease, which is unacceptable. We embed the high-dimensional features through an embedding layer to obtain a low-dimensional ($\sim$$10^2$) representation. The number of parameters in the embedding layer can be as large as 10 TB due to the high input dimension. After the low-dimensional embedding is achieved, we fed this dense vector to the following neural network components to compute the CTR. 
+We summarize those architectures in Figure~\ref{fig:ctr}. The input features are fed to the neural network as a sparse high-dimensional vector. The dimension of the vector can be as large as $\sim$$10^{11}$. The input features for CTR models are usually from various resources with categorical values, e.g., query words, ad keywords, and user portrait. The categorical values are commonly represented as a one-hot or multi-hot encoding. Therefore, with categorical values with many sources, the number of dimensions is high ($\sim$$10^{11}$) for industry CTR prediction models. Note that feature compression or hashing strategies that reduce the number of dimensions are not applicable to the CTR prediction model because those solutions inevitably trade off the prediction accuracy for better computational time~\cite{Article:Goemans_JACM95,Proc:Weinberger_ICML09,deng2021deeplight}---recall that even a small accuracy loss leads to a noticeable online advertising revenue decrease, which is unacceptable. We embed the high-dimensional features through an embedding layer to obtain a low-dimensional ($\sim$$10^2$) representation. The number of parameters in the embedding layer can be as large as 10 TB due to the high input dimension. After the low-dimensional embedding is achieved, we fed this dense vector to the following neural network components to compute the CTR. 
 
 \subsection{Hierarchical GPU Parameter Server}
-Due to the extremely high dimension of the embedding layer, the model contains around $10 TB$ parameters which do not fit on most computing servers. Conventionally, the huge model is trained on an MPI cluster. We partition the model parameters across multiple computing nodes (e.g., 150 nodes) in the MPI cluster. Every computing node is assigned a batch of training data streamed directly from the HDFS. 
+Due to the extremely high dimension of the embedding layer, the model contains around 10 TB parameters which do not fit on most computing servers. Conventionally, the huge model is trained on an MPI cluster. We partition the model parameters across multiple computing nodes (e.g., 150 nodes) in the MPI cluster. Every computing node is assigned a batch of training data streamed directly from the HDFS. 
 For each node, it retrieves the required parameters from other nodes and computes the gradients for its current working mini-batch. The gradients are then updated to the nodes that maintain the corresponding parameters through MPI communications. Recently, hierarchical GPU parameter servers~\cite{Proc:Zhao_MLSys20} are proposed to train the massive-scale model on a limited number of GPU servers. The key observation of the hierarchical GPU parameter server is that the number of referenced parameters in a mini-batch fits the GPU memory because the input vector is sparse. It maintains three levels of hierarchical parameter servers on GPU, CPU main memory, and SSD. The working parameters are stored in GPUs, the frequently used parameters are kept in CPU main memory, and other parameters are materialized as files on SSDs. The upper-level module acts as a high-speed cache of the lower-level module. With 4 GPU nodes, the hierarchical GPU parameter server is able to be 2X faster than 150 CPU-only nodes in an MPI cluster. Our proposed FeatureBox follows the design of the training framework in the hierarchical GPU parameter server and absorbs the feature engineering workload into GPUs to eliminate excessive intermediate I/O.
 
 
@@ -166,7 +160,7 @@ A view is a collection of raw data logs from one source, e.g., user purchase his
 The views and basic features are streamed from the distributed file system. The features are organized in a column-wise manner so that we only need to read the required features. 
 
 \textbf{Clean views.} 
-Views contain null values and semi-structured data, e.g., JSON format. 
+Views contain null values and semi-structured data, e.g., JSON format~\cite{DBLP:conf/www/PezoaRSUV16}. 
 At the view cleaning stage, we fill the null values and extract required fields from the semi-structured data. 
 Following the cleaning, all columns have non-empty and simple type (as integer, float, or string) fields. Note that the resulting views contain all the logged instances. For an application, it may not need to include all instances, e.g., an application for young people. A custom filter can be applied to filter out unrelated instances of the current application.
 
@@ -179,7 +173,7 @@ We recall that the join step combines multiple views into a single structured ta
 \begin{figure*}[htp]
 \includegraphics[width=\textwidth]{figs/dag}
 \caption{An example for the heterogeneous operator scheduling.}
-\label{fig:dag}\vspace{-0.05in}
+\label{fig:dag}%\vspace{-0.05in}
 \end{figure*}
 
 \textbf{Extract features}.
@@ -222,8 +216,9 @@ Time (us) & 4 & 35 & 360 & 3,619 & 34,515\\
 \end{table}
 
 \textbf{Inner-GPU operator launching.} 
-After the layer-wise DAG operator scheduling, we have determined the execution device for each operator and the synchronization barriers. However, CUDA kernel launching is has a noticeable overhead. 
-We report the CUDA kernel launch overhead in Table~\ref{tbl:launch}. The test is performed on an Nvidia Tesla V100-SXM2-32GB GPU for an empty kernel with 5 pointer-type arguments. The CUDA driver version is 10.2. The average launching time for a kernel is around 3.5 us. Since we have fine-granularity operators, we have to rapidly launch CUDA kernels to execute the large number of operators. In order to eliminate the launching overhead, we rewrite the operator kernel as a CUDA device function for each operator in the same layer and create a meta-kernel that sequentially executes the operator device functions in a runtime-compilation manner. The overhead of the meta-kernel generation is disregarded---we only need to create this meta-kernel for each layer once as a pre-processing of the training since we determine the operator execution order before the actual training phase and keep the scheduling fixed. 
+After the layer-wise DAG operator scheduling, we have determined the execution device for each operator and the synchronization barriers. However, CUDA kernel launching has a noticeable overhead. 
+We report the CUDA kernel launch overhead in Table~\ref{tbl:launch}. 
+The test is performed on an Nvidia Tesla V100-SXM2-32GB GPdU for an empty kernel with 5 pointer-type arguments. The CUDA driver version is 10.2. The average launching time for a kernel is around 3.5 us. Since we have fine-granularity operators, we have to rapidly launch CUDA kernels to execute the large number of operators. In order to eliminate the launching overhead, we rewrite the operator kernel as a CUDA device function for each operator in the same layer and create a meta-kernel that sequentially executes the operator device functions in a runtime-compilation manner. The overhead of the meta-kernel generation is disregarded---we only need to create this meta-kernel for each layer once as a pre-processing of the training since we determine the operator execution order before the actual training phase and keep the scheduling fixed. 
 With the generated meta-kernels, we only need to launch one kernel for each layer.
 
 
@@ -313,14 +308,16 @@ We use CTR prediction models on two real-world online advertising applications. 
 
 \subsection{End-to-End Training }
 We report Table~\ref{tbl:comp} specifications about the training data and the end-to-end training comparison between our proposed FeatureBox and the MapReduce feature extraction with hierarchical GPU parameter server training as a baseline. Both training datasets contain billions of instances. The size of the logs is $\sim$15 TB for application A, and $\sim$25 TB for application B. The end-to-end training time includes the features extraction from the log time and the model training time. FeatureBox uses 1 GPU server for application A and 2 GPU servers for application B. In addition to the GPU servers, the baseline solution also employs 20/30 CPU-only servers to perform feature extraction. The baseline solution first extracts features using MapReduce, saves the features as training data in HDFS, and streams the generated training data to the GPU servers to train the model. On the other hand, FeatureBox processes the data in a pipeline fashion: features are extracted on GPU servers and then are immediately fed to the training framework on the same GPU server. For application A, FeatureBox only takes 3.5 hours to finish the feature extraction and the training while the baseline solution requires 18 hours---with fewer number of machines, FeatureBox has a \emph{5.14X} speedup compared to the baseline. 
-Meanwhile, Application B presents a bigger volume of log instances. Hence, we use two GPU servers to perform the training. We can observe a larger gap between FeatureBox and the baseline when the data size scales up: FeatureBox outperforms the baseline with a \emph{10.19X} speedup. One of the major reason of the speedup is that FeatureBox eliminates the huge intermediate I/O from the MapReduce framework. 
+Meanwhile, Application B presents a bigger volume of log instances. Hence, we use two GPU servers to perform the training. We can observe a larger gap between FeatureBox and the baseline when the data size scales up: FeatureBox outperforms the baseline with a \emph{10.19X} speedup. One of the main reasons of the speedup is that FeatureBox eliminates the huge intermediate I/O from the MapReduce framework. 
 We save $\sim$50-100 TB intermediate I/O while using FeatureBox.
 
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=.38\textwidth]{figs/featureextract}
-\caption{Feature extraction time of MapReduce and FeatureBox.}
+\includegraphics[width=.33\textwidth]{figs/featureextract}
+\vspace{-.2cm}
+\caption{Feature extraction of MapReduce and FeatureBox.}
+\vspace{-.4cm}
 \label{fig:extract}
 \end{figure}
 
@@ -335,11 +332,12 @@ Based on these results, we can answer the questions that drive the experiments: 
 %\section{Related Work}
 
 \section{Conclusions}
-In this paper, we introduce FeatureBox, a novel end-to-end training framework that pipelines the feature extraction and the training on GPU servers to save the intermediate I/O of the feature extraction. We rewrite computation-intensive feature extraction operators as GPU operators and leave the memory-intensive operator on CPUs. We introduce a layer-wise operator scheduling algorithm to schedule these heterogeneous operators. We present a light-weight GPU memory management algorithm that supports dynamic GPU memory allocation with minimal overhead. We experimentally evaluate FeatureBox and compare it with the previous in-production MapReduce feature extraction framework on two real-world ads applications. The results show that FeatureBox is 5-10X faster than the baseline.
+The cost of feature extraction is non-negligible for commercial CTR prediction applications when machine learning researchers trial their proposed new features. In this paper, we introduce FeatureBox, a novel end-to-end training framework that pipelines the feature extraction and the training on GPU servers to save the intermediate I/O of the feature extraction. We rewrite computation-intensive feature extraction operators as GPU operators and leave the memory-intensive operator on CPUs. We introduce a layer-wise operator scheduling algorithm to schedule these heterogeneous operators. We present a light-weight GPU memory management algorithm that supports dynamic GPU memory allocation with minimal overhead. We experimentally evaluate FeatureBox and compare it with the previous in-production MapReduce feature extraction framework on two real-world ads applications. The results show that FeatureBox is 5-10X faster than the baseline.
+
 
 \clearpage
 %\balance
-\bibliographystyle{IEEEtran}
+\bibliographystyle{ACM-Reference-Format}
 \bibliography{biblio}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
