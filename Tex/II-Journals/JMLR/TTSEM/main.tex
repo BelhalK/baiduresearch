@@ -171,6 +171,7 @@ When $\rho_{k} = 1$ and $\StocEstep^{(k)} = \tilde{S}^{(k)}$, i.e., computed in 
 \noindent \textbf{Two-Timescale Stochastic EM methods:}
 We introduce the general method derived using the two variance reduction techniques described above.
 Beforehand, we list in Table~\ref{alg:prox}, variants of the {Inc-step}, stated in~\eqref{eq:sestep}, of Algorithm~\ref{alg:ttsem} for the quantity $\StocEstep^{(k+1)}$, at iteration $k >0$.
+Our paper introduces two new variants of the \ISAEM\ (incremental SAEM), introduced by \citet{kuhn2019properties}, namely \SAEMVR\ (variance reduced SAEM) and \FISAEM\ (fast incremental SAEM) in order to accelerate the convergence of the parameters.
 For each method, we define a random index noted $i_k \in \inter$ and drawn at iteration $k$, and $\tau_i^k = \max \{ k' : i_{k'} = i,~k' < k \}$ as the iteration index where $i \in \inter$ is last drawn prior to iteration $k$.
 
  \begin{protocol}[H]
@@ -184,10 +185,10 @@ For each method, we define a random index noted $i_k \in \inter$ and drawn at it
   \end{algorithmic}
 \end{protocol}
 
-Note that the proposed \FISAEM\ (Fast Incremental SAEM) update, Line~\ref{line:fisaem} in Table~\ref{alg:prox}, draws {two} {independent} and {uniform} indices $(i_k, j_k) \in \inter$. 
+Note that the proposed \FISAEM\ update, Line~\ref{line:fisaem} in Table~\ref{alg:prox}, draws {two} {independent} and {uniform} indices $(i_k, j_k) \in \inter$. 
 Thus, we define $t_j^k = \{ k' : j_{k'} = j , k' < k \}$ to be the iteration index where the sample $j \in \inter$ is last drawn as $j_k$ prior to iteration $k$ in addition to $\tau_i^k$ which was defined w.r.t. $i_k$.
 We recall that $\tilde{S}_{i_k}^{(k)} \eqdef  \frac{1}{M_k} \sum_{m=1}^{M_k} S(z_{i_k,m}^{(k)}, y_{i_k})$ where $z_{i_k,m}^{(k)}$ are samples drawn from $ p(z_{i_k}|y_{i_k};\param^{(k)})$.
-The stepsize in~\eqref{eq:sestep} is set to $\rho_{k+1} = 1$ for the \ISAEM\ (Incremental SAEM) method initializing with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \rho$ is  constant for the \SAEMVR\ (Variance Reduced SAEM) and \FISAEM. 
+The stepsize in~\eqref{eq:sestep} is set to $\rho_{k+1} = 1$ for the \ISAEM\ method initializing with $\StocEstep^{(0)} = \tilde{S}^{(0)}$; $\rho_{k+1} = \rho$ is  constant for the \SAEMVR\ and \FISAEM. 
 Note that we initialize with $\overline{\StocEstep}^{(0)} = \tilde{S}^{(0)}$ for the \FISAEM\ which can be seen as a slightly modified version of SAGA inspired by~\citet{reddi2016fast}.
 For \SAEMVR\, we set an epoch size of $m$ and we define $\ell(k) \eqdef m \lfloor k/m \rfloor$ as the first iteration number in the epoch that iteration $k$ is in.
 Then, our general class of methods, see Algorithm~\ref{alg:ttsem}, leverages both levels~\eqref{eq:rmstep} and~\eqref{eq:sestep} in order to output a vector of fitted parameters $\hat{\param}^{({ K}_{ f })}$ where ${ K}_{ f }$ is the total number of iterations.
@@ -215,7 +216,7 @@ Then, our general class of methods, see Algorithm~\ref{alg:ttsem}, leverages bot
   \end{algorithmic}
 \end{algorithm}
 The update in~\eqref{eq:twolevels} is said to have a {two-timescale} property as the stepsizes satisfy $\lim_{k \to \infty} \gamma_k/\rho_k < 1$ such that $ \tilde{S}^{(k+1)} $  is updated at a faster time-scale, determined by $\rho_{k+1}$, than $\hat{\bss}^{(k+1)}$, determined by $\gamma_{k+1}$.
-The next section introduces the main results of this paper and establishes global and finite-time bounds for the three different updates of our scheme. 
+The next section introduces the main results of this paper and establishes global and finite-time bounds for the different updates of our scheme. 
 
 
 \section{Finite Time Analysis of Two-Timescale EMs} \label{sec:mainanalysis}
@@ -409,8 +410,7 @@ Since $\tilde{S}_{i_k}^{(k+1)} = \overline{\bss}_{i_k}(\param^{(k+1)}) + \eta_{i
 Taking the full expectation of both side of the equation leads to:
 \beq\notag
 \begin{split}
-\EE[\stt^{(k+1)} - \hat{\bss}^{(k)}] = &\EE[\overline{\bss}^{(k)} - \hat{\bss}^{(k)}]  + \EE[\frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}] \\
-&-\frac{1}{n} \EE[\EE[ \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}_{i_k}(\param^{(k+1)})  | \mathcal{F}_{k} ]] + \frac{1}{n} \EE[\eta_{i_k}^{(k+1)}] \eqsp.
+\EE[\stt^{(k+1)} - \hat{\bss}^{(k)}] = \EE[\overline{\bss}^{(k)} - \hat{\bss}^{(k)}]  + \EE[\frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}^{(k)}] -\frac{1}{n} \EE[\EE[ \tilde{S}_i^{(\tau_i^k)}-  \overline{\bss}_{i_k}(\param^{(k+1)})  | \mathcal{F}_{k} ]] + \frac{1}{n} \EE[\eta_{i_k}^{(k+1)}] \eqsp.
 \end{split}
 \eeq
 Since we have $\EE[ \tilde{S}_i^{(\tau_i^k)} | \mathcal{F}_{k} ] =\frac{1}{n} \sum_{i=1}^n \tilde{S}_i^{(\tau_i^k)}$ and $\EE[  \overline{\bss}_{i_k}(\param^{(k)})  | \mathcal{F}_{k} ]= \overline{\bss}^{(k)}$, we conclude the proof.
@@ -1025,6 +1025,13 @@ Note that the { MC-step}~\eqref{eq:mcstep} is performed using a Metropolis-Hasti
 The Metropolis-Hastings (MH) algorithm~\citep{meyn2012markov} leverages a proposal distribution $q(z_{i}, \delta)$ where $\param = (z_{\rm pop}, \omega_{z})$ and $ \delta$ is the vector of parameters of the proposal distribution. Generally, and for simplicity, a Gaussian proposal is used. 
 The MH algorithm employed to sample from each individual posterior distribution $\left(p(z_i | y_i; \param), i\in \inter \right)$ is summarized in Algorithm~\ref{alg:mh}.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=4in]{fig2/figpk.eps}
+\caption{Mean square errors $|ka^{(k)} - ka^*|^2$ for our methods (\FISAEM\ in green,\SAEMVR\ in black and \ISAEM\ in blue) versus the SAEM baseline in red, against epochs elapsed. The errors have been averaged over $M=50$ synthetic datasets for robustness. The \FISAEM\ appears to be the best method among the four. The other variance reduced TTSEM method, namely \SAEMVR\, is quickly reaching a similar accuracy but exhibits overfitting rather quickly. The two other plain SAEM methods are the slowest.}
+\label{fig:pk_tts}
+\end{figure}
+
 \begin{algorithm}[H]
 \begin{algorithmic}[1]
 \STATE \textbf{Input:} initialization $z_{i,0} \sim q(z_{i}; {\bm \delta})$
@@ -1046,12 +1053,7 @@ The MH algorithm employed to sample from each individual posterior distribution 
         \end{algorithm}
 Figure~\ref{fig:pk_tts} shows clear advantage of variance reduced methods (\SAEMVR\ and \FISAEM ) avoiding the twists and turns displayed by the incremental and the batch methods (iSAEM and SAEM).
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=4in]{fig2/figpk.eps}
-\caption{Mean square errors $|ka^{(k)} - ka^*|^2$ for our methods (\FISAEM\ in green,\SAEMVR\ in black and \ISAEM\ in blue) versus the SAEM baseline in red, against epochs elapsed. The errors have been averaged over $M=50$ synthetic datasets for robustness. The \FISAEM\ appears to be the best method among the four. The other variance reduced TTSEM method, namely \SAEMVR\, is quickly reaching a similar accuracy but exhibits overfitting rather quickly. The two other plain SAEM methods are the slowest.}
-\label{fig:pk_tts}
-\end{figure}
+
 Both our newly proposed EM methods quickly reaches a neighborhood of the solution while baselines slowly converge to it empirically stressing on the benefits of our two-timescale methods that not only temper the noise of the incremental update but also reduce the MC noise stemming from a required approximation of the expectations.
 
 
@@ -1821,7 +1823,7 @@ Using the Lemma~\ref{lem:growth}, we know that $\upsilon_{\max}^2 \| \grd V( \hs
 
 \beq\notag
 \begin{split}
-&\upsilon_{\max}^2 \sum_{k=0}^{{ K}_{ m }-1}\gamma_{k+1} \EE[ \| \grd V( \hs{k} ) \|^2 ]  \\
+\upsilon_{\max}^2 \sum_{k=0}^{{ K}_{ m }-1}\gamma_{k+1} \EE[ \| \grd V( \hs{k} ) \|^2 ]  
 \leq &  \frac{4\alpha  \overline{L} n^{2/3}}{\upsilon_{\min}^2} [ V(\hat{\bss}^{(0)} )  - V(\hat{\bss}^{({ K}_{ m })}) ]\\
 &   + \frac{4\alpha  \overline{L} n^{2/3}}{\upsilon_{\min}^2} \sum_{k=0}^{{ K}_{ m }-1} \Xi^{(k+1)}  +  \sum_{k=0}^{{ K}_{ m }-1}\Gamma^{(k+1)} \EE[\| \hs{k} - \tilde{S}^{(k)}\|^2] \eqsp,
 \end{split}

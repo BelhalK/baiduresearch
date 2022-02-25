@@ -46,8 +46,8 @@ No. 10 Xibeiwang East Road, Beijing 10193, China\\
 \email{}
 \copyrightyear{2022}
 \acmYear{2022}
-\acmConference[KDD '22] {Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}{August 14--18}{Washington, DC}
-\acmBooktitle{Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD '22), August 14--18, Washington, DC}
+\acmConference[VLDB '22] {Proceedings of the 48th International Conference on Very Large Data Bases}{September 05 -- 09, 2022}{Sydney, Australia}
+\acmBooktitle{Proceedings of the 48th International Conference on Very Large Data Bases (VLDB'22), September 05 -- 09, 2022, Sydney, Australia}
 
 
  
@@ -63,6 +63,7 @@ In this paper, we propose FeatureBox, a novel end-to-end training framework that
 
 \keywords{CTR prediction, large-scale machine learning, feature extraction.}
 %\vspace{0.05in}
+
 \maketitle
 
 
@@ -71,7 +72,7 @@ In this paper, we propose FeatureBox, a novel end-to-end training framework that
 Deep learning has been widely employed in many real-world applications, e.g., computer vision~\cite{Proc:GAN_NIPS14,Proc:Resnet_CVPR16,CV_review18,DBLP:conf/iclr/DosovitskiyB0WZ21}, data mining~\cite{nguyen2019machine,DBLP:conf/kdd/KangCQ020,DBLP:conf/icde/LiLYWLWLZ21,DBLP:conf/kdd/MerhejBMR21,DBLP:conf/kdd/ZerveasJPBE21}, and recommendation systems~\cite{Proc:Covington_2016,Article:Wei_2017,cheng2016wide,zhang2019deep,DBLP:conf/kdd/MaNLD20}.  In recent years, sponsored online advertising also adopts deep learning techniques to predict the Click-Through Rate (CTR)~\cite{DBLP:conf/sigir/LiuXGTZHL20,DBLP:conf/acl/QiWWH20,DBLP:conf/cikm/ZhuLLLHCZ20,DBLP:conf/cikm/ShengZZDDLYLZDZ21,DBLP:conf/sigir/ZhaoLZQHZL21,DBLP:conf/wsdm/ZhangQCLLZMC21}. Unlike common machine learning applications, the accuracy of the CTR prediction is critical to the revenue. 
 In the context of a many-billion-dollar online ads industry, even a $0.1\%$ accuracy increase will result in a noticeable revenue gain. 
 We identify two major paths to improve the model accuracy. The first area is to propose different and enhanced model architectures. Every improvement in this direction is considered a fundamental milestone in the deep learning community---and does not happen often in the CTR prediction industry.
-The other (more practical) is feature engineering, i.e. to propose and extract new features from the raw training data. The benefit of feature engineering is usually neglected in common deep learning applications because of the general belief that deep neural networks inherently extract the features through their hidden layers. However, recall that CTR prediction applications are accuracy-critical, hence, the gain from an improved feature engineering strategy remains attractive for in-production CTR prediction models. 
+The other, and more practical, path is feature engineering, i.e. to propose and extract new features from the raw training data. The benefit of feature engineering is usually neglected in common deep learning applications because of the general belief that deep neural networks inherently extract the features through their hidden layers. However, recall that CTR prediction applications are accuracy-critical, hence, the gain from an improved feature engineering strategy remains attractive for in-production CTR prediction models. 
 Therefore, in order to achieve a better prediction performance, CTR deep learning models in real-world ads applications tend to utilize larger models and more features extracted from raw data logs. 
 
 Testing on the historical and online data is the rule-of-the-thumb way to determine whether a new feature is beneficial. Every new feature with positive accuracy improvement (e.g. $0.1\%$) is included into the CTR model. Machine learning researchers and practitioners keep this feature engineering trial-and-error on top of the current in-production CTR model. As a result, the in-production CTR model becomes larger and larger with more and more features. To support the trial-and-error research for new features, it requires us to efficiently train massive-scale models with massive-scale raw training data in a timely manner. Previous studies~\cite{Proc:Zhao_MLSys20} propose hierarchical GPU parameter server that trains the out-of-memory model with GPU servers to accelerate the training with GPUs and SSDs. With a small number of GPU servers, e.g., 4, can obtain the same training efficiency as a CPU-only cluster with hundreds of nodes. The training framework focuses on the training stage and assumes the training data are well-prepared---the training data are accessed from a distributed file system.
@@ -93,12 +94,12 @@ This latter point is the scope of our contribution.
 \end{figure}
 
 \textbf{Training workflow.} 
-The upper part of Figure~\ref{fig:feabox} depicts a visual illustration of the feature extraction. Due to the large amount of raw data, the original feature extraction task is constructed as MapReduce~\cite{dean2008mapreduce} jobs that compute feature combinations, extract keywords with language models, etc. 
-Those MapReduce jobs frequently read and write intermediate files with the distributed file system (i.e., HDFS~\cite{borthakur2008hdfs}). The intermediate I/O can be as large as 200 TB. Once the features are extracted, we also need to materialize them to the $\sim$$15$ TB extracted features to the HDFS so that the following distributed training framework can read them from the distributed file system. 
+The upper part of Figure~\ref{fig:feabox} depicts a visual illustration of the feature extraction. Due to the sheer amount of raw data, the original feature extraction task is composed of MapReduce~\cite{dean2008mapreduce} jobs that compute feature combinations, extract keywords with language models, etc. 
+Those MapReduce jobs frequently read and write intermediate files with the distributed file system (i.e., HDFS~\cite{borthakur2008hdfs}). The intermediate I/O can be as large as 200 TB. Once the features are extracted, we also need to materialize them to the $\sim 15$ TB extracted features to the HDFS so that the following distributed training framework can read them from the distributed file system. 
 This training workflow incurs rapid communication with HDFS that generates heavy I/O overhead. 
 
 One straightforward question can be raised: \textit{Can we perform the feature extraction within GPU servers to eliminate the communication overhead?} 
-In the lower part of Figure~\ref{fig:feabox}, we depict an example for the proposed training framework that combines the feature extraction and the training computation within GPU servers. The intermediate I/O is eliminated by integrating the feature extraction and the training computation into a pipeline: for each batch of extracted features, we feed the batch to the model training without writing them as intermediate files into HDFS.
+In the bottom part of Figure~\ref{fig:feabox}, we depict an example for the proposed training framework that combines the feature extraction and the training computation within GPU servers. The intermediate I/O is eliminated by integrating the feature extraction and the training computation into a pipeline: for each batch of extracted features, we feed it to the model training without writing them as intermediate files into HDFS.
 
 \textbf{Challenges \& Approaches.} 
 However, moving the feature extraction to GPU servers is non-trivial. 
@@ -108,9 +109,6 @@ Note that the number of GPU nodes is much fewer compared with the CPU-only clust
 \item {\it Computing Resources}. With a smaller number of nodes, the CPU computing capability on GPU servers is also orders of magnitudes less powerful than the CPU cluster. We have to move the CPU computations to GPU operations to bridge the computing power gap.
 \item {\it Memory Usage}. The feature extraction process contains many memory-intensive operations, such as dictionary table lookup, sort, reduce, etc. It is desired to have an efficient memory management system to efficiently perform dynamic memory allocations on GPU servers with limited memory.
 \end{enumerate}
-
-
-%\textbf{Contributions:} 
 We summarize our \textbf{contributions} as follows:
 \begin{itemize}
 \item We propose FeatureBox, a novel end-to-end training framework that pipelines the feature extraction and the training on GPU servers.
