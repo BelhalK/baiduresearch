@@ -138,7 +138,8 @@ We summarize those architectures in Figure~\ref{fig:ctr}. The input features are
 
 \subsection{Hierarchical GPU Parameter Server}
 Due to the extremely high dimension of the embedding layer, the model contains around 10 TB parameters which do not fit on most computing servers. Conventionally, the huge model is trained on an MPI cluster. We partition the model parameters across multiple computing nodes (e.g., 150 nodes) in the MPI cluster. Every computing node is assigned a batch of training data streamed directly from the HDFS. 
-For each node, it retrieves the required parameters from other nodes and computes the gradients for its current working mini-batch. The gradients are then updated to the nodes that maintain the corresponding parameters through MPI communications. Recently, hierarchical GPU parameter servers~\cite{Proc:Zhao_MLSys20} are proposed to train the massive-scale model on a limited number of GPU servers. The key observation of the hierarchical GPU parameter server is that the number of referenced parameters in a mini-batch fits the GPU memory because the input vector is sparse. It maintains three levels of hierarchical parameter servers on GPU, CPU main memory, and SSD. The working parameters are stored in GPUs, the frequently used parameters are kept in CPU main memory, and other parameters are materialized as files on SSDs. The upper-level module acts as a high-speed cache of the lower-level module. With 4 GPU nodes, the hierarchical GPU parameter server is able to be 2X faster than 150 CPU-only nodes in an MPI cluster. Our proposed FeatureBox follows the design of the training framework in the hierarchical GPU parameter server and absorbs the feature engineering workload into GPUs to eliminate excessive intermediate I/O.
+For each node, it retrieves the required parameters from other nodes and computes the gradients for its current working mini-batch. The gradients are then updated to the nodes that maintain the corresponding parameters through MPI communications. Recently, hierarchical GPU parameter servers~\cite{Proc:Zhao_MLSys20} are proposed to train the massive-scale model on a limited number of GPU servers. The key observation of the hierarchical GPU parameter server is that the number of referenced parameters in a mini-batch fits the GPU memory because the input vector is sparse. It maintains three levels of hierarchical parameter servers on GPU, CPU main memory, and SSD. The working parameters are stored in GPUs, the frequently used parameters are kept in CPU's main memory, and other parameters are materialized as files stored on SSDs. The upper-level module acts as a high-speed cache of the lower-level module. With 4 GPU nodes, the hierarchical GPU parameter server is able to be 2X faster than 150 CPU-only nodes in an MPI cluster. 
+Our proposed \emph{FeatureBox} follows the design of the training framework in the hierarchical GPU parameter server and absorbs the feature engineering workload into GPUs to eliminate excessive intermediate I/O.
 
 
 \section{FeatureBox Overview}
@@ -150,17 +151,18 @@ In this section, we present an overview of FeatureBox. We aim at allowing the tr
 \caption{FeatureBox pipeline.}\label{fig:pipeline}
 \end{figure}
 
-Figure~\ref{fig:pipeline} depicts the detailed workflow of the FeatureBox pipeline. 
-The workflow has two major tracks: -- extract features from input views and -- reading basic features. 
+The detailed workflow of the FeatureBox pipeline is depicted in Figure~\ref{fig:pipeline}. 
+Our workflow has two major tracks: -- extract features from input views and -- reading basic features. 
 A view is a collection of raw data logs from one source, e.g., user purchase history. CTR prediction models collect features from multiple sources to obtain the best performance. The views are read from the network file system HDFS. We need to clean the views by filling null values and filtering out unrelated instances. Afterwards, the views are joined with particular keys such as user id, ads id, etc. We extract features from the joined views to obtain the desired features from the input views. Then, these features are merged with the basic features, read in a parallel path. We provide a detailed illustration for these operations as follows:
 
 \textbf{Read views and basic features.}
-The views and basic features are streamed from the distributed file system. The features are organized in a column-wise manner so that we only need to read the required features. 
+The views and basic features are streamed from the distributed file system. The features are organized in a column-wise manner so that only required features are read. 
 
 \textbf{Clean views.} 
 Views contain null values and semi-structured data, e.g., JSON format~\cite{DBLP:conf/www/PezoaRSUV16}. 
 At the view cleaning stage, we fill the null values and extract required fields from the semi-structured data. 
-Following the cleaning, all columns have non-empty and simple type (as integer, float, or string) fields. Note that the resulting views contain all the logged instances. For an application, it may not need to include all instances, e.g., an application for young people. A custom filter can be applied to filter out unrelated instances of the current application.
+Following the cleaning, all columns have non-empty and simple type (as integer, float, or string) fields. Note that the resulting views contain all the logged instances. For an application, it may not need to include all instances.%, e.g., an application for young people. 
+A custom filter can be applied to filter out unrelated instances of the current application.
 
 \textbf{Join views.} 
 % Now the data from each view are in a structured format. 
@@ -188,13 +190,15 @@ Subsequent to the merging, a mini-batch of training data is generated and is fed
 
 
 \section{Heterogeneous Operator Scheduling}
-The stages discussed above are represented as operators in the FeatureBox pipeline. Note that those operators are heterogeneous: Some operators are network I/O intensive, e.g., read views and read basic features; some operators are computation-intensive, e.g., clean views and extract features; and the remaining operators with joining, e.g., join views and merge features, rely on heavy memory consumption for large table joins (which corresponds to a large dictionary lookup). Therefore, we introduce a heterogeneous operator scheduler that manages the operator execution on both CPUs and GPUs. 
+The stages discussed above are represented as operators in our pipeline. Note that those operators are heterogeneous: some operators are network I/O intensive, e.g., read views and basic features; some operators are computation-intensive, e.g., clean views and extract features; and the remaining operators with joining, e.g., join views and merge features, rely on heavy memory consumption for large table joins, corresponding to a large dictionary lookup. Therefore, we introduce a heterogeneous operator scheduler managing the operator execution on both CPUs and GPUs. 
 
 \textbf{Scheduling.} 
-Figure~\ref{fig:dag} shows an example for the heterogeneous operator scheduling algorithm. We first present a function call graph for operators in Figure~\ref{fig:dag}(a). 
-Three operators and three major functions are displayed in the example. 
-Op1 calls Func3; Op2 calls Func1 and Func3; and Op3 calls Func2 and Func3, where Func1 and Func2 are pre-processing calls, and Func3 is a post-processing call. We make a fine granularity pipeline so that the initialing overhead of the pipeline is minimized. The fine-granularity is obtained by viewing each function call as a separate operator. Then, we obtain 5 more operators: Op4 is a call for Func1; Op5 is a call for Func2; Op6, Op7, and Op8 are the Func3 calls from Op1, Op2, and Op3, respectively. Their dependency graph is illustrated in Figure~\ref{fig:dag}(b). Now we have a directed acyclic graph (DAG) for the operators. As shown in Figure~\ref{fig:dag}(c), we perform a topological sort on the dependency graph, assign the operators with no dependencies (root operators) to the first layer, and put the remaining operators to the corresponding layer according to their depth from the root operators. With this layer-wise partition, we observe that the operators in the same layer do not have any execution dependency. We issue the operators in the same layer together and perform a synchronization at the end of each layer to ensure the execution dependency. We prefer to execute operators on GPUs unless an operator requires a significant memory footprint that does not fit in the GPU memory. 
-For instance, Op5 (Func2) in Figure~\ref{fig:dag} is a word embedding table look up operation that requires a considerable amount of memory. We assign this operation to CPU workers and move its results from the CPU main memory to GPUs as a host-to-device (H2D) CUDA call.
+Figure~\ref{fig:dag} shows an example of the heterogeneous operator scheduling algorithm. 
+We first present a function call graph for operators in Figure~\ref{fig:dag}(a). 
+Three operators and three major functions are displayed in this example. 
+Op1 calls Func3; Op2 calls Func1 and Func3; and Op3 calls Func2 and Func3, where Func1 and Func2 are pre-processing calls, and Func3 is a post-processing call. We make a fine granularity pipeline so that the initialing overhead of the pipeline is minimized. The fine-granularity is obtained by viewing each function call as a separate operator. Then, we obtain 5 more operators: Op4 is a call for Func1; Op5 is a call for Func2; Op6, Op7, and Op8 are the Func3 calls from Op1, Op2, and Op3, respectively. Their dependency graph is illustrated in Figure~\ref{fig:dag}(b). Now we have a directed acyclic graph (DAG) for the operators. As shown in Figure~\ref{fig:dag}(c), we perform a topological sort on the dependency graph, assign the operators with no dependencies (root operators) to the first layer, and put the remaining operators to the corresponding layer according to their depth from the root operators. With this layer-wise partition, we observe that the operators in the same layer do not have any execution dependency. We issue the operators in the same layer together and perform a synchronization at the end of each layer to ensure the execution dependency. 
+We favor the execution of operators on GPUs unless an operator requires a significant memory footprint that does not fit in the GPU memory. 
+For instance, Op5 (Func2) is a word embedding table look up operation that requires a considerable amount of memory. We assign this operation to CPU workers and move its results from the CPU main memory to GPUs as a host-to-device (H2D) CUDA call.
 
 
 \begin{table}[htbp]
@@ -202,6 +206,7 @@ For instance, Op5 (Func2) in Figure~\ref{fig:dag} is a word embedding table look
 \label{tbl:launch}
 \centering
 \normalsize
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{c|rrrrr}
 \toprule
 \hline
@@ -211,6 +216,7 @@ Time (us) & 4 & 35 & 360 & 3,619 & 34,515\\
 \hline
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \textbf{Inner-GPU operator launching.} 
@@ -280,6 +286,7 @@ All nodes are inter-connected through a high-speed Ethernet switch.
 \caption{End-to-end training of MapReduce feature extraction with hierarchical GPU parameter server and FeatureBox.}\label{tbl:comp}
 \normalsize
 \centering
+\resizebox{2.0\columnwidth}{!}{%
 \begin{tabular}{l|c|c|c|c}
 \toprule
 \hline
@@ -297,6 +304,7 @@ Intermediate I/O Saving & - & $\sim$50 TB & - & $\sim$100 TB\\
 \hline
 \bottomrule
 \end{tabular}
+}
 \end{table*}
 
 \textbf{Models.} 
