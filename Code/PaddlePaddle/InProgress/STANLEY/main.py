@@ -11,7 +11,7 @@ from logger import Logger
 import numpy as np
 
 
-parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
+parser = argparse.ArgumentParser(description='PaddlePaddle EBM Training')
 
 parser.add_argument('--th', '--thresh', default=0.001, type=float,
                     metavar='TH', help='threshold')
